@@ -51,7 +51,7 @@ template <class T> class Node{
 };
 
 
-/*
+/**
 *	This is a linked-list element with a slot for data.
 */
 template <class T> class LinkedList {
@@ -88,11 +88,18 @@ template <class T> class LinkedList {
 };
 
 
+/**
+* Constructor.
+*/
 template <class T> LinkedList<T>::LinkedList() {
 	root = NULL;
 	element_count = 0;
 }
 
+
+/**
+* Destructor. Empties the list.
+*/
 template <class T> LinkedList<T>::~LinkedList() {
 	while (root != NULL) {
 		remove();
@@ -100,6 +107,11 @@ template <class T> LinkedList<T>::~LinkedList() {
 }
 
 
+/**
+* Empties the list.
+*
+* @return the number of elements removed by the call.
+*/
 template <class T> int LinkedList<T>::clear(void) {
 	int return_value = 0;
 	while (root != NULL) {
@@ -109,14 +121,24 @@ template <class T> int LinkedList<T>::clear(void) {
 };
 
 
-/*
-* Returns the position in the list that the data was inserted, or -1 on failure.
+/**
+* Inserts the given dataum into the linked list, copying it.
+* TODO: Might cut this member. Seems like a heap-driven nightmare. Not using it, AFAIK.
+*
+* @param  d   The data to copy and insert.
+* @return the position in the list that the data was inserted, or -1 on failure.
 */
 template <class T> int LinkedList<T>::insertWithCopy(T d) {
 	return insertWithCopy(d, sizeof(T));
 }
 
 
+/**
+* Inserts the given dataum into the linked list.
+*
+* @param  d   The data to copy and insert.
+* @return the position in the list that the data was inserted, or -1 on failure.
+*/
 template <class T> int LinkedList<T>::insert(T d) {
 	Node<T> *current;
 	if (root == NULL) {
@@ -136,8 +158,12 @@ template <class T> int LinkedList<T>::insert(T d) {
 }
 
 
-/*
-* Returns the position in the list that the data was inserted, or -1 on failure.
+/**
+* Inserts the given dataum into the linked list, copying it.
+* TODO: Might cut this member. Seems like a heap-driven nightmare. Not using it, AFAIK.
+*
+* @param  d   The data to copy and insert.
+* @return the position in the list that the data was inserted, or -1 on failure.
 */
 template <class T> int LinkedList<T>::insertWithCopy(T d, size_t len) {
 	Node<T> *current;
@@ -159,11 +185,23 @@ template <class T> int LinkedList<T>::insertWithCopy(T d, size_t len) {
 }
 
 
+/**
+* How many elements in the list? Uses the cached value rather than traversing
+*   the list for each call.
+*
+* @return the number of elements in the linked list.
+*/
 template <class T> int LinkedList<T>::size() {
   return element_count;
 }
 
 
+/**
+* How many elements in the list? Actually traverses the list and updates the
+*   cached count value.
+*
+* @return the number of elements in the linked list.
+*/
 template <class T> int LinkedList<T>::count() {
 	Node<T>* current = root;
 	int return_value = 0;
@@ -176,8 +214,10 @@ template <class T> int LinkedList<T>::count() {
 }
 
 
-/*
-* Returns a pointer to the last node in this linked list.
+/**
+* Convenience function for finding the tail of the list.
+*
+* @return a pointer to the last node in this linked list.
 */
 template <class T> Node<T>* LinkedList<T>::getLast() {
 	Node<T>* return_value = root;
@@ -188,6 +228,11 @@ template <class T> Node<T>* LinkedList<T>::getLast() {
 }
 
 
+/**
+* Removes the element at the head of the list. 
+*
+* @return true if something was removed. False otherwise.
+*/
 template <class T> bool LinkedList<T>::remove() {
 	Node<T>* current = root;
 	if (current != NULL) {
@@ -200,6 +245,12 @@ template <class T> bool LinkedList<T>::remove() {
 }
 
 
+/**
+* Removes the element at the given position within the list. 
+*
+* @param  pos The position to remove.
+* @return true if something was removed. False otherwise.
+*/
 template <class T> bool LinkedList<T>::remove(int pos) {
 	int i = 0;
 	Node<T>* prior   = NULL;
@@ -229,6 +280,12 @@ template <class T> bool LinkedList<T>::remove(int pos) {
 }
 
 
+/**
+* Removes the element with the given data. 
+*
+* @param  test_data  The data to remove.
+* @return true if something was removed. False otherwise.
+*/
 template <class T> bool LinkedList<T>::remove(T test_data) {
 	Node<T>* prior   = NULL;
 	Node<T>* current = root;
@@ -255,6 +312,11 @@ template <class T> bool LinkedList<T>::remove(T test_data) {
 }
 
 
+/**
+* Get the first piece of data. 
+*
+* @return The data from the element at the head of the list, or NULL on empty list.
+*/
 template <class T> T LinkedList<T>::get() {
 	Node<T>* current = root;
 	if (current != NULL) {
@@ -264,6 +326,12 @@ template <class T> T LinkedList<T>::get() {
 }
 
 
+/**
+* Get the piece of data at the given position in the list. 
+*
+* @param  pos The position to fetch.
+* @return The data from the requested element, or NULL if the list isn't that large.
+*/
 template <class T> T LinkedList<T>::get(int pos) {
 	int i = 0;
 	Node<T>* current = root;
@@ -278,11 +346,22 @@ template <class T> T LinkedList<T>::get(int pos) {
 }
 
 
+/**
+* Does this list have more elements in it?
+*
+* @return true if the list is not empty. False if it is.
+*/
 template <class T> bool LinkedList<T>::hasNext() {
 	return (root != NULL);
 }
 
 
+/**
+* Does this list contain the given data?
+*
+* @param  test_data The data to search for.
+* @return true if the list has the given data. False otherwise.
+*/
 template <class T> bool LinkedList<T>::contains(T test_data) {
 	Node<T>* current = root;
 	while (current != NULL) {

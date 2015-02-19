@@ -66,6 +66,7 @@ template <class T> class PriorityQueue {
     int size(void);               // Returns the number of elements in this list.
 
     T dequeue(void);              // Removes the first element of the list. Return the node's data on success, or NULL on empty queue.
+    T recycle(void);              // Reycle this element. Return the node's data on success, or NULL on empty queue.
     bool remove(int position);    // Removes the element at the given position of the list. Return true on success.
     bool remove(T);               // Removes any elements with this data.
     int clear(void);              // Purges the whole queue. Returns the number of things purged or -1 on failure.
@@ -75,6 +76,7 @@ template <class T> class PriorityQueue {
     T get(int position);          // Returns the data from the element at the given position.
     int getPosition(T);           // Returns the position in the queue for the given element.
     int getPriority(T);           // Returns the priority in the queue for the given element.
+    int getPriority(int position);           // Returns the priority in the queue for the given element.
 
     bool hasNext(void);           // Returns false if this list is empty. True otherwise.
     bool contains(T);             // Returns true if this list contains the given data. False if not.
@@ -106,11 +108,17 @@ template <class T> class PriorityQueue {
 };
 
 
+/**
+* Constructor.
+*/
 template <class T> PriorityQueue<T>::PriorityQueue() {
   root = NULL;
   element_count = 0;
 }
 
+/**
+* Destructor. Empties the queue.
+*/
 template <class T> PriorityQueue<T>::~PriorityQueue() {
   while (root != NULL) {
     dequeue();
@@ -118,8 +126,11 @@ template <class T> PriorityQueue<T>::~PriorityQueue() {
 }
 
 
-/*
-* Returns the position in the list that the data was inserted, or -1 on failure.
+/**
+* Inserts the given dataum into the queue.
+*
+* @param  d   The data to copy and insert.
+* @return the position in the list that the data was inserted, or -1 on failure.
 */
 template <class T> int PriorityQueue<T>::insert(T d) {
   return insert(d, 0);
@@ -297,6 +308,26 @@ template <class T> T PriorityQueue<T>::dequeue() {
 }
 
 
+template <class T> T PriorityQueue<T>::recycle() {
+  PriorityNode<T>* current = root;
+  if (current != NULL) {
+    T return_value = current->data;
+
+    if (element_count > 1) {
+      root = current->next;
+      current->next = NULL;
+
+      PriorityNode<T>* temp = getLast();
+      current->priority = temp->priority;  // Demote to the rear of the queue.
+      temp->next = current;
+    }
+
+    return return_value;
+  }
+  return NULL;
+}
+
+
 template <class T> int PriorityQueue<T>::clear(void) {
   int return_value = 0;
   while (remove(0)) {
@@ -416,6 +447,17 @@ template <class T> int PriorityQueue<T>::getPriority(T test_data) {
     if (current->data == test_data) {
       return current->priority;
     }
+    current = current->next;
+  }
+  return -1;
+}
+
+
+template <class T> int PriorityQueue<T>::getPriority(int position) {
+  int i = 0;
+  PriorityNode<T>* current = root;
+  while (current != NULL) {
+    if (position == i++) return current->priority;
     current = current->next;
   }
   return -1;

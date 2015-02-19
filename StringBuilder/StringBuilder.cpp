@@ -11,6 +11,7 @@
   #include <stdio.h>
   #include <stdlib.h>
   #include <string.h>
+  #include <cctype>
 #endif
 
 
@@ -197,6 +198,22 @@ unsigned char* StringBuilder::position(int pos, int &pos_len) {
   return ((unsigned char *)current->str);
 }
 
+
+char* StringBuilder::position_trimmed(int pos){
+  char* str = position(pos);
+  if (str == NULL) {
+    return "";
+  }
+  char *end;
+  while(isspace(*str)) str++;
+  if(*str == 0) return str;
+  end = str + strlen(str) - 1;
+  while(end > str && isspace(*end)) end--;
+  *(end+1) = 0;
+  return str;
+}
+
+
 /**
 * Returns true on success, false on failure.
 */
@@ -358,7 +375,7 @@ void StringBuilder::concat(unsigned char *nu, int len) {
   if ((nu != NULL) && (len > 0)) {
     StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
     if (nu_element != NULL) {
-      nu_element->next  = NULL;
+      nu_element->next = NULL;
       nu_element->len  = len;
       nu_element->str  = (unsigned char *) malloc(len+1);
       if (nu_element->str != NULL) {
@@ -378,10 +395,24 @@ void StringBuilder::concat(char *nu) {
 }
 
 /**
-* Override to cleanly support signed characters.
+* Override to make best use of memory for const strings...
 */
 void StringBuilder::concat(const char *nu) {
   this->concat((unsigned char *) nu, strlen(nu));
+  /* TODO: There is no need to copy a flash-resident string.
+  
+  if (nu != NULL) {
+    int len = strlen(nu);
+    if (len > 0) {
+      StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
+      if (nu_element != NULL) {
+        nu_element->next = NULL;
+        nu_element->len  = len;
+        nu_element->str  = nu;
+        this->stackStrOntoList(nu_element);
+      }
+    }
+  }*/
 }
 
 void StringBuilder::concat(unsigned char nu) {
@@ -443,7 +474,8 @@ int StringBuilder::concatf(const char *format, ...) {
   for (unsigned short i = 0; i < len; i++) {  if (*(format+i) == '%') f_codes++; }
   va_list args;
   // Allocate (hopefully) more space than we will need....
-  char *temp = (char *) alloca(strlen(format) + 64 + (f_codes * 15));
+  int est_len = strlen(format) + 64 + (f_codes * 15);
+  char *temp = (char *) alloca(est_len);
   va_start(args, format);
   int ret = vsprintf(temp, format, args);
   va_end(args);
@@ -604,6 +636,7 @@ int StringBuilder::implode(const char *delim) {
 int StringBuilder::split(const char *delims) {
   int return_value = 0;
   this->collapseIntoBuffer();
+  if (this->col_length == 0) return 0;
   this->null_term_check();
   char *temp_str  = strtok((char *)this->str, delims);
   if (temp_str != NULL) {
@@ -691,3 +724,18 @@ void StringBuilder::null_term_check() {
 }
 
 
+
+#ifdef TEST_BENCH
+void StringBuilder::printDebug() {
+  unsigned char* temp = this->string();
+  int temp_len  = this->length();
+  printf("\nStringBuilder\t Total bytes: %d\n", temp_len);
+  
+  if ((temp != NULL) && (temp_len > 0)) {
+    for (int i = 0; i < temp_len; i++) {
+      printf("%02x ", *(temp + i));
+    }
+    printf("\n\n");
+  }
+}
+#endif
