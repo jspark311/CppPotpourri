@@ -381,7 +381,7 @@ template <class T> bool PriorityQueue<T>::remove(T test_data) {
       free(current);
       element_count--;
       return_value = true;
-      current = prior->next;
+      current = (NULL == prior) ? NULL : prior->next;
     }
     else {
       prior = current;
