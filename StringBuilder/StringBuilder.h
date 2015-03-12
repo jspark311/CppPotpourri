@@ -20,6 +20,7 @@ typedef struct str_ll_t {
 	unsigned char    *str;   // The string.
 	int              len;    // The length of this element.
 	struct str_ll_t  *next;  // The next element.
+	bool             reap;   // Should this position be reaped?
 } StrLL;
 
 
@@ -128,7 +129,7 @@ class StringBuilder {
 		char* position(int);                     // If the string has been split, get tokens with this.
 		char* position_trimmed(int);             // Same as position(int), but trims whitespace from the return.
 		int   position_as_int(int);              // Same as position(int), but uses atoi() to return an integer.
-		unsigned char* position(int, int&);      // ...or this, if you need the length and a binary string.
+		unsigned char* position(int, int*);      // ...or this, if you need the length and a binary string.
 		bool drop_position(unsigned int pos);    // And use this to reap the tokens that you've used.
 		// Trim the whitespace from the end of the input string.
 

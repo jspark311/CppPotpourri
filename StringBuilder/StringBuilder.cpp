@@ -180,10 +180,10 @@ int StringBuilder::position_as_int(int pos) {
 * Return a castable pointer for the string at position <pos>.
 * Null on failure.
 */
-unsigned char* StringBuilder::position(int pos, int &pos_len) {
+unsigned char* StringBuilder::position(int pos, int *pos_len) {
   if (this->str != NULL) {
     if (pos == 0) {
-      pos_len = this->col_length;
+      *pos_len = this->col_length;
       return this->str;
     }
     pos--;
@@ -194,15 +194,15 @@ unsigned char* StringBuilder::position(int pos, int &pos_len) {
     current = current->next;
     i++;
   }
-  pos_len = current->len;
-  return ((unsigned char *)current->str);
+  *pos_len = (current != NULL) ? current->len : 0;
+  return ((current != NULL) ? current->str : (unsigned char *)"");
 }
 
 
 char* StringBuilder::position_trimmed(int pos){
   char* str = position(pos);
   if (str == NULL) {
-    return "";
+    return (char*) "";
   }
   char *end;
   while(isspace(*str)) str++;
@@ -313,6 +313,7 @@ StrLL* StringBuilder::promote_collapsed_into_ll(void) {
   if ((NULL != str) && (col_length > 0)) {
     StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
     if (NULL != nu_element) {   // This is going to grief us later...
+      nu_element->reap = true;
       nu_element->next = this->root;
       this->root = nu_element;
       nu_element->str = this->str;
@@ -333,6 +334,7 @@ void StringBuilder::prepend(unsigned char *nu, int len) {
     
     StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
     if (NULL == nu_element) return;   // O no.
+    nu_element->reap = true;
     nu_element->len  = len;
     nu_element->str  = (unsigned char *) malloc(len+1);
     if (nu_element->str != NULL) {
@@ -375,6 +377,7 @@ void StringBuilder::concat(unsigned char *nu, int len) {
   if ((nu != NULL) && (len > 0)) {
     StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
     if (nu_element != NULL) {
+      nu_element->reap = true;
       nu_element->next = NULL;
       nu_element->len  = len;
       nu_element->str  = (unsigned char *) malloc(len+1);
@@ -396,24 +399,31 @@ void StringBuilder::concat(char *nu) {
 
 /**
 * Override to make best use of memory for const strings...
+*
+* Crash warning: Any const char* concat'd to a StringBuilder will not be copied
+*   until it is manipulated somehow. So be very careful if you cast to (const char*).
 */
 void StringBuilder::concat(const char *nu) {
-  this->concat((unsigned char *) nu, strlen(nu));
   /* TODO: There is no need to copy a flash-resident string.
+  this->concat((unsigned char *) nu, strlen(nu));
+     TODID: Done. Use it for awhile before deleting this block.
+  */
   
   if (nu != NULL) {
     int len = strlen(nu);
     if (len > 0) {
       StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
       if (nu_element != NULL) {
+        nu_element->reap = false;
         nu_element->next = NULL;
         nu_element->len  = len;
-        nu_element->str  = nu;
+        nu_element->str  = (unsigned char *) nu;
         this->stackStrOntoList(nu_element);
       }
     }
-  }*/
+  }
 }
+
 
 void StringBuilder::concat(unsigned char nu) {
   unsigned char* temp = (unsigned char *) alloca(1);
@@ -476,6 +486,7 @@ int StringBuilder::concatf(const char *format, ...) {
   // Allocate (hopefully) more space than we will need....
   int est_len = strlen(format) + 64 + (f_codes * 15);
   char *temp = (char *) alloca(est_len);
+  memset(temp, 0, est_len);
   va_start(args, format);
   int ret = vsprintf(temp, format, args);
   va_end(args);
@@ -491,7 +502,9 @@ int StringBuilder::concatf(const char *format, ...) {
 * Override to cleanly support Strings.
 */
 void StringBuilder::concat(String str) {
-  char *out  = (char *) alloca(str.length()+1);
+  int len = str.length()+1;
+  char *out  = (char *) alloca(len);
+  memset(out, 0, len);
   str.toCharArray(out, (str.length()+1));
   this->concat((unsigned char *) out, strlen(out));
 }
@@ -595,7 +608,7 @@ void StringBuilder::destroyStrLL(StrLL *r_node) {
       destroyStrLL(r_node->next);
       r_node->next  = NULL;
     }
-    free(r_node->str);
+    if (r_node->reap) free(r_node->str);
     free(r_node);
     if (r_node == this->root) this->root = NULL;
   }
