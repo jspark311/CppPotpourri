@@ -1,67 +1,155 @@
+/*
+File:   StringBuilder.cpp
+Author: J. Ian Lindsay
+Date:   2011.06.18
 
-// Needed so we can share libs between the host and the microcontroller:
-#include <inttypes.h>
+Copyright 2016 Manuvr, Inc
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+*/
 
 #include "StringBuilder.h"
-#include <stdarg.h>
 
 #ifdef ARDUINO
   #include "Arduino.h"
 #else
   #include <stdio.h>
   #include <stdlib.h>
-  #include <string.h>
-  #include <cctype>
+  #include <ctype.h>
 #endif
 
 
-#ifndef max
-    #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
-#endif
+/*******************************************************************************
+*      _______.___________.    ___   .___________. __    ______     _______.
+*     /       |           |   /   \  |           ||  |  /      |   /       |
+*    |   (----`---|  |----`  /  ^  \ `---|  |----`|  | |  ,----'  |   (----`
+*     \   \       |  |      /  /_\  \    |  |     |  | |  |        \   \
+* .----)   |      |  |     /  _____  \   |  |     |  | |  `----.----)   |
+* |_______/       |__|    /__/     \__\  |__|     |__|  \______|_______/
+*
+* Static members and initializers should be located here.
+*******************************************************************************/
+/*
+* We might choose to roll-our-own so that we don't bring in enormous dependencies.
+* TODO: This is buggy.
+* Taken from
+* http://c-for-dummies.com/blog/?p=1359
+*/
+int StringBuilder::strcasestr(const char *a, const char *b) {
+  if ((nullptr != a) && (nullptr != b)) {
+    char c = 0;
+    while (*a && *b) {
+      c = toupper(*a) - toupper(*b);
+      if (c != 0) {
+        return c;
+      }
+      a++;
+      b++;
+    }
+    return c;
+  }
+  return -1;
+}
 
-#ifndef min
-    #define min( a, b ) ( ((a) < (b)) ? (a) : (b) )
-#endif
 
-/****************************************************************************************************
-* Class management....                                                                              *
-****************************************************************************************************/
+/* Static utility function for dumping buffers for humans to read. */
+void StringBuilder::printBuffer(StringBuilder* output, uint8_t* buf, unsigned int len, const char* indent) {
+  if (buf) {
+    const char* ind = (indent) ? indent : "\t";
+    unsigned int i = 0;
+    if (len >= 16) {
+      for (i = 0; i < (len - 16); i+=16) {
+        output->concatf("%s0x%04x: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+          ind,
+          i,
+          *(buf + i +  0),
+          *(buf + i +  1),
+          *(buf + i +  2),
+          *(buf + i +  3),
+          *(buf + i +  4),
+          *(buf + i +  5),
+          *(buf + i +  6),
+          *(buf + i +  7),
+          *(buf + i +  8),
+          *(buf + i +  9),
+          *(buf + i + 10),
+          *(buf + i + 11),
+          *(buf + i + 12),
+          *(buf + i + 13),
+          *(buf + i + 14),
+          *(buf + i + 15)
+        );
+      }
+    }
+    if (i < len) {
+      output->concatf("%s0x%04x: ", ind, i);
+      for (; i < len; i++) {
+        output->concatf("%02x ", *(buf + i));
+      }
+      output->concat("\n");
+    }
+  }
+  else {
+    if (indent) {
+      output->concat(indent);
+    }
+    output->concat("(NULL BUFFER)\n");
+  }
+}
+
+
+
+/*******************************************************************************
+*   ___ _              ___      _ _              _      _
+*  / __| |__ _ ______ | _ ) ___(_) |___ _ _ _ __| |__ _| |_ ___
+* | (__| / _` (_-<_-< | _ \/ _ \ | / -_) '_| '_ \ / _` |  _/ -_)
+*  \___|_\__,_/__/__/ |___/\___/_|_\___|_| | .__/_\__,_|\__\___|
+*                                          |_|
+* Constructors/destructors, class initialization functions and so-forth...
+*******************************************************************************/
 
 /**
 * Vanilla constructor.
 */
 StringBuilder::StringBuilder() {
-  this->root   = NULL;
-  this->str    = NULL;
-  this->col_length = 0;
-  this->preserve_ll = false;
+  root        = nullptr;
+  str         = nullptr;
+  col_length  = 0;
+  preserve_ll = false;
+  #if defined(__BUILD_HAS_PTHREADS)
+    #if defined (PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP)
+    _mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+    #else
+    _mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
+    #endif
+  #elif defined(__BUILD_HAS_FREERTOS)
+    //_mutex = xSemaphoreCreateRecursiveMutex();
+  #endif
 }
 
-StringBuilder::StringBuilder(char *initial) {
-  this->root   = NULL;
-  this->str    = NULL;
-  this->col_length = 0;
-  this->preserve_ll = false;
+StringBuilder::StringBuilder(char* initial) : StringBuilder() {
   this->concat(initial);
 }
 
-StringBuilder::StringBuilder(unsigned char *initial, int len) {
-  this->root   = NULL;
-  this->str    = NULL;
-  this->col_length = 0;
-  this->preserve_ll = false;
+StringBuilder::StringBuilder(uint8_t* initial, int len) : StringBuilder() {
   this->concat(initial, len);
 }
 
 
-StringBuilder::StringBuilder(const char *initial) {
-  this->root   = NULL;
-  this->str    = NULL;
-  this->col_length = 0;
-  this->preserve_ll = false;
+StringBuilder::StringBuilder(const char* initial) : StringBuilder() {
   this->concat(initial);
 }
-
 
 
 /**
@@ -69,13 +157,18 @@ StringBuilder::StringBuilder(const char *initial) {
 */
 StringBuilder::~StringBuilder() {
   if (!this->preserve_ll) {
-    if (this->root != NULL) destroyStrLL(this->root);
+    if (this->root != nullptr) destroyStrLL(this->root);
 
-    if (this->str != NULL) {
+    if (this->str != nullptr) {
       free(this->str);
-      this->str = NULL;
+      this->str = nullptr;
     }
   }
+  #if defined(__BUILD_HAS_PTHREADS)
+    pthread_mutex_destroy(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+    //vSemaphoreDelete(&_mutex);
+  #endif
 }
 
 
@@ -89,7 +182,7 @@ StringBuilder::~StringBuilder() {
 */
 int StringBuilder::length() {
   int return_value = this->col_length;
-  if (this->root != NULL) {
+  if (this->root != nullptr) {
     return_value  = return_value + this->totalStrLen(this->root);
   }
   return return_value;
@@ -100,12 +193,9 @@ int StringBuilder::length() {
 * Includes the base str member in the count.
 */
 unsigned short StringBuilder::count() {
-  unsigned short return_value = 0;
-  if (this->str != NULL) {
-  return_value++;
-  }
+  unsigned short return_value = (nullptr != this->str) ? 1 : 0;
   StrLL *current = this->root;
-  while (current != NULL) {
+  while (current != nullptr) {
     return_value++;
     current = current->next;
   }
@@ -115,13 +205,13 @@ unsigned short StringBuilder::count() {
 
 
 /**
-* Public fxn to retrieve the flattened string as an unsigned char *.
-*   Will never return NULL. Will return a zero-length string in the worst-case.
+* Public fxn to retrieve the flattened string as an uint8_t*.
+*   Will never return nullptr. Will return a zero-length string in the worst-case.
 */
 unsigned char* StringBuilder::string() {
-  if ((this->str == NULL) && (this->root == NULL)) {
+  if ((this->str == nullptr) && (this->root == nullptr)) {
     // Nothing in this object. Return a zero-length string.
-    this->str = (unsigned char *) malloc(1);
+    this->str = (uint8_t*) malloc(1);
     this->str[0] = '\0';
     this->col_length  = 0;
   }
@@ -132,14 +222,25 @@ unsigned char* StringBuilder::string() {
 }
 
 
-void StringBuilder::clear(void) {
-  if (this->root != NULL) destroyStrLL(this->root);
-  if (this->str != NULL) {
+/**
+* Wipes the StringBuilder, free'ing memory as appropriate.
+*/
+void StringBuilder::clear() {
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_lock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
+  if (this->root != nullptr) destroyStrLL(this->root);
+  if (this->str != nullptr) {
     free(this->str);
   }
-  this->root   = NULL;
-  this->str    = NULL;
+  this->root   = nullptr;
+  this->str    = nullptr;
   this->col_length = 0;
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
 }
 
 
@@ -148,7 +249,7 @@ void StringBuilder::clear(void) {
 * Null on failure.
 */
 char* StringBuilder::position(int pos) {
-  if (this->str != NULL) {
+  if (this->str != nullptr) {
     if (pos == 0) {
       return (char*) this->str;
     }
@@ -156,11 +257,11 @@ char* StringBuilder::position(int pos) {
   }
   StrLL *current = this->root;
   int i = 0;
-  while ((i != pos) & (current != NULL)){
+  while ((i != pos) & (current != nullptr)){
     current = current->next;
     i++;
   }
-  return (current == NULL) ? NULL : ((char *)current->str);
+  return (current == nullptr) ? nullptr : ((char *)current->str);
 }
 
 
@@ -169,10 +270,67 @@ char* StringBuilder::position(int pos) {
 */
 int StringBuilder::position_as_int(int pos) {
   const char* temp = (const char*) position(pos);
-  if (temp != NULL) {
-    return atoi(temp);
+  if (temp != nullptr) {
+    int len = strlen(temp);
+    if ((len > 2) && (*(temp) == '0') && (*(temp + 1) == 'x')) {
+      // Possibly dealing with a hex representation. Try to convert....
+      unsigned int result = 0;
+      len -= 2;
+      temp += 2;
+      // Only so big an int we can handle...
+      int max_bytes = (len > 8) ? 8 : len;
+      for (int i = 0; i < max_bytes; i++) {
+        switch (*(temp + i)) {
+          case '0':
+          case '1':
+          case '2':
+          case '3':
+          case '4':
+          case '5':
+          case '6':
+          case '7':
+          case '8':
+          case '9':
+            result = (result << 4) + (*(temp + i) - 0x30);
+            break;
+          case 'a':
+          case 'b':
+          case 'c':
+          case 'd':
+          case 'e':
+          case 'f':
+            result = (result << 4) + 10 + (*(temp + i) - 0x61);
+            break;
+          case 'A':
+          case 'B':
+          case 'C':
+          case 'D':
+          case 'E':
+          case 'F':
+            result = (result << 4) + 10 + (*(temp + i) - 0x41);
+            break;
+          default: return result;
+        }
+      }
+      return result;
+    }
+    else {
+      return atoi(temp);
+    }
   }
   return 0;
+}
+
+
+/**
+* Convenience fxn for breaking up strings of integers using the tokenizer.
+*/
+double StringBuilder::position_as_double(int pos) {
+  const char* temp = (const char*) position(pos);
+  if (temp != nullptr) {
+    return atof(temp);
+  }
+  return 0.0;
 }
 
 
@@ -181,7 +339,7 @@ int StringBuilder::position_as_int(int pos) {
 * Null on failure.
 */
 unsigned char* StringBuilder::position(int pos, int *pos_len) {
-  if (this->str != NULL) {
+  if (this->str != nullptr) {
     if (pos == 0) {
       *pos_len = this->col_length;
       return this->str;
@@ -190,18 +348,18 @@ unsigned char* StringBuilder::position(int pos, int *pos_len) {
   }
   StrLL *current = this->root;
   int i = 0;
-  while ((i != pos) & (current != NULL)){
+  while ((i != pos) && (current != nullptr)){
     current = current->next;
     i++;
   }
-  *pos_len = (current != NULL) ? current->len : 0;
-  return ((current != NULL) ? current->str : (unsigned char *)"");
+  *pos_len = (current != nullptr) ? current->len : 0;
+  return ((current != nullptr) ? current->str : (uint8_t*)"");
 }
 
 
 char* StringBuilder::position_trimmed(int pos){
   char* str = position(pos);
-  if (str == NULL) {
+  if (str == nullptr) {
     return (char*) "";
   }
   char *end;
@@ -218,32 +376,32 @@ char* StringBuilder::position_trimmed(int pos){
 * Returns true on success, false on failure.
 */
 bool StringBuilder::drop_position(unsigned int pos) {
-  if (this->str != NULL) {
+  if (this->str != nullptr) {
     if (pos == 0) {
       this->col_length = 0;
       free(this->str);
-      this->str = NULL;
+      this->str = nullptr;
       return true;
     }
     pos--;
   }
   StrLL *current = this->root;
-  StrLL *prior = NULL;
+  StrLL *prior = nullptr;
   unsigned int i = 0;
-  while ((i != pos) & (current != NULL)){
+  while ((i != pos) && (current != nullptr)){
     prior = current;
     current = current->next;
     i++;
   }
-  if (current != NULL) {
-    if (prior == NULL) {
+  if (current != nullptr) {
+    if (prior == nullptr) {
       this->root = current->next;
-      current->next = NULL;
+      current->next = nullptr;
       destroyStrLL(current);
     }
     else {
       prior->next = current->next;
-      current->next = NULL;
+      current->next = nullptr;
       destroyStrLL(current);
     }
     return true;
@@ -255,50 +413,100 @@ bool StringBuilder::drop_position(unsigned int pos) {
 /**
 * This fxn is meant to hand off accumulated string data to us from the StringBuilder
 *   that is passed in as the parameter. This is very fast, but doesn't actually copy
-*   any data. So to eliminate the chance of dangling pointers and other 
+*   any data. So to eliminate the chance of dangling pointers and other
 *   difficult-to-trace bugs, we modify the donor SB to prevent its destruction from
 *   taking the data we now have with it.
 */
 void StringBuilder::concatHandoff(StringBuilder *nu) {
-  if (NULL != nu) {
+  #if defined(__BUILD_HAS_PTHREADS)
+    pthread_mutex_lock(&_mutex);
+    pthread_mutex_lock(&nu->_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+    //xSemaphoreTakeRecursive(&_mutex, 0);
+    //xSemaphoreTakeRecursive(&nu->_mutex, 0);
+  #endif
+  if ((nullptr != nu) && (nu->length() > 0)) {
     nu->promote_collapsed_into_ll();   // Promote the previously-collapsed string.
 
-    if (NULL != nu->root) {
+    if (nullptr != nu->root) {
       this->stackStrOntoList(nu->root);
-      nu->root = NULL;  // Inform the origin instance...
+      nu->root = nullptr;  // Inform the origin instance...
     }
   }
+  #if defined(__BUILD_HAS_PTHREADS)
+    pthread_mutex_unlock(&nu->_mutex);
+    pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+    //xSemaphoreGiveRecursive(&nu->_mutex);
+    //xSemaphoreGiveRecursive(&_mutex);
+  #endif
 }
 
 
 /*
 * Thank you N. Gortari for the most excellent tip:
-*   Intention:       if (obj == NULL)  // Null-checking is a common thing to do...
-*   The risk:        if (obj = NULL)   // Compiler allows this. Assignment always evals to 'true'. 
-*   The mitigation:  if (NULL == obj)  // Equality is commutitive.
+*   Intention:       if (obj == nullptr)  // Null-checking is a common thing to do...
+*   The risk:        if (obj = nullptr)   // Compiler allows this. Assignment always evals to 'true'.
+*   The mitigation:  if (nullptr == obj)  // Equality is commutitive.
 *
-*     "(NULL == obj)" and "(obj == NULL)" mean exaclty the same thing, and are equally valid.
+*     "(nullptr == obj)" and "(obj == nullptr)" mean exaclty the same thing, and are equally valid.
 *
 * Levarge assignment operator's non-commutivity, so if you derp and do this...
-*           if (NULL = obj) 
+*           if (nullptr = obj)
 * ...the mechanics of the language will prevent compilation, and thus, not allow you
 *       to overlook it on accident.
 */
 void StringBuilder::prependHandoff(StringBuilder *nu) {
-  if (NULL != nu) {
+  if (nullptr != nu) {
+    #if defined(__BUILD_HAS_PTHREADS)
+      //pthread_mutex_lock(&_mutex);
+      //pthread_mutex_lock(&nu->_mutex);
+    #elif defined(__BUILD_HAS_FREERTOS)
+    #endif
     this->root = promote_collapsed_into_ll();   // Promote the previously-collapsed string.
-    
+
     // Promote the donor instance's previously-collapsed string so we don't have to worry about it.
     StrLL *current = nu->promote_collapsed_into_ll();
-    
-    if (NULL != nu->root) {
+
+    if (nullptr != nu->root) {
       // Scan to the end of the donated LL...
-      while (NULL != current->next) {   current = current->next;  }
-      
+      while (nullptr != current->next) {   current = current->next;  }
+
       current->next = this->root;  // ...and tack our existing list to the end of it.
-      this->root = nu->root;       // ...replace our idea of the root. 
-      nu->root = NULL;             // Inform the origin instance so it doesn't free what we just took.
+      this->root = nu->root;       // ...replace our idea of the root.
+      nu->root = nullptr;             // Inform the origin instance so it doesn't free what we just took.
     }
+    #if defined(__BUILD_HAS_PTHREADS)
+      //pthread_mutex_unlock(&nu->_mutex);
+      //pthread_mutex_unlock(&_mutex);
+    #elif defined(__BUILD_HAS_FREERTOS)
+    #endif
+  }
+}
+
+
+/*
+* This must be called with non-stack buffers,
+* For safety's sake, the last byte should be a '\0'.
+*/
+void StringBuilder::concatHandoff(uint8_t* buf, int len) {
+  if ((buf) && (len > 0)) {
+    #if defined(__BUILD_HAS_PTHREADS)
+      //pthread_mutex_lock(&_mutex);
+    #elif defined(__BUILD_HAS_FREERTOS)
+    #endif
+    StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
+    if (nu_element) {
+      nu_element->reap = true;
+      nu_element->next = nullptr;
+      nu_element->len  = len;
+      nu_element->str  = buf;
+      this->stackStrOntoList(nu_element);
+    }
+    #if defined(__BUILD_HAS_PTHREADS)
+      //pthread_mutex_unlock(&_mutex);
+    #elif defined(__BUILD_HAS_FREERTOS)
+    #endif
   }
 }
 
@@ -310,15 +518,15 @@ void StringBuilder::prependHandoff(StringBuilder *nu) {
 * Always returns a pointer to the root of the LL. Changed or otherwise.
 */
 StrLL* StringBuilder::promote_collapsed_into_ll(void) {
-  if ((NULL != str) && (col_length > 0)) {
+  if ((nullptr != str) && (col_length > 0)) {
     StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
-    if (NULL != nu_element) {   // This is going to grief us later...
+    if (nullptr != nu_element) {   // This is going to grief us later...
       nu_element->reap = true;
       nu_element->next = this->root;
       this->root = nu_element;
       nu_element->str = this->str;
       nu_element->len = this->col_length;
-      this->str = NULL;
+      this->str = nullptr;
       this->col_length = 0;
     }
   }
@@ -328,34 +536,33 @@ StrLL* StringBuilder::promote_collapsed_into_ll(void) {
 
 /*
 */
-void StringBuilder::prepend(unsigned char *nu, int len) {
-  if ((NULL != nu) && (len > 0)) {
+void StringBuilder::prepend(uint8_t*nu, int len) {
+  if ((nullptr != nu) && (len > 0)) {
     this->root = promote_collapsed_into_ll();   // Promote the previously-collapsed string.
-    
+
     StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
-    if (NULL == nu_element) return;   // O no.
+    if (nullptr == nu_element) return;   // O no.
     nu_element->reap = true;
     nu_element->len  = len;
-    nu_element->str  = (unsigned char *) malloc(len+1);
-    if (nu_element->str != NULL) {
+    nu_element->str  = (uint8_t*) malloc(len+1);
+    if (nu_element->str != nullptr) {
       *(nu_element->str + len) = '\0';
       memcpy(nu_element->str, nu, len);
       nu_element->next = this->root;
       this->root = nu_element;
     }
+    else {
+      // We were able to malloc the slot for the string, but not the buffer for
+      // the string itself. We should free() the slot before failing or we will
+      // exacerbate an already-present memory crunch.
+      free(nu_element);
+    }
   }
 }
 
 
-/**
-* Override to cleanly support signed characters.
-*/
-void StringBuilder::prepend(char *nu) {
-  this->prepend((unsigned char *) nu, strlen(nu));
-}
-
 void StringBuilder::prepend(const char *nu) {
-  this->prepend((unsigned char *) nu, strlen(nu));
+  this->prepend((uint8_t*) nu, strlen(nu));
 }
 
 
@@ -365,37 +572,39 @@ void StringBuilder::prepend(const char *nu) {
 */
 int StringBuilder::totalStrLen(StrLL *node) {
   int len  = 0;
-  if (node != NULL) {
+  if (node != nullptr) {
     len  = this->totalStrLen(node->next);
-    if (node->str != NULL)  len  = len + node->len;
+    if (node->str != nullptr)  len  = len + node->len;
   }
   return len;
 }
 
 
-void StringBuilder::concat(unsigned char *nu, int len) {
-  if ((nu != NULL) && (len > 0)) {
+void StringBuilder::concat(uint8_t*nu, int len) {
+  if ((nu != nullptr) && (len > 0)) {
+    #if defined(__BUILD_HAS_PTHREADS)
+      //pthread_mutex_lock(&_mutex);
+    #elif defined(__BUILD_HAS_FREERTOS)
+    #endif
     StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
-    if (nu_element != NULL) {
+    if (nu_element != nullptr) {
       nu_element->reap = true;
-      nu_element->next = NULL;
+      nu_element->next = nullptr;
       nu_element->len  = len;
-      nu_element->str  = (unsigned char *) malloc(len+1);
-      if (nu_element->str != NULL) {
-        *(nu_element->str + len) = '\0';   
+      nu_element->str  = (uint8_t*) malloc(len+1);
+      if (nu_element->str != nullptr) {
+        *(nu_element->str + len) = '\0';
         memcpy(nu_element->str, nu, len);
         this->stackStrOntoList(nu_element);
       }
     }
+    #if defined(__BUILD_HAS_PTHREADS)
+      //pthread_mutex_unlock(&_mutex);
+    #elif defined(__BUILD_HAS_FREERTOS)
+    #endif
   }
 }
 
-/**
-* Override to cleanly support signed characters.
-*/
-void StringBuilder::concat(char *nu) {
-  this->concat((unsigned char *) nu, strlen(nu));
-}
 
 /**
 * Override to make best use of memory for const strings...
@@ -404,29 +613,32 @@ void StringBuilder::concat(char *nu) {
 *   until it is manipulated somehow. So be very careful if you cast to (const char*).
 */
 void StringBuilder::concat(const char *nu) {
-  /* TODO: There is no need to copy a flash-resident string.
-  this->concat((unsigned char *) nu, strlen(nu));
-     TODID: Done. Use it for awhile before deleting this block.
-  */
-  
-  if (nu != NULL) {
+  if (nu != nullptr) {
     int len = strlen(nu);
     if (len > 0) {
+      #if defined(__BUILD_HAS_PTHREADS)
+        //pthread_mutex_lock(&_mutex);
+      #elif defined(__BUILD_HAS_FREERTOS)
+      #endif
       StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
-      if (nu_element != NULL) {
+      if (nu_element != nullptr) {
         nu_element->reap = false;
-        nu_element->next = NULL;
+        nu_element->next = nullptr;
         nu_element->len  = len;
-        nu_element->str  = (unsigned char *) nu;
+        nu_element->str  = (uint8_t*) nu;
         this->stackStrOntoList(nu_element);
       }
+      #if defined(__BUILD_HAS_PTHREADS)
+        //pthread_mutex_unlock(&_mutex);
+      #elif defined(__BUILD_HAS_FREERTOS)
+      #endif
     }
   }
 }
 
 
 void StringBuilder::concat(unsigned char nu) {
-  unsigned char* temp = (unsigned char *) alloca(1);
+  unsigned char* temp = (uint8_t*) alloca(1);
   *(temp) = nu;
   this->concat(temp, 1);
 }
@@ -442,7 +654,7 @@ void StringBuilder::concat(int nu) {
   sprintf(temp, "%d", nu);
   this->concat(temp);
 }
-void StringBuilder::concat(unsigned int nu) { 
+void StringBuilder::concat(unsigned int nu) {
   char * temp = (char *) alloca(12);
   memset(temp, 0x00, 12);
   sprintf(temp, "%u", nu);
@@ -455,28 +667,19 @@ void StringBuilder::concat(double nu) {
   this->concat(temp);
 }
 
-void StringBuilder::concat(float nu) {
-  this->concat((double) nu);
-}
-
-void StringBuilder::concat(bool nu) {
-  if (nu) this->concat("1");
-  else this->concat("0");
-}
-
 /**
 * Override to cleanly support Our own type.
 * This costs a great deal more than concatHandoff(StringBuilder *), but has
 *   the advantage of making a copy of the argument.
 */
 void StringBuilder::concat(StringBuilder *nu) {
-  if (nu != NULL) {
+  if (nu != nullptr) {
     this->concat(nu->string(), nu->length());
   }
 }
 
-/*
-* Variadic
+/**
+* Variadic. No mutex required because all working memory is confined to stack.
 */
 int StringBuilder::concatf(const char *format, ...) {
   int len = strlen(format);
@@ -484,31 +687,30 @@ int StringBuilder::concatf(const char *format, ...) {
   for (unsigned short i = 0; i < len; i++) {  if (*(format+i) == '%') f_codes++; }
   va_list args;
   // Allocate (hopefully) more space than we will need....
-  int est_len = strlen(format) + 64 + (f_codes * 15);
+  int est_len = len + 640 + (f_codes * 15);
   char *temp = (char *) alloca(est_len);
   memset(temp, 0, est_len);
+  int ret = 0;
   va_start(args, format);
-  int ret = vsprintf(temp, format, args);
+  ret = vsprintf(temp, format, args);
   va_end(args);
   if (ret > 0) this->concat((char *) temp);
   return ret;
 }
 
 
-
-
-#ifdef ARDUINO
-/**
-* Override to cleanly support Strings.
-*/
-void StringBuilder::concat(String str) {
-  int len = str.length()+1;
-  char *out  = (char *) alloca(len);
-  memset(out, 0, len);
-  str.toCharArray(out, (str.length()+1));
-  this->concat((unsigned char *) out, strlen(out));
-}
-#endif
+//#ifdef ARDUINO
+///**
+//* Override to cleanly support Strings.
+//*/
+//void StringBuilder::concat(String str) {
+//  int len = str.length()+1;
+//  char *out  = (char *) alloca(len);
+//  memset(out, 0, len);
+//  str.toCharArray(out, (str.length()+1));
+//  this->concat((uint8_t*) out, strlen(out));
+//}
+//#endif
 
 
 /*
@@ -516,10 +718,14 @@ void StringBuilder::concat(String str) {
 *   of the given range.
 */
 void StringBuilder::cull(int offset, int length) {
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_lock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
   if (this->length() >= (length-offset)) {   // Does the given range exist?
     int remaining_length = length-offset;
     unsigned char* temp = (unsigned char*) malloc(remaining_length+1);  // + 1 for null-terminator.
-    if (temp != NULL) {
+    if (temp != nullptr) {
       *(temp + remaining_length) = '\0';
       this->collapseIntoBuffer();   // Room to optimize here...
       memcpy(temp, this->str, remaining_length);
@@ -528,6 +734,10 @@ void StringBuilder::cull(int offset, int length) {
       this->col_length = length;
     }
   }
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
 }
 
 
@@ -535,10 +745,17 @@ void StringBuilder::cull(int offset, int length) {
 * Given a character count (x), will throw away the first x characters and adjust the object appropriately.
 */
 void StringBuilder::cull(int x) {
-  if (this->length() >= x) {   // Does the given range exist?
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_lock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
+  if (x == this->length()) {
+    clear();
+  }
+  else if (this->length() > x) {   // Does the given range exist?
     int remaining_length = this->length()-x;
     unsigned char* temp = (unsigned char*) malloc(remaining_length+1);  // + 1 for null-terminator.
-    if (temp != NULL) {
+    if (temp != nullptr) {
       *(temp + remaining_length) = '\0';
       this->collapseIntoBuffer();   // Room to optimize here...
       memcpy(temp, (unsigned char*)(this->str + x), remaining_length);
@@ -547,12 +764,37 @@ void StringBuilder::cull(int x) {
       this->col_length = remaining_length;
     }
   }
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
+}
+
+
+/**
+* Trims whitespace from the ends of the string and replaces it.
+* Has heap consequences.
+*/
+void StringBuilder::trim() {
+  this->collapseIntoBuffer();
+  // TODO: How have I not needed this yet? Add it...
+  //    ---J. Ian Lindsay   Thu Dec 17 03:22:01 MST 2015
+}
+
+bool StringBuilder::contains(char test) {
+  this->collapseIntoBuffer();
+  if (this->col_length == 0) return 0;
+
+  for (int i = 0; i < this->col_length; i++) {
+    if (test == *(this->str + i)) return true;
+  }
+  return false;
 }
 
 
 StrLL* StringBuilder::stackStrOntoList(StrLL *current, StrLL *nu) {
-  if (current != NULL) {
-    if (current->next == NULL) current->next = nu;
+  if (current != nullptr) {
+    if (current->next == nullptr) current->next = nu;
     else this->stackStrOntoList(current->next, nu);
   }
   return current;
@@ -562,31 +804,47 @@ StrLL* StringBuilder::stackStrOntoList(StrLL *current, StrLL *nu) {
 * Non-recursive override to make additions less cumbersome.
 */
 StrLL* StringBuilder::stackStrOntoList(StrLL *nu) {
-  if (this->root == NULL) {
+  StrLL* return_value = nullptr;
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_lock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
+  if (this->root == nullptr) {
     this->root  = nu;
-    return this->root;
+    return_value = this->root;
   }
-  else return this->stackStrOntoList(this->root, nu);
+  else {
+    return_value = this->stackStrOntoList(this->root, nu);
+  }
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
+  return return_value;
 }
 
 
 
 /**
 * Traverse the list and keep appending strings to the buffer.
-* Will prepend the str buffer if it is not NULL.
+* Will prepend the str buffer if it is not nullptr.
 * Updates the length.
 */
 void StringBuilder::collapseIntoBuffer() {
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_lock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
   StrLL *current = promote_collapsed_into_ll();   // Promote the previously-collapsed string.
-  if (current != NULL) {
+  if (current != nullptr) {
     this->col_length = this->totalStrLen(this->root);
     if (this->col_length > 0) {
-      this->str = (unsigned char *) malloc(this->col_length + 1);
-      if (this->str != NULL) {
+      this->str = (uint8_t*) malloc(this->col_length + 1);
+      if (this->str != nullptr) {
         *(this->str + this->col_length) = '\0';
         int tmp_len = 0;
-        while (current != NULL) {
-          if (current->str != NULL) {
+        while (current != nullptr) {
+          if (current->str != nullptr) {
             memcpy((void *)(this->str + tmp_len), (void *)(current->str), current->len);
             tmp_len = tmp_len + current->len;
           }
@@ -596,6 +854,10 @@ void StringBuilder::collapseIntoBuffer() {
     }
     this->destroyStrLL(this->root);
   }
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
 }
 
 
@@ -603,15 +865,23 @@ void StringBuilder::collapseIntoBuffer() {
 * Clean up after ourselves. Assumes that everything has been malloc'd into existance.
 */
 void StringBuilder::destroyStrLL(StrLL *r_node) {
-  if (r_node != NULL) {
-    if (r_node->next != NULL) {
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_lock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
+  if (r_node != nullptr) {
+    if (r_node->next != nullptr) {
       destroyStrLL(r_node->next);
-      r_node->next  = NULL;
+      r_node->next  = nullptr;
     }
     if (r_node->reap) free(r_node->str);
     free(r_node);
-    if (r_node == this->root) this->root = NULL;
+    if (r_node == this->root) this->root = nullptr;
   }
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
 }
 
 
@@ -621,112 +891,44 @@ void StringBuilder::destroyStrLL(StrLL *r_node) {
 * Collapses the buffer prior to comparing.
 * Will compare ONLY the first len bytes, or the length of out present string. Whichever is less.
 */
-int StringBuilder::cmpBinString(unsigned char *unknown, int len) {
-  int i = 0;
+int StringBuilder::cmpBinString(uint8_t*unknown, int len) {
   this->collapseIntoBuffer();
-  for (i = 0; i < min(len, this->col_length); i++) {
+  int minimum = (len > this->col_length) ? this->col_length : len;
+  for (int i = 0; i < minimum; i++) {
     if (*(unknown+i) != *(this->str+i)) return 0;
   }
   return 1;
 }
 
 
-
 int StringBuilder::implode(const char *delim) {
-  if (delim != NULL) {
-    if (str != NULL) {
-      
+  if (delim != nullptr) {
+    if (str != nullptr) {
     }
   }
   return 0;
 }
 
 
-
 /**
 * This function tokenizes the sum of this String according to the parameter.
+*
+* @return The number of tokens.
 */
 int StringBuilder::split(const char *delims) {
   int return_value = 0;
   this->collapseIntoBuffer();
-  if (this->col_length == 0) return 0;
-  this->null_term_check();
-  char *temp_str  = strtok((char *)this->str, delims);
-  if (temp_str != NULL) {
-  while (temp_str != NULL) {
-    this->concat(temp_str);
-    temp_str  = strtok(NULL, delims);
-    return_value++;
+  if (this->col_length == 0) {
+    return 0;
   }
-  free(this->str);
-  this->str = NULL;
-  this->col_length = 0;
-  }
-  else {
-  this->concat("");
-  }
-  return return_value;
-}
 
-
-
-/****************************************************************************************************
-* These functions are awful. Don't use them if you can avoid it. They were a crime of desperation.  *
-* A future commit will see these disappear into the trash can they should have been consigned to.   *
-*    ---J. Ian Lindsay   Fri Nov 28 17:57:45 MST 2014                                               *
-****************************************************************************************************/
-
-/**
-* Calling this will make a copy of this object on the heap, and return the pointer.
-* The goal is to let this object expire on the stack on which it was likely created.
-*/
-StringBuilder* StringBuilder::heap_ref() {
-  StringBuilder* return_value = (StringBuilder*) malloc(sizeof(StringBuilder));
-  memcpy(return_value, this, sizeof(StringBuilder));
-  // It is important that this be done AFTER the copy, or we will see leaks.
-  this->preserve_ll = true;
-  return return_value;
-}
-
-
-/**
-* Returns the length.
-*/
-int StringBuilder::str_heap_ref(unsigned char** callers_pntr) {
-  this->collapseIntoBuffer();
-  *(callers_pntr) = this->str;
-  return this->col_length;
-}
-
-
-unsigned char* StringBuilder::str_heap_ref(int len) {
-  this->collapseIntoBuffer();
-  unsigned char* return_value = this->str;
-  this->preserve_ll = true;
-  len = this->col_length;
-  return return_value;                
-}
-
-
-char* StringBuilder::str_heap_ref() {
-  this->collapseIntoBuffer();
-  char* return_value = (char*) this->str;
-  this->preserve_ll = true;
-  return return_value;
-}
-
-
-/**
-* If we are going to do something that requires a null-terminated string, make
-*   sure that we have one. If we do, this call does nothing.
-*   If we don't, we will add it.
-* NOTE: This only operates on the collapsed buffer.
-*/
-void StringBuilder::null_term_check() {
-  if (this->str != NULL) {
+  // If we are going to do something that requires a null-terminated string,
+  //   make sure that we have one. If we do, this call does nothing.
+  //   If we don't, we will add it.
+  if (nullptr != this->str) {
     if (*(this->str + (this->col_length-1)) != '\0') {
-      unsigned char *temp = (unsigned char *) malloc(this->col_length+1);
-      if (temp != NULL) {
+      uint8_t* temp = (uint8_t*) malloc(this->col_length+1);
+      if (nullptr != temp) {
         *(temp + this->col_length) = '\0';
         memcpy(temp, this->str, this->col_length);
         free(this->str);
@@ -734,21 +936,38 @@ void StringBuilder::null_term_check() {
       }
     }
   }
+
+  char *temp_str  = strtok((char *)this->str, delims);
+  if (nullptr != temp_str) {
+    while (nullptr != temp_str) {
+      this->concat(temp_str);
+      return_value++;
+      temp_str  = strtok(nullptr, delims);
+    }
+    free(this->str);
+    this->str = nullptr;
+    this->col_length = 0;
+  }
+  else {
+    this->concat("");   // Assure at least one token.
+  }
+  return return_value;
 }
 
 
-
-#ifdef TEST_BENCH
-void StringBuilder::printDebug() {
+/**
+* This method prints ASCII representations of the bytes this instance contains.
+*
+* @param output The StringBuilder object into which output is written.
+*/
+void StringBuilder::printDebug(StringBuilder* output) {
   unsigned char* temp = this->string();
   int temp_len  = this->length();
-  printf("\nStringBuilder\t Total bytes: %d\n", temp_len);
-  
-  if ((temp != NULL) && (temp_len > 0)) {
+
+  if ((temp != nullptr) && (temp_len > 0)) {
     for (int i = 0; i < temp_len; i++) {
-      printf("%02x ", *(temp + i));
+      output->concatf("%02x ", *(temp + i));
     }
-    printf("\n\n");
+    output->concat("\n");
   }
 }
-#endif

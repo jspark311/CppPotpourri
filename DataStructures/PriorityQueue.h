@@ -3,43 +3,42 @@ File:   PriorityQueue.h
 Author: J. Ian Lindsay
 Date:   2014.06.30
 
+Copyright 2016 Manuvr, Inc
 
-Copyright (C) 2014 J. Ian Lindsay
-All rights reserved.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-This library is free software; you can redistribute it and/or
-modify it under the terms of the GNU Lesser General Public
-License as published by the Free Software Foundation; either
-version 2.1 of the License, or (at your option) any later version.
+    http://www.apache.org/licenses/LICENSE-2.0
 
-This library is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public
-License along with this library; if not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 
 
 Template for a priority queue implemented on top of a linked-list.
 Highest-priority nodes are stored closest to the beginning of the list.
-*/
 
+Some functions are #pragma'd to stop the compiler from complaining about nullptr being
+  interpreted as a non-pointer. This is to enable the use of this template to carry
+  (doubles, floats, ints, etc) without polluting the log.
+*/
 
 #ifndef PRIORITY_QUEUE_H
 #define PRIORITY_QUEUE_H
 
 #include <inttypes.h>
 
-#ifdef ARDUINO
+#if defined(ARDUINO)
   #include "Arduino.h"
-#else
+#elif defined(__MANUVR_LINUX)
   #include <stdlib.h>
+  #include <pthread.h>
+#elif defined(__BUILD_HAS_FREERTOS)
+  #include "freertos/FreeRTOS.h"
 #endif
-
-
-using namespace std;
 
 /* This is the class that holds a datum in the list. */
 template <class T> class PriorityNode{
@@ -47,7 +46,6 @@ template <class T> class PriorityNode{
     PriorityNode<T> *next;
     T data;
     int priority;
-    bool reap;
 };
 
 
@@ -62,15 +60,16 @@ template <class T> class PriorityQueue {
 
     int insert(T, int priority);  // Returns the ID of the data, or -1 on failure. Makes only a reference to the payload.
     int insert(T);                // Same as above, but assumes lowest priority.
-    
+    int insertIfAbsent(T);        // Same as above, but only if the queue doesn't already have the argument.
+    int insertIfAbsent(T, int);   // Same as above, but also specifies the priority if successful.
+
     int size(void);               // Returns the number of elements in this list.
 
-    T dequeue(void);              // Removes the first element of the list. Return the node's data on success, or NULL on empty queue.
-    T recycle(void);              // Reycle this element. Return the node's data on success, or NULL on empty queue.
+    T dequeue(void);              // Removes the first element of the list. Return the node's data on success, or nullptr on empty queue.
+    T recycle(void);              // Reycle this element. Return the node's data on success, or nullptr on empty queue.
     bool remove(int position);    // Removes the element at the given position of the list. Return true on success.
     bool remove(T);               // Removes any elements with this data.
     int clear(void);              // Purges the whole queue. Returns the number of things purged or -1 on failure.
-
 
     T get(void);                  // Returns the data from the first element.
     T get(int position);          // Returns the data from the element at the given position.
@@ -88,23 +87,29 @@ template <class T> class PriorityQueue {
   private:
     PriorityNode<T> *root;        // The root of the queue. Is also the highest-priority.
     int element_count;
-    
+    #if defined(__MANUVR_LINUX)
+      // If we are on linux, we control for concurrency with a mutex...
+      pthread_mutex_t _mutex;
+    #elif defined(__BUILD_HAS_FREERTOS)
+//      SemaphoreHandle_t _mutex;
+    #endif
+
     /*
-    * Returns the last element in the list. 
+    * Returns the last element in the list.
     * Returns the WHOLE element, not just the data it holds.
     */
     PriorityNode<T>* getLast(void);
-    
-    /* 
+
+    /*
     * Returns the last element in the list with the given priority, or the highest priority
-    *   item in the list if the argument is greater than all nodes. 
+    *   item in the list if the argument is greater than all nodes.
     */
-    PriorityNode<T>* getLastWithPriority(int);
+    PriorityNode<T>* getLastWithPriority(int, int* idx);
 
     PriorityNode<T>* get_node_by_element(T);    // Return a priority node by the element it contains.
     int insert(PriorityNode<T>*);    // Returns the ID of the data, or -1 on failure.
-    void enforce_priorities(void);   // Need to call this after changing a priority to ensure position reflects priority.
     int count(void);                 // Counts the elements in the list without reliance on stored value. Slower...
+    void enforce_priorities(void);   // Need to call this after changing a priority to ensure position reflects priority.
 };
 
 
@@ -112,28 +117,127 @@ template <class T> class PriorityQueue {
 * Constructor.
 */
 template <class T> PriorityQueue<T>::PriorityQueue() {
-  root = NULL;
+  root = nullptr;
   element_count = 0;
+  #ifdef __MANUVR_LINUX
+    #if defined (PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP)
+    _mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+    #else
+    _mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
+    #endif
+  #elif defined(__BUILD_HAS_FREERTOS)
+//    _mutex = xSemaphoreCreateRecursiveMutex();
+  #endif
 }
 
 /**
 * Destructor. Empties the queue.
 */
 template <class T> PriorityQueue<T>::~PriorityQueue() {
-  while (root != NULL) {
+  while (root != nullptr) {
     dequeue();
   }
+  #ifdef __MANUVR_LINUX
+    pthread_mutex_destroy(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+//    vSemaphoreDelete(&_mutex);
+  #endif
 }
 
 
 /**
 * Inserts the given dataum into the queue.
 *
-* @param  d   The data to copy and insert.
+* @param  d   The data to insert.
 * @return the position in the list that the data was inserted, or -1 on failure.
 */
 template <class T> int PriorityQueue<T>::insert(T d) {
   return insert(d, 0);
+}
+
+
+/**
+* Inserts the given dataum into the queue.
+*
+* @param  d       The data to insert.
+* @param  nu_pri  The priority of the node.
+* @return the position in the list that the data was inserted, or -1 on failure.
+*/
+template <class T> int PriorityQueue<T>::insertIfAbsent(T d, int nu_pri) {
+  // Note that we are going to replicate alot of code here for speed reasons.
+  // We could just as well have done with....
+  // return (contains(d)) ? false : insert(d, 0);
+
+  if (nullptr == root) {
+    // If root is null, we just insert and call it done. That way we
+    // don't have to worry about it later.
+    return insert(d, nu_pri);
+  }
+  #ifdef __MANUVR_LINUX
+    pthread_mutex_lock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+//    if (pdTRUE != xSemaphoreTakeRecursive(&_mutex, 0)) {
+//      Serial.println("insertIfAbsent(T, int)");
+//      while(true);
+//    };
+  #endif
+
+  int return_value = -1;
+  PriorityNode<T>* insert_pointer = nullptr;
+  PriorityNode<T>* current = root;
+  while (nullptr != current) {
+    if (current->data == d) {
+      #ifdef __MANUVR_LINUX
+        pthread_mutex_unlock(&_mutex);
+      #elif defined(__BUILD_HAS_FREERTOS)
+//        xSemaphoreGiveRecursive(&_mutex);
+      #endif
+      return -1;
+    }
+    if (current->priority >= nu_pri) {
+      insert_pointer = current;
+      return_value++;
+    }
+    current = current->next;
+  }
+
+  PriorityNode<T> *nu = (PriorityNode<T>*) malloc(sizeof(PriorityNode<T>));
+  if (nullptr == nu) {
+    return_value = -1;      // Failed to allocate memory.
+  }
+  else {
+    nu->data     = d;
+    nu->priority = nu_pri;
+
+    if (nullptr == insert_pointer) {
+      nu->next = root;
+      root = nu;
+      return_value = 0;
+    }
+    else {
+      nu->next = insert_pointer->next;
+      insert_pointer->next = nu;
+    }
+    element_count++;
+  }
+
+  #ifdef __MANUVR_LINUX
+    pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+//    xSemaphoreGiveRecursive(&_mutex);
+  #endif
+  return return_value;
+}
+
+
+/**
+* Inserts the given dataum into the queue.
+*
+* @param  d   The data to insert.
+* @return the position in the list that the data was inserted, or -1 on failure.
+*/
+template <class T> int PriorityQueue<T>::insertIfAbsent(T d) {
+  return insertIfAbsent(d, 0);
 }
 
 
@@ -144,27 +248,52 @@ template <class T> int PriorityQueue<T>::insert(T d) {
 template <class T> int PriorityQueue<T>::insert(T d, int nu_pri) {
   int return_value = -1;
   PriorityNode<T> *nu = (PriorityNode<T>*) malloc(sizeof(PriorityNode<T>));
-  if (nu == NULL) {
+  if (nu == nullptr) {
     return return_value;      // Failed to allocate memory.
   }
-  nu->reap     = false;
+  #ifdef __MANUVR_LINUX
+    pthread_mutex_lock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+//    if (pdTRUE != xSemaphoreTakeRecursive(&_mutex, 0)) {
+//      Serial.println("insert(T, int)");
+//      while(true);
+//    };
+  #endif
   nu->data     = d;
   nu->priority = nu_pri;
 
   return_value = insert(nu);
   element_count++;
-  return 1;
+  #ifdef __MANUVR_LINUX
+    pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+//    xSemaphoreGiveRecursive(&_mutex);
+  #endif
+  return return_value;
 }
 
 
+/*
+* Returns the position in the list that the data was inserted, or -1 on failure.
+* Inserts at the first position that has a lower priority than the one given.
+*/
 template <class T> int PriorityQueue<T>::insert(PriorityNode<T>* nu) {
-  if (nu == NULL) {
+  if (nu == nullptr) {
     return -1;
   }
 
-  PriorityNode<T> *current = getLastWithPriority(nu->priority);
+  #ifdef __MANUVR_LINUX
+    pthread_mutex_lock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+//    if (pdTRUE != xSemaphoreTakeRecursive(&_mutex, 0)) {
+//      Serial.println("insert(PriorityNode<T>*)");
+//      while(true);
+//    };
+  #endif
+  int idx = 0;
+  PriorityNode<T> *current = getLastWithPriority(nu->priority, &idx);
 
-  if (current == NULL) {
+  if (current == nullptr) {
     nu->next = root;
     root     = nu;
   }
@@ -172,7 +301,12 @@ template <class T> int PriorityQueue<T>::insert(PriorityNode<T>* nu) {
     nu->next      = current->next;
     current->next = nu;
   }
-  return 1;
+  #ifdef __MANUVR_LINUX
+    pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+//    xSemaphoreGiveRecursive(&_mutex);
+  #endif
+  return idx;
 }
 
 
@@ -185,7 +319,7 @@ template <class T> int PriorityQueue<T>::size() {
 template <class T> int PriorityQueue<T>::count() {
   PriorityNode<T>* current = root;
   int return_value = 0;
-  while (current != NULL) {
+  while (current != nullptr) {
     current = current->next;
     return_value++;
   }
@@ -199,7 +333,7 @@ template <class T> int PriorityQueue<T>::count() {
 */
 template <class T> PriorityNode<T>* PriorityQueue<T>::getLast() {
   PriorityNode<T>* return_value = root;
-  while ((return_value != NULL) && (return_value->next != NULL)) {
+  while ((return_value != nullptr) && (return_value->next != nullptr)) {
     return_value = return_value->next;
   }
   return return_value;
@@ -211,45 +345,51 @@ template <class T> PriorityNode<T>* PriorityQueue<T>::getLast() {
 */
 template <class T> PriorityNode<T>* PriorityQueue<T>::get_node_by_element(T test_data) {
   PriorityNode<T>* current = root;
-  while (current != NULL) {
+  while (current != nullptr) {
     if (current->data == test_data) {
       return current;
     }
     current = current->next;
   }
-  return NULL;
+  return nullptr;
 }
 
 
 /*
 * Returns a pointer to the last PriorityNode in this linked list.
-* Returns NULL if there is not a node that has a priority at-least matching what we provided.
+* Returns nullptr if there is not a node that has a priority at-least matching what we provided.
 */
-template <class T> PriorityNode<T>* PriorityQueue<T>::getLastWithPriority(int nu_pri) {
+template <class T> PriorityNode<T>* PriorityQueue<T>::getLastWithPriority(int nu_pri, int* idx) {
   PriorityNode<T>* current      = root;
-  PriorityNode<T>* last         = NULL;
-  while (current != NULL) {
-    if (nu_pri > current->priority) {
-      return last;
-    }
+  PriorityNode<T>* last         = nullptr;
+  while ((current != nullptr) && (nu_pri <= current->priority)) {
     last    = current;
     current = current->next;
+    *idx = *idx + 1;
   }
   return last;
 }
 
 
 template <class T> void PriorityQueue<T>::enforce_priorities(void) {
+  #ifdef __MANUVR_LINUX
+    pthread_mutex_lock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+//    if (pdTRUE != xSemaphoreTakeRecursive(&_mutex, 0)) {
+//      Serial.println("enforce_priorities()");
+//      while(true);
+//    };
+  #endif
   PriorityNode<T>* current  = root;
-  PriorityNode<T>* prior    = NULL;
-  while (current != NULL) {
-    if (prior == NULL) {              // If current is the root node...
-      if (current->next != NULL) {  // ...and there are at least two items in the queue...
+  PriorityNode<T>* prior    = nullptr;
+  while (current != nullptr) {
+    if (prior == nullptr) {              // If current is the root node...
+      if (current->next != nullptr) {  // ...and there are at least two items in the queue...
         if (current->next->priority > current->priority) {  // ...and they are out of order...
           root = current->next;         // Swap them.
           current->next = root->next;
           root->next = current;
-          
+
           current = root;               // Restart the test.
         }
       }
@@ -261,21 +401,26 @@ template <class T> void PriorityQueue<T>::enforce_priorities(void) {
         // current and re-insert it.
         prior->next = current->next;   // Effectively removes current.
         insert(current);
-        
+
         // Restart the test.
         current = root;
       }
     }
-    
+
     prior = current;
     current = current->next;
   }
+  #ifdef __MANUVR_LINUX
+    pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+//    xSemaphoreGiveRecursive(&_mutex);
+  #endif
 }
 
 
 template <class T> bool PriorityQueue<T>::incrementPriority(T test_data) {
   PriorityNode<T>* current = get_node_by_element(test_data);
-  if (current != NULL) {
+  if (current != nullptr) {
     current->priority++;
     enforce_priorities();
     return true;
@@ -285,7 +430,7 @@ template <class T> bool PriorityQueue<T>::incrementPriority(T test_data) {
 
 template <class T> bool PriorityQueue<T>::decrementPriority(T test_data) {
   PriorityNode<T>* current = get_node_by_element(test_data);
-  if (current != NULL) {
+  if (current != nullptr) {
     current->priority--;
     enforce_priorities();
     return true;
@@ -294,38 +439,77 @@ template <class T> bool PriorityQueue<T>::decrementPriority(T test_data) {
 }
 
 
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+#pragma GCC diagnostic push
+#endif
+#pragma GCC diagnostic ignored "-Wconversion-null"
 template <class T> T PriorityQueue<T>::dequeue() {
+  T return_value = nullptr;
+  #ifdef __MANUVR_LINUX
+    pthread_mutex_lock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+//    if (pdTRUE != xSemaphoreTakeRecursive(&_mutex, 0)) {
+//      Serial.println("dequeue()");
+//      while(true);
+//    };
+  #endif
   PriorityNode<T>* current = root;
-  if (current != NULL) {
+  if (current != nullptr) {
     // This is safe because we only store references. Not the actual data.
-    T return_value = current->data;
+    return_value = current->data;
     root = current->next;
     free(current);
     element_count--;
-    return return_value;
   }
-  return NULL;
+  #ifdef __MANUVR_LINUX
+    pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+//    xSemaphoreGiveRecursive(&_mutex);
+  #endif
+  return return_value;
 }
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+#pragma GCC diagnostic pop
+#endif
 
 
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+#pragma GCC diagnostic push
+#endif
+#pragma GCC diagnostic ignored "-Wconversion-null"
 template <class T> T PriorityQueue<T>::recycle() {
+  T return_value = nullptr;
+  #ifdef __MANUVR_LINUX
+    pthread_mutex_lock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+//    if (pdTRUE != xSemaphoreTakeRecursive(&_mutex, 0)) {
+//      Serial.println("recycle()");
+//      while(true);
+//    };
+  #endif
   PriorityNode<T>* current = root;
-  if (current != NULL) {
-    T return_value = current->data;
+  if (current != nullptr) {
+    return_value = current->data;
 
     if (element_count > 1) {
       root = current->next;
-      current->next = NULL;
+      current->next = nullptr;
 
       PriorityNode<T>* temp = getLast();
       current->priority = temp->priority;  // Demote to the rear of the queue.
       temp->next = current;
     }
-
-    return return_value;
   }
-  return NULL;
+  #ifdef __MANUVR_LINUX
+    pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+//    xSemaphoreGiveRecursive(&_mutex);
+  #endif
+  return return_value;
 }
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+#pragma GCC diagnostic pop
+#endif
 
 
 template <class T> int PriorityQueue<T>::clear(void) {
@@ -339,20 +523,15 @@ template <class T> int PriorityQueue<T>::clear(void) {
 
 template <class T> bool PriorityQueue<T>::remove(int pos) {
   int i = 0;
-  PriorityNode<T>* prior   = NULL;
+  PriorityNode<T>* prior   = nullptr;
   PriorityNode<T>* current = root;
-  while (current != NULL) {
+  while (current != nullptr) {
     if (i == pos) {
-      if (prior != NULL) {
+      if (prior != nullptr) {
         prior->next = current->next;
       }
       else {
         root = current->next;
-      }
-      if (current->data != NULL) {
-        if (current->reap) {
-          free(current->data);
-        }
       }
       free(current);
       element_count--;
@@ -367,12 +546,12 @@ template <class T> bool PriorityQueue<T>::remove(int pos) {
 
 
 template <class T> bool PriorityQueue<T>::remove(T test_data) {
-  PriorityNode<T>* prior   = NULL;
+  PriorityNode<T>* prior   = nullptr;
   PriorityNode<T>* current = root;
   bool return_value = false;
-  while (current != NULL) {
-    if ((current->data != NULL) && (current->data == test_data)) {
-      if (prior != NULL) {
+  while (current != nullptr) {
+    if ((current->data != nullptr) && (current->data == test_data)) {
+      if (prior != nullptr) {
         prior->next = current->next;
       }
       else {
@@ -381,7 +560,7 @@ template <class T> bool PriorityQueue<T>::remove(T test_data) {
       free(current);
       element_count--;
       return_value = true;
-      current = (NULL == prior) ? NULL : prior->next;
+      current = (nullptr == prior) ? nullptr : prior->next;
     }
     else {
       prior = current;
@@ -391,33 +570,46 @@ template <class T> bool PriorityQueue<T>::remove(T test_data) {
   return return_value;
 }
 
-
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+#pragma GCC diagnostic push
+#endif
+#pragma GCC diagnostic ignored "-Wconversion-null"
 template <class T> T PriorityQueue<T>::get() {
   PriorityNode<T>* current = root;
-  if (current != NULL) {
+  if (current != nullptr) {
     return current->data;
   }
-  return NULL;
+  return nullptr;
 }
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+#pragma GCC diagnostic pop
+#endif
 
 
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+#pragma GCC diagnostic push
+#endif
+#pragma GCC diagnostic ignored "-Wconversion-null"
 template <class T> T PriorityQueue<T>::get(int pos) {
   int i = 0;
   PriorityNode<T>* current = root;
-  while (current != NULL) {
+  while (current != nullptr) {
     if (i == pos) {
       return current->data;
     }
     i++;
     current = current->next;
   }
-  return NULL;
+  return nullptr;
 }
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+#pragma GCC diagnostic pop
+#endif
 
 
 template <class T> bool PriorityQueue<T>::contains(T test_data) {
   PriorityNode<T>* current = root;
-  while (current != NULL) {
+  while (current != nullptr) {
     if (current->data == test_data) {
       return true;
     }
@@ -430,7 +622,7 @@ template <class T> bool PriorityQueue<T>::contains(T test_data) {
 template <class T> int PriorityQueue<T>::getPosition(T test_data) {
   int i = 0;
   PriorityNode<T>* current = root;
-  while (current != NULL) {
+  while (current != nullptr) {
     if (current->data == test_data) {
       return i;
     }
@@ -443,7 +635,7 @@ template <class T> int PriorityQueue<T>::getPosition(T test_data) {
 
 template <class T> int PriorityQueue<T>::getPriority(T test_data) {
   PriorityNode<T>* current = root;
-  while (current != NULL) {
+  while (current != nullptr) {
     if (current->data == test_data) {
       return current->priority;
     }
@@ -456,7 +648,7 @@ template <class T> int PriorityQueue<T>::getPriority(T test_data) {
 template <class T> int PriorityQueue<T>::getPriority(int position) {
   int i = 0;
   PriorityNode<T>* current = root;
-  while (current != NULL) {
+  while (current != nullptr) {
     if (position == i++) return current->priority;
     current = current->next;
   }
@@ -465,7 +657,7 @@ template <class T> int PriorityQueue<T>::getPriority(int position) {
 
 
 template <class T> bool PriorityQueue<T>::hasNext() {
-  return (root != NULL);
+  return (root != nullptr);
 }
 
 
