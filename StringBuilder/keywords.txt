@@ -1,0 +1,43 @@
+#########################################
+# Syntax Coloring Map For StringBuilder
+#########################################
+
+#########################################
+# Datatypes (KEYWORD1)
+#########################################
+
+StringBuilder     KEYWORD1
+
+
+#########################################
+# Methods and Functions (KEYWORD2)
+#########################################
+
+length             KEYWORD2
+prepend            KEYWORD2
+string             KEYWORD2
+concat             KEYWORD2
+concatHandoff      KEYWORD2
+prependHandoff     KEYWORD2
+concatf            KEYWORD2
+cull               KEYWORD2
+trim               KEYWORD2
+clear              KEYWORD2
+split              KEYWORD2
+implode            KEYWORD2
+count              KEYWORD2
+position           KEYWORD2
+position_trimmed   KEYWORD2
+position_as_int    KEYWORD2
+position_as_double KEYWORD2
+drop_position      KEYWORD2
+contains           KEYWORD2
+cmpBinString       KEYWORD2
+printDebug         KEYWORD2
+printBuffer        KEYWORD2
+strcasestr         KEYWORD2
+
+
+#########################################
+# Constants (LITERAL1)
+#########################################
