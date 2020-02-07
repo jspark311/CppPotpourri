@@ -26,6 +26,14 @@ limitations under the License.
 #include <stdarg.h>
 #include <string.h>
 
+#ifdef ARDUINO
+  #include <Arduino.h>
+#else
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <ctype.h>
+#endif
+
 #if defined(__BUILD_HAS_PTHREADS)
   #include <pthread.h>
 #elif defined(__BUILD_HAS_FREERTOS)
@@ -81,16 +89,26 @@ class StringBuilder {
     inline void concat(char* nu) {  concat((uint8_t*) nu, strlen(nu));  };
     inline void prepend(char* nu) { prepend((uint8_t*) nu, strlen(nu)); };
 
-    void concat(const char *nu);
-    void prepend(const char *nu);   // TODO: Mark as non-reapable and store the pointer.
+    void prepend(const char* nu);  // TODO: Mark as non-reapable and store the pointer.
+    void concat(const char* nu);
+
+    /* Variadic concat. Semantics are the same as printf. */
+    int concatf(const char *nu, ...);
 
     void concat(StringBuilder *nu);
     void concat(unsigned char *nu, int len);
     void concat(char nu);
     void concat(unsigned char nu);
-
     void concat(int nu);
-    void concat(unsigned int nu);
+    void concat(uint nu);
+    void concat(double nu);
+
+    inline void concat(float nu) {  concat((double) nu);    };  // Floats are upgraded to doubles.
+    inline void concat(bool nu) {   concat(nu ? "T" : "F"); };
+
+    #ifdef ARDUINO
+    void concat(String);
+    #endif   // ARDUINO
 
     /* These fxns allow for memory-tight hand-off of StrLL chains. Useful for merging
        StringBuilder instances. */
@@ -101,47 +119,33 @@ class StringBuilder {
        of responsibility for managing it. */
     void concatHandoff(uint8_t* buf, int len);
 
-    /* Variadic concat. Semantics are the same as printf. */
-    int concatf(const char *nu, ...);
-
-    //inline void concat(uint16_t nu) { this->concat((unsigned int) nu); }
-    //inline void concat(int16_t nu) { this->concat((int) nu); }
-
-    void concat(double nu);
-    /* Floats are upgraded to doubles. */
-    inline void concat(float nu) { concat((double) nu); };
-    inline void concat(bool nu) {  concat(nu ? "T" : "F"); };
-
-    void cull(int offset, int length);       // Use to throw away all but the specified range of this string.
-    void cull(int length);                   // Use to discard the first X characters from the string.
-
-    void trim();                             // Trim whitespace off the ends of the string.
-
-    void clear();                            // Clears the string and frees the memory that was used to hold it.
+    void cull(int offset, int length);  // Use to throw away all but the specified range of this string.
+    void cull(int length);              // Use to discard the first X characters from the string.
+    void trim();                        // Trim whitespace off the ends of the string.
+    void clear();                       // Clears the string and frees the memory that was used to hold it.
 
     /* The functions below are meant to aid basic tokenization. They all consider the collapsed
        root string (if present) to be index zero. This detail is concealed from client classes. */
-    int split(const char*);                  // Split the string into tokens by the given string.
-    int implode(const char*);                // Given a delimiter, form a single string from all StrLLs.
-    unsigned short count();                  // Count the tokens.
-
-    char*  position(int);                    // If the string has been split, get tokens with this.
-    char*  position_trimmed(int);            // Same as position(int), but trims whitespace from the return.
-    int    position_as_int(int);             // Same as position(int), but uses atoi() to return an integer.
-    double position_as_double(int);          // Same as position(int), but uses atof() to return a double.
-    uint8_t* position(int, int*);      // ...or this, if you need the length and a binary string.
-    bool drop_position(unsigned int pos);    // And use this to reap the tokens that you've used.
+    int      split(const char*);        // Split the string into tokens by the given string.
+    int      implode(const char*);      // Given a delimiter, form a single string from all StrLLs.
+    uint16_t count();                   // Count the tokens.
+    char*    position(int);             // If the string has been split, get tokens with this.
+    char*    position_trimmed(int);     // Same as position(int), but trims whitespace from the return.
+    int      position_as_int(int);      // Same as position(int), but uses atoi() to return an integer.
+    double   position_as_double(int);   // Same as position(int), but uses atof() to return a double.
+    uint8_t* position(int, int*);       // ...or this, if you need the length and a binary string.
+    bool     drop_position(uint pos);   // And use this to reap the tokens that you've used.
 
     /* Comparison and search. */
-    bool contains(char);                     // Does the buffer contain the given character?
-    bool contains(const char*);              // Does the buffer contain the given string?
-    int cmpBinString(uint8_t*, int);         // Compare byte-wise a given length.
+    bool contains(char);                // Does the buffer contain the given character?
+    bool contains(const char*);         // Does the buffer contain the given string?
+    int cmpBinString(uint8_t*, int);    // Compare byte-wise a given length.
     // int cmpCaseless(const char* unknown);
 
     void printDebug(StringBuilder*);
 
     /* Statics */
-    static void printBuffer(StringBuilder* output, uint8_t* buf, unsigned int len, const char* indent);
+    static void printBuffer(StringBuilder* output, uint8_t* buf, uint len, const char* indent);
     // Wrapper for high-level string functions that we may or may not have.
     static int strcasestr(const char*, const char*);
     static int strcasecmp(const char*, const char*);
@@ -149,23 +153,22 @@ class StringBuilder {
 
   private:
     StrLL *root;         // The root of the linked-list.
-    int col_length;      // The length of the collapsed string.
     unsigned char* str;  // The collapsed string.
-    bool preserve_ll;    // If true, do not reap the linked list in the destructor.
+    int col_length;      // The length of the collapsed string.
 
     #if defined(__BUILD_HAS_PTHREADS)
       // If we are on linux, we control for concurrency with a mutex...
-      pthread_mutex_t _mutex;
+      pthread_mutex_t   _mutex;
     #elif defined(__BUILD_HAS_FREERTOS)
       SemaphoreHandle_t _mutex;
     #endif
 
-    int totalStrLen(StrLL *node);
-    StrLL* stackStrOntoList(StrLL *current, StrLL *nu);
-    StrLL* stackStrOntoList(StrLL *nu);
-    void collapseIntoBuffer();
-    void destroyStrLL(StrLL *r_node);
-    void null_term_check();
-    StrLL* promote_collapsed_into_ll();
+    int    _total_str_len(StrLL*);
+    StrLL* _stack_str_onto_list(StrLL* current, StrLL* nu);
+    StrLL* _stack_str_onto_list(StrLL*);
+    void   _null_term_check();
+    void   _destroy_str_ll(StrLL*);
+    StrLL* _promote_collapsed_into_ll();
+    void   _collapse_into_buffer();
 };
 #endif  // __MANUVR_DS_STRING_BUILDER_H

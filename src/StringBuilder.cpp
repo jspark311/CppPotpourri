@@ -20,14 +20,6 @@ limitations under the License.
 
 #include "StringBuilder.h"
 
-#ifdef ARDUINO
-  #include "Arduino.h"
-#else
-  #include <stdio.h>
-  #include <stdlib.h>
-  #include <ctype.h>
-#endif
-
 
 /*******************************************************************************
 *      _______.___________.    ___   .___________. __    ______     _______.
@@ -145,7 +137,6 @@ StringBuilder::StringBuilder() {
   root        = nullptr;
   str         = nullptr;
   col_length  = 0;
-  preserve_ll = false;
   #if defined(__BUILD_HAS_PTHREADS)
     #if defined (PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP)
     _mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
@@ -175,13 +166,11 @@ StringBuilder::StringBuilder(const char* initial) : StringBuilder() {
 * Destructor.
 */
 StringBuilder::~StringBuilder() {
-  if (!this->preserve_ll) {
-    if (this->root != nullptr) destroyStrLL(this->root);
+  if (this->root != nullptr) _destroy_str_ll(this->root);
 
-    if (this->str != nullptr) {
-      free(this->str);
-      this->str = nullptr;
-    }
+  if (this->str != nullptr) {
+    free(this->str);
+    this->str = nullptr;
   }
   #if defined(__BUILD_HAS_PTHREADS)
     pthread_mutex_destroy(&_mutex);
@@ -191,9 +180,10 @@ StringBuilder::~StringBuilder() {
 }
 
 
-/****************************************************************************************************
-*                                                                                                   *
-****************************************************************************************************/
+/*******************************************************************************
+* TODO
+* Functions that don't work correctly, or are stubs.
+*******************************************************************************/
 
 /**
 * Public fxn to get the length of the string represented by this class. This is called before allocating
@@ -202,10 +192,11 @@ StringBuilder::~StringBuilder() {
 int StringBuilder::length() {
   int return_value = this->col_length;
   if (this->root != nullptr) {
-    return_value  = return_value + this->totalStrLen(this->root);
+    return_value  = return_value + this->_total_str_len(this->root);
   }
   return return_value;
 }
+
 
 /**
 * How many discrete elements are in this object?
@@ -222,7 +213,6 @@ unsigned short StringBuilder::count() {
 }
 
 
-
 /**
 * Public fxn to retrieve the flattened string as an uint8_t*.
 *   Will never return nullptr. Will return a zero-length string in the worst-case.
@@ -235,7 +225,7 @@ unsigned char* StringBuilder::string() {
     this->col_length  = 0;
   }
   else {
-    this->collapseIntoBuffer();
+    this->_collapse_into_buffer();
   }
   return this->str;
 }
@@ -249,7 +239,7 @@ void StringBuilder::clear() {
     //pthread_mutex_lock(&_mutex);
   #elif defined(__BUILD_HAS_FREERTOS)
   #endif
-  if (this->root != nullptr) destroyStrLL(this->root);
+  if (this->root != nullptr) _destroy_str_ll(this->root);
   if (this->str != nullptr) {
     free(this->str);
   }
@@ -416,12 +406,12 @@ bool StringBuilder::drop_position(unsigned int pos) {
     if (prior == nullptr) {
       this->root = current->next;
       current->next = nullptr;
-      destroyStrLL(current);
+      _destroy_str_ll(current);
     }
     else {
       prior->next = current->next;
       current->next = nullptr;
-      destroyStrLL(current);
+      _destroy_str_ll(current);
     }
     return true;
   }
@@ -445,10 +435,10 @@ void StringBuilder::concatHandoff(StringBuilder *nu) {
     //xSemaphoreTakeRecursive(&nu->_mutex, 0);
   #endif
   if ((nullptr != nu) && (nu->length() > 0)) {
-    nu->promote_collapsed_into_ll();   // Promote the previously-collapsed string.
+    nu->_promote_collapsed_into_ll();   // Promote the previously-collapsed string.
 
     if (nullptr != nu->root) {
-      this->stackStrOntoList(nu->root);
+      this->_stack_str_onto_list(nu->root);
       nu->root = nullptr;  // Inform the origin instance...
     }
   }
@@ -482,10 +472,10 @@ void StringBuilder::prependHandoff(StringBuilder *nu) {
       //pthread_mutex_lock(&nu->_mutex);
     #elif defined(__BUILD_HAS_FREERTOS)
     #endif
-    this->root = promote_collapsed_into_ll();   // Promote the previously-collapsed string.
+    this->root = _promote_collapsed_into_ll();   // Promote the previously-collapsed string.
 
     // Promote the donor instance's previously-collapsed string so we don't have to worry about it.
-    StrLL *current = nu->promote_collapsed_into_ll();
+    StrLL *current = nu->_promote_collapsed_into_ll();
 
     if (nullptr != nu->root) {
       // Scan to the end of the donated LL...
@@ -520,7 +510,7 @@ void StringBuilder::concatHandoff(uint8_t* buf, int len) {
       nu_element->next = nullptr;
       nu_element->len  = len;
       nu_element->str  = buf;
-      this->stackStrOntoList(nu_element);
+      this->_stack_str_onto_list(nu_element);
     }
     #if defined(__BUILD_HAS_PTHREADS)
       //pthread_mutex_unlock(&_mutex);
@@ -531,33 +521,10 @@ void StringBuilder::concatHandoff(uint8_t* buf, int len) {
 
 
 /*
-* Calling this fxn should take the collapsed string (if any) and prepend it to the list,
-*   taking any measures necessary to convince the class that there is no longer a collapsed
-*   string present.
-* Always returns a pointer to the root of the LL. Changed or otherwise.
 */
-StrLL* StringBuilder::promote_collapsed_into_ll(void) {
-  if ((nullptr != str) && (col_length > 0)) {
-    StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
-    if (nullptr != nu_element) {   // This is going to grief us later...
-      nu_element->reap = true;
-      nu_element->next = this->root;
-      this->root = nu_element;
-      nu_element->str = this->str;
-      nu_element->len = this->col_length;
-      this->str = nullptr;
-      this->col_length = 0;
-    }
-  }
-  return this->root;
-}
-
-
-/*
-*/
-void StringBuilder::prepend(uint8_t*nu, int len) {
+void StringBuilder::prepend(uint8_t* nu, int len) {
   if ((nullptr != nu) && (len > 0)) {
-    this->root = promote_collapsed_into_ll();   // Promote the previously-collapsed string.
+    this->root = _promote_collapsed_into_ll();   // Promote the previously-collapsed string.
 
     StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
     if (nullptr == nu_element) return;   // O no.
@@ -585,20 +552,6 @@ void StringBuilder::prepend(const char *nu) {
 }
 
 
-/**
-* Private function to get the length of a string from any particular node.
-* Does not consider the collapsed buffer.
-*/
-int StringBuilder::totalStrLen(StrLL *node) {
-  int len  = 0;
-  if (node != nullptr) {
-    len  = this->totalStrLen(node->next);
-    if (node->str != nullptr)  len  = len + node->len;
-  }
-  return len;
-}
-
-
 void StringBuilder::concat(uint8_t*nu, int len) {
   if ((nu != nullptr) && (len > 0)) {
     #if defined(__BUILD_HAS_PTHREADS)
@@ -614,7 +567,7 @@ void StringBuilder::concat(uint8_t*nu, int len) {
       if (nu_element->str != nullptr) {
         *(nu_element->str + len) = '\0';
         memcpy(nu_element->str, nu, len);
-        this->stackStrOntoList(nu_element);
+        this->_stack_str_onto_list(nu_element);
       }
     }
     #if defined(__BUILD_HAS_PTHREADS)
@@ -645,7 +598,7 @@ void StringBuilder::concat(const char *nu) {
         nu_element->next = nullptr;
         nu_element->len  = len;
         nu_element->str  = (uint8_t*) nu;
-        this->stackStrOntoList(nu_element);
+        this->_stack_str_onto_list(nu_element);
       }
       #if defined(__BUILD_HAS_PTHREADS)
         //pthread_mutex_unlock(&_mutex);
@@ -690,8 +643,10 @@ void StringBuilder::concat(double nu) {
 * Override to cleanly support Our own type.
 * This costs a great deal more than concatHandoff(StringBuilder *), but has
 *   the advantage of making a copy of the argument.
+*
+* @param nu The StringBuilder to append.
 */
-void StringBuilder::concat(StringBuilder *nu) {
+void StringBuilder::concat(StringBuilder* nu) {
   if (nu != nullptr) {
     this->concat(nu->string(), nu->length());
   }
@@ -718,23 +673,28 @@ int StringBuilder::concatf(const char *format, ...) {
 }
 
 
-//#ifdef ARDUINO
-///**
-//* Override to cleanly support Strings.
-//*/
-//void StringBuilder::concat(String str) {
-//  int len = str.length()+1;
-//  char *out  = (char *) alloca(len);
-//  memset(out, 0, len);
-//  str.toCharArray(out, (str.length()+1));
-//  this->concat((uint8_t*) out, strlen(out));
-//}
-//#endif
+#ifdef ARDUINO
+/**
+* Override to cleanly support Strings.
+*
+* @param s The String to append.
+*/
+void StringBuilder::concat(String s) {
+  int len = s.length()+1;
+  char *out  = (char *) alloca(len);
+  memset(out, 0, len);
+  s.toCharArray(out, len);
+  this->concat((uint8_t*) out, strlen(out));
+}
+#endif   // ARDUINO
 
 
-/*
+/**
 * Given an offset and a length, will throw away any part of the string that falls outside
 *   of the given range.
+*
+* @param offset The index at which to start culling.
+* @param length The numbers of characters to retain.
 */
 void StringBuilder::cull(int offset, int length) {
   #if defined(__BUILD_HAS_PTHREADS)
@@ -746,7 +706,7 @@ void StringBuilder::cull(int offset, int length) {
     unsigned char* temp = (unsigned char*) malloc(remaining_length+1);  // + 1 for null-terminator.
     if (temp != nullptr) {
       *(temp + remaining_length) = '\0';
-      this->collapseIntoBuffer();   // Room to optimize here...
+      this->_collapse_into_buffer();   // Room to optimize here...
       memcpy(temp, this->str, remaining_length);
       this->clear();         // Throw away all else.
       this->str = temp;      // Replace our ref.
@@ -760,8 +720,11 @@ void StringBuilder::cull(int offset, int length) {
 }
 
 
-/*
-* Given a character count (x), will throw away the first x characters and adjust the object appropriately.
+/**
+* Given a character count (x), will throw away the first x characters and adjust
+*   the object appropriately.
+*
+* @param x The numbers of characters to cull.
 */
 void StringBuilder::cull(int x) {
   #if defined(__BUILD_HAS_PTHREADS)
@@ -776,7 +739,7 @@ void StringBuilder::cull(int x) {
     unsigned char* temp = (unsigned char*) malloc(remaining_length+1);  // + 1 for null-terminator.
     if (temp != nullptr) {
       *(temp + remaining_length) = '\0';
-      this->collapseIntoBuffer();   // Room to optimize here...
+      this->_collapse_into_buffer();   // Room to optimize here...
       memcpy(temp, (unsigned char*)(this->str + x), remaining_length);
       this->clear();         // Throw away all else.
       this->str = temp;      // Replace our ref.
@@ -792,28 +755,43 @@ void StringBuilder::cull(int x) {
 
 /**
 * Trims whitespace from the ends of the string and replaces it.
-* Has heap consequences.
 */
 void StringBuilder::trim() {
-  this->collapseIntoBuffer();
+  this->_collapse_into_buffer();
   // TODO: How have I not needed this yet? Add it...
   //    ---J. Ian Lindsay   Thu Dec 17 03:22:01 MST 2015
 }
 
-bool StringBuilder::contains(char test) {
-  this->collapseIntoBuffer();
+
+/**
+* Search the string for the given character.
+* Collapses the string before searching.
+*
+* @param needle The char to search for.
+* @return true if the string contains the given character.
+*/
+bool StringBuilder::contains(char needle) {
+  this->_collapse_into_buffer();
   if (this->col_length == 0) {   return false;   }
 
   for (int i = 0; i < this->col_length; i++) {
-    if (test == *(this->str + i)) return true;
+    if (needle == *(this->str + i)) return true;
   }
   return false;
 }
 
-/* TODO: Something about this is broken. Don't use it with confidence. */
+
+/**
+* TODO: Something about this is broken. Don't use it with confidence.
+* Search the string for the given string.
+* Collapses the string before searching.
+*
+* @param needle The string to search for.
+* @return true if the string contains the given string.
+*/
 bool StringBuilder::contains(const char* needle) {
   const int NEEDLE_LEN = strlen(needle);
-  this->collapseIntoBuffer();
+  this->_collapse_into_buffer();
   if (NEEDLE_LEN > this->col_length) {  return false;   }
   if (NEEDLE_LEN == 0) {                return false;   }
 
@@ -831,107 +809,18 @@ bool StringBuilder::contains(const char* needle) {
 }
 
 
-StrLL* StringBuilder::stackStrOntoList(StrLL *current, StrLL *nu) {
-  if (current != nullptr) {
-    if (current->next == nullptr) current->next = nu;
-    else this->stackStrOntoList(current->next, nu);
-  }
-  return current;
-}
-
-/*
-* Non-recursive override to make additions less cumbersome.
-*/
-StrLL* StringBuilder::stackStrOntoList(StrLL *nu) {
-  StrLL* return_value = nullptr;
-  #if defined(__BUILD_HAS_PTHREADS)
-    //pthread_mutex_lock(&_mutex);
-  #elif defined(__BUILD_HAS_FREERTOS)
-  #endif
-  if (this->root == nullptr) {
-    this->root  = nu;
-    return_value = this->root;
-  }
-  else {
-    return_value = this->stackStrOntoList(this->root, nu);
-  }
-  #if defined(__BUILD_HAS_PTHREADS)
-    //pthread_mutex_unlock(&_mutex);
-  #elif defined(__BUILD_HAS_FREERTOS)
-  #endif
-  return return_value;
-}
-
-
-
 /**
-* Traverse the list and keep appending strings to the buffer.
-* Will prepend the str buffer if it is not nullptr.
-* Updates the length.
-*/
-void StringBuilder::collapseIntoBuffer() {
-  #if defined(__BUILD_HAS_PTHREADS)
-    //pthread_mutex_lock(&_mutex);
-  #elif defined(__BUILD_HAS_FREERTOS)
-  #endif
-  StrLL *current = promote_collapsed_into_ll();   // Promote the previously-collapsed string.
-  if (current != nullptr) {
-    this->col_length = this->totalStrLen(this->root);
-    if (this->col_length > 0) {
-      this->str = (uint8_t*) malloc(this->col_length + 1);
-      if (this->str != nullptr) {
-        *(this->str + this->col_length) = '\0';
-        int tmp_len = 0;
-        while (current != nullptr) {
-          if (current->str != nullptr) {
-            memcpy((void *)(this->str + tmp_len), (void *)(current->str), current->len);
-            tmp_len = tmp_len + current->len;
-          }
-          current = current->next;
-        }
-      }
-    }
-    this->destroyStrLL(this->root);
-  }
-  #if defined(__BUILD_HAS_PTHREADS)
-    //pthread_mutex_unlock(&_mutex);
-  #elif defined(__BUILD_HAS_FREERTOS)
-  #endif
-}
-
-
-/**
-* Clean up after ourselves. Assumes that everything has been malloc'd into existance.
-*/
-void StringBuilder::destroyStrLL(StrLL *r_node) {
-  #if defined(__BUILD_HAS_PTHREADS)
-    //pthread_mutex_lock(&_mutex);
-  #elif defined(__BUILD_HAS_FREERTOS)
-  #endif
-  if (r_node != nullptr) {
-    if (r_node->next != nullptr) {
-      destroyStrLL(r_node->next);
-      r_node->next  = nullptr;
-    }
-    if (r_node->reap) free(r_node->str);
-    free(r_node);
-    if (r_node == this->root) this->root = nullptr;
-  }
-  #if defined(__BUILD_HAS_PTHREADS)
-    //pthread_mutex_unlock(&_mutex);
-  #elif defined(__BUILD_HAS_FREERTOS)
-  #endif
-}
-
-
-/*
 * Compares two binary strings on a byte-by-byte basis.
 * Returns 1 if the values match. 0 otherwise.
 * Collapses the buffer prior to comparing.
 * Will compare ONLY the first len bytes, or the length of out present string. Whichever is less.
+*
+* @param unknown The byte string under test.
+* @param len The number of bytes to compare.
+* @return 1 if the strings are equal to the comparison limit. 0 otherwise.
 */
-int StringBuilder::cmpBinString(uint8_t*unknown, int len) {
-  this->collapseIntoBuffer();
+int StringBuilder::cmpBinString(uint8_t* unknown, int len) {
+  this->_collapse_into_buffer();
   int minimum = (len > this->col_length) ? this->col_length : len;
   for (int i = 0; i < minimum; i++) {
     if (*(unknown+i) != *(this->str+i)) return 0;
@@ -940,7 +829,14 @@ int StringBuilder::cmpBinString(uint8_t*unknown, int len) {
 }
 
 
-int StringBuilder::implode(const char *delim) {
+/**
+* This function untokenizes the string by a given delimiter.
+* TODO: This
+*
+* @param delim The string to use as the delimiter.
+* @return The number of tokens.
+*/
+int StringBuilder::implode(const char* delim) {
   if (delim != nullptr) {
     if (str != nullptr) {
     }
@@ -952,11 +848,12 @@ int StringBuilder::implode(const char *delim) {
 /**
 * This function tokenizes the sum of this String according to the parameter.
 *
+* @param delims The delimiter list to be fed to strtok()
 * @return The number of tokens.
 */
-int StringBuilder::split(const char *delims) {
+int StringBuilder::split(const char* delims) {
   int return_value = 0;
-  this->collapseIntoBuffer();
+  this->_collapse_into_buffer();
   if (this->col_length == 0) {
     return 0;
   }
@@ -1009,4 +906,155 @@ void StringBuilder::printDebug(StringBuilder* output) {
     }
     output->concat("\n");
   }
+}
+
+
+/*******************************************************************************
+* Private functions below this block
+*******************************************************************************/
+/**
+* Recursive function to get the length of string material starting from any
+*   particular node. Does not consider the collapsed buffer.
+*
+* @param node The StrLL to treat as the root.
+* @return The calculatedlength.
+*/
+int StringBuilder::_total_str_len(StrLL* node) {
+  int len  = 0;
+  if (node != nullptr) {
+    len  = this->_total_str_len(node->next);
+    if (node->str != nullptr)  len  = len + node->len;
+  }
+  return len;
+}
+
+
+/*
+* Recursive function to add a new string onto the end of the list.
+*
+* @param current The StrLL to treat as the root.
+* @param nu A newly-formed StrLL to be added to the list.
+* @return The StrLL reference that precedes the parameter nu in the list.
+*/
+StrLL* StringBuilder::_stack_str_onto_list(StrLL* current, StrLL* nu) {
+  if (current != nullptr) {
+    if (current->next == nullptr) current->next = nu;
+    else this->_stack_str_onto_list(current->next, nu);
+  }
+  return current;
+}
+
+
+/*
+* Non-recursive override to make additions less cumbersome.
+*
+* @param nu A newly-formed StrLL to be added to the list.
+* @return The StrLL reference that precedes the parameter nu in the list.
+*/
+StrLL* StringBuilder::_stack_str_onto_list(StrLL* nu) {
+  StrLL* return_value = nullptr;
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_lock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
+  if (this->root == nullptr) {
+    this->root  = nu;
+    return_value = this->root;
+  }
+  else {
+    return_value = this->_stack_str_onto_list(this->root, nu);
+  }
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
+  return return_value;
+}
+
+
+/**
+* Clean up after ourselves. Frees the memory taken by the LL node, and also that
+*   taken by the string itself (if it wasn't passed to the class as a const).
+*
+* @param r_node The linked list node to be cleaned up.
+*/
+void StringBuilder::_destroy_str_ll(StrLL* r_node) {
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_lock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
+  if (r_node != nullptr) {
+    if (r_node->next != nullptr) {
+      _destroy_str_ll(r_node->next);
+      r_node->next  = nullptr;
+    }
+    if (r_node->reap) free(r_node->str);
+    free(r_node);
+    if (r_node == this->root) this->root = nullptr;
+  }
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
+}
+
+
+/**
+* Calling this fxn should take the collapsed string (if any) and prepend it to
+*   the list, taking any measures necessary to convince the class that there is
+*   no longer a collapsed string present.
+* Always returns a pointer to the root of the LL. Changed or otherwise.
+*
+* @return An StrLL built from str, or NULL if str was empty.
+*/
+StrLL* StringBuilder::_promote_collapsed_into_ll() {
+  if ((nullptr != str) && (col_length > 0)) {
+    StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
+    if (nullptr != nu_element) {   // This is going to grief us later...
+      nu_element->reap = true;
+      nu_element->next = this->root;
+      this->root = nu_element;
+      nu_element->str = this->str;
+      nu_element->len = this->col_length;
+      this->str = nullptr;
+      this->col_length = 0;
+    }
+  }
+  return this->root;
+}
+
+
+/**
+* Traverse the list and keep appending strings to the buffer.
+* Will prepend the str buffer if it is not nullptr.
+* Updates the length.
+*/
+void StringBuilder::_collapse_into_buffer() {
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_lock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
+  StrLL *current = _promote_collapsed_into_ll();   // Promote the previously-collapsed string.
+  if (current != nullptr) {
+    this->col_length = this->_total_str_len(this->root);
+    if (this->col_length > 0) {
+      this->str = (uint8_t*) malloc(this->col_length + 1);
+      if (this->str != nullptr) {
+        *(this->str + this->col_length) = '\0';
+        int tmp_len = 0;
+        while (current != nullptr) {
+          if (current->str != nullptr) {
+            memcpy((void*)(this->str + tmp_len), (void *)(current->str), current->len);
+            tmp_len = tmp_len + current->len;
+          }
+          current = current->next;
+        }
+      }
+    }
+    this->_destroy_str_ll(this->root);
+  }
+  #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+  #endif
 }
