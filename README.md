@@ -6,31 +6,34 @@ An architecture-agnostic package of discrete solutions to common problems in Ard
 
 ## Data Structures
 
-### StringBuilder
+#### StringBuilder
 
 A library for dynamic string abstraction.
 
-### LightLinkedList
+#### LightLinkedList
 
 A template for a linked list.
 
-### PriorityQueue
+#### PriorityQueue
 
 A template for a priority queue.
 
-### RingBuffer
+#### RingBuffer
 
 A template for a ring buffer.
 
-### Vector3
+#### Vector3
 
 A template for vectors in 3-space.
 
-### SensorFilter
+
+## High-level processing libraries
+
+#### SensorFilter
 
 A library for dynamic-depth filtering of scalar and vector quantities.
 
-### ParsingConsole
+#### ParsingConsole
 
 A library for a configurable serial console.
 
