@@ -16,7 +16,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
 */
 
 #include "StringBuilder.h"
@@ -61,6 +60,26 @@ int StringBuilder::strcasestr(const char *a, const char *b) {
   }
   return -1;
 }
+
+
+int StringBuilder::strcasecmp(const char *a, const char *b) {
+  if ((nullptr != a) && (nullptr != b)) {
+    if (strlen(a) == strlen(b)) {
+      char c = 0;
+      while (*a && *b) {
+        c = toupper(*a) - toupper(*b);
+        if (c != 0) {
+          return c;
+        }
+        a++;
+        b++;
+      }
+      return c;
+    }
+  }
+  return -1;
+}
+
 
 
 /* Static utility function for dumping buffers for humans to read. */
@@ -783,10 +802,30 @@ void StringBuilder::trim() {
 
 bool StringBuilder::contains(char test) {
   this->collapseIntoBuffer();
-  if (this->col_length == 0) return 0;
+  if (this->col_length == 0) {   return false;   }
 
   for (int i = 0; i < this->col_length; i++) {
     if (test == *(this->str + i)) return true;
+  }
+  return false;
+}
+
+/* TODO: Something about this is broken. Don't use it with confidence. */
+bool StringBuilder::contains(const char* needle) {
+  const int NEEDLE_LEN = strlen(needle);
+  this->collapseIntoBuffer();
+  if (NEEDLE_LEN > this->col_length) {  return false;   }
+  if (NEEDLE_LEN == 0) {                return false;   }
+
+  for (int i = 0; i < (this->col_length - NEEDLE_LEN); i++) {
+    int needle_offset = 0;
+    while ((*(needle + needle_offset) == *(this->str + i + needle_offset)) && (needle_offset < NEEDLE_LEN)) {
+      needle_offset++;
+    }
+    if (needle_offset == NEEDLE_LEN) {
+      //return (*(needle + needle_offset) == *(this->str + i + needle_offset));
+      return true;
+    }
   }
   return false;
 }
@@ -942,7 +981,7 @@ int StringBuilder::split(const char *delims) {
     while (nullptr != temp_str) {
       this->concat(temp_str);
       return_value++;
-      temp_str  = strtok(nullptr, delims);
+      temp_str = strtok(nullptr, delims);
     }
     free(this->str);
     this->str = nullptr;

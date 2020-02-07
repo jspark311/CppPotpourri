@@ -1,18 +1,17 @@
 #########################################
-# Syntax Coloring Map For StringBuilder
+# Syntax Coloring Map For CppPotpourri
 #########################################
 
 #########################################
-# Datatypes (KEYWORD1)
+# Datatypes (StringBuilder)
+StringBuilder      KEYWORD1
+
+# Datatypes (SensorFilter)
+SensorFilter       KEYWORD1
+
+
 #########################################
-
-StringBuilder     KEYWORD1
-
-
-#########################################
-# Methods and Functions (KEYWORD2)
-#########################################
-
+# Methods and Functions (StringBuilder)
 length             KEYWORD2
 prepend            KEYWORD2
 string             KEYWORD2
@@ -37,7 +36,23 @@ printDebug         KEYWORD2
 printBuffer        KEYWORD2
 strcasestr         KEYWORD2
 
+# Methods and Functions (SensorFilter)
+feedFilter         KEYWORD2
+purge              KEYWORD2
+getParam0          KEYWORD2
+getParam1          KEYWORD2
+setParam0          KEYWORD2
+setParam1          KEYWORD2
+strategy           KEYWORD2
+printFilter        KEYWORD2
+setStrategy        KEYWORD2
+stdevValue         KEYWORD2
+rmsValue           KEYWORD2
+getFilterStr       KEYWORD2
+
+# Methods and Functions (ParsingConsole)
+
 
 #########################################
-# Constants (LITERAL1)
-#########################################
+# Constants (SensorFilter)
+FilteringStrategy  LITERAL1
