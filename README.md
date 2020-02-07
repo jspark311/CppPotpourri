@@ -34,7 +34,6 @@ A library for dynamic-depth filtering of scalar and vector quantities.
 
 A library for a configurable serial console.
 
-
 ----------------------
 
 ## Dependency graph

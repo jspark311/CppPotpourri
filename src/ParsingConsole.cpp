@@ -19,14 +19,13 @@ limitations under the License.
 */
 
 #include "ParsingConsole.h"
+#include "CppPotpourri.h"
 
 static const uint8_t DPAD_ESCAPE_SEQUENCE_U[4] = {27, 91, 65, 0};
 static const uint8_t DPAD_ESCAPE_SEQUENCE_D[4] = {27, 91, 66, 0};
 static const uint8_t DPAD_ESCAPE_SEQUENCE_R[4] = {27, 91, 67, 0};
 static const uint8_t DPAD_ESCAPE_SEQUENCE_L[4] = {27, 91, 68, 0};
 
-inline uint8_t  strict_max(uint8_t a, uint8_t  b) {  return (a > b) ? a : b; };
-inline uint8_t  strict_min(uint8_t a, uint8_t b) {   return (a > b) ? b : a; };
 
 const char* const ParsingConsole::errToStr(ConsoleErr err) {
   switch (err) {
