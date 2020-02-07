@@ -1,6 +1,6 @@
 # CppPotpourri
 
-A package of discrete solutions to common problems in Arduino.
+An architecture-agnostic package of discrete solutions to common problems in Arduino.
 
 ----------------------
 
@@ -12,13 +12,27 @@ A library for dynamic string abstraction.
 
 ### LightLinkedList
 
+A template for a linked list.
+
+### PriorityQueue
+
+A template for a priority queue.
+
+### RingBuffer
+
+A template for a ring buffer.
+
+### Vector3
+
+A template for vectors in 3-space.
+
 ### SensorFilter
 
-A library for dynamic depth filtering of scalar and vector quantities.
+A library for dynamic-depth filtering of scalar and vector quantities.
 
 ### ParsingConsole
 
-A library for a configurable debug console.
+A library for a configurable serial console.
 
 
 ----------------------
