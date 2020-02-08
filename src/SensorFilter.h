@@ -448,7 +448,7 @@ template <typename T> T SensorFilter<T>::value() {
 template <typename T> T SensorFilter<T>::minValue() {
   T ret = last_value;
   for (int i = 0; i < window_size; i++) {
-    T ret = (samples[i] < ret) ? samples[i] : ret;
+    ret = (samples[i] < ret) ? samples[i] : ret;
   }
   return ret;
 };
@@ -462,7 +462,7 @@ template <typename T> T SensorFilter<T>::minValue() {
 template <typename T> T SensorFilter<T>::maxValue() {
   T ret = last_value;
   for (int i = 0; i < window_size; i++) {
-    T ret = (samples[i] > ret) ? samples[i] : ret;
+    ret = (samples[i] > ret) ? samples[i] : ret;
   }
   return ret;
 };
