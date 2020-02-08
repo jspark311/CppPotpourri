@@ -80,7 +80,7 @@ void StopWatch::printDebug(const char* label, StringBuilder *output) {
     );
   }
   else {
-    output->concatf("%14s <NO DATA>\n");
+    output->concatf("%14s <NO DATA>\n", label);
   }
 }
 

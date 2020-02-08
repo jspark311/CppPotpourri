@@ -312,7 +312,7 @@ template <typename T> int8_t SensorFilter<T>::_zero_samples() {
   if (nullptr != samples) {
     if (window_size > 0) {
       ret = 0;
-      for (int i = 0; i < window_size; i++) {
+      for (uint i = 0; i < window_size; i++) {
         samples[i] = T(0);
       }
     }
@@ -382,15 +382,13 @@ template <typename T> int8_t SensorFilter<T>::feedFilter(T val) {
         case FilteringStrategy::QUANTIZER:       // TODO: This.
 
         case FilteringStrategy::RAW:
-          {
-            last_value = val;
-            samples[sample_idx++] = val;
-            if (sample_idx >= window_size) {
-              window_full = true;
-              sample_idx = 0;
-              ret = 1;
-            }
+          last_value = val;
+          samples[sample_idx++] = val;
+          if (sample_idx >= window_size) {
+            window_full = true;
+            sample_idx = 0;
           }
+          ret = window_full ? 1 : 0;
           break;
         case FilteringStrategy::MOVING_AVG:   // Calculate the moving average...
           {
@@ -402,22 +400,20 @@ template <typename T> int8_t SensorFilter<T>::feedFilter(T val) {
               sample_idx = 0;
               rms   = _calculate_rms();    // These are expensive, and are calculated once per-window.
               stdev = _calculate_stdev();  // These are expensive, and are calculated once per-window.
-              ret = 1;
             }
+            ret = window_full ? 1 : 0;
           }
           break;
         case FilteringStrategy::MOVING_MED:   // Calculate the moving median...
-          {
-            // Calculate the moving median...
-            samples[sample_idx++] = val;
-            if (sample_idx >= window_size) {
-              window_full = true;
-              sample_idx = 0;
-            }
-            if (window_full) {
-              _calculate_median();
-              ret = 1;
-            }
+          // Calculate the moving median...
+          samples[sample_idx++] = val;
+          if (sample_idx >= window_size) {
+            window_full = true;
+            sample_idx = 0;
+          }
+          if (window_full) {
+            _calculate_median();
+            ret = 1;
           }
           break;
       }
