@@ -35,6 +35,7 @@ limitations under the License.
       inline uint32_t bestTime() {         return _run_time_best;      };
       inline uint32_t lastTime() {         return _run_time_last;      };
       inline uint32_t worstTime() {        return _run_time_worst;     };
+      inline uint32_t meanTime() {         return _run_time_average;   };
       inline uint32_t totalTime() {        return _run_time_total;     };
       inline uint32_t executions() {       return _executions;         };
 
