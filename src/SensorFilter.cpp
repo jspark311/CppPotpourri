@@ -19,11 +19,22 @@ limitations under the License.
 */
 
 
+#include "CppPotpourri.h"
 #include "SensorFilter.h"
 #include <StringBuilder.h>
 
-inline uint16_t strict_max(uint16_t a, uint16_t b) { return (a > b) ? a:b; };
-inline uint16_t strict_min(uint16_t a, uint16_t b) { return (a > b) ? b:a; };
+
+const char* const getFilterStr(FilteringStrategy x) {
+  switch (x) {
+    case FilteringStrategy::RAW:            return "NULL";
+    case FilteringStrategy::MOVING_AVG:     return "MOVING_AVG";
+    case FilteringStrategy::MOVING_MED:     return "MOVING_MED";
+    case FilteringStrategy::HARMONIC_MEAN:  return "HARMONIC_MEAN";
+    case FilteringStrategy::GEOMETRIC_MEAN: return "GEOMETRIC_MEAN";
+    case FilteringStrategy::QUANTIZER:      return "QUANTIZER";
+  }
+  return "UNKNOWN";
+}
 
 
 /******************************************************************************
@@ -33,21 +44,14 @@ extern const char* const FILTER_HEADER_STRING;
 
 SensorFilter3* SensorFilter3::FilterFactory(FilteringStrategy x, int param0, int param1) {
   switch (x) {
-    case FilteringStrategy::RAW:         return new NullFilter3(param0, param1);
-    case FilteringStrategy::MOVING_AVG:  return new MeanFilter3(param0, param1);
-    case FilteringStrategy::MOVING_MED:  return new MedianFilter3(param0, param1);
+    case FilteringStrategy::RAW:            return new NullFilter3(param0, param1);
+    case FilteringStrategy::MOVING_AVG:     return new MeanFilter3(param0, param1);
+    case FilteringStrategy::MOVING_MED:     return new MedianFilter3(param0, param1);
+    case FilteringStrategy::HARMONIC_MEAN:  return new NullFilter3(param0, param1);  // TODO: This
+    case FilteringStrategy::GEOMETRIC_MEAN: return new NullFilter3(param0, param1);  // TODO: This
+    case FilteringStrategy::QUANTIZER:      return new NullFilter3(param0, param1);  // TODO: This
   }
   return nullptr;
-}
-
-
-const char* SensorFilter3::getFilterStr(FilteringStrategy x) {
-  switch (x) {
-    case FilteringStrategy::RAW:         return "NULL";
-    case FilteringStrategy::MOVING_AVG:  return "MOVING_AVG";
-    case FilteringStrategy::MOVING_MED:  return "MOVING_MED";
-  }
-  return "UNKNOWN";
 }
 
 

@@ -34,9 +34,12 @@ class StringBuilder;
 
 
 enum class FilteringStrategy : uint8_t {
-  RAW        = 0,  // No filtering
-  MOVING_AVG = 1,  // Moving average with a given window size.
-  MOVING_MED = 2   // Moving median with a given window size.
+  RAW            = 0,  // No filtering
+  MOVING_AVG     = 1,  // Moving average with a given window size. Arithmetic mean.
+  MOVING_MED     = 2,  // Moving median with a given window size.
+  HARMONIC_MEAN  = 3,  // Moving harmonic mean with a given window size.
+  GEOMETRIC_MEAN = 4,  // Moving geometric mean.
+  QUANTIZER      = 5   // A filter that divides inputs up into bins.
 };
 
 
@@ -73,13 +76,12 @@ template <typename T> class SensorFilter {
     inline T        stdevValue() {    return stdev;           };
 
 
-    static const char* getFilterStr(FilteringStrategy);
-
-
   private:
     T*       samples         = nullptr;
     uint16_t sample_idx      = 0;
     uint16_t window_size     = 0;
+    int32_t  _param_0        = 0;  // Purpose depends on filter strategy.
+    int32_t  _param_1        = 0;  // Purpose depends on filter strategy.
     T        last_value      = T(0);
     T        min_value       = T(0);
     T        max_value       = T(0);
@@ -122,7 +124,6 @@ class SensorFilter3 {
     inline void printFilter(StringBuilder* out) {   printFilter(out, false);  };
 
     static SensorFilter3* FilterFactory(FilteringStrategy, int param0, int param1);
-    static const char* getFilterStr(FilteringStrategy);
 };
 
 
@@ -229,19 +230,10 @@ class MedianFilter3: public SensorFilter3 {
 
 
 /******************************************************************************
-* Statics
+* Statics and externs
 ******************************************************************************/
+extern const char* const getFilterStr(FilteringStrategy);
 static const char* const FILTER_HEADER_STRING = "\t%s filter\n\t-----------------------------\n";
-
-
-template <typename T> const char* SensorFilter<T>::getFilterStr(FilteringStrategy x) {
-  switch (x) {
-    case FilteringStrategy::RAW:         return "NULL";
-    case FilteringStrategy::MOVING_AVG:  return "MOVING_AVG";
-    case FilteringStrategy::MOVING_MED:  return "MOVING_MED";
-  }
-  return "UNKNOWN";
-}
 
 
 /*******************************************************************************
@@ -341,11 +333,16 @@ template <typename T> int8_t SensorFilter<T>::setStrategy(FilteringStrategy s) {
 
 
 template <typename T> void SensorFilter<T>::printFilter(StringBuilder* output) {
-  output->concatf(FILTER_HEADER_STRING, SensorFilter<T>::getFilterStr(strategy()));
+  output->concatf(FILTER_HEADER_STRING, getFilterStr(strategy()));
   switch (_strat) {
+    output->concatf("\tInitialized:  %c\n",   initialized() ? 'y':'n');
+    output->concatf("\tDirty:        %c\n",   filter_dirty ? 'y':'n');
+    output->concatf("\tWindow full:  %c\n",   window_full  ? 'y':'n');
+    output->concatf("\tMin             = %.8f\n", min_value);
+    output->concatf("\tMax             = %.8f\n", max_value);
+    output->concatf("\tSample window   = %u\n",   window_size);
     case FilteringStrategy::RAW:
       output->concatf("\tValue           = %.8f\n", last_value);
-      output->concatf("\tSample window   = %u\n",   window_size);
       break;
     case FilteringStrategy::MOVING_AVG:
       output->concatf("\tRunning average = %.8f\n", last_value);
@@ -355,72 +352,103 @@ template <typename T> void SensorFilter<T>::printFilter(StringBuilder* output) {
     case FilteringStrategy::MOVING_MED:
       output->concatf("\tRunning median  = %.8f\n", last_value);
       break;
+    case FilteringStrategy::HARMONIC_MEAN:
+      output->concatf("\tHarmonic mean   = %.8f\n", last_value);
+      break;
+    case FilteringStrategy::GEOMETRIC_MEAN:
+      output->concatf("\tGeometric mean  = %.8f\n", last_value);
+      break;
+    case FilteringStrategy::QUANTIZER:
+      output->concatf("\tQuantized value = %.8f\n", last_value);
+      break;
   }
 }
 
 
+/**
+* Add data to the filter.
+*
+* @param val The value to be fed to the filter.
+* @return -1 if filter not initialized, 0 on value acceptance, or 1 one acceptance with new result.
+*/
 template <typename T> int8_t SensorFilter<T>::feedFilter(T val) {
-  int8_t ret = 0;
-  if (window_size > 1) {
-    switch (_strat) {
-      case FilteringStrategy::RAW:
-        {
-          last_value = val;
-          samples[sample_idx++] = val;
-          if (sample_idx >= window_size) {
-            window_full = true;
-            sample_idx = 0;
-          }
-          ret = 1;
-        }
-        break;
-      case FilteringStrategy::MOVING_AVG:   // Calculate the moving average...
-        {
-          T temp_avg = (last_value * (window_size-1)) + val;
-          last_value = temp_avg / window_size;
-          samples[sample_idx++] = val;
-          if (sample_idx >= window_size) {
-            window_full = true;
-            sample_idx = 0;
-            rms   = _calculate_rms();    // These are expensive, and are calculated once per-window.
-            stdev = _calculate_stdev();  // These are expensive, and are calculated once per-window.
-          }
-          ret = 1;
-        }
-        break;
-      case FilteringStrategy::MOVING_MED:   // Calculate the moving median...
-        {
-          // Calculate the moving median...
-          samples[sample_idx++] = val;
-          if (sample_idx >= window_size) {
-            window_full = true;
-            sample_idx = 0;
-          }
-          if (window_full) {
-            _calculate_median();
-            ret = 1;
-          }
-        }
-        break;
-    }
+  int8_t ret = -1;
+  if (initialized()) {
+    ret = 0;
+    if (window_size > 1) {
+      switch (_strat) {
+        case FilteringStrategy::HARMONIC_MEAN:   // TODO: This.
+        case FilteringStrategy::GEOMETRIC_MEAN:  // TODO: This.
+        case FilteringStrategy::QUANTIZER:       // TODO: This.
 
+        case FilteringStrategy::RAW:
+          {
+            last_value = val;
+            samples[sample_idx++] = val;
+            if (sample_idx >= window_size) {
+              window_full = true;
+              sample_idx = 0;
+              ret = 1;
+            }
+          }
+          break;
+        case FilteringStrategy::MOVING_AVG:   // Calculate the moving average...
+          {
+            T temp_avg = (last_value * (window_size-1)) + val;
+            last_value = temp_avg / window_size;
+            samples[sample_idx++] = val;
+            if (sample_idx >= window_size) {
+              window_full = true;
+              sample_idx = 0;
+              rms   = _calculate_rms();    // These are expensive, and are calculated once per-window.
+              stdev = _calculate_stdev();  // These are expensive, and are calculated once per-window.
+              ret = 1;
+            }
+          }
+          break;
+        case FilteringStrategy::MOVING_MED:   // Calculate the moving median...
+          {
+            // Calculate the moving median...
+            samples[sample_idx++] = val;
+            if (sample_idx >= window_size) {
+              window_full = true;
+              sample_idx = 0;
+            }
+            if (window_full) {
+              _calculate_median();
+              ret = 1;
+            }
+          }
+          break;
+      }
+    }
+    else {   // This is a null filter with extra steps.
+      last_value = val;
+      ret = 1;
+    }
+    filter_dirty = (1 == ret);
   }
-  else {   // This is a null filter with extra steps.
-    last_value = val;
-    ret = 1;
-  }
-  filter_dirty = true;
   return ret;
 }
 
 
+/**
+* Returns the most recent result from the filter. Marks the filter 'not dirty'
+*   as a side-effect, so don't call this for internal logic.
+*
+* @return The new result.
+*/
 template <typename T> T SensorFilter<T>::value() {
   filter_dirty = false;
   return last_value;
 };
 
 
-/* Returns the smallest value in the current dataset. */
+/**
+* Returns the smallest value in the current dataset.
+*
+* @return The minimum value from the data we currently have.
+*/
 template <typename T> T SensorFilter<T>::minValue() {
   T ret = last_value;
   for (int i = 0; i < window_size; i++) {
@@ -430,7 +458,11 @@ template <typename T> T SensorFilter<T>::minValue() {
 };
 
 
-/* Returns the largest value in the current dataset. */
+/**
+* Returns the largest value in the current dataset.
+*
+* @return The maximum value from the data we currently have.
+*/
 template <typename T> T SensorFilter<T>::maxValue() {
   T ret = last_value;
   for (int i = 0; i < window_size; i++) {

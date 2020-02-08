@@ -68,15 +68,20 @@ bool StopWatch::markStop() {
 
 
 void StopWatch::printDebug(const char* label, StringBuilder *output) {
-  output->concatf("%14s %10u %10u %10u %10u %10u %10u\n",
-    label,
-    _executions,
-    (unsigned long) _run_time_total,
-    (unsigned long) _run_time_average,
-    (unsigned long) _run_time_worst,
-    (unsigned long) _run_time_best,
-    (unsigned long) _run_time_last
-  );
+  if (_executions) {
+    output->concatf("%14s %10u %10u %10u %10u %10u %10u\n",
+      label,
+      _executions,
+      (unsigned long) _run_time_total,
+      (unsigned long) _run_time_average,
+      (unsigned long) _run_time_worst,
+      (unsigned long) _run_time_best,
+      (unsigned long) _run_time_last
+    );
+  }
+  else {
+    output->concatf("%14s <NO DATA>\n");
+  }
 }
 
 
