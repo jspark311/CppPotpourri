@@ -26,6 +26,9 @@ A template for a ring buffer.
 
 A template for vectors in 3-space.
 
+#### StopWatch
+
+A class for implementing a stop watch from the platform's notion of microseconds.
 
 ## High-level processing libraries
 
@@ -65,6 +68,10 @@ These have dependency on other classes in this repo
       +---StringBuilder
 
     SensorFilter<T>
+      |
+      +---StringBuilder
+
+    StopWatch
       |
       +---StringBuilder
 

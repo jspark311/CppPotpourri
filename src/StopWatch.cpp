@@ -29,11 +29,6 @@ StopWatch::StopWatch() {
   reset();
 }
 
-/**
-* Destructor
-*/
-StopWatch::~StopWatch() {}
-
 
 void StopWatch::reset() {
   _run_time_last    = 0;
@@ -42,11 +37,6 @@ void StopWatch::reset() {
   _run_time_average = 0;
   _run_time_total   = 0;
   _executions       = 0;   // How many times has this task been used?
-}
-
-
-void StopWatch::markStart() {
-  _start_micros = micros();
 }
 
 

@@ -29,22 +29,22 @@ limitations under the License.
 
   class StopWatch {
     public:
-      StopWatch();
-      ~StopWatch();
+      StopWatch();       // Constructor. Calls reset().
+      ~StopWatch() {};   // Featureless destructor.
 
-      inline uint32_t bestTime() {         return _run_time_best;      };
-      inline uint32_t lastTime() {         return _run_time_last;      };
-      inline uint32_t worstTime() {        return _run_time_worst;     };
-      inline uint32_t meanTime() {         return _run_time_average;   };
-      inline uint32_t totalTime() {        return _run_time_total;     };
-      inline uint32_t executions() {       return _executions;         };
-
-      void  markStart();
+      inline uint32_t bestTime() {     return _run_time_best;      };
+      inline uint32_t lastTime() {     return _run_time_last;      };
+      inline uint32_t worstTime() {    return _run_time_worst;     };
+      inline uint32_t meanTime() {     return _run_time_average;   };
+      inline uint32_t totalTime() {    return _run_time_total;     };
+      inline uint32_t executions() {   return _executions;         };
+      inline void     markStart() {    _start_micros = micros();   };
       bool  markStop();
       void  reset();
-
       void printDebug(const char*, StringBuilder*);
+
       static void printDebugHeader(StringBuilder*);
+
 
     private:
       uint32_t _start_micros;
