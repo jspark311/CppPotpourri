@@ -28,7 +28,7 @@ Template for a linked list.
 #define __MANUVR_DS_LINKED_LIST_H
 
 #if defined(ARDUINO)
-  #include "Arduino.h"
+  #include <Arduino.h>
 #else
   #include <stdlib.h>
 #endif

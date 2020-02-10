@@ -27,7 +27,7 @@ limitations under the License.
 #if defined (ARDUINO)
   #include <Arduino.h>
 #endif
-#include <StringBuilder.h>
+#include "StringBuilder.h"
 #include "Vector3.h"
 
 #define FILTER_MAX_ELEMENTS   8000  // Arbitrary.

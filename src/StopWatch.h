@@ -21,6 +21,12 @@ limitations under the License.
 #include <inttypes.h>
 #include <stdint.h>
 
+#if defined (ARDUINO)
+  #include <Arduino.h>
+#else
+  extern uint32_t micros();
+#endif
+
 
 #ifndef __STOP_WATCH_H__
   #define __STOP_WATCH_H__

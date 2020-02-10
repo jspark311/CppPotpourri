@@ -21,7 +21,7 @@ limitations under the License.
 
 #include "CppPotpourri.h"
 #include "SensorFilter.h"
-#include <StringBuilder.h>
+#include "StringBuilder.h"
 
 
 const char* const getFilterStr(FilteringStrategy x) {

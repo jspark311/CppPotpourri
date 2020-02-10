@@ -32,7 +32,7 @@ Some functions are #pragma'd to stop the compiler from complaining about nullptr
 #include <inttypes.h>
 
 #if defined(ARDUINO)
-  #include "Arduino.h"
+  #include <Arduino.h>
 #elif defined(__MANUVR_LINUX)
   #include <stdlib.h>
   #include <pthread.h>
