@@ -4,29 +4,37 @@ An architecture-agnostic package of discrete solutions to common problems in Ard
 
 ----------------------
 
+## Generally useful things
+
+The library's main header (CppPotpourri.h) contains some basic things that I use as a premise
+elsewhere in the library. Mostly inlines for type-safe min/max functions.
+
+There is also a type-code enum system in use in this library.
+
+
 ## Data Structures
 
-#### StringBuilder
+#### [StringBuilder](extras/doc/StringBuilder.md)
 
 A library for dynamic string abstraction.
 
-#### LightLinkedList
+#### [LightLinkedList](extras/doc/LightLinkedList.md)
 
 A template for a linked list.
 
-#### PriorityQueue
+#### [PriorityQueue](extras/doc/PriorityQueue.md)
 
 A template for a priority queue.
 
-#### RingBuffer
+#### [RingBuffer](extras/doc/RingBuffer.md)
 
 A template for a ring buffer.
 
-#### Vector3
+#### [Vector3](extras/doc/Vector3.md)
 
 A template for vectors in 3-space.
 
-#### (StopWatch)[extras/doc/StopWatch.md]
+#### [StopWatch](extras/doc/StopWatch.md)
 
 A class for implementing a stop watch from the platform's notion of microseconds.
 
@@ -51,6 +59,7 @@ These have no dependencies outside of those normally supplied by the environment
   * StringBuilder
   * Vector3<T>
   * LightLinkedList<T>
+  * PriorityQueue<T>
   * RingBuffer<T>
 
 #### High-level classes
@@ -62,10 +71,6 @@ These have dependency on other classes in this repo
       +---StringBuilder
       |
       +---LightLinkedList
-
-    PriorityQueue<T>
-      |
-      +---StringBuilder
 
     SensorFilter<T>
       |

@@ -24,11 +24,13 @@ limitations under the License.
 
 #include <inttypes.h>
 #include <stdint.h>
-#include <Arduino.h>
+#if defined (ARDUINO)
+  #include <Arduino.h>
+#endif
 #include <StringBuilder.h>
 #include "Vector3.h"
 
-#define FILTER_MAX_ELEMENTS   8000
+#define FILTER_MAX_ELEMENTS   8000  // Arbitrary.
 
 class StringBuilder;
 

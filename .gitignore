@@ -1,0 +1,10 @@
+.directory
+*.gch
+*.o
+*.a
+*.map
+
+# Example binaries
+
+# Generated doc
+extras/doc/doxygen/
