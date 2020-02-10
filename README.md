@@ -26,7 +26,7 @@ A template for a ring buffer.
 
 A template for vectors in 3-space.
 
-#### StopWatch
+#### (StopWatch)[extras/doc/StopWatch.md]
 
 A class for implementing a stop watch from the platform's notion of microseconds.
 
