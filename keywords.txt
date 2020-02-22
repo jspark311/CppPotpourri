@@ -4,10 +4,29 @@
 
 #########################################
 # Datatypes (StringBuilder)
-StringBuilder      KEYWORD1
+StringBuilder       KEYWORD1
 
 # Datatypes (SensorFilter)
-SensorFilter       KEYWORD1
+SensorFilter        KEYWORD1
+
+# Datatypes (StopWatch)
+StopWatch           KEYWORD1
+
+# Datatypes (ParsingConsole)
+consoleErrCallback  KEYWORD1
+ConsoleCommand      KEYWORD1
+ParsingConsole      KEYWORD1
+
+# Datatypes (Vector3)
+Vector3             KEYWORD1
+Vector3i16          KEYWORD1
+Vector3ui16         KEYWORD1
+Vector3i            KEYWORD1
+Vector3ui           KEYWORD1
+Vector3l            KEYWORD1
+Vector3ul           KEYWORD1
+Vector3f            KEYWORD1
+Vector3f64          KEYWORD1
 
 
 #########################################
@@ -51,8 +70,61 @@ rmsValue           KEYWORD2
 getFilterStr       KEYWORD2
 
 # Methods and Functions (ParsingConsole)
+feed               KEYWORD2
+poll               KEYWORD2
+fetchLog           KEYWORD2
+printToLog         KEYWORD2
+printHelp          KEYWORD2
+printHistory       KEYWORD2
+defineCommand      KEYWORD2
+errorCallback      KEYWORD2
+clearHistory       KEYWORD2
+maxHistoryDepth    KEYWORD2
+historyDepth       KEYWORD2
+logLength          KEYWORD2
+setTXTerminator    KEYWORD2
+setRXTerminator    KEYWORD2
+getTXTerminator    KEYWORD2
+getRXTerminator    KEYWORD2
+localEcho          KEYWORD2
+forceReturn        KEYWORD2
+emitPrompt         KEYWORD2
+historyFail        KEYWORD2
+hasColor           KEYWORD2
+errToStr           KEYWORD2
+typecodeToStr      KEYWORD2
+
+# Methods and Functions (StopWatch)
+bestTime           KEYWORD2
+lastTime           KEYWORD2
+worstTime          KEYWORD2
+meanTime           KEYWORD2
+totalTime          KEYWORD2
+executions         KEYWORD2
+markStart          KEYWORD2
+markStop           KEYWORD2
+reset              KEYWORD2
+printDebug         KEYWORD2
+printDebugHeader   KEYWORD2
+
+
+# Methods and Functions (Vector3)
+normalize          KEYWORD2
+normalized         KEYWORD2
+reflect            KEYWORD2
+project            KEYWORD2
+projected          KEYWORD2
+angle              KEYWORD2
+angle_normalized   KEYWORD2
 
 
 #########################################
 # Constants (SensorFilter)
 FilteringStrategy  LITERAL1
+
+# Constants (ParsingConsole)
+LineTerm           LITERAL1
+ConsoleErr         LITERAL1
+
+# Constants (Vector3)
+GnomonType         LITERAL1

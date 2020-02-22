@@ -24,6 +24,7 @@ limitations under the License.
 #if defined (ARDUINO)
   #include <Arduino.h>
 #else
+  // The platform needs to supply this function.
   extern uint32_t micros();
 #endif
 
