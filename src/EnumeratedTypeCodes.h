@@ -52,4 +52,17 @@ enum class TCode : uint8_t {
 };
 
 
+// This might work, but it doesn't allow us to derive other units from enum code alone.
+// Would rather avoid lots of executable logic for accomplishing conversions.
+//enum class UnitCode : uint8_t {
+//  SECONDA       = 0x00,
+//  METERS        = 0x01,
+//  GRAMS         = 0x02,    // SI base unit is Kg. But makes logic harder.
+//  AMPERES       = 0x03,
+//  KELVIN        = 0x04,
+//  MOL           = 0x05,
+//  CANDELA       = 0x06
+//};
+
+
 #endif // __ENUMERATED_TYPE_CODES_H__

@@ -38,6 +38,10 @@ A template for vectors in 3-space.
 
 A class for implementing a stop watch from the platform's notion of microseconds.
 
+#### [Quaternion](extras/doc/Quaternion.md)
+
+A class for encapsulating quaternions. Not as nice as Vector3 yet.
+
 ## High-level processing libraries
 
 #### SensorFilter
@@ -57,6 +61,7 @@ A library for a configurable serial console.
 These have no dependencies outside of those normally supplied by the environment.
 
   * StringBuilder
+  * Quaternion
   * Vector3<T>
   * LightLinkedList<T>
   * PriorityQueue<T>

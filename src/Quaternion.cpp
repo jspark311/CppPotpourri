@@ -86,24 +86,13 @@ void Quaternion::setDown(float n_x, float n_y, float n_z) {
   z = cp_z * sin_theta;
 }
 
-/**
-* TODO: Is this output order correct?
-*/
-void Quaternion::toString(StringBuilder *output) {
-  output->concat((unsigned char*) &w, 4);
-  output->concat((unsigned char*) &x, 4);
-  output->concat((unsigned char*) &y, 4);
-  output->concat((unsigned char*) &z, 4);
-
-}
-
 
 /**
 * TODO: Is this output order correct?
 */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdouble-promotion"
-void Quaternion::printDebug(StringBuilder *output) {
+void Quaternion::printDebug(StringBuilder* output) {
   output->concatf("(%2.5f, %2.5f, %2.5f, %2.5f) (x,y,z,w)", x, y, z, w);
 }
 #pragma GCC diagnostic pop
