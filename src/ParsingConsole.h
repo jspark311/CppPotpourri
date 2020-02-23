@@ -118,6 +118,7 @@ class ParsingConsole {
     int8_t init();
     int8_t feed(char);
     int8_t feed(uint8_t*, unsigned int);
+    inline int8_t feed(char* s) {    return feed((uint8_t*) s, strlen(s));    };
     int8_t poll();
     void   fetchLog(StringBuilder*);
     void   printToLog(StringBuilder*);
@@ -149,6 +150,8 @@ class ParsingConsole {
     inline void forceReturn(bool x) {  return _console_set_flag(CONSOLE_FLAG_FORCE_RETURN, x);  };
     inline bool emitPrompt() {         return _console_flag(CONSOLE_FLAG_EMIT_PROMPT);          };
     inline void emitPrompt(bool x) {   return _console_set_flag(CONSOLE_FLAG_EMIT_PROMPT, x);   };
+    inline void setPromptString(const char* str) {    _prompt_string = (char*) str;   };
+
     inline bool historyFail() {        return _console_flag(CONSOLE_FLAG_HISTORY_FAIL);         };
     inline void historyFail(bool x) {  return _console_set_flag(CONSOLE_FLAG_HISTORY_FAIL, x);  };
     inline bool hasColor() {           return _console_flag(CONSOLE_FLAG_HAS_ANSI);             };

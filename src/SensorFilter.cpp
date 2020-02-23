@@ -197,7 +197,7 @@ void MeanFilter3::printFilter(StringBuilder* output, bool csv) {
 
 
 int8_t MeanFilter3::_reallocate_sample_window(uint16_t win) {
-  uint16_t normd_win = strict_min(win, FILTER_MAX_ELEMENTS);
+  uint16_t normd_win = strict_min((uint16_t) win, (uint16_t) FILTER_MAX_ELEMENTS);
   if (normd_win != window_size) {
     window_size = normd_win;
     window_full = false;
@@ -231,9 +231,9 @@ int8_t MeanFilter3::_calculate_rms() {
   if ((window_size > 1) && (nullptr != samples)) {
     double squared_samples[3] = {0.0, 0.0, 0.0};
     for (uint16_t i = 0; i < window_size; i++) {
-      squared_samples[0] += sq(samples[i].x);
-      squared_samples[1] += sq(samples[i].y);
-      squared_samples[2] += sq(samples[i].z);
+      squared_samples[0] += samples[i].x * samples[i].x;
+      squared_samples[1] += samples[i].y * samples[i].y;
+      squared_samples[2] += samples[i].z * samples[i].z;
     }
     rms(
       sqrt(squared_samples[0] / window_size),
@@ -256,9 +256,9 @@ int8_t MeanFilter3::_calculate_stdev() {
   if ((window_size > 1) && (nullptr != samples)) {
     double deviation_sum[3] = {0.0, 0.0, 0.0};
     for (uint16_t i = 0; i < window_size; i++) {
-      deviation_sum[0] += sq(samples[i].x - running_average.x);
-      deviation_sum[1] += sq(samples[i].y - running_average.y);
-      deviation_sum[2] += sq(samples[i].z - running_average.z);
+      deviation_sum[0] += (samples[i].x * samples[i].x) - running_average.x;
+      deviation_sum[1] += (samples[i].y * samples[i].y) - running_average.y;
+      deviation_sum[2] += (samples[i].z * samples[i].z) - running_average.z;
     }
     stdev(
       sqrt(deviation_sum[0] / window_size),
@@ -356,7 +356,7 @@ void MedianFilter3::printFilter(StringBuilder* output, bool csv) {
 
 
 int8_t MedianFilter3::_reallocate_sample_window(uint16_t win) {
-  uint16_t normd_win = strict_min(win, FILTER_MAX_ELEMENTS);
+  uint16_t normd_win = strict_min((uint16_t) win, (uint16_t) FILTER_MAX_ELEMENTS);
   if (normd_win != window_size) {
     window_size = normd_win;
     window_full = false;
