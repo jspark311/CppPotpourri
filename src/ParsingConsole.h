@@ -20,9 +20,9 @@ limitations under the License.
 
 #include <inttypes.h>
 #include <stdint.h>
-#include <StringBuilder.h>
-#include <LightLinkedList.h>
-#include <EnumeratedTypeCodes.h>
+#include "StringBuilder.h"
+#include "LightLinkedList.h"
+#include "EnumeratedTypeCodes.h"
 
 #ifndef __PARSING_CONSOLE_H__
 #define __PARSING_CONSOLE_H__

@@ -65,4 +65,7 @@ enum class TCode : uint8_t {
 //};
 
 
+// Shorthand for a pointer to a "void fxn(void)"
+typedef void  (*FxnPointer)();
+
 #endif // __ENUMERATED_TYPE_CODES_H__
