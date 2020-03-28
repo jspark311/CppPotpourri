@@ -194,6 +194,16 @@ int8_t ParsingConsole::defineCommand(const char* c, const char sc, const TCode* 
   return -1;
 }
 
+
+int8_t ParsingConsole::defineCommand(const ConsoleCommand* cmd) {
+  if (nullptr != cmd) {
+    _max_cmd_len = strict_max(_max_cmd_len, strlen(cmd->cmd));
+    _cmd_list.insert((ConsoleCommand*) cmd);
+    return 0;
+  }
+  return -1;
+}
+
 /*
 * This allows all commands to be defined in a single call from a (possibly) flash-resident array
 *   of ConsoleCommand objects.

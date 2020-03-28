@@ -30,8 +30,6 @@ This class is a generic interface to a sensor. That sensor might measure many th
 #include <string.h>
 
 #include "StringBuilder.h"
-#include "PriorityQueue.h"
-#include "uuid.h"
 #include "cbor-cpp/cbor.h"
 #include "EnumeratedTypeCodes.h"
 
@@ -61,6 +59,14 @@ typedef void (*SensorCallBack) (SensorWrapper*);
 #define MANUVR_SENSOR_FLAG_INITIALIZED      0x0004  // Registers are initialized.
 #define MANUVR_SENSOR_FLAG_ENABLED          0x0008  // Device is measuring.
 #define MANUVR_SENSOR_FLAG_CALIBRATED       0x1000
+
+
+/* Sensors can automatically report their values. */
+enum class SensorParameter : uint8_t {
+  UNDEFINED          = 0,
+  AUTOGAIN           = 1,   // 0 or 1
+  SAMPLE_PERIOD      = 7    // milliseconds
+};
 
 
 /* Sensors can automatically report their values. */

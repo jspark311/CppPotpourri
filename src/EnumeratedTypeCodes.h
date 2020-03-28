@@ -71,4 +71,13 @@ enum class UnitCode : uint8_t {
 // Shorthand for a pointer to a "void fxn(void)"
 typedef void  (*FxnPointer)();
 
+
+/* Physical and mathematical constants. */
+#define SPEED_OF_LIGHT      299792458    // Given in vacuum in m/s
+
+#ifndef PI
+  #define PI 3.141592653589793238463
+#endif
+
+
 #endif // __ENUMERATED_TYPE_CODES_H__

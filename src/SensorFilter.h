@@ -135,8 +135,8 @@ template <typename T> class SensorFilter3 {
     inline uint16_t    windowSize() {    return window_size;     };
     inline bool        dirty() {         return filter_dirty;    };
     inline bool        initialized() {   return filter_initd;    };
-    inline Vector3f64* rmsValue() {      return rms;             };
-    inline Vector3f64* stdevValue() {    return stdev;           };
+    inline Vector3f64* rmsValue() {      return &rms;            };
+    inline Vector3f64* stdevValue() {    return &stdev;          };
 
 
   private:
@@ -596,7 +596,7 @@ template <typename T> int8_t SensorFilter3<T>::setStrategy(FilteringStrategy s) 
 
 
 template <typename T> void SensorFilter3<T>::printFilter(StringBuilder* output) {
-  char* lv_label = "Value";
+  const char* lv_label;
   output->concatf(FILTER_HEADER_STRING, getFilterStr(strategy()));
   output->concatf("\tInitialized:  %c\n",   initialized() ? 'y':'n');
   output->concatf("\tDirty:        %c\n",   filter_dirty ? 'y':'n');
@@ -605,8 +605,6 @@ template <typename T> void SensorFilter3<T>::printFilter(StringBuilder* output) 
   output->concatf("\tMax             = %.8f\n", max_value);
   output->concatf("\tSample window   = %u\n",   window_size);
   switch (_strat) {
-    case FilteringStrategy::RAW:
-      break;
     case FilteringStrategy::MOVING_AVG:
       output->concatf("\tRMS             = (%.4f, %.4f, %.4f)\n", rms.x, rms.y, rms.z);
       output->concatf("\tSTDEV           = (%.4f, %.4f, %.4f)\n", stdev.x, stdev.y, stdev.z);
@@ -623,6 +621,9 @@ template <typename T> void SensorFilter3<T>::printFilter(StringBuilder* output) 
       break;
     case FilteringStrategy::QUANTIZER:
       lv_label = "Quantized value";
+      break;
+    default:
+      lv_label = "Value";
       break;
   }
   output->concatf("\t%15s = (%.4f, %.4f, %.4f)\n", lv_label, last_value.x, last_value.y, last_value.z);

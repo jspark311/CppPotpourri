@@ -132,6 +132,7 @@ class ParsingConsole {
 
     int8_t defineCommand(const char* c, const TCode* f, const char* h, const char* p, const uint8_t r, const consoleCallback);
     int8_t defineCommand(const char* c, const char sc, const TCode* f, const char* h, const char* p, const uint8_t r, const consoleCallback);
+    int8_t defineCommand(const ConsoleCommand* cmd);
     int8_t defineCommands(const ConsoleCommand* cmds, const int cmd_count);
     inline void errorCallback(consoleErrCallback ecb) {    errCB = ecb;   };
 
