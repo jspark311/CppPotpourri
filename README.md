@@ -42,9 +42,13 @@ A class for implementing a stop watch from the platform's notion of microseconds
 
 A class for encapsulating quaternions. Not as nice as Vector3 yet.
 
+#### [UUID](extras/doc/UUID.md)
+
+A collection of functions for common operations on UUIDs.
+
 ## High-level processing libraries
 
-#### SensorFilter
+#### SensorFilter and SensorFilter3
 
 A library for dynamic-depth filtering of scalar and vector quantities.
 
@@ -69,7 +73,7 @@ These have no dependencies outside of those normally supplied by the environment
 
 #### High-level classes
 
-These have dependency on other classes in this repo
+These have dependency on other classes in this repo...
 
     ParsingConsole
       |
@@ -81,7 +85,15 @@ These have dependency on other classes in this repo
       |
       +---StringBuilder
 
+    SensorFilter3<T>
+      |
+      +---StringBuilder
+
     StopWatch
+      |
+      +---StringBuilder
+
+    UUID
       |
       +---StringBuilder
 

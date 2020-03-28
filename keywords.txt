@@ -28,6 +28,9 @@ Vector3ul           KEYWORD1
 Vector3f            KEYWORD1
 Vector3f64          KEYWORD1
 
+# Datatypes (UUID)
+UUID                KEYWORD1
+
 
 #########################################
 # Methods and Functions (StringBuilder)
@@ -116,6 +119,15 @@ project            KEYWORD2
 projected          KEYWORD2
 angle              KEYWORD2
 angle_normalized   KEYWORD2
+
+
+# Methods and Functions (UUID)
+uuid_from_str      KEYWORD2
+uuid_to_str        KEYWORD2
+uuid_to_sb         KEYWORD2
+uuid_gen           KEYWORD2
+uuid_compare       KEYWORD2
+uuid_copy          KEYWORD2
 
 
 #########################################
