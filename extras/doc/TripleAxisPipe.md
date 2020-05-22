@@ -19,8 +19,8 @@ Suppose we had a 9-DOF sensor (Mag, Gyro, Accelerometer), and our application ne
 
 ```mermaid
 graph TD
-	A(Hardware Driver) -->|A/G/M data in SI units| B(Orientation Filter)
-	B -->|Orientation data| C(Median Filter)
+  A(Hardware Driver) -->|A/G/M data in SI units| B(Orientation Filter)
+  B -->|Orientation data| C(Median Filter)
   C -->|Filtered Orientation| D(Application)
 ```
 
@@ -30,8 +30,8 @@ Suppose we had a 9-DOF sensor (Mag, Gyro, Accelerometer), and our application ne
 
 ```mermaid
 graph TD
-	A(Hardware Driver) -->|A/G/M data in SI units| B(TripleAxisFork)
-	B -->|A/G/M data in SI units| C(Orientation Filter)
+  A(Hardware Driver) -->|A/G/M data in SI units| B(TripleAxisFork)
+  B -->|A/G/M data in SI units| C(Orientation Filter)
   B -->|A/G/M data in SI units| D(Compass)
   C -->|Orientation| E(Median Filter)
   D -->|Bearing data| Z(Application)
@@ -44,8 +44,8 @@ Suppose we had a simple accelerometer, and a discrete magnetometer and our appli
 
 ```mermaid
 graph TD
-	A(Accelerometer Driver) -->|Acc data in SI units| C(Compass)
-	B(Magnetometer Driver) -->|Mag data in SI units| C(Compass)
+  A(Accelerometer Driver) -->|Acc data in SI units| C(Compass)
+  B(Magnetometer Driver) -->|Mag data in SI units| C(Compass)
   C -->|Bearing data| Z(Application)
 ```
 
@@ -55,8 +55,8 @@ Extending the prior example to control for hardware relationships and difference
 
 ```mermaid
 graph TD
-	A(Accelerometer Driver) -->|Acc data in SI units| C(TripleAxisConvention)
-	B(Magnetometer Driver) -->|Mag data in SI units| D(TripleAxisConvention)
+  A(Accelerometer Driver) -->|Acc data in SI units| C(TripleAxisConvention)
+  B(Magnetometer Driver) -->|Mag data in SI units| D(TripleAxisConvention)
   C -->|Acc data in SI units| E(Compass)
   D -->|Mag data in SI units| E(Compass)
   E -->|Bearing data| Z(Application)
