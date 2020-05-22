@@ -6,14 +6,14 @@ An interchange interface and utility classes for exchange and processing of vect
 
 * 'Efferent:' Moving away from a specified point-of-reference. That is: an output. Efferent "exits".
 * 'Afferent:' Moving toward a specified point-of-reference. That is: an input. Afferent "arrives".
-* 'Source:' A link in the pipeline that only has efferent connections. Generally, a sensor of some sort.
+* 'Source:' A link in the pipeline that only has efferent connections. Generally, a sensor driver of some sort.
 * 'Sink:' A link in the pipeline that only has afferent connections. Generally, the application itself.
 
 ## Common problems in 3-axis sensors
 
 There are number of sensors modalities that return sophisticated data in three axes. Not only does this data typically share similar constraints and processing requirements, but it also relates to physical space and is used in the same kinds of pipelines.
 
-The drivers for these sensors are organized as "feed-forward" [pipelines](https://en.wikipedia.org/wiki/Pipeline_(computing)), which means that data is emitted once from the driver, and is processed in stages which may be parallel. Execution flow through the pipeline is rooted in the driver's intake function. This typically means the I/O callback or application-accessible `poll()` function.
+The drivers for these sensors are organized as "feed-forward" [pipelines](https://en.wikipedia.org/wiki/Pipeline_(computing)), which means that data is emitted once from the source, and is processed in stages which may be parallel. Execution flow through the pipeline is rooted in the driver's intake function. This typically means the I/O callback or application-accessible `poll()` function.
 
 Suppose we had a 9-DOF sensor (Mag, Gyro, Accelerometer), and our application needs orientation, with configurable filtering...
 
@@ -64,6 +64,14 @@ graph TD
 
 ----------------------
 
+#### Memory conventions in the pipeline
+
+To reduce the memory load of simply _having_ the pipeline, vectors are referred to, rather than passed on the stack as a `float` would be. Afferent data should never be mutated, nor copied needlessly. It should be assumed that the entire pipeline exists in a single thread, and that from any given stage, other stages in the efferent direction will never store pointers to data they receive on their afferent sides. Thus, it is safe for any stage in the pipeline to copy an afferent vector in its local execution stack, and pass a pointer to it downstream with `pushVector()`.
+
+Any classes or use-cases that need to violate these assumptions must account for the memory implications in their own local scope. `TripleAxisTerminus` is an example that violates the local-storage assumption, and `TripleAxisConvention` that violates the mutation assumption.
+
+----------------------
+
 #### Propagation of error
 
 All sensors have non-zero error in their measurements. And that error might be reduced or magnified by any stage of the pipeline that handles the data. So the pipeline supports parallel propagation of an optional error vector. If the vector is non-null, it should be handled appropriately in the class, and then relayed down the pipeline. This means that the application will only receive error information if every step in the pipeline handles it, starting at the sensor. So read those datasheets carefully.
@@ -74,13 +82,17 @@ All sensors have non-zero error in their measurements. And that error might be r
 
 All data that moves through the pipeline is assumed to be given in SI units. Data must have a corresponding enum in the library to be accepted. There is also a type `SpatialSense::UNITLESS` to accommodate special cases.
 
-Sensors are generally sources but (apart from terminology) there is no reason that they can't have afferent connections from other classes.
+Sensors are generally sources but (apart from terminology) there is no reason that they can't have afferent connections from other classes. Such a case might arise with sensors that have "integrated hubs", as do some Bosch and ST parts.
+
+Sources need not themselves implement any interfaces from the pipeline. They only need to call `pushVector()` with conforming parameters.
 
 ----------------------
 
 #### Pipeline sinks
 
-Writing a sink class is trivial, but there is a pipeline sink class called `TripleAxisTerminus` that makes a convenient end-point for delivery of vectors to the application layer. By defining a function with the signature...
+Writing a sink class is trivial, but there is a pipeline sink class called `TripleAxisTerminus` that makes a convenient end-point for delivery of vectors to the application layer. This sink holds a local copy of the last-known data and error, and provides a sequence number and timestamp of the last update.
+
+By defining a function with the signature...
 
     int8_t my_callback_fxn(SpatialSense s, Vector3f* dat, Vector3f* err, uint32_t seq_num);
 
