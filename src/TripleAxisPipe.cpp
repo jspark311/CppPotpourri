@@ -41,6 +41,7 @@ static const char* TripleAxisPipe::spatialSenseStr(SpatialSense s) {
     case SpatialSense::GYR:        return "GYR";
     case SpatialSense::MAG:        return "MAG";
     case SpatialSense::EULER_ANG:  return "EULER_ANG";
+    case SpatialSense::BEARING:    return "BEARING";
     default:
       break;
   }

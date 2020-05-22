@@ -56,6 +56,10 @@ A library for dynamic-depth filtering of scalar and vector quantities.
 
 A library for a configurable serial console.
 
+#### [TripleAxisPipe](extras/doc/TripleAxisPipe.md)
+
+An interchange interface and utility classes for exchange and processing of vector data.
+
 ----------------------
 
 ## Dependency graph
@@ -88,6 +92,8 @@ These have dependency on other classes in this repo...
     SensorFilter3<T>
       |
       +---StringBuilder
+      |
+      +---Vector3<T>
 
     StopWatch
       |
@@ -96,6 +102,14 @@ These have dependency on other classes in this repo...
     UUID
       |
       +---StringBuilder
+
+    TripleAxisPipe
+      |
+      +---StringBuilder
+      |
+      +---SensorFilter3<T>
+      |
+      +---Vector3<T>
 
 ----------------------
 

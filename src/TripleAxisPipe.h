@@ -37,7 +37,8 @@ enum class SpatialSense : uint8_t {
   ACC,          // Accelerometer. Data/error is given in m/s^2.
   GYR,          // Gyroscope. Data/error is given in rad/s.
   MAG,          // Magnetometer. Data/error is given in Teslas.
-  EULER_ANG     // Orientation (Roll, Pitch, Yaw). Data/error is given in radians.
+  EULER_ANG,    // Orientation (Roll, Pitch, Yaw). Data/error is given in radians.
+  BEARING       // Orientation on Earth (Mag-North, Mag-Dip, True-North). Data/error is given in radians.
   // TODO: Consider adding statistical and arithmetic intermediary results? EG, STDEV/RMS/MEAN/Etc...
 };
 
