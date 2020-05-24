@@ -11,7 +11,7 @@ An interchange interface and utility classes for exchange and processing of vect
 
 ## Common problems in 3-axis sensors
 
-There are number of sensors modalities that return sophisticated data in three axes. Not only does this data typically share similar constraints and processing requirements, but it also relates to physical space and is used in the same kinds of pipelines.
+There are number of sensor modalities that return sophisticated data in three axes. Not only does this data typically share similar constraints and processing requirements, but it also relates to physical space and is used in the same kinds of pipelines.
 
 The drivers for these sensors are organized as "feed-forward" [pipelines](https://en.wikipedia.org/wiki/Pipeline_(computing)), which means that data is emitted once from the source, and is processed in stages which may be parallel. Execution flow through the pipeline is rooted in the driver's intake function. This typically means the I/O callback or application-accessible `poll()` function.
 
@@ -38,7 +38,7 @@ graph TD
   E -->|Filtered Orientation| Z(Application)
 ```
 
-The data structure underlying pipeline assignments is an implicit single-linked list with the source of the data at the root. But afferent references to a given node may be replicated across data sources that feed that class. Thus, there is no need for a 2:1 afferent-to-efferent analog to this class.
+The data structure underlying pipeline assignments is an implicit single-linked list with the source of the data at the root. But afferent references to a given node may be replicated across data sources that feed that class. Thus, there is no need for a 2:1 afferent-to-efferent analog of this class.
 
 Suppose we had a simple accelerometer, and a discrete magnetometer and our application is a tilt-compensated compass...
 
@@ -141,15 +141,15 @@ An instance of `TripleAxisTerminus` that is constructed without a callback will 
 
 ----------------------
 
-#### A note about the Compass and SpatialSense::BEARING
+#### A note about TripleAxisCompass and SpatialSense::BEARING
 
-The `Compass` class generates three data points from magnetometer and (optionally) accelerometer and orientation data. The afferents to the Compass class are all proper vectors in 3-space. But the efferents from `Compass` are discrete pieces of information. Their positions in the vector are arbitrary and are defined the convention:
+The `TripleAxisCompass` class generates three data points from magnetometer and (optionally) accelerometer and orientation data. The afferents to the compass class are all proper vectors in 3-space. But the efferents are discrete pieces of information. Their positions in the vector are arbitrary and are defined the convention:
 
     Vector.x --> Magnetic North
     Vector.y --> Magnetic Dip
     Vector.z --> True North
 
-Values that `Compass` is not able to calculate will be fixed at 0. This is an epistemological weak-point that may be addressed by other means in the future.
+Values that `TripleAxisCompass` is not able to calculate will be fixed at 0. This is an epistemological weak-point that may be addressed by other means in the future.
 
 ----------------------
 

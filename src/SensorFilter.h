@@ -106,7 +106,6 @@ template <typename T> class SensorFilter {
 
 /*
 * Filters for linear sequences of vector values.
-* Pure virtual interface.
 */
 template <typename T> class SensorFilter3 {
   public:
@@ -137,6 +136,7 @@ template <typename T> class SensorFilter3 {
     inline bool        initialized() {   return filter_initd;    };
     inline Vector3f64* rmsValue() {      return &rms;            };
     inline Vector3f64* stdevValue() {    return &stdev;          };
+    inline uint32_t    memUsed() {       return (window_size * sizeof(T));  };
 
 
   private:
@@ -627,6 +627,17 @@ template <typename T> void SensorFilter3<T>::printFilter(StringBuilder* output) 
       break;
   }
   output->concatf("\t%15s = (%.4f, %.4f, %.4f)\n", lv_label, last_value.x, last_value.y, last_value.z);
+}
+
+
+/**
+* Add data to the filter.
+*
+* @param val The value to be fed to the filter.
+* @return -1 if filter not initialized, 0 on value acceptance, or 1 one acceptance with new result.
+*/
+template <typename T> int8_t SensorFilter3<T>::feedFilter(Vector3<T>* vect) {
+  return feedFilter(vect->x, vect->y, vect->z);
 }
 
 

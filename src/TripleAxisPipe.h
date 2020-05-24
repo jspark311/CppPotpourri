@@ -22,6 +22,7 @@ limitations under the License.
 #include <stdint.h>
 #include "Vector3.h"
 #include "StringBuilder.h"
+#include "SensorFilter.h"
 
 #ifndef __TRIPLE_AXIS_PIPE_H__
 #define __TRIPLE_AXIS_PIPE_H__
@@ -210,7 +211,6 @@ class TripleAxisTerminus : public TripleAxisPipe {
 
 
 /**
-* TODO:
 * An instantiable TripleAxisPipe that filters data from a single sense.
 * By default, this class will ignore (and decline to relay) all non-matching
 *   senses. But this behavior can be changed to ignore-with-relay.
@@ -220,6 +220,65 @@ class TripleAxisTerminus : public TripleAxisPipe {
 *   with a novel SpatialSense, as an orientation filter would.
 * The filtering functionality is provided by SensorFilter3.
 */
+
+//#define TRIP_AX_FLAG_CLASS_RELAY_CONFD_SENSE 0x01  // Relay data matching our configured sense.
+//#define TRIP_AX_FLAG_ASYNC_BREAK_UNTIL_POLL  0x02  // Don't send efferent data synchronously.
+//    uint8_t _flags       = 0;
+//    /* Flag manipulation inlines */
+//    inline uint8_t _class_flags() {                return _flags;           };
+//    inline bool _class_flag(uint8_t _flag) {       return (_flags & _flag); };
+//    inline void _class_clear_flag(uint8_t _flag) { _flags &= ~_flag;        };
+//    inline void _class_set_flag(uint8_t _flag) {   _flags |= _flag;         };
+//    inline void _class_set_flag(uint8_t _flag, bool nu) {
+//      if (nu) _flags |= _flag;
+//      else    _flags &= ~_flag;
+//    };
+
+class TripleAxisSingleFilter : public TripleAxisPipe, public SensorFilter3<float> {
+  public:
+    TripleAxisSingleFilter(
+      const SpatialSense s,    // Only feed these to the filter.
+      TripleAxisPipe* nxt,     // The efferent connection.
+      FilteringStrategy strat = FilteringStrategy::RAW, // Optional
+      int param0 = 0,  // Optional
+      int param1 = 0   // Optional
+    ) : SensorFilter3<float>(strat, param0, param1), _SENSE(s), _NXT(nxt) {};
+
+    ~TripleAxisSingleFilter() {};
+
+    inline void setNext(TripleAxisPipe* n) {        _NXT  = n;      };
+    inline Vector3f*    getData() {        return value();          };
+    inline Vector3f*    getError() {       return &_ERR;            };
+    inline bool         haveError() {      return _has_error;       };
+    inline bool         dataFresh() {      return dirty();          };
+
+    /**
+    * Atomic accessor with freshness management and return.
+    *
+    * @return 0 on success with stale data.
+    * @return 1 on success with fresh data.
+    */
+    int8_t getDataWithErr(Vector3f* d, Vector3f* e);
+
+    /**
+    * Behavior: If afferent data matches the SpatialSense the class was constructed with...
+    *   1) Adds the afferent vector to the filter's input without relaying it.
+    *   2) Sends the filter's output (if any is ready) to the efferent connection.
+    *
+    * @return -2 on push failure, -4 never, -3 on memory error, -1 on null NXT, or return code from downstream pushVector() fxn.
+    */
+    int8_t pushVector(SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
+    void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
+
+
+  private:
+    const SpatialSense _SENSE;
+    bool _has_error    = false;   // TODO: Move bools below into an integer field for alignment authority.
+    TripleAxisPipe* _NXT = nullptr;
+    Vector3f _ERR;
+};
+
+
 //class TripleAxisSingleFilter : public TripleAxisPipe {
 //};
 
