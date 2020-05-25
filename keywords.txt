@@ -6,6 +6,9 @@
 # Datatypes (StringBuilder)
 StringBuilder       KEYWORD1
 
+# Datatypes (TripleAxisPipe)
+TripleAxisTerminalCB KEYWORD1
+
 # Datatypes (SensorFilter)
 SensorFilter        KEYWORD1
 
@@ -57,6 +60,11 @@ cmpBinString       KEYWORD2
 printDebug         KEYWORD2
 printBuffer        KEYWORD2
 strcasestr         KEYWORD2
+
+# Methods and Functions (TripleAxisPipe)
+pushVector         KEYWORD2
+printPipe          KEYWORD2
+spatialSenseStr    KEYWORD2
 
 # Methods and Functions (SensorFilter)
 feedFilter         KEYWORD2
@@ -133,6 +141,9 @@ uuid_copy          KEYWORD2
 #########################################
 # Constants (SensorFilter)
 FilteringStrategy  LITERAL1
+
+# Constants (TripleAxisPipe)
+SpatialSense       LITERAL1
 
 # Constants (ParsingConsole)
 LineTerm           LITERAL1
