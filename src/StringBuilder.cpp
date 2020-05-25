@@ -1028,8 +1028,11 @@ StrLL* StringBuilder::_promote_collapsed_into_ll() {
 * Traverse the list and keep appending strings to the buffer.
 * Will prepend the str buffer if it is not nullptr.
 * Updates the length.
+*
+* @return 0 on success, or negative on failure.
 */
 void StringBuilder::_collapse_into_buffer() {
+  int8_t ret = 0;
   #if defined(__BUILD_HAS_PTHREADS)
     //pthread_mutex_lock(&_mutex);
   #elif defined(__BUILD_HAS_FREERTOS)
@@ -1038,8 +1041,10 @@ void StringBuilder::_collapse_into_buffer() {
   if (current != nullptr) {
     this->col_length = this->_total_str_len(this->root);
     if (this->col_length > 0) {
+      ret--;
       this->str = (uint8_t*) malloc(this->col_length + 1);
       if (this->str != nullptr) {
+        ret = 0;
         *(this->str + this->col_length) = '\0';
         int tmp_len = 0;
         while (current != nullptr) {
@@ -1057,4 +1062,5 @@ void StringBuilder::_collapse_into_buffer() {
     //pthread_mutex_unlock(&_mutex);
   #elif defined(__BUILD_HAS_FREERTOS)
   #endif
+  return ret;
 }
