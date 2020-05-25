@@ -56,6 +56,11 @@ A library for dynamic-depth filtering of scalar and vector quantities.
 
 A library for a configurable serial console.
 
+#### [Image](extras/doc/Image.md)
+
+A hard-fork of Adafruit's widespread graphics library with modifications to
+allow a frame buffer, and/or function as a software-only bitmap library.
+
 #### [TripleAxisPipe](extras/doc/TripleAxisPipe.md)
 
 An interchange interface and utility classes for exchange and processing of vector data.
@@ -84,6 +89,10 @@ These have dependency on other classes in this repo...
       +---StringBuilder
       |
       +---LightLinkedList
+
+    Image
+      |
+      +---StringBuilder
 
     SensorFilter<T>
       |
