@@ -35,25 +35,22 @@ template <class T> class RingBuffer {
     RingBuffer(const unsigned int c);  // Constructor takes the number of slots as its sole argument.
     ~RingBuffer();
 
-    void clear();     // Wipe the buffer.
-
     inline bool         allocated() {  return (nullptr != _pool);  };
     inline unsigned int capacity() {   return _CAPAC;              };
     inline unsigned int heap_use() {   return (_E_SIZE * _CAPAC);  };
     inline unsigned int vacancy() {    return (_CAPAC - _count);   };
 
     /* Returns an integer representing how many items are buffered. */
-    inline unsigned int count() {     return _count;  };
+    inline unsigned int count() {      return _count;              };
 
-    int insert(T);
-    T get();
-    T get(unsigned int idx);
+    void clear();       // Wipe the buffer.
+    int  insert(T);
+    T    get();
+    T    get(unsigned int idx);
 
-
-  protected:
-    const unsigned int _CAPAC;
 
   private:
+    const unsigned int _CAPAC;
     const unsigned int _E_SIZE;
     unsigned int _count;
     unsigned int _w;
@@ -62,8 +59,12 @@ template <class T> class RingBuffer {
 };
 
 
+
+/*
+* Constructor
+*/
 template <class T> RingBuffer<T>::RingBuffer(const unsigned int c) : _CAPAC(c), _E_SIZE(sizeof(T)) {
-  unsigned int s = _E_SIZE * _CAPAC;
+  const unsigned int s = _E_SIZE * _CAPAC;
   if (0 < s) {
     _pool = (uint8_t*) malloc(s);
   }
@@ -71,6 +72,9 @@ template <class T> RingBuffer<T>::RingBuffer(const unsigned int c) : _CAPAC(c), 
 }
 
 
+/*
+* Destructor
+*/
 template <class T> RingBuffer<T>::~RingBuffer() {
   _count = 0;
   free(_pool);
@@ -78,21 +82,28 @@ template <class T> RingBuffer<T>::~RingBuffer() {
 }
 
 
+/**
+* Drop all items from the buffer. Zeros all memory, if it is allocated.
+*/
 template <class T> void RingBuffer<T>::clear() {
   _w = 0;
   _r = 0;
   _count = 0;
-  for (unsigned int i = 0; i < (_E_SIZE * _CAPAC); i++) {
-    // TODO: We were almost certainly allocated on an alignment we
-    // can write longwords over...
-    *((uint8_t*) _pool + i) = 0x00;
+  if (nullptr != _pool) {
+    for (unsigned int i = 0; i < (_E_SIZE * _CAPAC); i++) {
+      // TODO: We were almost certainly allocated on an alignment we
+      // can write longwords over...
+      *((uint8_t*) _pool + i) = 0x00;
+    }
   }
 }
 
 
-/*
+/**
 * This template makes copies of whatever is passed into it. There is no reason
 *   for the caller to maintain local copies of data (unless T is a pointer).
+*
+* @return 0 on success, or negative on error.
 */
 template <class T> int RingBuffer<T>::insert(T d) {
   if (_count >= _CAPAC) {
@@ -110,6 +121,11 @@ template <class T> int RingBuffer<T>::insert(T d) {
 }
 
 
+/**
+* Remove and return the head of the ring.
+*
+* @return T(0) on failure, or the data at the front of the ring.
+*/
 template <class T> T RingBuffer<T>::get() {
   if (0 == _count) {
     return (T)0;
@@ -121,6 +137,11 @@ template <class T> T RingBuffer<T>::get() {
 }
 
 
+/**
+* Peek at a specific index in the ring without changing anything.
+*
+* @return T(0) on failure, or the data at the given index.
+*/
 template <class T> T RingBuffer<T>::get(unsigned int idx) {
   if ((0 == _count) || (idx > _CAPAC)) {
     return (T)0;
