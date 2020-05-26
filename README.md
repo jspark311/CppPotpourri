@@ -1,6 +1,6 @@
 # CppPotpourri
 
-An architecture-agnostic package of discrete solutions to common problems in Arduino.
+An architecture-agnostic package of discrete solutions to common problems in C++.
 
 ----------------------
 
@@ -48,13 +48,29 @@ A collection of functions for common operations on UUIDs.
 
 ## High-level processing libraries
 
-#### SensorFilter and SensorFilter3
+#### [SensorFilter and SensorFilter3](extras/doc/SensorFilter.md)
 
 A library for dynamic-depth filtering of scalar and vector quantities.
 
-#### ParsingConsole
+#### [ParsingConsole](extras/doc/ParsingConsole.md)
 
 A library for a configurable serial console.
+
+#### [BusQueue](extras/doc/BusQueue.md)
+
+A template for implementing I/O queues in a hardware-agnostic manner.
+
+#### [ElementPool](extras/doc/ElementPool.md)
+
+A template to implement a preallocation pool for heap-resident objects.
+
+#### [GPSWrapper](extras/doc/GPSWrapper.md)
+
+A class conversion of [minmea](https://github.com/cloudyourcar/minmea).
+
+#### [Storage](extras/doc/Storage.md)
+
+A hardware-agnostic abstraction for non-volatile storage.
 
 #### [Image](extras/doc/Image.md)
 
@@ -104,6 +120,34 @@ These have dependency on other classes in this repo...
       |
       +---Vector3<T>
 
+    TripleAxisPipe
+      |
+      +---StringBuilder
+      |
+      +---SensorFilter3<float>
+      |
+      +---Vector3<T>
+
+    GPSWrapper
+      |
+      +---StringBuilder
+
+    ElementPool<T>
+      |
+      +---RingBuffer<T*>
+
+    BusQueue<T>
+      |
+      +---ElementPool<T>
+      |
+      +---PriorityQueue<T*>
+      |
+      +---StringBuilder
+
+    Storage
+      |
+      +---StringBuilder
+
     StopWatch
       |
       +---StringBuilder
@@ -112,13 +156,15 @@ These have dependency on other classes in this repo...
       |
       +---StringBuilder
 
-    TripleAxisPipe
-      |
-      +---StringBuilder
-      |
-      +---SensorFilter3<T>
-      |
-      +---Vector3<T>
+----------------------
+
+## Building the documentation
+
+Documentation can be built with the supplied Doxyfile by running...
+
+    doxygen Doxyfile
+
+Doc will be output to `extras/doc/doxygen`.
 
 ----------------------
 

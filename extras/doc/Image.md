@@ -14,6 +14,13 @@ Adafruit's original [license](src/Image/LICENSE.md).
 * Added serialization functions.
 * Cleaned up class members. Booleans are now integer masks.
 
+#### Time/memory/capability trade-offs
+
+The addition of the framebuffer means this class's memory cost is several orders of magnitude larger than
+Adafruit's original. But it allows us to perform visual tricks like transparency and scrolling.
+
+Many of the SSD-specific hardware optimizations have been removed, but might be re-added in their respective drivers.
+
 #### Buffer-to-pixel relationship
 
                       Top
