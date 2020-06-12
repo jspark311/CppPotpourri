@@ -82,7 +82,7 @@ class WakeLock {
     * @return true if the call resulted in a state change.
     */
     bool acquire(uint32_t timeout_ms);
-    inline bool acquire();
+    inline bool acquire() {    return acquire(0);   };
 
 
     /*
