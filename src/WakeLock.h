@@ -101,7 +101,7 @@ class WakeLock {
 
 
   private:
-    const WakeLockable* _OWNER;
+    WakeLockable* _OWNER   = nullptr;
     uint16_t  _refs        = 0;
     uint8_t   _wl_flags    = 0;
 

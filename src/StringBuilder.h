@@ -171,6 +171,6 @@ class StringBuilder {
     void   _null_term_check();
     void   _destroy_str_ll(StrLL*);
     StrLL* _promote_collapsed_into_ll();
-    void   _collapse_into_buffer();
+    int8_t _collapse_into_buffer();
 };
 #endif  // __MANUVR_DS_STRING_BUILDER_H

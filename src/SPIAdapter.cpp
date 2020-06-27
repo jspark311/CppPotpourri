@@ -37,35 +37,8 @@ SPIAdapter::~SPIAdapter() {
 }
 
 
-/**
-* This fxn will either free() the memory associated with the SPIBusOp object, or it
-*   will return it to the preallocation queue.
-*
-* @param item The SPIBusOp to be reclaimed.
-*/
-void SPIAdapter::reclaim_queue_item(SPIBusOp* op) {
-  uintptr_t obj_addr = ((uintptr_t) op);
-  uintptr_t pre_min  = ((uintptr_t) preallocated_bus_jobs);
-  uintptr_t pre_max  = pre_min + (sizeof(SPIBusOp) * CONFIG_SPIADAPTER_PREALLOC_COUNT);
-
-  if ((obj_addr < pre_max) && (obj_addr >= pre_min)) {
-    // If we are in this block, it means obj was preallocated. wipe and reclaim it.
-    BusAdapter::return_op_to_pool(op);
-  }
-  else {
-    BusAdapter::reclaim_queue_item(op);
-  }
-
-  //flushLocalLog();
-}
-
-
 int8_t SPIAdapter::init() {
-  // Mark all of our preallocated SPI jobs as "No Reap" and pass them into the prealloc queue.
-  for (uint8_t i = 0; i < CONFIG_SPIADAPTER_PREALLOC_COUNT; i++) {
-    preallocated_bus_jobs[i].wipe();
-    preallocated.insert(&preallocated_bus_jobs[i]);
-  }
+  _memory_init();
   _adapter_set_flag(SPI_FLAG_QUEUE_IDLE);
   return bus_init();
 }
@@ -239,35 +212,6 @@ int8_t SPIAdapter::advance_work_queue() {
 
   //flushLocalLog();
   return return_value;
-}
-
-
-/**
-* Purges only the jobs belonging to the given device from the work_queue.
-* Leaves the currently-executing job.
-*
-* @param  dev  The device pointer that owns jobs we wish purged.
-*/
-void SPIAdapter::purge_queued_work_by_dev(BusOpCallback* dev) {
-  if (nullptr == dev) return;
-
-  if (work_queue.size() > 0) {
-    SPIBusOp* current = nullptr;
-    int i = 0;
-    while (i < work_queue.size()) {
-      current = work_queue.get(i);
-      if (current->callback == dev) {
-        current->abort(XferFault::QUEUE_FLUSH);
-        work_queue.remove(current);
-        reclaim_queue_item(current);
-      }
-      else {
-        i++;
-      }
-    }
-  }
-  // Lastly... initiate the next bus transfer if the bus is not sideways.
-  advance_work_queue();
 }
 
 

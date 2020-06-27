@@ -143,12 +143,10 @@ class SPIAdapter : public BusAdapter<SPIBusOp> {
     int8_t io_op_callback(BusOp*);
     int8_t queue_io_job(BusOp*);
     int8_t advance_work_queue();
-    void reclaim_queue_item(SPIBusOp*);
 
     int8_t service_callback_queue();
 
     int8_t init();
-    void purge_queued_work_by_dev(BusOpCallback *dev);   // Flush the work queue by callback match
     void printDebug(StringBuilder*);
     void printHardwareState(StringBuilder*);
 

@@ -1031,8 +1031,8 @@ StrLL* StringBuilder::_promote_collapsed_into_ll() {
 *
 * @return 0 on success, or negative on failure.
 */
-void StringBuilder::_collapse_into_buffer() {
-  int8_t ret = 0;
+int8_t StringBuilder::_collapse_into_buffer() {
+  int8_t ret = -1;
   #if defined(__BUILD_HAS_PTHREADS)
     //pthread_mutex_lock(&_mutex);
   #elif defined(__BUILD_HAS_FREERTOS)
@@ -1041,7 +1041,6 @@ void StringBuilder::_collapse_into_buffer() {
   if (current != nullptr) {
     this->col_length = this->_total_str_len(this->root);
     if (this->col_length > 0) {
-      ret--;
       this->str = (uint8_t*) malloc(this->col_length + 1);
       if (this->str != nullptr) {
         ret = 0;
@@ -1057,6 +1056,9 @@ void StringBuilder::_collapse_into_buffer() {
       }
     }
     this->_destroy_str_ll(this->root);
+  }
+  else {
+    ret = 0;
   }
   #if defined(__BUILD_HAS_PTHREADS)
     //pthread_mutex_unlock(&_mutex);

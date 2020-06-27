@@ -45,6 +45,7 @@ template <class T> class RingBuffer {
 
     void clear();       // Wipe the buffer.
     int  insert(T);
+    bool contains(T);
     T    get();
     T    get(unsigned int idx);
 
@@ -119,6 +120,31 @@ template <class T> int RingBuffer<T>::insert(T d) {
   _count++;
   return 0;
 }
+
+
+/**
+* This template makes copies of whatever is passed into it. There is no reason
+*   for the caller to maintain local copies of data (unless T is a pointer).
+*
+* @return 0 on success, or negative on error.
+*/
+template <class T> bool RingBuffer<T>::contains(T d) {
+  if (0 < _count) {
+    unsigned int cur_idx = _r;
+    uint8_t* compare = (uint8_t*) &d;
+    while (cur_idx != _w) {
+      uint8_t* current = (uint8_t*) (_pool + (cur_idx * _E_SIZE));
+      for (uint i = 0; i < _E_SIZE; i++) {
+        if (*(current + i) != *(compare + i)) {
+          return true;
+        }
+      }
+      cur_idx = (cur_idx % _CAPAC) + 1;   // TODO: Convert to pow(2) later and convert to bitmask.
+    }
+  }
+  return false;
+}
+
 
 
 /**
