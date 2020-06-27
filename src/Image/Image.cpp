@@ -1159,10 +1159,10 @@ void Image::charBounds(char c, uint32_t* x, uint32_t* y, uint32_t* minx, uint32_
         *x  = 0;                    // Reset x to zero,
         *y += _textsize * 8;         // advance y one line
       }
-      int x2 = *x + _textsize * 6 - 1; // Lower-right pixel of char
-      int y2 = *y + _textsize * 8 - 1;
-      if(x2 > *maxx) {  *maxx = x2;  }      // Track max x, y
-      if(y2 > *maxy) {  *maxy = y2;  }
+      int32_t x2 = *x + _textsize * 6 - 1; // Lower-right pixel of char
+      int32_t y2 = *y + _textsize * 8 - 1;
+      if(x2 > (int32_t) *maxx) {  *maxx = x2;  }      // Track max x, y
+      if(y2 > (int32_t) *maxy) {  *maxy = y2;  }
       if(*x < *minx) {  *minx = *x;  }      // Track min x, y
       if(*y < *miny) {  *miny = *y;  }
       *x += _textsize * 6;             // Advance x one char
@@ -1540,7 +1540,7 @@ void Image::drawEllipse(uint32_t x0, uint32_t y0, uint32_t v_axis, uint32_t h_ax
       if (y_top >= 0) {
         setPixel(i, y_top, color);
       }
-      if (y_bottom < y()) {
+      if (y_bottom < (int32_t) y()) {
         setPixel(i, y_bottom, color);
       }
     }

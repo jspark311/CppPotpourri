@@ -32,8 +32,8 @@ SPIAdapter::SPIAdapter(
 * Destructor. Should never be called.
 */
 SPIAdapter::~SPIAdapter() {
-  bus_deinit();
   purge_queued_work();
+  bus_deinit();
 }
 
 

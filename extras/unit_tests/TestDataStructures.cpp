@@ -114,7 +114,7 @@ void printTypeSizes(StringBuilder* output) {
   output->concatf("\tvoid*                 %u\n", sizeof(void*));
   output->concatf("\tFloat                 %u\n", sizeof(float));
   output->concatf("\tDouble                %u\n", sizeof(double));
-  output->concat("\n-- Elemental data structures:\n");
+  output->concat("-- Elemental data structures:\n");
   output->concatf("\tStringBuilder         %u\n", sizeof(StringBuilder));
   output->concatf("\tVector3<float>        %u\n", sizeof(Vector3<float>));
   output->concatf("\tLinkedList<void*>     %u\n", sizeof(LinkedList<void*>));
@@ -122,7 +122,7 @@ void printTypeSizes(StringBuilder* output) {
   output->concatf("\tRingBuffer<void*>     %u\n", sizeof(RingBuffer<void*>));
   output->concatf("\tUUID                  %u\n", sizeof(UUID));
   output->concatf("\tStopWatch             %u\n", sizeof(StopWatch));
-  output->concatf("\tSensorFilter<float>   %u\n", sizeof(SensorFilter<float>));
+  output->concatf("\tSensorFilter<float>   %u\n\n", sizeof(SensorFilter<float>));
 }
 
 
