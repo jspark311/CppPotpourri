@@ -3,7 +3,7 @@
 # Author: J. Ian Lindsay
 # Date:   2020.06.26
 ###########################################################################
-OPTIMIZATION       = -O1
+OPTIMIZATION       = -O0 -g -fprofile-arcs -ftest-coverage --coverage
 C_STANDARD         = gnu99
 CPP_STANDARD       = gnu++11
 CFLAGS             = -Wall
@@ -22,6 +22,7 @@ export GCOV    = $(shell which gcov)
 # This is where we will store compiled libs and the final output.
 export BUILD_ROOT    = $(shell pwd)
 export OUTPUT_PATH   = $(BUILD_ROOT)/build/
+export COVERAGE_PATH = $(BUILD_ROOT)/build/coverage
 
 ###########################################################################
 # Source files, includes, and linker directives...
@@ -30,15 +31,14 @@ INCLUDES    = -I$(BUILD_ROOT)/../../src
 
 SOURCES_TESTS_CPP  = TestDataStructures.cpp
 
-SOURCES_CPP = $(SOURCES_TESTS_CPP)
-SOURCES_CPP += ../../src/SensorFilter.cpp
+SOURCES_CPP  = ../../src/SensorFilter.cpp
 SOURCES_CPP += ../../src/StopWatch.cpp
 SOURCES_CPP += ../../src/StringBuilder.cpp
 SOURCES_CPP += ../../src/uuid.cpp
 SOURCES_CPP += ../../src/WakeLock.cpp
 
 CXXFLAGS  = -fsingle-precision-constant -Wdouble-promotion -fno-rtti -fno-exceptions
-CXXFLAGS += -D_GNU_SOURCE
+CXXFLAGS += -D_GNU_SOURCE -fprofile-dir=$(COVERAGE_PATH)
 
 LIBS  = -L$(OUTPUT_PATH) -lstdc++ -lm
 
@@ -53,9 +53,6 @@ COV_FILES = $(SOURCES_CPP:.cpp=.gcda) $(SOURCES_CPP:.cpp=.gcno)
 CXXFLAGS += $(INCLUDES) $(OPTIMIZATION) -std=$(CPP_STANDARD)
 ANALYZER_FLAGS  = $(INCLUDES)
 ANALYZER_FLAGS += --std=$(CPP_STANDARD) --report-progress --force -j6
-
-export ANALYZER_FLAGS
-export CXXFLAGS
 
 ###########################################################################
 # Are we on a 64-bit system? If so, we'll need to specify
@@ -75,8 +72,11 @@ LBITS = $(shell getconf LONG_BIT)
 ifeq ($(LBITS),64)
 	# This is no longer required on 64-bit platforms. But it is being retained in
 	#   case 32-bit problems need to be debugged.
-  CXXFLAGS += -m32
+  #CXXFLAGS += -m32
 endif
+
+export ANALYZER_FLAGS
+export CXXFLAGS
 
 
 ###########################################################################
@@ -85,25 +85,26 @@ endif
 
 .PHONY: all
 
-
 all: buildtests coverage
-	@echo 'Beginning test execution...'
-	@$(foreach test,$(TESTS),./$(OUTPUT_PATH)/$(test);)
 
-buildtests: outputpath $(OBJS)
-	@$(foreach test,$(TESTS),$(CXX) $(OBJS) -o $(OUTPUT_PATH)/$(test) $(CXXFLAGS) $(LDFLAGS);)
+buildtests: outputpath
+	@$(foreach test,$(TESTS),$(CXX) -Wl,--gc-sections -static $(CXXFLAGS) $(LIBS) $(SOURCES_CPP) $(test).cpp -o $(OUTPUT_PATH)/$(test);)
 	@echo 'Built tests:  $(TESTS)'
+	@echo 'Beginning test execution...'
+	@$(foreach test,$(TESTS),$(OUTPUT_PATH)/$(test);)
 
-coverage: outputpath $(TESTS)
-	$(GCOV) --demangled-names --preserve-paths --source-prefix $(BUILD_ROOT) $(SOURCES_CPP)
-	lcov --capture --directory ../../src --output-file $(OUTPUT_PATH)/coverage/coverage.info
-	genhtml $(OUTPUT_PATH)/coverage/coverage.info --output-directory $(OUTPUT_PATH)/coverage
+coverage: outputpath
+	$(GCOV) --object-directory $(COVERAGE_PATH) --preserve-paths --demangled-names $(SOURCES_CPP)
+	mv *.gcno $(COVERAGE_PATH)
+	lcov --capture --directory $(COVERAGE_PATH) --output-file $(COVERAGE_PATH)/coverage.info
+	genhtml $(COVERAGE_PATH)/coverage.info --output-directory $(COVERAGE_PATH)
 
-%.o : %.cpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $^
+lib: $(OBJS)
+	$(AR) -rvs $(OUTPUT_PATH)/CppPotpourri.a $(OBJS)
 
 outputpath:
 	mkdir -p $(OUTPUT_PATH)
+	mkdir -p $(COVERAGE_PATH)
 
 clean:
-	rm -rf $(OUTPUT_PATH) $(COV_FILES) $(OBJS) *.gcno *.gcda
+	rm -rf $(OUTPUT_PATH) $(OBJS) *.gcno *.gcda *.gcov
