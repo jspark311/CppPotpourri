@@ -72,7 +72,7 @@ LBITS = $(shell getconf LONG_BIT)
 ifeq ($(LBITS),64)
 	# This is no longer required on 64-bit platforms. But it is being retained in
 	#   case 32-bit problems need to be debugged.
-  #CXXFLAGS += -m32
+  CXXFLAGS += -m32
 endif
 
 export ANALYZER_FLAGS

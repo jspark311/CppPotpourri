@@ -166,12 +166,31 @@ These have dependency on other classes in this repo...
 
 Documentation can be built with the supplied Doxyfile by running...
 
+From the root of the repository, you can either...
+
     doxygen Doxyfile
+
+Or...
+
+    ~/CppPotpourri $ cd extras/doc/
+    ~/CppPotpourri/extras/doc/ $ make
 
 Doc will be output to `extras/doc/doxygen`.
 
 ----------------------
 
+## Running the unit tests and verifying coverage
+
+From the root of the repository, you can...
+
+    ~/CppPotpourri $ cd extras/unit_tests/
+    ~/CppPotpourri/extras/unit_tests/ $ make
+
+An instrumented build of the unit tests will be created and executed. If the unit tests executed without failures, the output will then be left as HTML in `CppPotpourri/extras/unit_tests/build/coverage`. Please file an issue if that isn't what happens.
+
+**NOTE:** The build will be forced to 32-bit, so if you aren't capable of building and running 32-bit binaries on your 64-bit machine, please don't file an issue. The library does, in fact, pass all tests under 64-bit. But because most usage is on 32-bit MCUs, the type sizes and unit tests should reflect that use-case. You can force a 64-bit build by commenting out the `-m32` line in the Makefile.
+
+----------------------
 #### License
 
 Original code is Apache 2.0.
