@@ -96,3 +96,15 @@ void BusOp::printBusOp(const char* print_name, BusOp* op, StringBuilder* output)
     StringBuilder::printBuffer(output, op->buffer(), op->bufferLen(), "\t ");
   }
 }
+
+
+void BusOp::_busop_wipe(BusOp* obj) {
+  // NOTE: Does not change _flags.
+  obj->callback      = nullptr;
+  obj->_buf          = nullptr;
+  obj->_buf_len      = 0;
+  obj->_extnd_flags  = 0;
+  obj->_xfer_state   = XferState::IDLE;
+  obj->_xfer_fault   = XferFault::NONE;
+  obj->_opcode       = BusOpcode::UNDEF;
+}

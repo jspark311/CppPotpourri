@@ -122,6 +122,8 @@ class BusOpCallback {
 */
 class BusOp {
   public:
+    BusOpCallback* callback = nullptr;  // Which class gets pinged when we've finished?
+
     /* Mandatory overrides from the BusOp interface... */
     virtual XferFault begin() =0;
     virtual void wipe() =0;
@@ -233,10 +235,11 @@ class BusOp {
     };
 
     /* Inlines for protected access... */
-    inline void      set_state(XferState nu) {     _xfer_state = nu;    };   // TODO: Bad. Should be protected. Why isn't it?
-    inline void      set_opcode(BusOpcode nu) {    _opcode = nu;        };   // TODO: Bad. Should be protected. Why isn't it?
-    inline XferState get_state() {                 return _xfer_state;  };
-    inline BusOpcode get_opcode() {                return _opcode;      };
+    inline void      set_state(XferState nu) {   _xfer_state = nu;    };   // TODO: Bad. Should be protected. Why isn't it?
+    inline void      set_opcode(BusOpcode nu) {  _opcode = nu;        };   // TODO: Bad. Should be protected. Why isn't it?
+    inline XferState get_state() {               return _xfer_state;  };
+    inline BusOpcode get_opcode() {              return _opcode;      };
+    inline bool      hasCallback() {             return (nullptr != callback);  };
 
     /* Inlines for object-style usage of static functions... */
     inline const char* getOpcodeString() {  return BusOp::getOpcodeString(_opcode);     };
@@ -251,6 +254,13 @@ class BusOp {
 
 
   protected:
+    uint8_t*  _buf          = 0;        // Pointer to the data buffer for the transaction.
+    uint16_t  _buf_len      = 0;        // How large is the above buffer?
+    uint16_t  _extnd_flags  = 0;        // Flags for the concrete class to use.
+
+
+    inline void set_fault(XferFault nu) {   _xfer_fault = nu;    };
+
     /* These inlines are for convenience of extending classes. */
     inline uint16_t _busop_flags() {                 return _extnd_flags;            };
     inline bool _busop_flag(uint16_t _flag) {        return (_extnd_flags & _flag);  };
@@ -261,18 +271,15 @@ class BusOp {
       else    _extnd_flags &= ~_flag;
     };
 
+    static void _busop_wipe(BusOp*);
+
 
   private:
-    BusOpCallback* callback = nullptr;  // Which class gets pinged when we've finished?
-    uint8_t*  _buf          = 0;        // Pointer to the data buffer for the transaction.
-    uint16_t  _buf_len      = 0;        // How large is the above buffer?
-    uint16_t  _extnd_flags  = 0;                 // Flags for the concrete class to use.
+    uint8_t   _flags        = 0;        // Encapsulated flags for all BusOp instances.
     BusOpcode _opcode       = BusOpcode::UNDEF;  // What is the particular operation being done?
     XferState _xfer_state   = XferState::UNDEF;  // What state is this transfer in?
     XferFault _xfer_fault   = XferFault::NONE;   // Fault code.
-    uint8_t   _flags        = 0;   // Encapsulated flags for all BusOp instances.
 };
-
 
 
 /*

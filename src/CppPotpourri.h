@@ -25,6 +25,9 @@ limitations under the License.
 #ifndef __CPPPOTPOURRI_H__
 #define __CPPPOTPOURRI_H__
 
+class StringBuilder;  // Forward declaration for buffer interchange.
+
+
 /*
 * Using macros for these purposes can generate some hilarious bugs. Using
 *   inlines gives us the benefit of strict type-checking at compile time, and
@@ -70,5 +73,90 @@ inline uint8_t  wrap_accounted_delta(uint8_t  a, uint8_t  b) {   return (a > b) 
 inline int32_t  wrap_accounted_delta(int32_t  a, int32_t  b) {   return (a > b) ? (a - b) : (b - a);   };
 inline int16_t  wrap_accounted_delta(int16_t  a, int16_t  b) {   return (a > b) ? (a - b) : (b - a);   };
 inline int8_t   wrap_accounted_delta(int8_t   a, int8_t   b) {   return (a > b) ? (a - b) : (b - a);   };
+
+
+/*
+* String constants
+*/
+#define PRINT_DIVIDER_1_STR "\n================================================================================\n"
+#define PRINT_DIVIDER_2_STR "\n--------------------------------------------------------------------------------\n"
+
+
+/*
+* Constants related to differentials in systems of time-keeping and other units.
+*/
+#define  LEAP_SECONDS_SINCE_EPOCH    27
+#define  CELCIUS_KELVIN_REBASE       273.15f
+
+
+/*
+* Enum for SI units.
+* TODO: This will likely be reworked to allow natural unit derivations.
+*/
+enum class SIUnit : uint8_t {
+  UNITLESS          = 0,
+  /* SI base units */
+  SECONDS           = 1,
+  METERS            = 2,
+  GRAMS             = 3,  // Kilograms breaks logical consistency. We use Grams.
+  AMPERES           = 4,
+  CELCIUS           = 5,  // Kelvin cleanly interconverts. We use Celcius.
+  MOLES             = 6,
+  CANDELAS          = 7,
+  /* Derived units */
+  HERTZ             = 8,
+  RADIANS           = 9,
+  STERADIANS        = 10,
+  NEWTONS           = 11,
+  PASCALS           = 12,
+  JOULES            = 13,
+  WATTS             = 14,
+  COULOMBS          = 15,
+  VOLTS             = 16,
+  FARADS            = 17,
+  OHMS              = 18,
+  WEBERS            = 19,
+  TESLAS            = 20,
+  LUMENS            = 21,
+  /* Units as related to time */
+  METERS_PER_SECOND          = 128,   // Speed
+  METERS_PER_SECOND_SQUARED  = 129,   // Acceleration
+  METERS_PER_SECOND_CUBED    = 130,   // Impulse
+  RADIANS_PER_SECOND         = 131,   // Angular velocity
+  RADIANS_PER_SECOND_SQUARED = 132,   // Angular acceleration
+  RADIANS_PER_SECOND_CUBED   = 133    // Angular impulse
+};
+
+
+/*
+* Interfaces and callback definitions in use throughout this library.
+*/
+
+/* An interface class for accepting a buffer. */
+class BufferAccepter {
+  public:
+    /**
+    * A class would implement this class to provide an interface for accepting a
+    *   formless buffer from another class.
+    * NOTE: This idea was the fundamental idea behind Manuvr's BufferPipe class,
+    *   which was not pure virtual, and carried far more implementation burden.
+    *
+    * @return -1 to reject buffer, 0 to accept without claiming, 1 to accept with claim.
+    */
+    virtual int8_t provideBuffer(StringBuilder* buf) =0;
+};
+
+
+/* An interface class for accepting a scalar value, with units. */
+class ScalarAccepter {
+  public:
+    /**
+    * A class would implement this class to provide an interface for accepting a
+    *   value from outside tagged with a real-world unit and error bars.
+    *
+    * @return -1 to reject buffer, 0 to accept without claiming, 1 to accept with claim.
+    */
+    virtual int8_t provideScalar(SIUnit, double value, double error) =0;
+};
 
 #endif // __CPPPOTPOURRI_H__
