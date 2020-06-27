@@ -34,7 +34,7 @@ limitations under the License.
 * Static class utility members
 *******************************************************************************/
 
-static const char* TripleAxisPipe::spatialSenseStr(SpatialSense s) {
+const char* TripleAxisPipe::spatialSenseStr(SpatialSense s) {
   switch (s) {
     case SpatialSense::UNITLESS:   return "UNITLESS";
     case SpatialSense::ACC:        return "ACC";
@@ -59,7 +59,7 @@ static const char* TripleAxisPipe::spatialSenseStr(SpatialSense s) {
 *
 * @return 0 on sucess on both sides of the fork, -1 on one failure, or -2 on two failures.
 */
-int8_t TripleAxisFork::pushVector(SpatialSense s, Vector3f* data, Vector3f* error = nullptr) {
+int8_t TripleAxisFork::pushVector(SpatialSense s, Vector3f* data, Vector3f* error) {
   int8_t ret = -2;
   if ((nullptr != _LEFT) && (0 == _LEFT->pushVector(s, data, error))) {
     ret++;

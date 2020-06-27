@@ -38,6 +38,8 @@ Some functions are #pragma'd to stop the compiler from complaining about nullptr
   #include <pthread.h>
 #elif defined(__BUILD_HAS_FREERTOS)
   #include "freertos/FreeRTOS.h"
+#else
+  #include <stdlib.h>
 #endif
 
 /* This is the class that holds a datum in the list. */

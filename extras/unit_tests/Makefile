@@ -36,6 +36,16 @@ SOURCES_CPP += ../../src/StopWatch.cpp
 SOURCES_CPP += ../../src/StringBuilder.cpp
 SOURCES_CPP += ../../src/uuid.cpp
 SOURCES_CPP += ../../src/WakeLock.cpp
+SOURCES_CPP += ../../src/Image/Image.cpp
+SOURCES_CPP += ../../src/cbor-cpp/cbor.cpp
+SOURCES_CPP += ../../src/BusQueue.cpp
+SOURCES_CPP += ../../src/GPSWrapper.cpp
+SOURCES_CPP += ../../src/ParsingConsole.cpp
+SOURCES_CPP += ../../src/Quaternion.cpp
+SOURCES_CPP += ../../src/Storage.cpp
+SOURCES_CPP += ../../src/TripleAxisPipe.cpp
+
+
 
 CXXFLAGS  = -fsingle-precision-constant -Wdouble-promotion -fno-rtti -fno-exceptions
 CXXFLAGS += -D_GNU_SOURCE -fprofile-dir=$(COVERAGE_PATH)
