@@ -37,8 +37,7 @@ I2CDevice::I2CDevice(uint8_t addr) : _dev_addr(addr) {
 */
 I2CDevice::~I2CDevice() {
   if (_bus) {
-    _bus->removeSlaveDevice(this);
-    _bus = nullptr;
+    _bus->purge_queued_work_by_dev(this);
   }
 };
 
@@ -84,21 +83,7 @@ int8_t I2CDevice::io_op_callahead(BusOp* _op) {
 * @return 0 on success, or appropriate error code.
 */
 int8_t I2CDevice::io_op_callback(BusOp* op) {
-  I2CBusOp* completed = (I2CBusOp*) op;
-  if (completed) {
-    #ifdef MANUVR_DEBUG
-    StringBuilder temp;
-    if (completed->get_opcode() == BusOpcode::RX) {
-      temp.concatf("Default callback (I2CDevice)\tReceived %d bytes from i2c slave.\n", completed->buf_len);
-    }
-    else {
-      temp.concatf("Default callback (I2CDevice)\tSent %d bytes to i2c slave.\n", completed->buf_len, completed->buf_len);
-    }
-    completed->printDebug(&temp);
-    if (temp.length() > 0) Kernel::log(&temp);
-    #endif
-  }
-  return 0;
+  return BUSOP_CALLBACK_NOMINAL;
 }
 
 
@@ -126,11 +111,6 @@ bool I2CDevice::disassignBusInstance() {
 /* This is to become the only interface because of its non-reliance on malloc(). */
 bool I2CDevice::writeX(int sub_addr, uint16_t len, uint8_t *buf) {
   if (_bus == nullptr) {
-    #ifdef MANUVR_DEBUG
-    StringBuilder _log;
-    _log.concatf("No bus assignment (i2c addr 0x%02x).\n", _dev_addr);
-    Kernel::log(&_log);
-    #endif
     return false;
   }
   I2CBusOp* nu = _bus->new_op(BusOpcode::TX, this);
@@ -143,11 +123,6 @@ bool I2CDevice::writeX(int sub_addr, uint16_t len, uint8_t *buf) {
 
 bool I2CDevice::readX(int sub_addr, uint8_t len, uint8_t *buf) {
   if (_bus == nullptr) {
-    #ifdef MANUVR_DEBUG
-    StringBuilder _log;
-    _log.concatf("No bus assignment (i2c addr 0x%02x).\n", _dev_addr);
-    Kernel::log(&_log);
-    #endif
     return false;
   }
   I2CBusOp* nu = _bus->new_op(BusOpcode::RX, this);

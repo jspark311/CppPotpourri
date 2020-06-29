@@ -179,7 +179,6 @@ This file is the tortured result of growing pains since the beginning of
   */
   class I2CBusOp : public BusOp {
     public:
-      I2CAdapter* device  = nullptr;   // TODO: Drop this in favor of superclass' adapterNum()
       int16_t sub_addr = -1;
       uint8_t dev_addr =  0;
 
@@ -206,6 +205,8 @@ This file is the tortured result of growing pains since the beginning of
       inline int8_t abort() {    return abort(XferFault::NO_REASON); }
       int8_t abort(XferFault);
 
+      inline void setAdapter(I2CAdapter* b) {  device = b;       };
+
       /**
       * Decide if we need to send a subaddress.
       *
@@ -215,6 +216,8 @@ This file is the tortured result of growing pains since the beginning of
 
 
     private:
+      I2CAdapter* device = nullptr;
+
       inline bool subaddr_sent() {  return _busop_flag(I2C_BUSOP_FLAG_SUBADDR);          };
       inline void subaddr_sent(bool x) {   _busop_set_flag(I2C_BUSOP_FLAG_SUBADDR, x);   };
   };
@@ -239,14 +242,9 @@ This file is the tortured result of growing pains since the beginning of
       void printDebug(StringBuilder*);
       void printHardwareState(StringBuilder*);
       void printPingMap(StringBuilder*);
-      void printDevs(StringBuilder*);
-      void printDevs(StringBuilder*, uint8_t dev_num);
 
       // Builds a special bus transaction that does nothing but test for the presence or absence of a slave device.
       void ping_slave_addr(uint8_t);
-
-      int8_t addSlaveDevice(I2CDevice*);     // Adds a new device to the bus.
-      int8_t removeSlaveDevice(I2CDevice*);  // Removes a device from the bus.
 
       // These are meant to be called from the bus jobs. They deal with specific bus functions
       //   that may or may not be present on a given platform.

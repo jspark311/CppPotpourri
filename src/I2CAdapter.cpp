@@ -64,10 +64,6 @@ I2CAdapter::I2CAdapter(const I2CAdapterOptions* o) : BusAdapter(o->adapter, I2CA
 
 I2CAdapter::~I2CAdapter() {
   busOnline(false);
-  while (dev_list.hasNext()) {
-    dev_list.get()->disassignBusInstance();
-    dev_list.remove();
-  }
 
   /* TODO: The work_queue destructor will take care of its own cleanup, but
      We should abort any open transfers prior to deleting this list. */
@@ -81,85 +77,6 @@ int8_t I2CAdapter::init() {
   _memory_init();
   for (uint16_t i = 0; i < 32; i++) ping_map[i] = 0;   // Zero the ping map.
   return bus_init();
-}
-
-
-
-/*******************************************************************************
-* Slave device management functions...                                         *
-*******************************************************************************/
-
-/*
-* Adds a new device to the bus.
-*/
-int8_t I2CAdapter::addSlaveDevice(I2CDevice* slave) {
-  int8_t return_value = I2C_ERR_SLAVE_NO_ERROR;
-  if (slave == nullptr) {
-    #if defined(MANUVR_DEBUG)
-    //Kernel::log("Slave is invalid.\n");
-    #endif
-    return_value = I2C_ERR_SLAVE_INVALID;
-  }
-  if (dev_list.contains(slave)) {    // Check for pointer eqivillence.
-    #if defined(MANUVR_DEBUG)
-    //Kernel::log("Slave device exists.\n");
-    #endif
-    return_value = I2C_ERR_SLAVE_EXISTS;
-  }
-  else if (get_slave_dev_by_addr(slave->_dev_addr) == I2C_ERR_SLAVE_NOT_FOUND) {
-    if (slave->assignBusInstance((I2CAdapter*) this)) {
-      int slave_index = dev_list.insert(slave);
-      if (slave_index == -1) {
-        #if defined(MANUVR_DEBUG)
-        //Kernel::log("Failed to insert somehow. Disassigning...\n");
-        #endif
-        slave->disassignBusInstance();
-        return_value = I2C_ERR_SLAVE_INSERTION;
-      }
-    }
-    else {
-      #if defined(MANUVR_DEBUG)
-      //Kernel::log("Op would clobber bus instance.\n");
-      #endif
-      return_value = I2C_ERR_SLAVE_ASSIGN_CLOB;
-    }
-  }
-  else {
-    #if defined(MANUVR_DEBUG)
-    //Kernel::log("Op would cause address collision with another slave device.\n");
-    #endif
-    return_value = I2C_ERR_SLAVE_COLLISION;
-  }
-  return return_value;
-}
-
-
-/*
-* Removes a device from the bus.
-*/
-int8_t I2CAdapter::removeSlaveDevice(I2CDevice* slave) {
-  int8_t return_value = I2C_ERR_SLAVE_NOT_FOUND;
-  if (dev_list.remove(slave)) {
-    slave->disassignBusInstance();
-    purge_queued_work_by_dev(slave);
-    return_value = I2C_ERR_SLAVE_NO_ERROR;
-  }
-  return return_value;
-}
-
-
-/*
-* Searches this busses list of bound devices for the given address.
-* Returns the posistion in the list, only because it is non-negative. This
-*   is only called to prevent address collision. Not fetch a device handle.
-*/
-int I2CAdapter::get_slave_dev_by_addr(uint8_t search_addr) {
-  for (int i = 0; i < dev_list.size(); i++) {
-    if (search_addr == dev_list.get(i)->_dev_addr) {
-      return i;
-    }
-  }
-  return I2C_ERR_SLAVE_NOT_FOUND;
 }
 
 
@@ -244,7 +161,7 @@ int8_t I2CAdapter::io_op_callback(BusOp* _op) {
 int8_t I2CAdapter::queue_io_job(BusOp* op) {
   I2CBusOp* nu = (I2CBusOp*) op;
   //nu->setVerbosity(getVerbosity());
-  nu->device = (I2CAdapter*)this;
+  nu->setAdapter(this);
   if (current_job) {
     // Something is already going on with the bus. Queue...
     work_queue.insert(nu);
@@ -258,10 +175,6 @@ int8_t I2CAdapter::queue_io_job(BusOp* op) {
         if (_thread_id) wakeThread(_thread_id);
         #endif
       }
-      //if (getVerbosity() > 6) {
-      //  nu->printDebug(&local_log);
-      //  Kernel::log(&local_log);
-      //}
     }
     else {
       //Kernel::staticRaiseEvent(&_queue_ready);   // Raise an event
@@ -289,7 +202,6 @@ int8_t I2CAdapter::advance_work_queue() {
   int8_t return_value = 0;
   bool recycle = busOnline();
   while (recycle) {
-    return_value++;
     recycle = false;
     if (current_job) {
       switch (current_job->get_state()) {
@@ -301,6 +213,7 @@ int8_t I2CAdapter::advance_work_queue() {
         case XferState::QUEUED:    // Bus op is idle and waiting for its turn. No bus control.
           if (!current_job->has_bus_control()) {
             current_job->begin();
+            return_value++;
           }
           break;
         case XferState::INITIATE:  // Waiting for initiation phase.
@@ -334,6 +247,7 @@ int8_t I2CAdapter::advance_work_queue() {
           //   pipeline I/O and processing. They must happen sequentially.
           current_job->execCB();
           reclaim_queue_item(current_job);   // Delete the queued work AND its buffer.
+          return_value++;
           current_job = nullptr;
           break;
       }
@@ -343,13 +257,10 @@ int8_t I2CAdapter::advance_work_queue() {
       // If there is nothing presently being serviced, we should promote an operation from the
       //   queue into the active slot and initiate it in the block below.
       current_job = work_queue.dequeue();
-      if (current_job) {
-        recycle = busOnline();
-      }
+      recycle = (nullptr != current_job);
     }
   }
-
-  //flushLocalLog();_
+  //flushLocalLog();
   return return_value;
 }
 
@@ -395,27 +306,6 @@ void I2CAdapter::printPingMap(StringBuilder *temp) {
       str_buf[30] = _ping_state_chr[(uint8_t) get_ping_state_by_addr(i + 0x0F)];
       temp->concat(str_buf);
     }
-  }
-  temp->concat("\n");
-}
-
-
-void I2CAdapter::printDevs(StringBuilder *temp, uint8_t dev_num) {
-  if (temp == nullptr) return;
-
-  if (dev_list.get(dev_num) != nullptr) {
-    temp->concat("\n\n");
-    dev_list.get(dev_num)->printDebug(temp);
-  }
-  else {
-    temp->concat("\n\nNot that many devices.\n");
-  }
-}
-
-
-void I2CAdapter::printDevs(StringBuilder *temp) {
-  for (int i = 0; i < dev_list.size(); i++) {
-    dev_list.get(i)->printDebug(temp);
   }
   temp->concat("\n");
 }
