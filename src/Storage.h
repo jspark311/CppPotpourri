@@ -32,8 +32,8 @@ TODO: Move to BusQueue for callback support? Might get really messy.
 
 #include "StringBuilder.h"
 
-#ifndef __MANUVR_PERSIST_LAYER_H__
-#define __MANUVR_PERSIST_LAYER_H__
+#ifndef __ABSTRACT_PERSIST_LAYER_H__
+#define __ABSTRACT_PERSIST_LAYER_H__
 
 /* Class flags */
 #define PL_FLAG_USES_FILESYSTEM      0x0001  // Medium is on top of a filesystem.
@@ -69,6 +69,17 @@ enum class StorageErr : int8_t {
 };
 
 
+/*
+* Callback definition for read completion.
+* Parameters are...
+*   An error code
+*   The key that was requested
+*   The data associated with the given key
+*/
+typedef int8_t (*StorageReadCallback)(StorageErr, const char* key, StringBuilder* data);
+
+
+
 /**
 * This class is a gateway to block-oriented I/O. It will almost certainly need
 *   to have some of its operations run asynchronously or threaded. We leave
@@ -82,7 +93,6 @@ class Storage {
     */
     virtual uint64_t   freeSpace() =0;  // How many bytes are availible for use?
     virtual StorageErr wipe()      =0;  // Call to wipe the data store.
-    virtual StorageErr flush()     =0;  // Blocks until commit completes.
 
     /* Raw buffer API. Might have more overhead on some platforms. */
     virtual StorageErr persistentWrite(const char*, uint8_t*, unsigned int, uint16_t) =0;
@@ -104,10 +114,16 @@ class Storage {
       return (_pl_flags & (PL_FLAG_BUSY_WRITE | PL_FLAG_BUSY_READ));
     };
 
+    inline void setReadCallback(StorageReadCallback cb) {
+      _read_cb = cb;
+    };
+
     static const char* const errStr(StorageErr);
 
 
   protected:
+    StorageReadCallback  _read_cb = nullptr;
+
     Storage() {};  // Protected constructor.
 
     virtual void printStorage(StringBuilder*);
@@ -127,4 +143,4 @@ class Storage {
     uint16_t  _pl_flags    = 0;
 };
 
-#endif // __MANUVR_PERSIST_LAYER_H__
+#endif // __ABSTRACT_PERSIST_LAYER_H__

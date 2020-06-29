@@ -36,6 +36,7 @@ This class in unidirectional in the sense that it only reads from the
 #include <math.h>
 
 #include "StringBuilder.h"
+#include "CppPotpourri.h"
 
 
 #define MINMEA_MAX_LENGTH          140
@@ -187,20 +188,19 @@ struct minmea_sentence_vtg {
 };
 
 
-
-
 /*
 * A BufferPipe that is specialized for parsing NMEA.
 * After enough successful parsing, this class will emit messages into the
 *   Kernel's general message queue containing framed high-level GPS data.
 */
-class GPSWrapper {
+class GPSWrapper : public BufferAccepter {
   public:
     GPSWrapper() {};
     ~GPSWrapper() {};
 
-    int8_t feed(StringBuilder* buf);
-    int8_t feed(uint8_t* buf, int len);
+    /* Implementation of BufferAccepter. */
+    int8_t provideBuffer(StringBuilder* buf);
+
     int8_t init();
     void printDebug(StringBuilder*);
 

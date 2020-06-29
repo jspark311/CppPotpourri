@@ -11,8 +11,8 @@ TODO: Finish conversion to RingBuffer, and put constraints on BusAdapter's init
   cycle WRT to memory.
 */
 
-#ifndef __MANUVR_BUS_QUEUE_H__
-#define __MANUVR_BUS_QUEUE_H__
+#ifndef __ABSTRACT_BUS_QUEUE_H__
+#define __ABSTRACT_BUS_QUEUE_H__
 
 #include <inttypes.h>
 #include <stdint.h>
@@ -527,4 +527,4 @@ template <class T> class BusAdapter : public BusOpCallback {
     uint8_t  _verbosity     = 0;  // How much log noise do we make?
 };
 
-#endif  // __MANUVR_BUS_QUEUE_H__
+#endif  // __ABSTRACT_BUS_QUEUE_H__

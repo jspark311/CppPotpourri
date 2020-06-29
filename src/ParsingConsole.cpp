@@ -106,6 +106,21 @@ int8_t ParsingConsole::init() {
 }
 
 
+/**
+* Takes a buffer from outside of this class. Typically a comm port.
+* Always takes ownership of the buffer to avoid needless copy and heap-thrash.
+*
+* @param  buf    A pointer to the buffer.
+* @return -1 to reject buffer, 0 to accept without claiming, 1 to accept with claim.
+*/
+int8_t ParsingConsole::provideBuffer(StringBuilder* incoming) {
+  // TODO: This is a proper choke-point for enforcement of inbound line termination.
+  _buffer.concatHandoff(incoming);
+  _process_buffer();  // TODO: Observe return code.
+  return 1;
+}
+
+
 int8_t ParsingConsole::feed(char c) {   return feed((uint8_t*) &c, 1);   }
 
 
@@ -115,6 +130,13 @@ int8_t ParsingConsole::feed(uint8_t* buf, unsigned int len) {
   if (localEcho()) {
     _log.concat(buf, len);
   }
+  ret = _process_buffer();
+  return ret;
+}
+
+
+int8_t ParsingConsole::_process_buffer() {
+  int8_t ret = -1;
   if (_buffer.length() > _MAX_LEN) {
     _buffer.clear();
     ret = -2;
@@ -145,7 +167,11 @@ int8_t ParsingConsole::feed(uint8_t* buf, unsigned int len) {
           _log.concat(_prompt_string);   // Write the prompt to the log.
         }
       }
-
+    }
+  }
+  if ((_log.length() > 0) && (nullptr != _output_target)) {
+    if (0 == _output_target->provideBuffer(&_log)) {
+      _log.clear();
     }
   }
   return ret;
@@ -158,6 +184,11 @@ int8_t ParsingConsole::feed(uint8_t* buf, unsigned int len) {
 void ParsingConsole::printToLog(StringBuilder* l) {
   if (nullptr != l) {
     _log.concatHandoff(l);
+  }
+  if (nullptr != _output_target) {
+    if (0 == _output_target->provideBuffer(&_log)) {
+      _log.clear();
+    }
   }
 }
 

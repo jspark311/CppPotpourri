@@ -20,13 +20,8 @@ limitations under the License.
 
 #include <inttypes.h>
 #include <stdint.h>
+#include "AbstractPlatform.h"
 
-#if defined (ARDUINO)
-  #include <Arduino.h>
-#else
-  // The platform needs to supply this function.
-  extern uint32_t micros();
-#endif
 
 
 #ifndef __STOP_WATCH_H__

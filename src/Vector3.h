@@ -51,7 +51,7 @@ Thank you, Bill and Michael!
 
 
 /*
-* If used in the context of gravity, means: "Which axis is down?"
+* If used in the context of gravity, means: "Which axis is up?"
 * If used in the context of magnetism, means: "Which axis is North?"
 */
 enum class GnomonType : uint8_t {

@@ -1,7 +1,7 @@
 /*
 File:   CppPotpourri.h
 Author: J. Ian Lindsay
-Date:   2020.02.20
+Date:   2020.01.20
 
 Copyright 2016 Manuvr, Inc
 
@@ -128,9 +128,13 @@ enum class SIUnit : uint8_t {
 };
 
 
-/*
+/*******************************************************************************
 * Interfaces and callback definitions in use throughout this library.
-*/
+*******************************************************************************/
+
+/* Callbacks for drivers that provide extra GPI pins. */
+typedef void (*PinCallback)(uint8_t pin, uint8_t level);
+
 
 /* An interface class for accepting a buffer. */
 class BufferAccepter {

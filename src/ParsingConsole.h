@@ -21,6 +21,7 @@ limitations under the License.
 #include <inttypes.h>
 #include <stdint.h>
 #include "StringBuilder.h"
+#include "CppPotpourri.h"
 #include "LightLinkedList.h"
 #include "EnumeratedTypeCodes.h"
 
@@ -110,15 +111,20 @@ typedef int (*consoleErrCallback)(StringBuilder*, ConsoleErr, ConsoleCommand*, S
 /*
 * This is the console class.
 */
-class ParsingConsole {
+class ParsingConsole : public BufferAccepter {
   public:
     ParsingConsole(const uint16_t max_len);
     ~ParsingConsole();
 
     int8_t init();
+
+    /* Implementation of BufferAccepter. */
+    int8_t provideBuffer(StringBuilder* buf);
+
     int8_t feed(char);
     int8_t feed(uint8_t*, unsigned int);
     inline int8_t feed(char* s) {    return feed((uint8_t*) s, strlen(s));    };
+
     int8_t poll();
     void   fetchLog(StringBuilder*);
     void   printToLog(StringBuilder*);
@@ -134,7 +140,8 @@ class ParsingConsole {
     int8_t defineCommand(const char* c, const char sc, const TCode* f, const char* h, const char* p, const uint8_t r, const consoleCallback);
     int8_t defineCommand(const ConsoleCommand* cmd);
     int8_t defineCommands(const ConsoleCommand* cmds, const int cmd_count);
-    inline void errorCallback(consoleErrCallback ecb) {    errCB = ecb;   };
+    inline void errorCallback(consoleErrCallback ecb) {  errCB = ecb;           };
+    inline void setOutputTarget(BufferAccepter* obj) {   _output_target = obj;  };
 
     // History management...
     void clearHistory();
@@ -174,6 +181,7 @@ class ParsingConsole {
     consoleErrCallback errCB = nullptr;    // Optional function pointer for failed commands.
     StringBuilder _buffer;     // Unused input is accumulated here.
     StringBuilder _log;        // Stores a log for retreival.
+    BufferAccepter* _output_target = nullptr;
     LinkedList<StringBuilder*>  _history;   // Stores a list of prior commands.
     LinkedList<ConsoleCommand*> _cmd_list;  // Stores a list of command definitions.
 
@@ -183,6 +191,7 @@ class ParsingConsole {
     ConsoleCommand* _cmd_def_lookup(char*);     // Get a command from our list by its name.
 
     bool _line_ending_rxd();
+    int8_t _process_buffer();
 
     /* Flag manipulation inlines */
     inline uint8_t _console_flags() {                return _flags;           };

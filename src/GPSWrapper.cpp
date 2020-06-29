@@ -94,33 +94,19 @@ static inline float minmea_tocoord(struct minmea_float *f) {
 *******************************************************************************/
 
 /**
-* Outward toward the application (or into the accumulator).
+* Takes a buffer from outside of this class. Typically a comm port.
+* Always takes ownership of the buffer to avoid needless copy and heap-thrash.
 *
 * @param  buf    A pointer to the buffer.
-* @return A declaration of memory-management responsibility.
+* @return -1 to reject buffer, 0 to accept without claiming, 1 to accept with claim.
 */
-int8_t GPSWrapper::feed(StringBuilder* buf) {
+int8_t GPSWrapper::provideBuffer(StringBuilder* buf) {
   _accumulator.concatHandoff(buf);
   if (MINMEA_MAX_LENGTH < _accumulator.length()) {
     _attempt_parse();
   }
-  return 0;
+  return 1;
 }
-
-/**
-* Outward toward the application (or into the accumulator).
-*
-* @param  buf    A pointer to the buffer.
-* @return A declaration of memory-management responsibility.
-*/
-int8_t GPSWrapper::feed(uint8_t* buf, int len) {
-  _accumulator.concat(buf, len);
-  if (MINMEA_MAX_LENGTH < _accumulator.length()) {
-    _attempt_parse();
-  }
-  return 0;
-}
-
 
 
 int8_t GPSWrapper::init() {
