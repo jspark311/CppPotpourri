@@ -41,6 +41,7 @@ inline uint8_t  strict_max(uint8_t  a, uint8_t  b) {  return (a > b) ? a : b; };
 inline int32_t  strict_max(int32_t  a, int32_t  b) {  return (a > b) ? a : b; };
 inline int16_t  strict_max(int16_t  a, int16_t  b) {  return (a > b) ? a : b; };
 inline int8_t   strict_max(int8_t   a, int8_t   b) {  return (a > b) ? a : b; };
+
 inline double   strict_min(double   a, double   b) {  return (a < b) ? a : b; };
 inline float    strict_min(float    a, float    b) {  return (a < b) ? a : b; };
 inline uint32_t strict_min(uint32_t a, uint32_t b) {  return (a < b) ? a : b; };
@@ -131,9 +132,12 @@ enum class SIUnit : uint8_t {
 /*******************************************************************************
 * Interfaces and callback definitions in use throughout this library.
 *******************************************************************************/
+/* Shorthand for a pointer to a "void fxn(void)" */
+typedef void  (*FxnPointer)();
 
 /* Callbacks for drivers that provide extra GPI pins. */
 typedef void (*PinCallback)(uint8_t pin, uint8_t level);
+
 
 
 /* An interface class for accepting a buffer. */

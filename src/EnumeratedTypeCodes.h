@@ -46,8 +46,13 @@ enum class TCode : uint8_t {
   JSON          = 0x0B,    // A JSON object. Semantic layer on STR.
   CBOR          = 0x0C,    // A CBOR object. Semantic layer on BINARY.
   URL           = 0x0D,    // An alias of string that carries the semantic 'URL'.
-  COLOR16       = 0x0E,    // 16-bit color data. Color is represented as RGB (565).
-  COLOR24       = 0x0F,    // 24-bit color data. Color is represented as RGB (888).
+  IDENTITY      = 0x0E,    // Identity.
+  AUDIO         = 0x0F,    // Audio stream
+  IMAGE         = 0x10,    // Image data
+  COLOR8        = 0x11,    // 16-bit color data. Color is represented as RGB (565).
+  COLOR16       = 0x12,    // 16-bit color data. Color is represented as RGB (565).
+  COLOR24       = 0x13,    // 24-bit color data. Color is represented as RGB (888).
+  COLOR32       = 0x14,    // 24-bit color data. Color is represented as RGB (888).
   RESERVED      = 0xFF     // Reserved for custom extension.
 };
 
@@ -68,16 +73,24 @@ enum class UnitCode : uint8_t {
 };
 
 
-// Shorthand for a pointer to a "void fxn(void)"
-typedef void  (*FxnPointer)();
-
-
 /* Physical and mathematical constants. */
-#define SPEED_OF_LIGHT      299792458    // Given in vacuum in m/s
+#define SPEED_OF_LIGHT         299792458  // Given in vacuum in m/s
+#define PRESSURE_AT_SEA_LEVEL  101325.0f  // Given in Pascals
+
 
 #ifndef PI
-  #define PI 3.141592653589793238463
+  #define PI 3.14159265358979323846264338327950288419716939937510
 #endif
+
+
+/*******************************************************************************
+* Support functions for dealing with type codes.                               *
+*******************************************************************************/
+
+/* Quick inlines to facilitate moving into and out of serialization. */
+inline uint8_t TcodeToInt(const TCode code) {   return (const uint8_t) code; };
+inline TCode IntToTcode(const uint8_t code) {   return (const TCode) code;   };
+
 
 
 #endif // __ENUMERATED_TYPE_CODES_H__

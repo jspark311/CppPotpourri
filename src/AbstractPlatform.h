@@ -41,7 +41,8 @@ enum class GPIOMode : uint8_t {
 enum class IRQCondition : uint8_t {
   FALLING   = 2,
   RISING    = 3,
-  CHANGE    = 4
+  CHANGE    = 4,
+  NONE      = 255
 };
 
 #if defined(ARDUINO)
