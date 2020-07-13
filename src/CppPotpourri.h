@@ -75,6 +75,13 @@ inline int32_t  wrap_accounted_delta(int32_t  a, int32_t  b) {   return (a > b) 
 inline int16_t  wrap_accounted_delta(int16_t  a, int16_t  b) {   return (a > b) ? (a - b) : (b - a);   };
 inline int8_t   wrap_accounted_delta(int8_t   a, int8_t   b) {   return (a > b) ? (a - b) : (b - a);   };
 
+/**
+* Endian conversion fxns
+*/
+inline uint16_t endianSwap16(uint16_t x) {   return __builtin_bswap16(x);    };
+inline uint32_t endianSwap32(uint32_t x) {   return __builtin_bswap32(x);    };
+inline uint64_t endianSwap64(uint64_t x) {   return __builtin_bswap64(x);    };
+
 
 /*
 * String constants
@@ -88,6 +95,15 @@ inline int8_t   wrap_accounted_delta(int8_t   a, int8_t   b) {   return (a > b) 
 */
 #define  LEAP_SECONDS_SINCE_EPOCH    27
 #define  CELCIUS_KELVIN_REBASE       273.15f
+
+
+/* Physical and mathematical constants. */
+#define SPEED_OF_LIGHT         299792458  // Given in vacuum in m/s
+#define PRESSURE_AT_SEA_LEVEL  101325.0f  // Given in Pascals
+
+#ifndef PI
+  #define PI 3.14159265358979323846264338327950288419716939937510
+#endif
 
 
 /*
@@ -137,7 +153,6 @@ typedef void  (*FxnPointer)();
 
 /* Callbacks for drivers that provide extra GPI pins. */
 typedef void (*PinCallback)(uint8_t pin, uint8_t level);
-
 
 
 /* An interface class for accepting a buffer. */

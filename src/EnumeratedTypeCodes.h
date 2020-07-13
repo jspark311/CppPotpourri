@@ -16,8 +16,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
-
 */
 
 // TODO: Might-should adopt some IANA standard code-spaces here? Is there a
@@ -52,35 +50,8 @@ enum class TCode : uint8_t {
   COLOR8        = 0x11,    // 16-bit color data. Color is represented as RGB (565).
   COLOR16       = 0x12,    // 16-bit color data. Color is represented as RGB (565).
   COLOR24       = 0x13,    // 24-bit color data. Color is represented as RGB (888).
-  COLOR32       = 0x14,    // 24-bit color data. Color is represented as RGB (888).
   RESERVED      = 0xFF     // Reserved for custom extension.
 };
-
-
-// This might work, but it doesn't allow us to derive other units from enum code alone.
-// Would rather avoid lots of executable logic for accomplishing conversions.
-// We are enabling this experiment. Don't get too used to it, because it will
-//   almost certainly change.
-enum class UnitCode : uint8_t {
-  /* SI base units */
-  SECONDS       = 0x00,    //
-  METERS        = 0x01,    //
-  GRAMS         = 0x02,    // SI base unit is Kg. But makes logic harder. Flout convention.
-  AMPERES       = 0x03,
-  KELVIN        = 0x04,
-  MOL           = 0x05,
-  CANDELA       = 0x06
-};
-
-
-/* Physical and mathematical constants. */
-#define SPEED_OF_LIGHT         299792458  // Given in vacuum in m/s
-#define PRESSURE_AT_SEA_LEVEL  101325.0f  // Given in Pascals
-
-
-#ifndef PI
-  #define PI 3.14159265358979323846264338327950288419716939937510
-#endif
 
 
 /*******************************************************************************
@@ -90,7 +61,6 @@ enum class UnitCode : uint8_t {
 /* Quick inlines to facilitate moving into and out of serialization. */
 inline uint8_t TcodeToInt(const TCode code) {   return (const uint8_t) code; };
 inline TCode IntToTcode(const uint8_t code) {   return (const TCode) code;   };
-
 
 
 #endif // __ENUMERATED_TYPE_CODES_H__
