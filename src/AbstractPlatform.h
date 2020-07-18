@@ -71,6 +71,8 @@ enum class IRQCondition : uint8_t {
 
   /* GPIO */
   int8_t pinMode(uint8_t pin, GPIOMode);
+  int8_t analogWrite(uint8_t pin, float percentage);
+  int8_t analogWriteFrequency(uint8_t pin, uint32_t freq);
   int8_t setPin(uint8_t pin, bool val);
   int8_t readPin(uint8_t pin);
   void   unsetPinFxn(uint8_t pin);

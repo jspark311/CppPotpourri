@@ -31,6 +31,7 @@ This class is a generic interface to a sensor. That sensor might measure many th
 
 #include "StringBuilder.h"
 #include "cbor-cpp/cbor.h"
+#include "CppPotpourri.h"
 #include "EnumeratedTypeCodes.h"
 
 class SensorWrapper;
@@ -113,7 +114,7 @@ enum class SensorError : int8_t {
 typedef struct sense_datum_def_t {
   const char* const desc;     // A brief description of the datum for humans.
   const TCode       type_id;  // The type of the data member.
-  const UnitCode    units;    // Real-world units that this datum measures.
+  const SIUnit      units;    // Real-world units that this datum measures.
   const uint16_t    flgs;     // Flags to preload into the datum.
 } DatumDef;
 
