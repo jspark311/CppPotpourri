@@ -25,7 +25,7 @@ limitations under the License.
 /**
 * Constructor
 */
-StopWatch::StopWatch() {
+StopWatch::StopWatch(uint32_t _t) : _tag(_t) {
   reset();
 }
 

@@ -32,6 +32,7 @@ This class is a generic interface to a sensor. That sensor might measure many th
 #include "StringBuilder.h"
 #include "cbor-cpp/cbor.h"
 #include "CppPotpourri.h"
+#include "AbstractPlatform.h"
 #include "EnumeratedTypeCodes.h"
 
 class SensorWrapper;
@@ -182,7 +183,7 @@ class SensorWrapper {
 
     /* Static functions */
     static const char* errorString(SensorError);
-    static void printSensorBasicInfo(const SensorWrapper*, StringBuilder*);
+    static void printSensorBasicInfo(SensorWrapper*, StringBuilder*);
 
 
   protected:

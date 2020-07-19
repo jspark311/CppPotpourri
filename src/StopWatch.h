@@ -23,7 +23,6 @@ limitations under the License.
 #include "AbstractPlatform.h"
 
 
-
 #ifndef __STOP_WATCH_H__
   #define __STOP_WATCH_H__
 
@@ -31,9 +30,10 @@ limitations under the License.
 
   class StopWatch {
     public:
-      StopWatch();       // Constructor. Calls reset().
-      ~StopWatch() {};   // Featureless destructor.
+      StopWatch(uint32_t tag = 0);   // Constructor. Assigns tag value. Calls reset().
+      ~StopWatch() {};           // Featureless destructor.
 
+      inline uint32_t tag() {          return _tag;                };
       inline uint32_t bestTime() {     return _run_time_best;      };
       inline uint32_t lastTime() {     return _run_time_last;      };
       inline uint32_t worstTime() {    return _run_time_worst;     };
@@ -49,6 +49,7 @@ limitations under the License.
 
 
     private:
+      uint32_t _tag;      // A slot for arbitrary application data.
       uint32_t _start_micros;
       uint32_t _run_time_last;
       uint32_t _run_time_best;
