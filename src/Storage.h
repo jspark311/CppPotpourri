@@ -122,7 +122,9 @@ class Storage {
 
 
   protected:
+    uint64_t  _free_space  = 0L;
     StorageReadCallback  _read_cb = nullptr;
+    uint16_t  _pl_flags    = 0;
 
     Storage() {};  // Protected constructor.
 
@@ -136,11 +138,6 @@ class Storage {
     inline void _pl_set_flag(bool nu, uint16_t _flag) {
       _pl_flags = (nu) ? (_pl_flags | _flag) : (_pl_flags & ~_flag);
     };
-
-
-  private:
-    uint64_t  _free_space  = 0L;
-    uint16_t  _pl_flags    = 0;
 };
 
 #endif // __ABSTRACT_PERSIST_LAYER_H__

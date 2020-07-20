@@ -24,6 +24,7 @@ limitations under the License.
 
 #include <inttypes.h>
 #include <stdint.h>
+
 #if defined (ARDUINO)
   #include <Arduino.h>
 #endif
@@ -433,7 +434,7 @@ template <typename T> T SensorFilter<T>::_calculate_rms() {
   if ((window_size > 1) && (nullptr != samples)) {
     T squared_samples = T(0);
     for (int i = 0; i < window_size; i++) {
-      T s_tmp = sq(samples[i]);
+      T s_tmp = samples[i] * samples[i];
       squared_samples += s_tmp;
     }
     result = sqrt(squared_samples / window_size);
@@ -453,7 +454,8 @@ template <typename T> T SensorFilter<T>::_calculate_stdev() {
   if ((window_size > 1) && (nullptr != samples)) {
     T deviation_sum = T(0);
     for (int i = 0; i < window_size; i++) {
-      deviation_sum += sq(samples[i] - last_value);
+      T tmp = samples[i] - last_value;
+      deviation_sum += tmp * tmp;
     }
     result = sqrt(deviation_sum / window_size);
   }
