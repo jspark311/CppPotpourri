@@ -63,17 +63,12 @@ StopWatch stopwatch_3;
 
 struct timeval start_micros;
 
-uint32_t randomInt() {
+uint32_t randomUInt32() {
   uint32_t ret = ((uint8_t) rand()) << 24;
   ret += ((uint8_t) rand()) << 16;
   ret += ((uint8_t) rand()) << 8;
   ret += ((uint8_t) rand());
   return ret;
-}
-
-
-uint32_t randomUInt32() {
-  return randomInt();
 }
 
 
@@ -87,7 +82,7 @@ int8_t random_fill(uint8_t* buf, uint len) {
 
 
 
-uint32_t micros() {
+unsigned long micros() {
 	uint32_t ret = 0;
 	struct timeval current;
 	gettimeofday(&current, nullptr);
@@ -271,10 +266,10 @@ int vector3_float_test(StringBuilder* log) {
 int test_PriorityQueue0(StringBuilder* log) {
   int return_value = -1;
   PriorityQueue<uint32_t*> queue0;
-  uint32_t vals[16] = { randomInt(), randomInt(), randomInt(), randomInt(),
-                        randomInt(), randomInt(), randomInt(), randomInt(),
-                        randomInt(), randomInt(), randomInt(), randomInt(),
-                        randomInt(), randomInt(), randomInt(), randomInt() };
+  uint32_t vals[16] = { randomUInt32(), randomUInt32(), randomUInt32(), randomUInt32(),
+                        randomUInt32(), randomUInt32(), randomUInt32(), randomUInt32(),
+                        randomUInt32(), randomUInt32(), randomUInt32(), randomUInt32(),
+                        randomUInt32(), randomUInt32(), randomUInt32(), randomUInt32() };
   int q_size = queue0.size();
   if (0 == q_size) {
     if (!queue0.contains(&vals[5])) {  // Futile search for non-existant value.
@@ -428,7 +423,7 @@ int test_RingBuffer() {
       uint32_t val;
       log.concat("\tInserting:");
       for (unsigned int i = 0; i < test_num; i++) {
-        val = randomInt();
+        val = randomUInt32();
         if (a.insert(val)) {
           log.concat("\nFailed to insert.\n");
           printf("%s\n\n", (const char*) log.string());
@@ -446,7 +441,7 @@ int test_RingBuffer() {
         unsigned int n = TEST_SIZE - a.count();
         log.concatf("\n\tRingBuffer should have space for %u more elements... ", n);
         for (unsigned int i = 0; i < n; i++) {
-          if (a.insert(randomInt())) {
+          if (a.insert(randomUInt32())) {
             log.concatf("Falsified. Count is %u\n", a.count());
             printf("%s\n\n", (const char*) log.string());
             return -1;
@@ -455,7 +450,7 @@ int test_RingBuffer() {
         if (a.count() == TEST_SIZE) {
           log.concatf("Verified. Count is %u\n", a.count());
           log.concat("\tOverflowing... ");
-          if (a.insert(randomInt())) {
+          if (a.insert(randomUInt32())) {
             log.concatf("Is handled correctly. Count is %u\n", a.count());
             log.concat("\tDraining... ");
             for (unsigned int i = 0; i < TEST_SIZE; i++) {

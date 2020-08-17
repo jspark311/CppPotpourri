@@ -81,7 +81,7 @@ int8_t I2CAdapter::init() {
 
 
 /*
-* Creates a specially-crafted WorkQueue object that will use the STM32F4 i2c peripheral
+* Creates a specially-crafted WorkQueue object that will use the i2c peripheral
 *   to discover if a device is active on the bus and addressable.
 */
 void I2CAdapter::ping_slave_addr(uint8_t addr) {
@@ -90,7 +90,7 @@ void I2CAdapter::ping_slave_addr(uint8_t addr) {
     nu->dev_addr = addr;
     nu->sub_addr = -1;
     nu->setBuffer(nullptr, 0);
-    _adapter_set_flag(I2C_BUS_FLAG_PING_RUN);
+    _adapter_set_flag(I2C_BUS_FLAG_PINGING);
     queue_io_job(nu);
   }
 }
@@ -126,6 +126,7 @@ int8_t I2CAdapter::io_op_callahead(BusOp* _op) {
 * @return 0 on success, or appropriate error code.
 */
 int8_t I2CAdapter::io_op_callback(BusOp* _op) {
+  int8_t ret = BUSOP_CALLBACK_NOMINAL;
   I2CBusOp* op = (I2CBusOp*) _op;
   if (op->get_opcode() == BusOpcode::TX_CMD) {
     // The only thing the i2c adapter uses this op-code for is pinging slaves.
@@ -136,10 +137,12 @@ int8_t I2CAdapter::io_op_callback(BusOp* _op) {
       if ((op->dev_addr & 0x00FF) < 127) {
         // If the adapter is taking a census, and we haven't pinged all
         //   addresses, ping the next one.
-        ping_slave_addr(op->dev_addr + 1);
+        op->dev_addr++;
+        ret = BUSOP_CALLBACK_RECYCLE;
       }
       else {
         _adapter_clear_flag(I2C_BUS_FLAG_PINGING);
+        _adapter_set_flag(I2C_BUS_FLAG_PING_RUN);
         #if defined(MANUVR_DEBUG)
         //if (getVerbosity() > 4) local_log.concat("Concluded i2c ping sweep.");
         #endif
@@ -147,8 +150,8 @@ int8_t I2CAdapter::io_op_callback(BusOp* _op) {
     }
   }
 
-  //flushLocalLog();_
-  return 0;
+  //flushLocalLog();
+  return ret;
 }
 
 
@@ -232,21 +235,23 @@ int8_t I2CAdapter::advance_work_queue() {
         /* These are finish states. */
         case XferState::FAULT:     // Fault condition.
         case XferState::COMPLETE:  // I/O op complete with no problems.
-          if (current_job->hasFault()) {
-            #if defined(MANUVR_DEBUG)
-            //if (getVerbosity() > 3) {
-            //  local_log.concat("Destroying failed job.\n");
-            //  current_job->printDebug(&local_log);
-            //}
-            #endif
+          //if (current_job->hasFault()) {
+          //  if (getVerbosity() > 3) {
+          //    local_log.concat("Destroying failed job.\n");
+          //    current_job->printDebug(&local_log);
+          //  }
+          //}
+          switch (current_job->execCB()) {
+            case BUSOP_CALLBACK_RECYCLE:
+              current_job->markForRequeue();
+              queue_io_job(current_job);
+              break;
+            case BUSOP_CALLBACK_ERROR:
+            case BUSOP_CALLBACK_NOMINAL:
+            default:
+              reclaim_queue_item(current_job);
+              break;
           }
-          // Hand this completed operation off to the class that requested it. That class will
-          //   take what it wants from the buffer and, when we return to execution here, we will
-          //   be at liberty to clean the operation up.
-          // Note that we forgo a separate callback queue, and are therefore unable to
-          //   pipeline I/O and processing. They must happen sequentially.
-          current_job->execCB();
-          reclaim_queue_item(current_job);   // Delete the queued work AND its buffer.
           return_value++;
           current_job = nullptr;
           break;

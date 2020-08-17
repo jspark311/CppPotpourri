@@ -19,15 +19,7 @@ limitations under the License.
 */
 
 #include "TripleAxisPipe.h"
-
-
-#if defined (ARDUINO)
-  #include <Arduino.h>
-#else
-  // The platform needs to supply this function.
-  extern uint32_t millis();
-#endif
-
+#include "AbstractPlatform.h"
 
 
 /*******************************************************************************

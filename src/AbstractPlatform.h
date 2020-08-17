@@ -11,6 +11,7 @@
 #define __ABSTRACT_PLATFORM_TEMPLATE_H__
 
 #if defined(ARDUINO)
+  #include <Arduino.h>
   // Dance around existing preprocessor defines for Arduino-ish environments.
   #undef INPUT
   #undef OUTPUT
@@ -66,8 +67,8 @@ enum class IRQCondition : uint8_t {
   /* Delays and marking time. */
   void sleep_ms(uint32_t);
   void sleep_us(uint32_t);
-  uint32_t millis();
-  uint32_t micros();
+  long unsigned millis();
+  long unsigned micros();
 
   /* GPIO */
   int8_t pinMode(uint8_t pin, GPIOMode);
@@ -77,6 +78,10 @@ enum class IRQCondition : uint8_t {
   int8_t readPin(uint8_t pin);
   void   unsetPinFxn(uint8_t pin);
   int8_t setPinFxn(uint8_t pin, IRQCondition condition, FxnPointer fxn);
+
+  /* Randomness */
+  uint32_t randomUInt32();   // Blocks until one is available.
+  int8_t random_fill(uint8_t* buf, size_t len);
 
   /* Time, date, and RTC abstraction */
   // TODO: This might be migrated into a separate abstraction.

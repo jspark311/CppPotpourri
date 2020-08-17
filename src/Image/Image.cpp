@@ -737,12 +737,11 @@ uint32_t Image::convertColor(uint32_t c, ImgBufferFormat src_fmt) {
       g = (uint8_t) (c >> 2) & 0x07;
       b = (uint8_t) (c & 0x03);
       break;
-    case ImgBufferFormat::MONOCHROME:        // Monochrome   TODO: Unsupported.
+    case ImgBufferFormat::MONOCHROME:        // Monochrome
       src_is_color = false;
       bits_per_src_channel = 1;
-      // TODO:
-      break;
-    case ImgBufferFormat::UNALLOCATED:       // Buffer unallocated
+      return (0 != c) ? 0xFFFFFFFF: 0;   // Full saturation. Early return.
+    case ImgBufferFormat::UNALLOCATED:   // Buffer unallocated
     default:
       return ret;
   }
@@ -781,14 +780,16 @@ void Image::orientation(ImgOrientation nu) {
 void Image::_remap_for_orientation(uint32_t* xn, uint32_t* yn) {
   switch (orientation()) {
     case ImgOrientation::ROTATION_270:
-      // TODO
+      strict_swap(xn, yn);
+      *yn = (y()-1) - *yn;
       break;
     case ImgOrientation::ROTATION_180:
       *xn = (x()-1) - *xn;
       *yn = (y()-1) - *yn;
       break;
     case ImgOrientation::ROTATION_90:
-      // TODO
+      strict_swap(xn, yn);
+      //*xn = (x()-1) - *xn;
       break;
     case ImgOrientation::ROTATION_0:   // Native format.
       break;
@@ -804,6 +805,7 @@ uint32_t Image::getPixel(uint32_t x, uint32_t y) {
   uint32_t sz = bytesUsed();
   _remap_for_orientation(&x, &y);
   uint32_t offset = _pixel_offset(x, y);
+
   if (offset < sz) {
     switch (_buf_fmt) {
       case ImgBufferFormat::GREY_24:           // 24-bit greyscale   TODO: Wrong. Has to be.
@@ -818,7 +820,16 @@ uint32_t Image::getPixel(uint32_t x, uint32_t y) {
       case ImgBufferFormat::R3_G3_B2:          // 8-bit color
         ret = (uint32_t) *(_buffer + offset);
         break;
-      case ImgBufferFormat::MONOCHROME:        // Monochrome   TODO: Unsupported.
+      case ImgBufferFormat::MONOCHROME:        // Monochrome
+        {
+          const uint32_t term0 = (_y >> 3);
+          const uint8_t bit_mask = 1 << (7 - (y & 0x07));
+          offset = x * term0 + (term0 - (y >> 3) - 1);
+          uint8_t byte_group = *(_buffer + offset);
+          // Full saturation on boolean pixel value.
+          ret = (byte_group & bit_mask) ? 0xFFFFFFFF : 0;
+        }
+        break;
       case ImgBufferFormat::UNALLOCATED:       // Buffer unallocated
       default:
         break;
@@ -849,7 +860,15 @@ bool Image::setPixel(uint32_t x, uint32_t y, uint32_t c) {
     case ImgBufferFormat::GREY_24:           // 24-bit greyscale
       _set_pixel_32(x, y, c);
       break;
-    case ImgBufferFormat::MONOCHROME:        // Monochrome   TODO: Unsupported.
+    case ImgBufferFormat::MONOCHROME:        // Monochrome
+      {
+        const uint32_t term0 = (_y >> 3);
+        const uint32_t offset = x * term0 + (term0 - (y >> 3) - 1);
+        const uint8_t bit_mask = 1 << (7 - (y & 0x07));
+        uint8_t byte_group = *(_buffer + offset);
+        *(_buffer + offset) = (byte_group & ~bit_mask) | ((0 == c) ? 0 : bit_mask);
+      }
+      break;
     case ImgBufferFormat::UNALLOCATED:       // Buffer unallocated
     default:
       break;;
@@ -882,7 +901,15 @@ bool Image::setPixel(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b) {
       case ImgBufferFormat::R3_G3_B2:          // 8-bit color
         *(_buffer + offset) = ((uint8_t) (r << 6) & 0xE0) | ((uint8_t) (g << 2) & 0x1C) | (b & 0x07);
         break;
-      case ImgBufferFormat::MONOCHROME:        // Monochrome   TODO: Unsupported.
+      case ImgBufferFormat::MONOCHROME:        // Monochrome
+        {
+          const uint32_t term0 = (_y >> 3);
+          const uint8_t bit_mask = 1 << (7 - (y & 0x07));
+          offset = x * term0 + (term0 - (y >> 3) - 1);
+          uint8_t byte_group = *(_buffer + offset);
+          *(_buffer + offset) = (byte_group & ~bit_mask) | ((0 == ((uint16_t) r + g + b)) ? 0 : bit_mask);
+        }
+        break;
       case ImgBufferFormat::UNALLOCATED:       // Buffer unallocated
       default:
         return false;

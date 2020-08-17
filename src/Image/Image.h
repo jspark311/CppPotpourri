@@ -140,7 +140,7 @@ class Image {
     inline ImgBufferFormat format() {       return _buf_fmt;               };
     inline bool            allocated() {    return (nullptr != _buffer);   };
     inline uint32_t        pixels() {       return (_x * _y);              };
-    inline uint32_t        bytesUsed() {    return (_x * _y * (_bits_per_pixel() >> 3));  };
+    inline uint32_t        bytesUsed() {    return ((_x * _y * _bits_per_pixel()) >> 3);  };
     inline ImgOrientation  orientation() {  return ((ImgOrientation) ((_imgflags & MANUVR_IMG_FLAG_ROTATION_MASK) >> 6));  };
     void orientation(ImgOrientation);
 
@@ -233,9 +233,13 @@ class Image {
       return ((y * _x) + x);
     };
 
-    /* Linearizes the X/y value accounting for color format. */
+    /*
+    * Linearizes the X/y value accounting for color format.
+    *
+    * @return The byte offset in the buffer that holds the pixel.
+    */
     inline uint32_t _pixel_offset(uint32_t x, uint32_t y) {
-      return ((((y * _x) + x) * _bits_per_pixel()) >> 3);
+      return ((_pixel_number(x, y) * _bits_per_pixel()) >> 3);
     };
 
     inline bool  _is_ours() {     return _img_flag(MANUVR_IMG_FLAG_BUFFER_OURS);     };

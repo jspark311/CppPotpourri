@@ -191,6 +191,7 @@ An instrumented build of the unit tests will be created and executed. If the uni
 **NOTE:** The build will be forced to 32-bit, so if you aren't capable of building and running 32-bit binaries on your 64-bit machine, please don't file an issue. The library does, in fact, pass all tests under 64-bit. But because most usage is on 32-bit MCUs, the type sizes and unit tests should reflect that use-case. You can force a 64-bit build by commenting out the `-m32` line in the Makefile.
 
 ----------------------
+
 #### License
 
 Original code is Apache 2.0.
