@@ -165,24 +165,24 @@ int8_t I2CAdapter::queue_io_job(BusOp* op) {
   I2CBusOp* nu = (I2CBusOp*) op;
   //nu->setVerbosity(getVerbosity());
   nu->setAdapter(this);
-  if (current_job) {
+  //if (current_job) {
     // Something is already going on with the bus. Queue...
     work_queue.insert(nu);
-  }
-  else {
+  //}
+  //else {
     // Bus is idle. Put this work item in the active slot and start the bus operations...
-    current_job = nu;
-    if ((adapterNumber() >= 0) && busOnline()) {
-      if (XferFault::NONE == nu->begin()) {
-        #if defined(__BUILD_HAS_THREADS)
-        if (_thread_id) wakeThread(_thread_id);
-        #endif
-      }
-    }
-    else {
-      //Kernel::staticRaiseEvent(&_queue_ready);   // Raise an event
-    }
-  }
+    //current_job = nu;
+    //if ((adapterNumber() >= 0) && busOnline()) {
+    //  if (XferFault::NONE == nu->begin()) {
+    //    #if defined(__BUILD_HAS_THREADS)
+    //    if (_thread_id) wakeThread(_thread_id);
+    //    #endif
+    //  }
+    //}
+    //else {
+    //  //Kernel::staticRaiseEvent(&_queue_ready);   // Raise an event
+    //}
+  //}
   return 0;
 }
 

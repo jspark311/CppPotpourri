@@ -79,6 +79,24 @@ enum class StorageErr : int8_t {
 typedef int8_t (*StorageReadCallback)(StorageErr, const char* key, StringBuilder* data);
 
 
+/*
+* This is a class that wraps and maps data into a sequence of blocks that are
+*   stored in NVM. It allows data to be non-contiguous in memory, and allows
+*   the generalized storage abstraction to forget about the low-level addresses
+*   of indexed data.
+* Its use is completely optional. Storage implementations built on filesystems
+*   have no need of it.
+*/
+/*
+class StorageBlock {
+  public:
+    uint32_t  ll_addr = 0;   // The address in the media that holds this block.
+
+  private:
+    StorageBlock*  _next = nullptr;
+};
+*/
+
 
 /**
 * This class is a gateway to block-oriented I/O. It will almost certainly need

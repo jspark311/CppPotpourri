@@ -270,6 +270,10 @@ bool GPSWrapper::_attempt_parse() {
     }
     if (local_success) {
       _sentences_parsed++;
+      if (nullptr != _callback) {
+        LocationFrame loc_frame;   // TODO: Fill
+        _callback(&loc_frame);
+      }
     }
     else {
       _sentences_rejected++;

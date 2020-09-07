@@ -189,6 +189,33 @@ struct minmea_sentence_vtg {
 
 
 /*
+* This class is the high-level framing of GPS data.
+*/
+class LocationFrame {
+  public:
+    // TODO: Convert these storage types into internal representaion types.
+    double   lat         = 0.0;  // GPS Coordinate (FOR POSSIBLE FUTURE USE):  Decimal degrees format (-xx.xxxxxx, -yyy.yyyyyy)
+    double   lon         = 0.0;
+    double   dop_horiz   = 0.0;  // GPS horizontal dilution of precision
+    double   dop_vert    = 0.0;  // GPS vertical DOP
+    uint64_t timestamp   = 0;
+    float    mag_bearing = 0.0;  // Aiming Direction:  1, 2 or 3 character mnemonic to designate 16 cardinal directions (N, NNE, NE, ENE, E, ESE, SE, SSE, S, SSW, SW, WSW, W, WNW, NW, NNW).
+    uint32_t speed_limit = 0;    // In millimeters/s. Optional variable that is entered by operator.
+    uint8_t  sat_count   = 0;    // GPS number of satellites
+
+    LocationFrame() {};
+    ~LocationFrame() {};
+};
+
+
+/*
+* Callback definition for location frames.
+*/
+typedef int8_t (*LocationCallback)(LocationFrame*);
+
+
+
+/*
 * A BufferPipe that is specialized for parsing NMEA.
 * After enough successful parsing, this class will emit messages into the
 *   Kernel's general message queue containing framed high-level GPS data.
@@ -204,14 +231,17 @@ class GPSWrapper : public BufferAccepter {
     int8_t init();
     void printDebug(StringBuilder*);
 
+    inline void setCallback(LocationCallback cb) {   _callback = cb;   };
+
 
   protected:
-    uint32_t       _sentences_parsed   = 0;
-    uint32_t       _sentences_rejected = 0;
-    double         _last_lat   = 0.0;
-    double         _last_lon   = 0.0;
-    float          _last_speed = 0.0;
-    StringBuilder  _accumulator;
+    uint32_t         _sentences_parsed   = 0;
+    uint32_t         _sentences_rejected = 0;
+    double           _last_lat           = 0.0;
+    double           _last_lon           = 0.0;
+    float            _last_speed         = 0.0;
+    LocationCallback _callback           = nullptr;
+    StringBuilder    _accumulator;
 
     void _class_init();
 

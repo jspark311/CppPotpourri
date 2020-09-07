@@ -151,9 +151,6 @@ class SPIAdapter : public BusAdapter<SPIBusOp> {
     void printHardwareState(StringBuilder*);
 
 
-  protected:
-    int8_t attached();      // This is called from the base notify().
-
   private:
     const uint8_t  _CLK_PIN;      // Pin assignments for SPI.
     const uint8_t  _MOSI_PIN;     // Pin assignments for SPI.

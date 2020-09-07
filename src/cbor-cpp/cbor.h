@@ -110,8 +110,8 @@ namespace cbor {
 
   class output {
     public:
-      virtual uint8_t* data()                                   = 0;
-      virtual uint     size()                                   = 0;
+      virtual uint8_t* data()                             = 0;
+      virtual uint     size()                             = 0;
       virtual void     put_byte(uint8_t value)            = 0;
       virtual void     put_bytes(const uint8_t* data, int size) = 0;
   };

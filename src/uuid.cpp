@@ -24,15 +24,6 @@
 #include "StringBuilder.h"
 #include "AbstractPlatform.h"
 
-//#if defined(ARDUINO)
-//  // For Arduino, we have this....
-//  //https://www.arduino.cc/reference/en/language/functions/random-numbers/random/
-//  static uint32_t randomUInt32() {
-//    return (uint32_t) random(-2147483647, 2147483647);
-//  }
-//#endif   // ARDUiNO
-
-
 
 
 #ifdef __cplusplus
