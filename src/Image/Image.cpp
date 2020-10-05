@@ -1762,7 +1762,7 @@ void Image::drawLine(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uint32_
   const int8_t   ystep = (y0 < y1) ? 1 : -1;
   int32_t err = (int32_t) (dx >> 1);  // NOTE: Imposes width limit of 2,147,483,648 pixels.
 
-  while (x0++ <= x1) {
+  while (x0 <= x1) {
     if (steep) {
       setPixel(y0, x0, color);
     }
@@ -1774,5 +1774,6 @@ void Image::drawLine(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uint32_
       y0 += ystep;
       err += dx;
     }
+    x0++;
   }
 }

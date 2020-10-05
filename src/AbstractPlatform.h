@@ -106,6 +106,8 @@ enum class IRQCondition : uint8_t {
   uint32_t epochTime();            // Returns an integer representing the current datetime.
   void currentDateTime(StringBuilder*);    // Writes a human-readable datetime to the argument.
 
+  /* Functions that are provided by this package. */
+  const char* getPinModeStr(GPIOMode);
 
 #if !defined(ARDUINO)
 }  // extern "C"
