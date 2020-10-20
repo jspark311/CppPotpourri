@@ -24,7 +24,7 @@ This is the basal implementation of the storage interface.
 #include "Storage.h"
 
 
-const char* const Storage::errStr(StorageErr e) {
+const char* Storage::errStr(const StorageErr e) {
   switch (e) {
     case StorageErr::KEY_CLOBBERED:    return "KEY_CLOBBERED";
     case StorageErr::NONE:             return "NONE";

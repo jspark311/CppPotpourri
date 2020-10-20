@@ -4,8 +4,8 @@
 #include "StringBuilder.h"
 #include "AbstractPlatform.h"
 
-#ifndef __LTI_SPI_QUEUE_TEMPLATE_H__
-#define __LTI_SPI_QUEUE_TEMPLATE_H__
+#ifndef __SPI_QUEUE_TEMPLATE_H__
+#define __SPI_QUEUE_TEMPLATE_H__
 
 class SPIAdapter;
 
@@ -165,4 +165,4 @@ class SPIAdapter : public BusAdapter<SPIBusOp> {
     int8_t bus_deinit();
 };
 
-#endif  // __LTI_SPI_QUEUE_TEMPLATE_H__
+#endif  // __SPI_QUEUE_TEMPLATE_H__

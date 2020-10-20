@@ -136,7 +136,7 @@ class Storage {
       _read_cb = cb;
     };
 
-    static const char* const errStr(StorageErr);
+    static const char* errStr(const StorageErr);
 
 
   protected:

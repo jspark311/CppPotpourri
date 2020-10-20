@@ -90,8 +90,8 @@ enum class TCode : uint8_t {
 *******************************************************************************/
 
 /* Quick inlines to facilitate moving into and out of serialization. */
-inline uint8_t TcodeToInt(const TCode code) {   return (const uint8_t) code; };
-inline TCode IntToTcode(const uint8_t code) {   return (const TCode) code;   };
+inline uint8_t TcodeToInt(const TCode code) {   return (uint8_t) code; };
+inline TCode IntToTcode(const uint8_t code) {   return (TCode) code;   };
 
 
 #endif // __ENUMERATED_TYPE_CODES_H__
