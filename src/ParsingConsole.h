@@ -31,11 +31,12 @@ limitations under the License.
 /*
 * Class flags.
 */
-#define CONSOLE_FLAG_LOCAL_ECHO    0x01  // Should the console echo back?
-#define CONSOLE_FLAG_EMIT_PROMPT   0x02  // Emit a prompt when idle?
-#define CONSOLE_FLAG_FORCE_RETURN  0x04  // Force a non-empty response to commands.
-#define CONSOLE_FLAG_HISTORY_FAIL  0x08  // Do failed commands make it into the history?
-#define CONSOLE_FLAG_HAS_ANSI      0x10  // Should we colorize console output?
+#define CONSOLE_FLAG_LOCAL_ECHO         0x01  // Should the console echo back?
+#define CONSOLE_FLAG_EMIT_PROMPT        0x02  // Emit a prompt when idle?
+#define CONSOLE_FLAG_FORCE_RETURN       0x04  // Force a non-empty response to commands.
+#define CONSOLE_FLAG_HISTORY_FAIL       0x08  // Do failed commands make it into the history?
+#define CONSOLE_FLAG_HAS_ANSI           0x10  // Should we colorize console output?
+#define CONSOLE_FLAG_PRINT_HELP_ON_FAIL 0x20  // Should we print the help if the callback returns <0?
 
 
 /*
@@ -121,11 +122,6 @@ class ParsingConsole : public BufferAccepter {
     /* Implementation of BufferAccepter. */
     int8_t provideBuffer(StringBuilder* buf);
 
-    int8_t feed(char);
-    int8_t feed(uint8_t*, unsigned int);
-    inline int8_t feed(char* s) {    return feed((uint8_t*) s, strlen(s));    };
-
-    int8_t poll();
     void   fetchLog(StringBuilder*);
     void   printToLog(StringBuilder*);
     void   printHelp(StringBuilder*);
@@ -151,7 +147,6 @@ class ParsingConsole : public BufferAccepter {
     inline uint8_t logLength() {          return _log.length();      };
 
 
-
     inline bool localEcho() {          return _console_flag(CONSOLE_FLAG_LOCAL_ECHO);           };
     inline void localEcho(bool x) {    return _console_set_flag(CONSOLE_FLAG_LOCAL_ECHO, x);    };
     inline bool forceReturn() {        return _console_flag(CONSOLE_FLAG_FORCE_RETURN);         };
@@ -160,13 +155,28 @@ class ParsingConsole : public BufferAccepter {
     inline void emitPrompt(bool x) {   return _console_set_flag(CONSOLE_FLAG_EMIT_PROMPT, x);   };
     inline void setPromptString(const char* str) {    _prompt_string = (char*) str;   };
 
-    inline bool historyFail() {        return _console_flag(CONSOLE_FLAG_HISTORY_FAIL);         };
-    inline void historyFail(bool x) {  return _console_set_flag(CONSOLE_FLAG_HISTORY_FAIL, x);  };
-    inline bool hasColor() {           return _console_flag(CONSOLE_FLAG_HAS_ANSI);             };
-    inline void hasColor(bool x) {     return _console_set_flag(CONSOLE_FLAG_HAS_ANSI, x);      };
+    inline bool historyFail() {            return _console_flag(CONSOLE_FLAG_HISTORY_FAIL);               };
+    inline void historyFail(bool x) {      return _console_set_flag(CONSOLE_FLAG_HISTORY_FAIL, x);        };
+    inline bool hasColor() {               return _console_flag(CONSOLE_FLAG_HAS_ANSI);                   };
+    inline void hasColor(bool x) {         return _console_set_flag(CONSOLE_FLAG_HAS_ANSI, x);            };
+    inline bool printHelpOnFail() {        return _console_flag(CONSOLE_FLAG_PRINT_HELP_ON_FAIL);         };
+    inline void printHelpOnFail(bool x) {  return _console_set_flag(CONSOLE_FLAG_PRINT_HELP_ON_FAIL, x);  };
+
 
     static const char* const errToStr(ConsoleErr);
     static const char* const typecodeToStr(TCode);
+
+    /* Common static TCode strings. */
+    static const TCode tcodes_0[];
+    static const TCode tcodes_uint_1[];
+    static const TCode tcodes_uint_2[];
+    static const TCode tcodes_uint_3[];
+    static const TCode tcodes_uint_4[];
+    static const TCode tcodes_str_1[];
+    static const TCode tcodes_str_2[];
+    static const TCode tcodes_str_3[];
+    static const TCode tcodes_str_4[];
+    static const TCode tcodes_float_1[];
 
 
   private:

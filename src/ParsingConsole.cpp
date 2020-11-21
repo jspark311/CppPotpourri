@@ -26,6 +26,18 @@ static const uint8_t DPAD_ESCAPE_SEQUENCE_D[4] = {27, 91, 66, 0};
 static const uint8_t DPAD_ESCAPE_SEQUENCE_R[4] = {27, 91, 67, 0};
 static const uint8_t DPAD_ESCAPE_SEQUENCE_L[4] = {27, 91, 68, 0};
 
+/* Common TCode strings. */
+const TCode ParsingConsole::tcodes_0[]         = {TCode::NONE};
+const TCode ParsingConsole::tcodes_uint_1[]    = {TCode::UINT32, TCode::NONE};
+const TCode ParsingConsole::tcodes_uint_2[]    = {TCode::UINT32, TCode::UINT32, TCode::NONE};
+const TCode ParsingConsole::tcodes_uint_3[]    = {TCode::UINT32, TCode::UINT32, TCode::UINT32, TCode::NONE};
+const TCode ParsingConsole::tcodes_uint_4[]    = {TCode::UINT32, TCode::UINT32, TCode::UINT32, TCode::UINT32, TCode::NONE};
+const TCode ParsingConsole::tcodes_str_1[]     = {TCode::STR, TCode::NONE};
+const TCode ParsingConsole::tcodes_str_2[]     = {TCode::STR, TCode::STR, TCode::NONE};
+const TCode ParsingConsole::tcodes_str_3[]     = {TCode::STR, TCode::STR, TCode::STR, TCode::NONE};
+const TCode ParsingConsole::tcodes_str_4[]     = {TCode::STR, TCode::STR, TCode::STR, TCode::STR, TCode::NONE};
+const TCode ParsingConsole::tcodes_float_1[]   = {TCode::FLOAT, TCode::NONE};
+
 
 const char* const ParsingConsole::errToStr(ConsoleErr err) {
   switch (err) {
@@ -143,26 +155,41 @@ int8_t ParsingConsole::init() {
 */
 int8_t ParsingConsole::provideBuffer(StringBuilder* incoming) {
   // TODO: This is a proper choke-point for enforcement of inbound line termination.
-  _buffer.concatHandoff(incoming);
-  _process_buffer();  // TODO: Observe return code.
+  // TODO: Implement cursor keys.
+  //   U: 0x1b, 0x5b, 0x41   D: 0x1b, 0x5b, 0x42
+  //   L: 0x1b, 0x5b, 0x44   R: 0x1b, 0x5b, 0x43
+  uint8_t first_byte = *(incoming->string());
+  if (localEcho()) {
+    _log.concat(incoming);  // We do it this way to copy the buffer. printToLog() will take it.
+    //incoming->printDebug(&_log); Uncomment to hex dump received characters.
+    if (0x08 == first_byte) {
+      uint8_t last_chr_erase[] = {0x20, 0x08};
+      _log.concat(last_chr_erase, 2);
+    }
+    printToLog(nullptr);   // Flush the log out of the console.
+  }
+  if (0x08 == first_byte) {   // If we see the backspace key...
+    int blen = _buffer.length();
+    if (0 < blen) {   // ...and we have accumulated input...
+      _buffer.cull(0, blen-1);  // Drop the last character of the buffer.
+    }
+    incoming->cull(1);  // Drop the first character of the input.
+  }
+  else {
+    _buffer.concatHandoff(incoming);  // Take the buffer.
+    _process_buffer();  // TODO: Observe return code.
+  }
   return 1;
 }
 
 
-int8_t ParsingConsole::feed(char c) {   return feed((uint8_t*) &c, 1);   }
-
-
-int8_t ParsingConsole::feed(uint8_t* buf, unsigned int len) {
-  int8_t ret = -1;
-  _buffer.concat(buf, len);
-  if (localEcho()) {
-    _log.concat(buf, len);
-  }
-  ret = _process_buffer();
-  return ret;
-}
-
-
+/**
+*
+* @return 1 on command execution,
+*   0  on command not found,
+*   -1 on no action
+*   -2 on input overflow
+*/
 int8_t ParsingConsole::_process_buffer() {
   int8_t ret = -1;
   if (_buffer.length() > _MAX_LEN) {
@@ -185,6 +212,7 @@ int8_t ParsingConsole::_process_buffer() {
             _append_to_history(&tmp_str_bldr);
           }
         }
+
         if (forceReturn() && true) {   // TODO: How to deal with this?
           // TODO: force a return string.
         }
@@ -291,7 +319,7 @@ int8_t ParsingConsole::_exec_line(StringBuilder* line) {
   int8_t ret = -1;
   StringBuilder tmp_line((char*) line->string());
   tmp_line.split(" ");
-  char* cmd_str = tmp_line.position(0);
+  char* cmd_str = tmp_line.position_trimmed(0);
   ConsoleCommand* cmd = _cmd_def_lookup(cmd_str);
   if (nullptr != cmd) {
     tmp_line.drop_position(0);  // Drop the command, leaving the arguments.
@@ -299,7 +327,10 @@ int8_t ParsingConsole::_exec_line(StringBuilder* line) {
     if ((tmp_line.count() >= cmd->req_count) && (tmp_line.count() <= cmd->maxArgumentCount())) {
       // If we have enough arguments to be plausibly valid....
       if (0 != cmd->ccb(&_log, &tmp_line)) {
-        cmd->printDetailedHelp(&_log);
+        if (printHelpOnFail()) {
+          cmd->printDetailedHelp(&_log);
+          printToLog(nullptr);   // Flush the log out of the console.
+        }
       }
       ret = 0;
     }
@@ -339,14 +370,17 @@ ConsoleCommand* ParsingConsole::_cmd_def_lookup(char* str) {
       }
       i++;
     }
-    i = 0;
-    // If we failed on the whole string, look for shortcuts...
-    while ((nullptr == ret) && (i < cmd_def_count)) {
-      ConsoleCommand* tmp = _cmd_list.get(i);
-      if (tmp->shortcut == *(str)) {
-        ret = tmp;
+    if ((nullptr == ret) && (1 == strlen(str))) {
+      // If we failed on the whole string, and the input was only one character
+      //   long, look for shortcuts...
+      i = 0;
+      while ((nullptr == ret) && (i < cmd_def_count)) {
+        ConsoleCommand* tmp = _cmd_list.get(i);
+        if (tmp->shortcut == *(str)) {
+          ret = tmp;
+        }
+        i++;
       }
-      i++;
     }
   }
   return ret;

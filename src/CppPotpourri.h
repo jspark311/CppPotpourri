@@ -68,6 +68,7 @@ inline void strict_swap(int8_t*   a, int8_t*   b) {  int8_t   t = *a; *a = *b; *
 */
 inline double   wrap_accounted_delta(double   a, double   b) {   return (a > b) ? (a - b) : (b - a);   };
 inline float    wrap_accounted_delta(float    a, float    b) {   return (a > b) ? (a - b) : (b - a);   };
+inline uint64_t wrap_accounted_delta(uint64_t a, uint64_t b) {   return (a > b) ? (a - b) : (b - a);   };
 inline uint32_t wrap_accounted_delta(uint32_t a, uint32_t b) {   return (a > b) ? (a - b) : (b - a);   };
 inline uint16_t wrap_accounted_delta(uint16_t a, uint16_t b) {   return (a > b) ? (a - b) : (b - a);   };
 inline uint8_t  wrap_accounted_delta(uint8_t  a, uint8_t  b) {   return (a > b) ? (a - b) : (b - a);   };
@@ -81,6 +82,10 @@ inline int8_t   wrap_accounted_delta(int8_t   a, int8_t   b) {   return (a > b) 
 inline uint16_t endianSwap16(uint16_t x) {   return __builtin_bswap16(x);    };
 inline uint32_t endianSwap32(uint32_t x) {   return __builtin_bswap32(x);    };
 inline uint64_t endianSwap64(uint64_t x) {   return __builtin_bswap64(x);    };
+
+
+void timestampToString(StringBuilder*, uint64_t);
+uint64_t stringToTimestamp(const char*);
 
 
 /*

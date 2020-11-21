@@ -19,6 +19,7 @@ StopWatch           KEYWORD1
 consoleErrCallback  KEYWORD1
 ConsoleCommand      KEYWORD1
 ParsingConsole      KEYWORD1
+TCode               KEYWORD1
 
 # Datatypes (Vector3)
 Vector3             KEYWORD1
@@ -81,8 +82,7 @@ rmsValue           KEYWORD2
 getFilterStr       KEYWORD2
 
 # Methods and Functions (ParsingConsole)
-feed               KEYWORD2
-poll               KEYWORD2
+provideBuffer      KEYWORD2
 fetchLog           KEYWORD2
 printToLog         KEYWORD2
 printHelp          KEYWORD2
@@ -148,6 +148,17 @@ SpatialSense       LITERAL1
 # Constants (ParsingConsole)
 LineTerm           LITERAL1
 ConsoleErr         LITERAL1
+tcodes_0           LITERAL1
+tcodes_uint_1      LITERAL1
+tcodes_uint_2      LITERAL1
+tcodes_uint_3      LITERAL1
+tcodes_uint_4      LITERAL1
+tcodes_str_1       LITERAL1
+tcodes_str_2       LITERAL1
+tcodes_str_3       LITERAL1
+tcodes_str_4       LITERAL1
+tcodes_float_1     LITERAL1
+
 
 # Constants (Vector3)
 GnomonType         LITERAL1

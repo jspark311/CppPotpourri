@@ -29,3 +29,18 @@ const char* getPinModeStr(GPIOMode mode) {
   }
   return "UNINIT";
 }
+
+const char* shutdownCauseStr(ShutdownCause cause) {
+  switch (cause) {
+    case ShutdownCause::FATAL_ERR:     return "FATAL_ERR";
+    case ShutdownCause::USER:          return "USER";
+    case ShutdownCause::CONF_RELOAD:   return "CONF_RELOAD";
+    case ShutdownCause::REFLASH:       return "REFLASH";
+    case ShutdownCause::TIMEOUT:       return "TIMEOUT";
+    case ShutdownCause::WATCHDOG:      return "WATCHDOG";
+    case ShutdownCause::BROWNOUT:      return "BROWNOUT";
+    case ShutdownCause::THERMAL:       return "THERMAL";
+    default:  break;
+  }
+  return "UNSPECIFIED";
+}

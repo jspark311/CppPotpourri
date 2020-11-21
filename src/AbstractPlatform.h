@@ -7,6 +7,8 @@
 #include "BusQueue.h"
 #include "StringBuilder.h"
 
+class ParsingConsole;
+
 #ifndef __ABSTRACT_PLATFORM_TEMPLATE_H__
 #define __ABSTRACT_PLATFORM_TEMPLATE_H__
 
@@ -46,6 +48,21 @@ enum class IRQCondition : uint8_t {
   NONE      = 255
 };
 
+
+/* Shutdown causes. */
+enum class ShutdownCause : uint8_t {
+  UNSPECIFIED   = 0,  //
+  FATAL_ERR     = 1,  // Something bad happened that couldn't be solved.
+  USER          = 2,  // The user requested a shutdown.
+  CONF_RELOAD   = 3,  // A conf change forced a reboot.
+  REFLASH       = 4,  // The program was changed.
+  TIMEOUT       = 5,  // The unit sat idle for too long.
+  WATCHDOG      = 6,  // Something hung the firmware.
+  BROWNOUT      = 7,  // The power sagged too far for comfort.
+  THERMAL       = 8   // The unit is too hot for proper operation.
+};
+
+
 #if defined(ARDUINO)
   // Reinstate the Arduino definitions that we collided with...
   // TODO: This works under Teensyduino. Not certain it will work anywhere else.
@@ -63,6 +80,7 @@ enum class IRQCondition : uint8_t {
 
 
   int8_t platform_init();
+  int8_t enablePlatformConsole(ParsingConsole*);
 
   /* Delays and marking time. */
   void sleep_ms(uint32_t);
@@ -85,9 +103,16 @@ enum class IRQCondition : uint8_t {
 
   /* Time, date, and RTC abstraction */
   // TODO: This might be migrated into a separate abstraction.
+  int8_t rtcInit();
   bool rtcInitilized();
   bool rtcAccurate();
   bool setTimeAndDateStr(char*);   // Takes a string of the form given by RFC-2822: "Mon, 15 Aug 2005 15:52:01 +0000"   https://www.ietf.org/rfc/rfc2822.txt
+
+  uint8_t last_restart_reason();
+
+  /* Functions that don't return. */
+  void firmware_reset(uint8_t);
+  void firmware_shutdown(uint8_t);
 
   /*
   * RTC get/set with discrete value breakouts.
@@ -103,11 +128,14 @@ enum class IRQCondition : uint8_t {
   bool setTimeAndDate(uint16_t y, uint8_t m, uint8_t d, uint8_t h, uint8_t mi, uint8_t s);
   bool getTimeAndDate(uint16_t* y, uint8_t* m, uint8_t* d, uint8_t* h, uint8_t* mi, uint8_t* s);
 
-  uint32_t epochTime();            // Returns an integer representing the current datetime.
+  uint64_t epochTime();            // Returns an integer representing the current datetime.
   void currentDateTime(StringBuilder*);    // Writes a human-readable datetime to the argument.
 
-  /* Functions that are provided by this package. */
+
+  /* Functions that convert platform-general enums to strings. */
   const char* getPinModeStr(GPIOMode);
+  const char* shutdownCauseStr(ShutdownCause);
+
 
 #if !defined(ARDUINO)
 }  // extern "C"
