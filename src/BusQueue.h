@@ -245,6 +245,28 @@ class BusOp {
       _flags = x ? (_flags & (uint8_t) ~BUSOP_FLAG_NO_FREE) : (_flags | BUSOP_FLAG_NO_FREE);
     };
 
+    /**
+    * The bus manager calls this fxn to decide if it ought to free this object's
+    *   buffer after callback completion.
+    *
+    * @return true if the bus manager class should free() this object's buffer. False otherwise.
+    */
+    inline bool shouldFreeBuffer() {  return ((_flags & BUSOP_FLAG_FREE_BUFFER) != 0);  };
+
+    /**
+    * The client class calls this fxn to set this object's post-callback behavior.
+    * If this fxn is never called, the default behavior of the class is to not
+    *   free() the buffer.
+    *
+    * This flag is preserved by wipe().
+    *
+    * @param x Pass true to cause the bus manager to free the I/O buffer.
+    */
+    inline void shouldFreeBuffer(bool x) {
+      _flags = x ? (_flags | BUSOP_FLAG_FREE_BUFFER) : (_flags & (uint8_t) ~BUSOP_FLAG_FREE_BUFFER);
+    };
+
+
     /* Inlines for protected access... */
     inline void      set_state(XferState nu) {   _xfer_state = nu;    };   // TODO: Bad. Should be protected. Why isn't it?
     inline void      set_opcode(BusOpcode nu) {  _opcode = nu;        };   // TODO: Bad. Should be protected. Why isn't it?
@@ -421,6 +443,13 @@ template <class T> class BusAdapter : public BusOpCallback {
       uintptr_t obj_addr = ((uintptr_t) op);
       uintptr_t pre_min  = ((uintptr_t) preallocated_bus_jobs);
       uintptr_t pre_max  = pre_min + sizeof(preallocated_bus_jobs);
+      if (op->shouldFreeBuffer() && (nullptr != op->buffer())) {
+        // Independently of the BusOp's mem management, if the I/O buffer is
+        //   marked for reap, do so at this point.
+        free(op->buffer());
+        op->setBuffer(nullptr, 0);
+      }
+
       if ((obj_addr < pre_max) && (obj_addr >= pre_min)) {
         // If we are in this block, it means obj was preallocated. wipe and reclaim it.
         return_op_to_pool(op);
@@ -489,7 +518,7 @@ template <class T> class BusAdapter : public BusOpCallback {
     T*       current_job      = nullptr;
     PriorityQueue<T*> work_queue;   // A work queue to keep transactions in order.
     PriorityQueue<T*> preallocated; // TODO: Convert to ring buffer. This is the whole reason you embarked on this madness.
-    T preallocated_bus_jobs[8]; 
+    T preallocated_bus_jobs[8];
     StringBuilder _local_log;
 
 

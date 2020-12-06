@@ -11,5 +11,4 @@ message(STATUS "==============================================")
 idf_component_register(
   SRC_DIRS "src" "src/cbor-cpp" "src/Image"
   INCLUDE_DIRS "src"
-  REQUIRES Manuvr
 )

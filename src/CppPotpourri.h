@@ -105,6 +105,8 @@ uint64_t stringToTimestamp(const char*);
 /* Physical and mathematical constants. */
 #define SPEED_OF_LIGHT         299792458  // Given in vacuum in m/s
 #define PRESSURE_AT_SEA_LEVEL  101325.0f  // Given in Pascals
+#define MEAN_RADIUS_OF_EARTH     6371009  // Given in meters (IUGG recommend value).
+
 
 #ifndef PI
   #define PI 3.14159265358979323846264338327950288419716939937510

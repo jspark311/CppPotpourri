@@ -72,6 +72,7 @@ class SPIBusOp : public BusOp {
 
     inline void setCSPin(uint8_t pin) {      _cs_pin = pin;  };
     inline void setAdapter(SPIAdapter* b) {  _bus = b;       };
+    inline SPIAdapter* getAdapter() {        return _bus;    };
 
     /**
     * Is the chip select pin presently asserted?

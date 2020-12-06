@@ -5,6 +5,10 @@ Date:   2016.06.29
 
 This class was an adaption based on Kosma Moczek's minmea. WTFPL license.
 https://github.com/cloudyourcar/minmea
+
+TODO: This intake and parsing class might make a great pair with this:
+https://geographiclib.sourceforge.io/1.40/C/
+
 */
 
 /*
@@ -42,6 +46,27 @@ extern "C" {
 * Static members and initializers should be located here.
 *******************************************************************************/
 
+/**
+* Implements the Haversine formula to get distance between two points on Earth.
+* https://en.wikipedia.org/wiki/Haversine_formula
+*
+* @return Distance in meters.
+*/
+int32_t GPSWrapper::haversineDistance(LocationFrame* p0, LocationFrame* p1) {
+  int32_t ret = 0;
+  double theta0 = p0->lat * (PI/180.0);
+  double theta1 = p1->lat * (PI/180.0);
+  double delta_theta  = (p1->lat - p0->lat) * (PI/180.0);
+  double delta_lambda = (p1->lon - p0->lon) * (PI/180.0);
+  double half_delta_theta  = sin(delta_theta / 2);
+  double half_delta_lambda = sin(delta_lambda / 2);
+  double haversine_angle   = (half_delta_theta * half_delta_theta) + cos(theta0) * cos(theta1) * (half_delta_lambda * half_delta_lambda);
+  double haversine_arctan  = atan2(sqrt(haversine_angle), sqrt(1 - haversine_angle));
+  ret = (int32_t) (MEAN_RADIUS_OF_EARTH * haversine_arctan);
+  return ret;
+}
+
+// TODO: Move to StringBuilder
 static int hex2int(char c) {
   if (c >= '0' && c <= '9') return c - '0';
   if (c >= 'A' && c <= 'F') return c - 'A' + 10;
