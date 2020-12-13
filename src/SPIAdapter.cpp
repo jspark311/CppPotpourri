@@ -237,7 +237,6 @@ int8_t SPIAdapter::service_callback_queue() {
 
         case BUSOP_CALLBACK_ERROR:
         case BUSOP_CALLBACK_NOMINAL:
-          // No harm in this yet, since this fxn respects preforms and prealloc.
           reclaim_queue_item(temp_op);
           break;
         default:

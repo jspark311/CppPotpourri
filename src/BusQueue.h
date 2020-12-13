@@ -448,6 +448,7 @@ template <class T> class BusAdapter : public BusOpCallback {
         //   marked for reap, do so at this point.
         free(op->buffer());
         op->setBuffer(nullptr, 0);
+        op->shouldFreeBuffer(false);
       }
 
       if ((obj_addr < pre_max) && (obj_addr >= pre_min)) {
