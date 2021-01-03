@@ -31,11 +31,17 @@ TODO: Move to BusQueue for callback support? Might get really messy.
 */
 
 #include "StringBuilder.h"
+#include "LightLinkedList.h"
+#include "CppPotpourri.h"
+#include "cbor-cpp/cbor.h"
 
 #ifndef __ABSTRACT_PERSIST_LAYER_H__
 #define __ABSTRACT_PERSIST_LAYER_H__
 
-/* Class flags */
+class Storage;
+class DataRecord;
+
+/* Storage driver flags */
 #define PL_FLAG_USES_FILESYSTEM      0x0001  // Medium is on top of a filesystem.
 #define PL_FLAG_BLOCK_ACCESS         0x0002  // I/O operations must occur blockwise.
 #define PL_FLAG_ENCRYPTED            0x0004  // Data stored in this medium is encrypted at rest.
@@ -49,6 +55,19 @@ TODO: Move to BusQueue for callback support? Might get really messy.
 
 /* Transfer option flags */
 #define PL_FLAG_XFER_CLOBBER_KEY     0x0001  // A write operation should clobber the key if it already exists.
+
+/* DataRecord flags */
+#define DATA_RECORD_FLAG_PENDING_IO  0x0001  // We are in the process of saving or loading.
+
+/* DataRecord types that are reserved for the driver's use. */
+#define STORAGE_RECORD_TYPE_UNINIT         0  // Reserved. Uninitalized.
+#define STORAGE_RECORD_TYPE_ROOT           1  // The root storage block.
+#define STORAGE_RECORD_TYPE_KEY_LISTING    2  // A listing of DataRecord keys.
+
+/* DataRecord constants for serializer. */
+#define DATARECORD_SERIALIZER_VERSION  1  // Makes record migration possible.
+#define DATARECORD_BASE_SIZE          28  // How many bytes that are independent of block address size?
+
 
 
 /* Error codes for the storage class. */
@@ -72,30 +91,108 @@ enum class StorageErr : int8_t {
 /*
 * Callback definition for read completion.
 * Parameters are...
+*   A DataRecord that recently completed an I/O operation.
 *   An error code
-*   The key that was requested
-*   The data associated with the given key
 */
-typedef int8_t (*StorageReadCallback)(StorageErr, const char* key, StringBuilder* data);
+typedef int8_t (*StorageReadCallback)(DataRecord*, StorageErr);
 
 
-/*
-* This is a class that wraps and maps data into a sequence of blocks that are
+
+/*******************************************************************************
+* This class  wraps and maps data into a sequence of blocks that are
 *   stored in NVM. It allows data to be non-contiguous in memory, and allows
 *   the generalized storage abstraction to forget about the low-level addresses
 *   of indexed data.
-* Its use is completely optional. Storage implementations built on filesystems
-*   have no need of it.
-*/
-/*
+*******************************************************************************/
+
+/* Class for tracking lists of storage blocks. */
+// DataStructure in use is a simple linked list (for now) TODO: Hash-table might be better.
+// We eat an entire block for Record metadata.
 class StorageBlock {
   public:
-    uint32_t  ll_addr = 0;   // The address in the media that holds this block.
+    // Low-level address containing the next chunk (or 0 if this is the tail).
+    uint32_t this_offset;
+    uint32_t next_offset;
+
+    StorageBlock() : this_offset(0), next_offset(0) {};
+    StorageBlock(const uint32_t to) : this_offset(to), next_offset(0) {};
+    StorageBlock(const uint32_t to, const uint32_t no) : this_offset(to), next_offset(no) {};
+};
+
+
+/*
+* A general data record, with a strink key assigned by the application.
+* When serialized, and stored, this object represents the head of a linked list
+*   of blocks that represents a record. The real addresses of NVM locations are
+*   held in this class.
+*/
+class DataRecord {
+  public:
+    inline bool    isDirty() {     return (_hash == _calculate_hash());          };
+    inline bool    pendingIO() {   return _dr_flag(DATA_RECORD_FLAG_PENDING_IO); };
+    inline uint8_t recordType() {  return _record_type;   };
+
+    inline void setStorage(Storage* x) {   _storage = x;  };
+
+    int8_t save();
+    int8_t load(char* name);
+
+    void printDebug(StringBuilder*);
+
+    // Interface functions for the Storage driver's use...
+    int8_t buffer_request_from_storage(uint32_t* addr, uint8_t* buf, uint32_t* len);   // Storage providing data from a read request.
+    int8_t buffer_offer_from_storage(uint32_t* addr, uint8_t* buf, uint32_t* len);     // Storage requesting data from a write request.
+
+
+  protected:
+    Storage* _storage     = nullptr; // Pointer to the Storage driver that spawned us.
+    LinkedList<StorageBlock*> _blocks;    // Blocks from the Storage driver.
+    StringBuilder   _outbound_buf;        // Data on its way to the Storage driver.
+
+    DataRecord() {};
+    DataRecord(uint8_t rtype) : _record_type(rtype) {};
+    ~DataRecord();
+
+    virtual int8_t _serialize(StringBuilder*, TCode) =0;
+    virtual int8_t _deserialize(StringBuilder*, TCode) =0;
+    uint32_t _calculate_hash();
+
+    inline void   _mark_clean() {   _hash = _calculate_hash();     };
+
+    /* Flag manipulation inlines */
+    inline uint8_t _dr_flags() {                return _flags;           };
+    inline bool _dr_flag(uint8_t _flag) {       return (_flags & _flag); };
+    inline void _dr_clear_flag(uint8_t _flag) { _flags &= ~_flag;        };
+    inline void _dr_set_flag(uint8_t _flag) {   _flags |= _flag;         };
+    inline void _dr_set_flag(uint8_t _flag, bool nu) {
+      if (nu) _flags |= _flag;
+      else    _flags &= ~_flag;
+    };
+
 
   private:
-    StorageBlock*  _next = nullptr;
+    // This member data is stored in an aligned binary format as the first
+    //   bytes of any record.
+    // All block address fields are 32-bit for class simplicity, but will be
+    //   truncated to the size appropriate for the storage driver.
+    uint8_t  _version      = 0;      // Serializer version for this record.
+    uint8_t  _flags        = 0;      // Flags to describe this record.
+    uint8_t  _record_type  = 0;      // What this means is mostly up to the application.
+    uint8_t  _key[9]       = {0, };  // Application-provided name for this record.
+    uint32_t _hash         = 0;      // Autogenerated payload hash.
+    uint32_t _data_length  = 0;      // How many bytes does the record occupy?
+    uint64_t _timestamp    = 0;      // Epoch timestamp of the record creation.
+    uint32_t _nxt_rec_addr = 0;      // Address of next record (0 if this is the last record).
+    // _nxt_dat_addr is stored in the first StorageBlock member.
+
+    /* Lookup functions for block relationships this record's data. */
+    StorageBlock* _get_storage_block_by_addr(uint32_t addr);
+    StorageBlock* _get_storage_block_by_nxt(uint32_t addr);
+    uint32_t      _derive_allocated_size();
+
+    int8_t  _fill_from_descriptor_block(uint8_t*);
 };
-*/
+
 
 
 /**
@@ -109,46 +206,50 @@ class Storage {
     * Data-persistence functions. This is the API used by anything that wants to write
     *   formless data to a place on the device to be recalled on a different runtime.
     */
-    virtual uint64_t   freeSpace() =0;  // How many bytes are availible for use?
-    virtual StorageErr wipe()      =0;  // Call to wipe the data store.
+    inline StorageErr  wipe() {   return wipe(0, deviceSize());   };  // Call to wipe the data store.
+    inline StorageErr  wipe(uint32_t offset) {   return wipe(offset, blockSize());   };   // Wipe a block.
+    virtual StorageErr wipe(uint32_t offset, uint32_t len) =0;  // Wipe a range.
+    virtual uint32_t   deviceSize() =0;  // How granular is our use of space?
+    virtual uint32_t   blockSize() =0;  // How granular is our use of space?
+    virtual uint8_t    blockAddrSize() =0;  // How many bytes is a block reference?
+
+    virtual int8_t     allocateBlocksForLength(uint32_t, LinkedList<StorageBlock*>*) =0;
 
     /* Raw buffer API. Might have more overhead on some platforms. */
-    virtual StorageErr persistentWrite(const char*, uint8_t*, unsigned int, uint16_t) =0;
-    virtual StorageErr persistentRead(const char*, uint8_t*, unsigned int*, uint16_t) =0;
-
-    /* StringBuilder API to avoid pedantic copying. */
-    virtual StorageErr persistentWrite(const char*, StringBuilder*, uint16_t) =0;
-    virtual StorageErr persistentRead(const char*, StringBuilder*, uint16_t)  =0;
+    virtual StorageErr persistentWrite(uint8_t* buf, unsigned int len, uint32_t offset) =0;
+    virtual StorageErr persistentRead(uint8_t* buf, unsigned int len, uint32_t offset) =0;
 
     /* Public flag accessors. */
-    inline bool isFilesystem() {  return _pl_flag(PL_FLAG_USES_FILESYSTEM);  };
-    inline bool isEncrypted() {   return _pl_flag(PL_FLAG_ENCRYPTED);        };
-    inline bool isRemovable() {   return _pl_flag(PL_FLAG_REMOVABLE);        };
-    inline bool isMounted() {     return _pl_flag(PL_FLAG_MEDIUM_MOUNTED);   };
-    inline bool isReadable() {    return _pl_flag(PL_FLAG_MEDIUM_READABLE);  };
-    inline bool isWritable() {    return _pl_flag(PL_FLAG_MEDIUM_WRITABLE);  };
+    inline uint32_t freeSpace() {     return _free_space;   };  // How many bytes are availible for use?
+    inline bool     isFilesystem() {  return _pl_flag(PL_FLAG_USES_FILESYSTEM);  };
+    inline bool     isEncrypted() {   return _pl_flag(PL_FLAG_ENCRYPTED);        };
+    inline bool     isRemovable() {   return _pl_flag(PL_FLAG_REMOVABLE);        };
+    inline bool     isMounted() {     return _pl_flag(PL_FLAG_MEDIUM_MOUNTED);   };
+    inline bool     isReadable() {    return _pl_flag(PL_FLAG_MEDIUM_READABLE);  };
+    inline bool     isWritable() {    return _pl_flag(PL_FLAG_MEDIUM_WRITABLE);  };
 
     inline bool isBusy() {
       return (_pl_flags & (PL_FLAG_BUSY_WRITE | PL_FLAG_BUSY_READ));
     };
 
-    inline void setReadCallback(StorageReadCallback cb) {
-      _read_cb = cb;
-    };
+    inline void setReadCallback(StorageReadCallback cb) {    _cb = cb;    };
 
     static const char* errStr(const StorageErr);
 
 
   protected:
-    uint64_t  _free_space  = 0L;
-    StorageReadCallback  _read_cb = nullptr;
-    uint16_t  _pl_flags    = 0;
+    const uint32_t DEV_SIZE_BYTES;
+    const uint32_t DEV_TOTAL_BLOCKS;   // Usually "pages" in NVM contexts.
+    uint32_t  _free_space   = 0L;
+    StorageReadCallback _cb = nullptr;
+    uint16_t  _pl_flags     = 0;
 
-    Storage() {};  // Protected constructor.
+    Storage(const uint32_t ds_bytes, const uint32_t bs_bytes) {};  // Protected constructor.
 
     virtual void printStorage(StringBuilder*);
 
     inline void _report_free_space(uint64_t x) { _free_space = x; };
+    int8_t _invoke_record_callback(DataRecord* rec, StorageErr err);
 
     inline bool _pl_flag(uint16_t f) {   return ((_pl_flags & f) == f);   };
     inline void _pl_clear_flag(uint16_t _flag) {  _pl_flags &= ~_flag;    };

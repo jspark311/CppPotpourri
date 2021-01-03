@@ -193,7 +193,6 @@ int8_t SPIAdapter::advance_work_queue() {
     }
   }
 
-
   if (nullptr == current_job) {
     current_job = work_queue.dequeue();
     // Begin the bus operation.
@@ -223,9 +222,9 @@ int8_t SPIAdapter::advance_work_queue() {
 */
 int8_t SPIAdapter::service_callback_queue() {
   int8_t return_value = 0;
-  SPIBusOp* temp_op = callback_queue.dequeue();
 
-  while ((nullptr != temp_op) && (return_value < spi_cb_per_event)) {
+  while ((return_value < spi_cb_per_event) && (0 < callback_queue.size())) {
+    SPIBusOp* temp_op = callback_queue.dequeue();
     if (getVerbosity() > 6) temp_op->printDebug(&_local_log);
     if (nullptr != temp_op->callback) {
       int8_t cb_code = temp_op->callback->io_op_callback(temp_op);
@@ -250,7 +249,6 @@ int8_t SPIAdapter::service_callback_queue() {
       reclaim_queue_item(temp_op);
     }
     return_value++;
-    temp_op = callback_queue.dequeue();
   }
 
   //flushLocalLog();

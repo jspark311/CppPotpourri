@@ -46,7 +46,7 @@ I2CBusOp::I2CBusOp(BusOpcode nu_op, BusOpCallback* requester) : I2CBusOp() {
 * It is worth re-iterating here, that this class ought to never malloc() or free() the buf member. That should be
 *   under the exclusive control of the caller.
 */
-I2CBusOp::I2CBusOp(BusOpcode nu_op, uint8_t dev_addr, int16_t sub_addr, uint8_t* buffer, uint8_t len) : I2CBusOp() {
+I2CBusOp::I2CBusOp(BusOpcode nu_op, uint8_t dev_addr, int16_t sub_addr, uint8_t* buffer, uint16_t len) : I2CBusOp() {
   dev_addr     = dev_addr;
   sub_addr     = sub_addr;
   set_opcode(nu_op);

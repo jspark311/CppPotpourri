@@ -183,8 +183,8 @@ This file is the tortured result of growing pains since the beginning of
       uint8_t dev_addr =  0;
 
       I2CBusOp();
-      I2CBusOp(BusOpcode nu_op, BusOpCallback* requester);
-      I2CBusOp(BusOpcode nu_op, uint8_t dev_addr, int16_t sub_addr, uint8_t *buf, uint8_t len);
+      I2CBusOp(BusOpcode, BusOpCallback* requester);
+      I2CBusOp(BusOpcode, uint8_t dev_addr, int16_t sub_addr, uint8_t *buf, uint16_t len);
       virtual ~I2CBusOp();
 
       /* Mandatory overrides from the BusOp interface... */
