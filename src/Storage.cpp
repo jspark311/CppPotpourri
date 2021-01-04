@@ -24,9 +24,22 @@ This is the basal implementation of the storage interface.
 #include "Storage.h"
 #include "cbor-cpp/cbor.h"
 
+
 /*******************************************************************************
 * Statics
 *******************************************************************************/
+
+const char* DataRecord::recordTypeStr(uint8_t e) {
+  switch (e) {
+    case STORAGE_RECORD_TYPE_UNINIT:       return "UNINITIALIZED";
+    case STORAGE_RECORD_TYPE_ROOT:         return "ROOT";
+    case STORAGE_RECORD_TYPE_KEY_LISTING:  return "KEY_LISTING";
+    case STORAGE_RECORD_TYPE_LOG:          return "LOG";
+    case STORAGE_RECORD_TYPE_USER_CONF:    return "USER_CONF";
+    case STORAGE_RECORD_TYPE_LOCATION:     return "LOCATION";
+  }
+  return "UNKNOWN";
+}
 
 const char* Storage::errStr(const StorageErr e) {
   switch (e) {
@@ -68,7 +81,7 @@ void Storage::printStorage(StringBuilder* output) {
     _pl_flag(PL_FLAG_ENCRYPTED) ? "" : "un",
     _pl_flag(PL_FLAG_REMOVABLE) ? "" : "non-"
   );
-  output->concatf("\t %u total bytes accross %u pages of %u bytes each.\n", DEV_SIZE_BYTES, DEV_TOTAL_BLOCKS, DEV_BLOCK_SIZE);
+  output->concatf("\t %u total bytes across %u pages of %u bytes each.\n", DEV_SIZE_BYTES, DEV_TOTAL_BLOCKS, DEV_BLOCK_SIZE);
   output->concatf("\t Size of address:\t %u\n", DEV_ADDR_SIZE_BYTES);
   if (isMounted()) {
     output->concatf("\t Medium mounted %s %s  (%lu bytes free)\t%s\n",
@@ -138,7 +151,7 @@ void DataRecord::printDebug(StringBuilder* output) {
 int8_t DataRecord::save() {
   int8_t ret = -1;
   _outbound_buf.clear();
-  if (0 == _serialize(&_outbound_buf, TCode::CBOR)) {
+  if (0 == serialize(&_outbound_buf, TCode::CBOR)) {
     ret--;
     // Craft a descriptor for this record. We will need our overhead region to
     //   be aligned and constant-length.
@@ -422,7 +435,7 @@ int8_t DataRecord::buffer_offer_from_storage(uint32_t* addr, uint8_t* buf, uint3
   if (0 != ret) {
     // This is the end of I/O for this record. Mark it as such,
     //   after inflating the object.
-    _deserialize(&_outbound_buf, TCode::CBOR);
+    deserialize(&_outbound_buf, TCode::CBOR);
     _dr_clear_flag(DATA_RECORD_FLAG_PENDING_IO);
   }
   return ret;
@@ -476,7 +489,6 @@ uint32_t DataRecord::_calculate_hash() {
   //https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
   return 0;
 }
-
 
 
 StorageBlock* DataRecord::_get_storage_block_by_addr(uint32_t addr) {

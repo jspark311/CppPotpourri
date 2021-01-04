@@ -64,6 +64,9 @@ class DataRecord;
 #define STORAGE_RECORD_TYPE_UNINIT         0  // Reserved. Uninitalized.
 #define STORAGE_RECORD_TYPE_ROOT           1  // The root storage block.
 #define STORAGE_RECORD_TYPE_KEY_LISTING    2  // A listing of DataRecord keys.
+#define STORAGE_RECORD_TYPE_LOG            3  // A firmware-generated log.
+#define STORAGE_RECORD_TYPE_USER_CONF      4  // User configuration.
+#define STORAGE_RECORD_TYPE_LOCATION       5  // Location on Earth.
 
 /* DataRecord constants for serializer. */
 #define DATARECORD_SERIALIZER_VERSION  1  // Makes record migration possible.
@@ -100,7 +103,7 @@ typedef int8_t (*StorageReadCallback)(DataRecord*, StorageErr);
 
 
 /*******************************************************************************
-* This class  wraps and maps data into a sequence of blocks that are
+* This class wraps and maps data into a sequence of blocks that are
 *   stored in NVM. It allows data to be non-contiguous in memory, and allows
 *   the generalized storage abstraction to forget about the low-level addresses
 *   of indexed data.
@@ -129,18 +132,18 @@ class StorageBlock {
 */
 class DataRecord {
   public:
-    inline bool    isDirty() {      return (_hash == _calculate_hash());             };
-    inline bool    pendingIO() {    return _dr_flag(DATA_RECORD_FLAG_PENDING_IO);    };
-    inline bool    pendingAlloc() { return _dr_flag(DATA_RECORD_FLAG_PENDING_ALLOC); };
-
-    inline uint8_t recordType() {  return _record_type;   };
-
-    inline void setStorage(Storage* x) {   _storage = x;  };
-
-    int8_t save();
-    int8_t load(char* name);
+    inline bool     isDirty() {      return (_hash == _calculate_hash());             };
+    inline bool     pendingIO() {    return _dr_flag(DATA_RECORD_FLAG_PENDING_IO);    };
+    inline bool     pendingAlloc() { return _dr_flag(DATA_RECORD_FLAG_PENDING_ALLOC); };
+    inline uint8_t  recordType() {   return _record_type;   };
+    inline uint64_t timestamp() {    return _timestamp;     };
+    inline void setStorage(Storage* x) {    _storage = x;   };
 
     void printDebug(StringBuilder*);
+    int8_t save();
+    int8_t load(char* name);
+    virtual int8_t serialize(StringBuilder*, TCode) =0;
+    virtual int8_t deserialize(StringBuilder*, TCode) =0;
 
     /* Interface functions for the Storage driver's use. */
     // TODO: These should be made private one this class is 'friendly' with Storage.
@@ -150,19 +153,19 @@ class DataRecord {
     int8_t append_block_to_list(uint32_t blk_addr);
     inline LinkedList<StorageBlock*>* getBlockList() {  return &_blocks;  };
 
+    static const char* recordTypeStr(uint8_t);
+
+
   protected:
-    Storage* _storage     = nullptr; // Pointer to the Storage driver that spawned us.
-    LinkedList<StorageBlock*> _blocks;    // Blocks from the Storage driver.
-    StringBuilder   _outbound_buf;        // Data on its way to the Storage driver.
+    Storage* _storage = nullptr;        // Pointer to the Storage driver that spawned us.
+    LinkedList<StorageBlock*> _blocks;  // Blocks from the Storage driver.
+    StringBuilder _outbound_buf;        // Data on its way to the Storage driver.
 
     DataRecord() {};
     DataRecord(uint8_t rtype) : _record_type(rtype) {};
-    ~DataRecord();
+    ~DataRecord() {};
 
-    virtual int8_t _serialize(StringBuilder*, TCode) =0;
-    virtual int8_t _deserialize(StringBuilder*, TCode) =0;
     uint32_t _calculate_hash();
-
     inline void   _mark_clean() {   _hash = _calculate_hash();     };
 
     /* Flag manipulation inlines */
