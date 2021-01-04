@@ -57,7 +57,8 @@ class DataRecord;
 #define PL_FLAG_XFER_CLOBBER_KEY     0x0001  // A write operation should clobber the key if it already exists.
 
 /* DataRecord flags */
-#define DATA_RECORD_FLAG_PENDING_IO  0x0001  // We are in the process of saving or loading.
+#define DATA_RECORD_FLAG_PENDING_IO     0x01  // We are in the process of saving or loading.
+#define DATA_RECORD_FLAG_PENDING_ALLOC  0x02  // We are waiting on an allocation to happen.
 
 /* DataRecord types that are reserved for the driver's use. */
 #define STORAGE_RECORD_TYPE_UNINIT         0  // Reserved. Uninitalized.
@@ -128,8 +129,10 @@ class StorageBlock {
 */
 class DataRecord {
   public:
-    inline bool    isDirty() {     return (_hash == _calculate_hash());          };
-    inline bool    pendingIO() {   return _dr_flag(DATA_RECORD_FLAG_PENDING_IO); };
+    inline bool    isDirty() {      return (_hash == _calculate_hash());             };
+    inline bool    pendingIO() {    return _dr_flag(DATA_RECORD_FLAG_PENDING_IO);    };
+    inline bool    pendingAlloc() { return _dr_flag(DATA_RECORD_FLAG_PENDING_ALLOC); };
+
     inline uint8_t recordType() {  return _record_type;   };
 
     inline void setStorage(Storage* x) {   _storage = x;  };
@@ -139,10 +142,13 @@ class DataRecord {
 
     void printDebug(StringBuilder*);
 
-    // Interface functions for the Storage driver's use...
+    /* Interface functions for the Storage driver's use. */
+    // TODO: These should be made private one this class is 'friendly' with Storage.
     int8_t buffer_request_from_storage(uint32_t* addr, uint8_t* buf, uint32_t* len);   // Storage providing data from a read request.
     int8_t buffer_offer_from_storage(uint32_t* addr, uint8_t* buf, uint32_t* len);     // Storage requesting data from a write request.
-
+    int8_t alloc_complete(bool success);
+    int8_t append_block_to_list(uint32_t blk_addr);
+    inline LinkedList<StorageBlock*>* getBlockList() {  return &_blocks;  };
 
   protected:
     Storage* _storage     = nullptr; // Pointer to the Storage driver that spawned us.
@@ -189,6 +195,7 @@ class DataRecord {
     StorageBlock* _get_storage_block_by_addr(uint32_t addr);
     StorageBlock* _get_storage_block_by_nxt(uint32_t addr);
     uint32_t      _derive_allocated_size();
+    int8_t        _post_alloc_save();
 
     int8_t  _fill_from_descriptor_block(uint8_t*);
 };
@@ -206,14 +213,15 @@ class Storage {
     * Data-persistence functions. This is the API used by anything that wants to write
     *   formless data to a place on the device to be recalled on a different runtime.
     */
-    inline StorageErr  wipe() {   return wipe(0, deviceSize());   };  // Call to wipe the data store.
+    inline uint32_t    deviceSize() {    return DEV_SIZE_BYTES;     };  // How many bytes can the device hold?
+    inline uint32_t    blockSize() {     return DEV_BLOCK_SIZE;     };  // How granular is our use of space?
+    inline uint32_t    totalBlocks() {   return DEV_TOTAL_BLOCKS;   };  // How granular is our use of space?
+    inline StorageErr  wipe() {     return wipe(0, deviceSize());   };  // Call to wipe the data store.
     inline StorageErr  wipe(uint32_t offset) {   return wipe(offset, blockSize());   };   // Wipe a block.
-    virtual StorageErr wipe(uint32_t offset, uint32_t len) =0;  // Wipe a range.
-    virtual uint32_t   deviceSize() =0;  // How granular is our use of space?
-    virtual uint32_t   blockSize() =0;  // How granular is our use of space?
-    virtual uint8_t    blockAddrSize() =0;  // How many bytes is a block reference?
 
-    virtual int8_t     allocateBlocksForLength(uint32_t, LinkedList<StorageBlock*>*) =0;
+    virtual StorageErr wipe(uint32_t offset, uint32_t len) =0;  // Wipe a range.
+    virtual uint8_t    blockAddrSize() =0;  // How many bytes is a block reference?
+    virtual int8_t     allocateBlocksForLength(uint32_t, DataRecord*) =0;
 
     /* Raw buffer API. Might have more overhead on some platforms. */
     virtual StorageErr persistentWrite(uint8_t* buf, unsigned int len, uint32_t offset) =0;
@@ -238,13 +246,16 @@ class Storage {
 
 
   protected:
+    // Constants to represent the underlying hardware.
     const uint32_t DEV_SIZE_BYTES;
-    const uint32_t DEV_TOTAL_BLOCKS;   // Usually "pages" in NVM contexts.
+    const uint32_t DEV_BLOCK_SIZE;
+    const uint32_t DEV_TOTAL_BLOCKS;     // Usually "pages" in NVM contexts.
+    const uint8_t  DEV_ADDR_SIZE_BYTES;  // Size of integer required to hold an address.
+    uint16_t  _pl_flags     = 0;
     uint32_t  _free_space   = 0L;
     StorageReadCallback _cb = nullptr;
-    uint16_t  _pl_flags     = 0;
 
-    Storage(const uint32_t ds_bytes, const uint32_t bs_bytes) {};  // Protected constructor.
+    Storage(const uint32_t ds_bytes, const uint32_t bs_bytes);  // Protected constructor.
 
     virtual void printStorage(StringBuilder*);
 
