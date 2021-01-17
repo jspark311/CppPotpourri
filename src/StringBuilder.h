@@ -128,6 +128,7 @@ class StringBuilder {
 
     /* The functions below are meant to aid basic tokenization. They all consider the collapsed
        root string (if present) to be index zero. This detail is concealed from client classes. */
+    int      chunk(int);                // Split the string into tokens by a uniform length.
     int      split(const char*);        // Split the string into tokens by the given string.
     int      implode(const char*);      // Given a delimiter, form a single string from all StrLLs.
     uint16_t count();                   // Count the tokens.
@@ -147,7 +148,7 @@ class StringBuilder {
     void printDebug(StringBuilder*);
 
     /* Statics */
-    static void printBuffer(StringBuilder* output, uint8_t* buf, uint len, const char* indent);
+    static void printBuffer(StringBuilder* output, uint8_t* buf, uint len, const char* indent = "\t");
     // Wrapper for high-level string functions that we may or may not have.
     static int strcasestr(const char*, const char*);
     static int strcasecmp(const char*, const char*);

@@ -19,6 +19,7 @@ limitations under the License.
 */
 
 #include "StringBuilder.h"
+#include "CppPotpourri.h"
 
 
 /*******************************************************************************
@@ -73,48 +74,40 @@ int StringBuilder::strcasecmp(const char *a, const char *b) {
 }
 
 
-
-/* Static utility function for dumping buffers for humans to read. */
+/**
+* Static utility function for dumping buffers for humans to read.
+*
+* @param output is the StringBuilder* that should receive this function's output
+* @param buf contains the buffer we wish to print
+* @param len is how many bytes to print
+* @param indent is a string to prepend to each rendered line.
+*/
 void StringBuilder::printBuffer(StringBuilder* output, uint8_t* buf, unsigned int len, const char* indent) {
-  if (buf) {
-    const char* ind = (indent) ? indent : "\t";
+  if ((nullptr != buf) & (len > 0)) {
     unsigned int i = 0;
-    if (len >= 16) {
-      for (i = 0; i < (len - 16); i+=16) {
-        output->concatf("%s0x%04x: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
-          ind,
-          i,
-          *(buf + i +  0),
-          *(buf + i +  1),
-          *(buf + i +  2),
-          *(buf + i +  3),
-          *(buf + i +  4),
-          *(buf + i +  5),
-          *(buf + i +  6),
-          *(buf + i +  7),
-          *(buf + i +  8),
-          *(buf + i +  9),
-          *(buf + i + 10),
-          *(buf + i + 11),
-          *(buf + i + 12),
-          *(buf + i + 13),
-          *(buf + i + 14),
-          *(buf + i + 15)
-        );
-      }
+    while (len >= 16) {
+      output->concatf("%s0x%04x: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+        indent, i,
+        *(buf + i +  0), *(buf + i +  1), *(buf + i +  2), *(buf + i +  3),
+        *(buf + i +  4), *(buf + i +  5), *(buf + i +  6), *(buf + i +  7),
+        *(buf + i +  8), *(buf + i +  9), *(buf + i + 10), *(buf + i + 11),
+        *(buf + i + 12), *(buf + i + 13), *(buf + i + 14), *(buf + i + 15)
+      );
+      i   += 16;
+      len -= 16;
     }
-    if (i < len) {
-      output->concatf("%s0x%04x: ", ind, i);
-      for (; i < len; i++) {
+    if (len > 0) {
+      output->concatf("%s0x%04x: ", indent, i);
+      while (len > 0) {
         output->concatf("%02x ", *(buf + i));
+        i++;
+        len--;
       }
       output->concat("\n");
     }
   }
   else {
-    if (indent) {
-      output->concat(indent);
-    }
+    output->concat(indent);
     output->concat("(NULL BUFFER)\n");
   }
 }
@@ -181,13 +174,13 @@ StringBuilder::~StringBuilder() {
 
 
 /*******************************************************************************
-* TODO
-* Functions that don't work correctly, or are stubs.
 *******************************************************************************/
 
 /**
-* Public fxn to get the length of the string represented by this class. This is called before allocating
-*  mem to flatten the string into a single string.
+* Public fxn to get the length of the string represented by this class. This is
+*   called before allocating mem to flatten the string into a single string.
+*
+* @return The total length of the string.
 */
 int StringBuilder::length() {
   int return_value = this->col_length;
@@ -201,6 +194,8 @@ int StringBuilder::length() {
 /**
 * How many discrete elements are in this object?
 * Includes the base str member in the count.
+*
+* @return The number of linked-lists that are being used to hold this string
 */
 unsigned short StringBuilder::count() {
   unsigned short return_value = (nullptr != this->str) ? 1 : 0;
@@ -215,7 +210,11 @@ unsigned short StringBuilder::count() {
 
 /**
 * Public fxn to retrieve the flattened string as an uint8_t*.
-*   Will never return nullptr. Will return a zero-length string in the worst-case.
+* Will never return nullptr. Even for an empty string. Will return a
+*   null-terminated zero-length string in the worst-case.
+* The caller must not try to free() the value returned.
+*
+* @return The number of linked-lists that are being used to hold this string
 */
 unsigned char* StringBuilder::string() {
   if ((this->str == nullptr) && (this->root == nullptr)) {
@@ -255,7 +254,9 @@ void StringBuilder::clear() {
 
 /**
 * Return a castable pointer for the string at position <pos>.
-* Null on failure.
+*
+* @param pos is the index of the desired token.
+* @return A pointer to the requested token, or nullptr on failure.
 */
 char* StringBuilder::position(int pos) {
   if (this->str != nullptr) {
@@ -275,7 +276,10 @@ char* StringBuilder::position(int pos) {
 
 
 /**
-* Convenience fxn for breaking up strings of integers using the tokenizer.
+* Convenience fxn for accessing a token as an int.
+*
+* @param pos is the index of the desired token.
+* @return atoi()'s attempt at parsing the string at the given pos as an int.
 */
 int StringBuilder::position_as_int(int pos) {
   const char* temp = (const char*) position(pos);
@@ -332,7 +336,10 @@ int StringBuilder::position_as_int(int pos) {
 
 
 /**
-* Convenience fxn for breaking up strings of integers using the tokenizer.
+* Convenience fxn for accessing a token as a double.
+*
+* @param pos is the index of the desired token.
+* @return atof()'s attempt at parsing the string at the given pos as a double.
 */
 double StringBuilder::position_as_double(int pos) {
   const char* temp = (const char*) position(pos);
@@ -418,6 +425,10 @@ bool StringBuilder::drop_position(unsigned int pos) {
   return false;
 }
 
+
+/*******************************************************************************
+* Functions that change the data represeted by this object.
+*******************************************************************************/
 
 /**
 * This fxn is meant to hand off accumulated string data to us from the StringBuilder
@@ -689,6 +700,7 @@ void StringBuilder::concat(String s) {
 #endif   // ARDUINO
 
 
+
 /**
 * Given an offset and a length, will throw away any part of the string that falls outside
 *   of the given range.
@@ -723,33 +735,37 @@ void StringBuilder::cull(int offset, int length) {
 /**
 * Given a character count (x), will throw away the first x characters and adjust
 *   the object appropriately.
+* If the string length is smaller than the parameter, the entire string will be
+*   erased.
 *
 * @param x The numbers of characters to cull.
 */
 void StringBuilder::cull(int x) {
-  #if defined(__BUILD_HAS_PTHREADS)
+  if (x > 0) {
+    #if defined(__BUILD_HAS_PTHREADS)
     //pthread_mutex_lock(&_mutex);
-  #elif defined(__BUILD_HAS_FREERTOS)
-  #endif
-  if (x == this->length()) {
-    clear();
-  }
-  else if (this->length() > x) {   // Does the given range exist?
-    int remaining_length = this->length()-x;
-    unsigned char* temp = (unsigned char*) malloc(remaining_length+1);  // + 1 for null-terminator.
-    if (temp != nullptr) {
-      *(temp + remaining_length) = '\0';
-      this->_collapse_into_buffer();   // Room to optimize here...
-      memcpy(temp, (unsigned char*)(this->str + x), remaining_length);
-      this->clear();         // Throw away all else.
-      this->str = temp;      // Replace our ref.
-      this->col_length = remaining_length;
+    #elif defined(__BUILD_HAS_FREERTOS)
+    #endif
+    if (x >= this->length()) {
+      clear();
     }
-  }
-  #if defined(__BUILD_HAS_PTHREADS)
+    else if (x < this->length()) {   // Does the given range exist?
+      int remaining_length = this->length()-x;
+      unsigned char* temp = (unsigned char*) malloc(remaining_length+1);  // + 1 for null-terminator.
+      if (temp != nullptr) {
+        *(temp + remaining_length) = '\0';
+        this->_collapse_into_buffer();   // Room to optimize here...
+        memcpy(temp, (unsigned char*)(this->str + x), remaining_length);
+        this->clear();         // Throw away all else.
+        this->str = temp;      // Replace our ref.
+        this->col_length = remaining_length;
+      }
+    }
+    #if defined(__BUILD_HAS_PTHREADS)
     //pthread_mutex_unlock(&_mutex);
-  #elif defined(__BUILD_HAS_FREERTOS)
-  #endif
+    #elif defined(__BUILD_HAS_FREERTOS)
+    #endif
+  }
 }
 
 
@@ -842,6 +858,76 @@ int StringBuilder::implode(const char* delim) {
     }
   }
   return 0;
+}
+
+
+/**
+* This function subdivides the sum of this String into memory chunks not larger
+*   than the parameter.
+* The tail chunk may be smaller than the parameter.
+*
+* @param csize The size of each chunk.
+* @return The number of tokens, or -1 on failure.
+*/
+int StringBuilder::chunk(int csize) {
+  int ret = 0;
+  if (0 < csize) {
+    this->_collapse_into_buffer();
+    if (this->col_length != 0) {
+      // At this point, we are assured of having a string of non-zero length stored
+      //   in a single contiguous buffer. Create a new chain of containers of the
+      //   given size, and copy the old data into it.
+      StrLL* nu_root = (StrLL*) malloc(sizeof(StrLL));
+      if (nu_root) {
+        StrLL* current = nu_root;
+        int orig_idx   = 0;
+        int remaining_len = this->col_length;
+        while ((-1 != ret) && (current)) {
+          const int LL_BUF_LEN = strict_min(csize, remaining_len);
+          current->reap = true;
+          current->next = nullptr;
+          current->len  = LL_BUF_LEN;
+          current->str  = (uint8_t*) malloc(LL_BUF_LEN);
+          if (nullptr != current->str) {
+            for (int i = 0; i < LL_BUF_LEN; i++) {   // Copy the data over.
+              *(current->str + i) = *(this->str + orig_idx++);
+            }
+            if (nu_root != current) { // Don't do this for the first StrLL.
+              _stack_str_onto_list(nu_root, current);
+            }
+            remaining_len -= LL_BUF_LEN;
+            current = (0 >= remaining_len) ? nullptr : (StrLL*) malloc(sizeof(StrLL));
+            ret++;
+          }
+          else {
+            if (nu_root != current) {
+              free(current);  // Don't stack onto the list. Free immediately.
+              current = nullptr;
+            }
+            ret = -1;
+          }
+        }
+      }
+      else {
+        ret = -1;
+      }
+
+      if (-1 != ret) {
+        // The new chain has the data. Wipe the existing linked list.
+        clear();
+        this->root = nu_root;
+      }
+      else {
+        // Something went wrong along the way. Probably a failure to malloc().
+        // Clean up any mess we've made that can't be trusted.
+        _destroy_str_ll(nu_root);
+      }
+    }
+  }
+  else {
+    ret--;
+  }
+  return ret;
 }
 
 

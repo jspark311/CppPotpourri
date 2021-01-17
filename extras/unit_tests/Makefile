@@ -29,7 +29,7 @@ export COVERAGE_PATH = $(BUILD_ROOT)/build/coverage
 ###########################################################################
 INCLUDES    = -I$(BUILD_ROOT)/../../src
 
-SOURCES_TESTS_CPP  = TestDataStructures.cpp
+SOURCES_TESTS_CPP  = StringBuilderTest.cpp TestDataStructures.cpp
 
 SOURCES_CPP  = ../../src/SensorFilter.cpp
 SOURCES_CPP += ../../src/StopWatch.cpp

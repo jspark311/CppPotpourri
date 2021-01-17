@@ -40,6 +40,7 @@ TODO: Move to BusQueue for callback support? Might get really messy.
 
 class Storage;
 class DataRecord;
+class StorageBlock;
 
 /* Storage driver flags */
 #define PL_FLAG_USES_FILESYSTEM      0x0001  // Medium is on top of a filesystem.
@@ -101,6 +102,22 @@ enum class StorageErr : int8_t {
 typedef int8_t (*StorageReadCallback)(DataRecord*, StorageErr);
 
 
+class StorageOp {
+  public:
+    LinkedList<StorageBlock*> _block_queue;
+    DataRecord* callback_record;
+    StringBuilder* buffer;
+    bool is_write_op;
+
+    StorageOp(DataRecord* _r, StringBuilder* _b, bool _w) :
+      callback_record(_r),
+      buffer(_b),
+      is_write_op(_w)
+      {};
+};
+
+
+
 
 /*******************************************************************************
 * This class wraps and maps data into a sequence of blocks that are
@@ -140,17 +157,16 @@ class DataRecord {
     inline void setStorage(Storage* x) {    _storage = x;   };
 
     void printDebug(StringBuilder*);
-    int8_t save();
+    int8_t save(char* name);
     int8_t load(char* name);
     virtual int8_t serialize(StringBuilder*, TCode) =0;
     virtual int8_t deserialize(StringBuilder*, TCode) =0;
 
     /* Interface functions for the Storage driver's use. */
     // TODO: These should be made private one this class is 'friendly' with Storage.
+    //friend class Storage;
     int8_t buffer_request_from_storage(uint32_t* addr, uint8_t* buf, uint32_t* len);   // Storage providing data from a read request.
     int8_t buffer_offer_from_storage(uint32_t* addr, uint8_t* buf, uint32_t* len);     // Storage requesting data from a write request.
-    int8_t alloc_complete(bool success);
-    int8_t append_block_to_list(uint32_t blk_addr);
     inline LinkedList<StorageBlock*>* getBlockList() {  return &_blocks;  };
 
     static const char* recordTypeStr(uint8_t);
@@ -199,6 +215,7 @@ class DataRecord {
     StorageBlock* _get_storage_block_by_nxt(uint32_t addr);
     uint32_t      _derive_allocated_size();
     int8_t        _post_alloc_save();
+    int8_t        _sanitize_name(char*);
 
     int8_t  _fill_from_descriptor_block(uint8_t*);
 };
@@ -227,8 +244,10 @@ class Storage {
     virtual int8_t     allocateBlocksForLength(uint32_t, DataRecord*) =0;
 
     /* Raw buffer API. Might have more overhead on some platforms. */
+    //virtual StorageErr persistentWrite(DataRecord*, StringBuilder* buf) =0;
+    //virtual StorageErr persistentRead(DataRecord*, StringBuilder* buf) =0;
     virtual StorageErr persistentWrite(uint8_t* buf, unsigned int len, uint32_t offset) =0;
-    virtual StorageErr persistentRead(uint8_t* buf, unsigned int len, uint32_t offset) =0;
+    virtual StorageErr persistentRead(uint8_t* buf,  unsigned int len, uint32_t offset) =0;
 
     /* Public flag accessors. */
     inline uint32_t freeSpace() {     return _free_space;   };  // How many bytes are availible for use?
@@ -257,12 +276,12 @@ class Storage {
     uint16_t  _pl_flags     = 0;
     uint32_t  _free_space   = 0L;
     StorageReadCallback _cb = nullptr;
+    //PriorityQueue<StorageOp*> _op_queue;
 
     Storage(const uint32_t ds_bytes, const uint32_t bs_bytes);  // Protected constructor.
 
-    virtual void printStorage(StringBuilder*);
+    void _print_storage(StringBuilder*);
 
-    inline void _report_free_space(uint64_t x) { _free_space = x; };
     int8_t _invoke_record_callback(DataRecord* rec, StorageErr err);
 
     inline bool _pl_flag(uint16_t f) {   return ((_pl_flags & f) == f);   };

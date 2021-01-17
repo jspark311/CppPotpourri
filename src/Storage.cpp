@@ -76,17 +76,17 @@ Storage::Storage(const uint32_t ds_bytes, const uint32_t bs_bytes) :
   DEV_ADDR_SIZE_BYTES((ds_bytes < 65536) ? 2:4) {};
 
 
-void Storage::printStorage(StringBuilder* output) {
-  output->concatf("-- Storage [%sencrypted, %sremovable]\n",
+void Storage::_print_storage(StringBuilder* output) {
+  output->concatf("-- Storage [%cr %cw, %sencrypted, %sremovable]\n",
+    _pl_flag(PL_FLAG_MEDIUM_READABLE) ? '+' : '-',
+    _pl_flag(PL_FLAG_MEDIUM_WRITABLE) ? '+' : '-',
     _pl_flag(PL_FLAG_ENCRYPTED) ? "" : "un",
     _pl_flag(PL_FLAG_REMOVABLE) ? "" : "non-"
   );
-  output->concatf("\t %u total bytes across %u pages of %u bytes each.\n", DEV_SIZE_BYTES, DEV_TOTAL_BLOCKS, DEV_BLOCK_SIZE);
-  output->concatf("\t Size of address:\t %u\n", DEV_ADDR_SIZE_BYTES);
+  output->concatf("-- %u total bytes across %u pages of %u bytes each.\n", DEV_SIZE_BYTES, DEV_TOTAL_BLOCKS, DEV_BLOCK_SIZE);
+  output->concatf("\t Address size:\t %u\n", DEV_ADDR_SIZE_BYTES);
   if (isMounted()) {
-    output->concatf("\t Medium mounted %s %s  (%lu bytes free)\t%s\n",
-      _pl_flag(PL_FLAG_MEDIUM_READABLE) ? "+r" : "",
-      _pl_flag(PL_FLAG_MEDIUM_WRITABLE) ? "+w" : "",
+    output->concatf("\t Medium mounted (%u bytes free)\t%s\n",
       freeSpace(),
       isBusy() ? "[BUSY]" : ""
     );
@@ -145,110 +145,94 @@ void DataRecord::printDebug(StringBuilder* output) {
 *   metadata added to this object ahead of write initiation.
 *
 * @return  0 on success
-*         -1 on serializer failure
-*         -2 on failure to allocate storage space
+*         -1 on illegal name
+*         -2 on serializer failure
+*         -3 on failure to allocate storage space
+*         -4 on stack allocation failure
+*         -5 on failure to write to storage
 */
-int8_t DataRecord::save() {
+int8_t DataRecord::save(char* name) {
   int8_t ret = -1;
-  _outbound_buf.clear();
-  if (0 == serialize(&_outbound_buf, TCode::CBOR)) {
+  if (0 == _sanitize_name(name)) {
     ret--;
-    // Craft a descriptor for this record. We will need our overhead region to
-    //   be aligned and constant-length.
-    const uint BLOCK_SIZE        = _storage->blockSize();
-    const uint BLOCK_ADDR_SIZE   = _storage->blockAddrSize();
-    const uint DESCRIPTOR_SIZE   = DATARECORD_BASE_SIZE + (BLOCK_ADDR_SIZE << 1);
-    const uint PAYLOAD_SIZE      = _outbound_buf.length();
-    const uint TOTAL_RECORD_SIZE = DESCRIPTOR_SIZE + PAYLOAD_SIZE;
-    const uint ALLOCATED_SIZE    = _derive_allocated_size();
-    const uint BYTES_TO_TRIM     = ALLOCATED_SIZE - TOTAL_RECORD_SIZE;
-    _data_length = _outbound_buf.length();   // Update the payload length field.
-    _mark_clean();  // Finalize the checksum over the data.
+    _outbound_buf.clear();
+    if (0 == serialize(&_outbound_buf, TCode::CBOR)) {
+      ret--;
+      // Craft a descriptor for this record. We will need our overhead region to
+      //   be aligned and constant-length.
+      const uint BLOCK_SIZE        = _storage->blockSize();
+      const uint BLOCK_ADDR_SIZE   = _storage->blockAddrSize();
+      const uint DESCRIPTOR_SIZE   = DATARECORD_BASE_SIZE + (BLOCK_ADDR_SIZE << 1);
+      const uint PAYLOAD_SIZE      = _outbound_buf.length();
+      const uint TOTAL_RECORD_SIZE = DESCRIPTOR_SIZE + PAYLOAD_SIZE;
+      const uint ALLOCATED_SIZE    = _derive_allocated_size();
+      const uint BYTES_TO_TRIM     = ALLOCATED_SIZE - TOTAL_RECORD_SIZE;
+      _data_length = _outbound_buf.length();   // Update the payload length field.
+      _mark_clean();  // Finalize the checksum over the data.
 
-    // Now to ensure we take up the right amount of space in storage.
-    if ((TOTAL_RECORD_SIZE <= ALLOCATED_SIZE) & (BYTES_TO_TRIM < BLOCK_SIZE)) {
-      // The record will fit without slack blocks.
-      ret = _post_alloc_save();
-    }
-    else if (0 != _storage->allocateBlocksForLength(TOTAL_RECORD_SIZE, this)) {
-      // Storage driver couldn't change the size of this record. It probably
-      //   failed to find enough free blocks when asked for a resize.
-      // Clean up our mess and bail.
-      _outbound_buf.clear();
-    }
-    else {
-      _dr_set_flag(DATA_RECORD_FLAG_PENDING_ALLOC);
-      ret = 0;
-    }
-  }
-  return ret;
-}
+      // Now to ensure we take up the right amount of space in storage.
+      if (0 == _storage->allocateBlocksForLength(TOTAL_RECORD_SIZE, this)) {
+        // If our request for space was granted, we will now have a block list
+        //   that we are expected to write to. Get the first block.
+        ret--;
+        uint8_t* rec_desc = (uint8_t*) alloca(DESCRIPTOR_SIZE);
+        if (nullptr != rec_desc) {
+          ret--;
+          StorageBlock* first_blk = _blocks.get(0);
+          uint32_t _this_addr     = first_blk->this_offset;
+          uint32_t _nxt_dat_addr  = first_blk->next_offset;
 
+          // All the pieces are present. Start writing the descriptor.
+          uint idx = 0;
+          *(rec_desc + idx++) = DATARECORD_SERIALIZER_VERSION;
+          *(rec_desc + idx++) = 0;   // No flag fields yet.
+          *(rec_desc + idx++) = _record_type;
+          for (uint8_t i = 0; i < sizeof(_key); i++) {
+            *(rec_desc + idx++) = _key[i];
+          }
+          // Hash field.
+          *(rec_desc + idx++) = (uint8_t) (_hash >> 0);
+          *(rec_desc + idx++) = (uint8_t) (_hash >> 8);
+          *(rec_desc + idx++) = (uint8_t) (_hash >> 16);
+          *(rec_desc + idx++) = (uint8_t) (_hash >> 24);
+          // Record length field (excluding this descriptor).
+          *(rec_desc + idx++) = (uint8_t) (_data_length >> 0);
+          *(rec_desc + idx++) = (uint8_t) (_data_length >> 8);
+          *(rec_desc + idx++) = (uint8_t) (_data_length >> 16);
+          *(rec_desc + idx++) = (uint8_t) (_data_length >> 24);
+          // Timestamp field.
+          *(rec_desc + idx++) = (uint8_t) (_timestamp >> 0);
+          *(rec_desc + idx++) = (uint8_t) (_timestamp >> 8);
+          *(rec_desc + idx++) = (uint8_t) (_timestamp >> 16);
+          *(rec_desc + idx++) = (uint8_t) (_timestamp >> 24);
+          *(rec_desc + idx++) = (uint8_t) (_timestamp >> 32);
+          *(rec_desc + idx++) = (uint8_t) (_timestamp >> 40);
+          *(rec_desc + idx++) = (uint8_t) (_timestamp >> 48);
+          *(rec_desc + idx++) = (uint8_t) (_timestamp >> 56);
 
-/**
-* This is the second-stage of a save operation, after we are assured that we
-*   have the proper number of blocks reserved.
-*
-* @return  0 on success
-*         -1 on stack allocation failure
-*         -2 on failure to write to storage
-*/
-int8_t DataRecord::_post_alloc_save() {
-  const uint BLOCK_SIZE        = _storage->blockSize();
-  const uint BLOCK_ADDR_SIZE   = _storage->blockAddrSize();
-  const uint DESCRIPTOR_SIZE   = DATARECORD_BASE_SIZE + (BLOCK_ADDR_SIZE << 1);
-  int8_t ret = -1;
-  // If our request for space was granted, we will now have a block list
-  //   that we are expected to write to. Get the first block.
-  uint8_t* rec_desc = (uint8_t*) alloca(DESCRIPTOR_SIZE);
-  if (nullptr != rec_desc) {
-    ret--;
-    StorageBlock* first_blk = _blocks.get(0);
-    uint32_t _this_addr     = first_blk->this_offset;
-    uint32_t _nxt_dat_addr  = first_blk->next_offset;
+          // Finally, fill in our space-contingent address fields...
+          for (uint8_t i = 0; i < BLOCK_ADDR_SIZE; i++) {
+            const uint IDX_CONST   = idx++;
+            const uint SHIFT_CONST = i << 3;
+            *(rec_desc + IDX_CONST + 0)               = (uint8_t) (_nxt_rec_addr >> SHIFT_CONST);
+            *(rec_desc + IDX_CONST + BLOCK_ADDR_SIZE) = (uint8_t) (_nxt_dat_addr >> SHIFT_CONST);
+          }
 
-    // All the pieces are present. Start writing the descriptor.
-    uint idx = 0;
-    *(rec_desc + idx++) = DATARECORD_SERIALIZER_VERSION;
-    *(rec_desc + idx++) = 0;   // No flag fields yet.
-    *(rec_desc + idx++) = _record_type;
-    for (uint8_t i = 0; i < sizeof(_key); i++) {
-      *(rec_desc + idx++) = _key[i];
-    }
-    // Hash field.
-    *(rec_desc + idx++) = (uint8_t) (_hash >> 0);
-    *(rec_desc + idx++) = (uint8_t) (_hash >> 8);
-    *(rec_desc + idx++) = (uint8_t) (_hash >> 16);
-    *(rec_desc + idx++) = (uint8_t) (_hash >> 24);
-    // Record length field (excluding this descriptor).
-    *(rec_desc + idx++) = (uint8_t) (_data_length >> 0);
-    *(rec_desc + idx++) = (uint8_t) (_data_length >> 8);
-    *(rec_desc + idx++) = (uint8_t) (_data_length >> 16);
-    *(rec_desc + idx++) = (uint8_t) (_data_length >> 24);
-    // Timestamp field.
-    *(rec_desc + idx++) = (uint8_t) (_timestamp >> 0);
-    *(rec_desc + idx++) = (uint8_t) (_timestamp >> 8);
-    *(rec_desc + idx++) = (uint8_t) (_timestamp >> 16);
-    *(rec_desc + idx++) = (uint8_t) (_timestamp >> 24);
-    *(rec_desc + idx++) = (uint8_t) (_timestamp >> 32);
-    *(rec_desc + idx++) = (uint8_t) (_timestamp >> 40);
-    *(rec_desc + idx++) = (uint8_t) (_timestamp >> 48);
-    *(rec_desc + idx++) = (uint8_t) (_timestamp >> 56);
-
-    // Finally, fill in our space-contingent address fields...
-    for (uint8_t i = 0; i < BLOCK_ADDR_SIZE; i++) {
-      const uint IDX_CONST   = idx++;
-      const uint SHIFT_CONST = i << 3;
-      *(rec_desc + IDX_CONST + 0)               = (uint8_t) (_nxt_rec_addr >> SHIFT_CONST);
-      *(rec_desc + IDX_CONST + BLOCK_ADDR_SIZE) = (uint8_t) (_nxt_dat_addr >> SHIFT_CONST);
-    }
-
-    // Prepend the record descriptor and dispatch the I/O.
-    _outbound_buf.prepend(rec_desc, idx);
-    if (StorageErr::NONE == _storage->persistentWrite(_outbound_buf.string(), BLOCK_SIZE, _this_addr)) {
-      _outbound_buf.cull(BLOCK_SIZE);   // TODO: Scary. Wasteful.
-      _dr_set_flag(DATA_RECORD_FLAG_PENDING_IO);
-      ret = 0;
+          // Prepend the record descriptor and dispatch the I/O.
+          _outbound_buf.prepend(rec_desc, idx);
+          if (StorageErr::NONE == _storage->persistentWrite(_outbound_buf.string(), BLOCK_SIZE, _this_addr)) {
+            _outbound_buf.cull(BLOCK_SIZE);   // TODO: Scary. Wasteful.
+            _dr_set_flag(DATA_RECORD_FLAG_PENDING_IO);
+            ret = 0;
+          }
+        }
+      }
+      else {
+        // Storage driver couldn't change the size of this record. It probably
+        //   failed to find enough free blocks when asked for a resize.
+        // Clean up our mess and bail.
+        _outbound_buf.clear();
+      }
     }
   }
   return ret;
@@ -268,15 +252,14 @@ int8_t DataRecord::_post_alloc_save() {
 * @return 0 on success. Nonzero otherwise.
 */
 int8_t DataRecord::load(char* name) {
-  const uint16_t NAME_LENGTH = strict_min((uint16_t) sizeof(_key), (uint16_t) strlen(name));
   int8_t ret = -1;
   // Clear the class state and copy the given key as the search term.
+  if (_sanitize_name(name)) {
+    return -3;
+  }
   _outbound_buf.clear();
   _blocks.clear();
   _data_length = 0;
-  for (uint8_t i = 0; i < sizeof(_key); i++) {
-    _key[i] = (i < NAME_LENGTH) ? *(name + i) : 0;
-  }
   // To load a record we need a key and a record type.
   if ((_record_type != 0) & (_key[0] != 0) & (nullptr != _storage)) {
     ret--;
@@ -442,45 +425,6 @@ int8_t DataRecord::buffer_offer_from_storage(uint32_t* addr, uint8_t* buf, uint3
 }
 
 
-/**
-* Called by the storage driver to deliver a list of blocks to a record that
-*   previously asked for a re-allocation.
-* The entire list will be returned, so we can clobber our existing list.
-*
-* @param success is true if the allocation succeeded. False otherise.
-* @return 0 always.
-*/
-int8_t DataRecord::alloc_complete(bool success) {
-  if (pendingAlloc()) {
-    _dr_clear_flag(DATA_RECORD_FLAG_PENDING_ALLOC);
-    if (success) {
-      _post_alloc_save();
-    }
-  }
-  return 0;
-}
-
-
-/**
-* Called by the storage driver to deliver a new block of allocated bytes to a
-*   record that previously asked for a re-allocation.
-*
-* @param NEW_BLOCK_ADDR is the address to add to the list of occupied blocks.
-* @return 0 always.
-*/
-int8_t DataRecord::append_block_to_list(const uint32_t NEW_BLOCK_ADDR) {
-  const int LIST_SIZE = _blocks.size();
-  if (LIST_SIZE > 0) {
-    // We have existing blocks. So keep the current tail up-to-date before
-    //   appending the new block to the list.
-    StorageBlock* last_block = _blocks.get(LIST_SIZE-1);
-    last_block->next_offset = NEW_BLOCK_ADDR;
-  }
-  _blocks.insert(new StorageBlock(NEW_BLOCK_ADDR, 0));
-  return 0;
-}
-
-
 /*
 * Calculate and return the hash of the payload data.
 */
@@ -576,6 +520,28 @@ int8_t DataRecord::_fill_from_descriptor_block(uint8_t* buf) {
         }
       }
     }
+  }
+  return ret;
+}
+
+/**
+* Given a non-null string pointer, check that the string conforms to our rules,
+*   and replace our _key with the sanitized value.
+* Rules:
+*   * Names must be at least one character long.
+*   * Names must be null-terminated.
+*
+* @param name is the new name for this record.
+* @return 0 on success. -1 on failure of rule-check.
+*/
+int8_t DataRecord::_sanitize_name(char* name) {
+  const uint8_t NAME_LENGTH = strict_min((uint8_t) sizeof(_key), (uint8_t) strlen(name));
+  int8_t ret = -1;
+  if (NAME_LENGTH > 0) {
+    for (uint8_t i = 0; i < sizeof(_key); i++) {
+      _key[i] = (i < NAME_LENGTH) ? *(name + i) : 0;
+    }
+    ret = 0;
   }
   return ret;
 }
