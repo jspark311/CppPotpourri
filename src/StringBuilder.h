@@ -91,7 +91,7 @@ class StringBuilder {
     inline void concat(char* nu) {  concat((uint8_t*) nu, strlen(nu));  };
     inline void prepend(char* nu) { prepend((uint8_t*) nu, strlen(nu)); };
 
-    void prepend(const char* nu);  // TODO: Mark as non-reapable and store the pointer.
+    void prepend(const char* nu);
     void concat(const char* nu);
 
     /* Variadic concat. Semantics are the same as printf. */

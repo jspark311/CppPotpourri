@@ -558,6 +558,9 @@ void StringBuilder::prepend(uint8_t* nu, int len) {
 }
 
 
+/*
+* TODO: Mark as non-reapable and store the pointer.
+*/
 void StringBuilder::prepend(const char *nu) {
   this->prepend((uint8_t*) nu, strlen(nu));
 }
@@ -847,17 +850,45 @@ int StringBuilder::cmpBinString(uint8_t* unknown, int len) {
 
 /**
 * This function untokenizes the string by a given delimiter.
-* TODO: This
 *
 * @param delim The string to use as the delimiter.
-* @return The number of tokens.
+* @return The number of tokens that were imploded.
 */
 int StringBuilder::implode(const char* delim) {
+  int ret = 0;
   if (delim != nullptr) {
-    if (str != nullptr) {
+    _promote_collapsed_into_ll();
+    const int DELIM_LEN     = strlen(delim);
+    const int TOKD_STR_LEN  = length();
+    const int TOK_COUNT     = count();
+    if ((DELIM_LEN > 0) & (TOKD_STR_LEN > 2) & (TOK_COUNT > 1)) {
+      // In order for this operation to make sense, we need to have at least
+      //   two tokens, and a total string length of at least 2 characters.
+      const int TOTAL_STR_LEN = ((TOK_COUNT-1) * DELIM_LEN) + TOKD_STR_LEN;
+      int orig_idx = 0;
+      this->str = (uint8_t*) malloc(TOTAL_STR_LEN+1);
+      this->col_length = TOTAL_STR_LEN;
+      if (nullptr != this->str) {
+        StrLL* current = this->root;
+        for (int ti = 0; ti < (TOK_COUNT-1); ti++) {
+          for (int i = 0; i < current->len; i++) {   // Copy the data over.
+            *(this->str + orig_idx++) = *(current->str + i);
+          }
+          for (int i = 0; i < DELIM_LEN; i++) {   // Re-issue the delimiter.
+            *(this->str + orig_idx++) = *(delim + i);
+          }
+          current = current->next;
+        }
+        for (int i = 0; i < current->len; i++) {   // Copy the last data over.
+          *(this->str + orig_idx++) = *(current->str + i);
+        }
+        this->str[orig_idx++] = 0;    // Null terminate
+        _destroy_str_ll(this->root);  // Wipe the linked list.
+        ret = TOK_COUNT;
+      }
     }
   }
-  return 0;
+  return ret;
 }
 
 

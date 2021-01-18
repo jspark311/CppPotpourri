@@ -132,6 +132,7 @@ int test_StringBuilderStatics(StringBuilder* log) {
 }
 
 
+
 int test_Tokenizer(StringBuilder* log) {
   StringBuilder stack_obj;
   int ret = -1;
@@ -188,6 +189,53 @@ int test_Tokenizer(StringBuilder* log) {
 }
 
 
+
+int test_Implode(StringBuilder* log) {
+  const char* DELIM_STR = "\n\t";
+  StringBuilder stack_obj;
+  int ret = -1;
+  log->concat("===< Implode tests >====================================\n");
+  stack_obj.concat("This string");
+  stack_obj.concat("had no tabs");
+  stack_obj.concat("or newlines");
+  stack_obj.concat("when it was");
+  stack_obj.concat("created.");
+
+  int i_length = stack_obj.length();
+  int i_count  = stack_obj.count();
+  int toks = stack_obj.implode(DELIM_STR);
+
+  int p_length = stack_obj.length();
+  int p_count  = stack_obj.count();
+  log->concatf("Initial:\n\t Length:    %d\n", i_length);
+  log->concatf("\t Elements:  %d\n", i_count);
+  log->concatf("Post-implosion:\n\t Length:    %d\n", p_length);
+  log->concatf("\t Elements:  %d\n", p_count);
+  log->concatf("\t implode returns %d\n", toks);
+  log->concat((char*) stack_obj.string());
+  log->concat("\n");
+
+  int retoks = stack_obj.split(DELIM_STR);
+  int f_length = stack_obj.length();
+  int f_count  = stack_obj.count();
+  log->concatf("Re-split:\n\t Length:    %d\n", f_length);
+  log->concatf("\t Elements:  %d\n", f_count);
+  log->concatf("\t split() returns %d\n", retoks);
+  log->concat("\n\n");
+
+  if ((i_count == f_count) & (i_length == f_length)) {   // We started and ended with the same length and token count.
+    if (f_count == toks) {       // That token count equals the return value from implode.
+      if (p_count == 1) {        // Implode fully reduced the original set of tokens.
+        if (toks == retoks) {    // implode and split have the same return value.
+          ret = 0;
+        }
+      }
+    }
+  }
+  return ret;
+}
+
+
 int test_StringBuilder(StringBuilder* log) {
   int return_value = -1;
   log->concat("===< StringBuilder >====================================\n");
@@ -212,14 +260,12 @@ int test_StringBuilder(StringBuilder* log) {
     tok_obj.concat("   This");
     log->concatf("\t tok_obj split:   %d\n", tok_obj.split(" "));
     log->concatf("\t tok_obj count:   %d\n", tok_obj.count());
-
     log->concatf("\t Heap obj before culling:   %s\n", heap_obj->string());
 
     while (heap_obj->length() > 10) {
       heap_obj->cull(5);
       log->concatf("\t Heap obj during culling:   %s\n", heap_obj->string());
     }
-
     log->concatf("\t Heap obj after culling:   %s\n", heap_obj->string());
 
     heap_obj->prepend("Meaningless data ");
@@ -296,10 +342,13 @@ int main() {
   if (0 == test_StringBuilderStatics(&log)) {
     if (0 == test_StringBuilder(&log)) {
       if (0 == test_Tokenizer(&log)) {
-        printf("**********************************\n");
-        printf("*  StringBuilder tests all pass  *\n");
-        printf("**********************************\n");
-        exit_value = 0;
+        if (0 == test_Implode(&log)) {
+          printf("**********************************\n");
+          printf("*  StringBuilder tests all pass  *\n");
+          printf("**********************************\n");
+          exit_value = 0;
+        }
+        else printTestFailure("Implode");
       }
       else printTestFailure("Tokenizer");
     }

@@ -48,6 +48,7 @@ concatf            KEYWORD2
 cull               KEYWORD2
 trim               KEYWORD2
 clear              KEYWORD2
+chunk              KEYWORD2
 split              KEYWORD2
 implode            KEYWORD2
 count              KEYWORD2
