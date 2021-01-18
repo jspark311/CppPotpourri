@@ -32,13 +32,50 @@ limitations under the License.
 *
 * Static members and initializers should be located here.
 *******************************************************************************/
+
+/*
+*
+*/
+char* StringBuilder::strcasestr(const char* haystack, const char* needle) {
+  if ((nullptr != haystack) && (nullptr != needle) && (0 != *needle)) {
+    char* H_ptr = (char*) haystack;
+    char* N_ptr = (char*) needle;
+    bool there_is_still_hope = true;
+
+    while (there_is_still_hope) {
+      there_is_still_hope = false;
+
+      // Scan the haystack until the first character of the needle is found.
+      const char NEEDLE_FIRST_CHAR = toupper(*N_ptr);
+      while ((*H_ptr) && (toupper(*H_ptr) != NEEDLE_FIRST_CHAR)) {  H_ptr++;   }
+
+      if (0 != *H_ptr) {
+        // Nominal case. Character match. Continue iteration on N_ptr.
+        int hs_idx = 0;
+        while ((*(H_ptr + hs_idx) && *N_ptr) && (toupper(*(H_ptr + hs_idx)) == toupper(*N_ptr))) {
+          N_ptr++;
+          hs_idx++;
+        }
+        if (0 == *N_ptr) { // Search succeeded.
+          return H_ptr;    // Bailout with success.
+        }
+        H_ptr++;
+        there_is_still_hope = true;
+        N_ptr = (char*) needle;  // Reset to the first char of needle.
+      }
+    }
+  }
+  return nullptr;
+}
+
+
 /*
 * We might choose to roll-our-own so that we don't bring in enormous dependencies.
-* TODO: This is buggy.
+*
 * Taken from
 * http://c-for-dummies.com/blog/?p=1359
 */
-int StringBuilder::strcasestr(const char *a, const char *b) {
+int StringBuilder::strcasecmp(const char *a, const char *b) {
   if ((nullptr != a) && (nullptr != b)) {
     char c = 0;
     while (*a && *b) {
@@ -49,26 +86,8 @@ int StringBuilder::strcasestr(const char *a, const char *b) {
       a++;
       b++;
     }
+    c = *a - *b;  // If the strings are equal, these will both be null-terms.
     return c;
-  }
-  return -1;
-}
-
-
-int StringBuilder::strcasecmp(const char *a, const char *b) {
-  if ((nullptr != a) && (nullptr != b)) {
-    if (strlen(a) == strlen(b)) {
-      char c = 0;
-      while (*a && *b) {
-        c = toupper(*a) - toupper(*b);
-        if (c != 0) {
-          return c;
-        }
-        a++;
-        b++;
-      }
-      return c;
-    }
   }
   return -1;
 }
@@ -559,7 +578,8 @@ void StringBuilder::prepend(uint8_t* nu, int len) {
 
 
 /*
-* TODO: Mark as non-reapable and store the pointer.
+* TODO: Mark as non-reapable and store the pointer. The blocker is "reapable"
+*   of this->str at the time of promotion.
 */
 void StringBuilder::prepend(const char *nu) {
   this->prepend((uint8_t*) nu, strlen(nu));
@@ -652,6 +672,7 @@ void StringBuilder::concat(double nu) {
   sprintf(temp, "%f", nu);
   this->concat(temp);
 }
+
 
 /**
 * Override to cleanly support Our own type.
@@ -1045,8 +1066,7 @@ int StringBuilder::_total_str_len(StrLL* node) {
   return len;
 }
 
-
-/*
+/**
 * Recursive function to add a new string onto the end of the list.
 *
 * @param current The StrLL to treat as the root.
@@ -1061,8 +1081,7 @@ StrLL* StringBuilder::_stack_str_onto_list(StrLL* current, StrLL* nu) {
   return current;
 }
 
-
-/*
+/**
 * Non-recursive override to make additions less cumbersome.
 *
 * @param nu A newly-formed StrLL to be added to the list.

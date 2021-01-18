@@ -94,43 +94,72 @@ unsigned long millis() {
 *******************************************************************************/
 
 
-int test_StringBuilderStatics(StringBuilder* log) {
+int test_strcasecmp(StringBuilder* log) {
   int return_value = -1;
-  log->concat("===< Static function tests >====================================\n");
-  if (0 == StringBuilder::strcasestr("CHARACTER CONST STRING COMPARE", "CHARACTER CONST STRING COMPARE")) {
-    if (0 == StringBuilder::strcasestr("cHArACTER CONST sTRING COMpARE", "CHARACTER CONST STRING COMPARE")) {
-      if (0 != StringBuilder::strcasestr("CHARACTER CONST STRING 1OMPARE", "CHARACTER CONST STRING !OMPARE")) {
-        if (0 == StringBuilder::strcasestr("CHARACTER CONST STRING COMPARE", "CHARACTER CONST STRING COMPARE ")) {
-          if (0 != StringBuilder::strcasestr(" CHARACTER CONST STRING COMPARE", "CHARACTER CONST STRING COMPARE")) {
-            if (0 != StringBuilder::strcasestr(nullptr, "CHARACTER CONST STRING COMPARE")) {
-              if (0 != StringBuilder::strcasestr("CHARACTER CONST STRING COMPARE", nullptr)) {
-                const unsigned int TEST_LEN = strlen(STRBUILDER_STATICTEST_STRING);
-                uint8_t out_buf[256];
-                if (0 == random_fill(out_buf, 256)) {
-                  StringBuilder stack_obj((uint8_t*) STRBUILDER_STATICTEST_STRING, TEST_LEN+1);
-                  stack_obj.trim();
-                  StringBuilder::printBuffer(&stack_obj, out_buf, TEST_LEN, "INDENTSTR\t");
-                  printf("%s\n\n", (const char*) stack_obj.string());
-                  return_value = 0;
-                }
-                else log->concat("Failed to random_fill() test buffer.\n");
+  log->concat("===< strcasecmp tests >====================================\n");
+  if (0 == StringBuilder::strcasecmp("CHARACTER CONST STRING COMPARE", "CHARACTER CONST STRING COMPARE")) {
+    if (0 == StringBuilder::strcasecmp("cHArACTER CONST sTRING COMpARE", "CHARACTER CONST STRING COMPARE")) {
+      if (0 != StringBuilder::strcasecmp("CHARACTER CONST STRING 1OMPARE", "CHARACTER CONST STRING !OMPARE")) {
+        if (0 != StringBuilder::strcasecmp("CHARACTER CONST STRING COMPARE", "CHARACTER CONST STRING COMPARE ")) {
+          if (0 != StringBuilder::strcasecmp(" CHARACTER CONST STRING COMPARE", "CHARACTER CONST STRING COMPARE")) {
+            if (0 != StringBuilder::strcasecmp(nullptr, "CHARACTER CONST STRING COMPARE")) {
+              if (0 != StringBuilder::strcasecmp("CHARACTER CONST STRING COMPARE", nullptr)) {
+                return_value = 0;
               }
-              else log->concat("strcasestr() failed test 7.\n");
+              else log->concat("strcasecmp() nullptr as arg2 passed and should have failed.\n");
             }
-            else log->concat("strcasestr() failed test 6.\n");
+            else log->concat("strcasecmp() nullptr as arg1 passed and should have failed.\n");
           }
-          else log->concat("strcasestr() failed test 5.\n");
+          else log->concat("strcasecmp() test 5 passed and should have failed.\n");
         }
-        else log->concat("strcasestr() failed test 4.\n");
+        else log->concat("strcasecmp() test 4 passed and should have failed.\n");
       }
-      else log->concat("strcasestr() failed test 3.\n");
+      else log->concat("strcasecmp() test 3 passed and should have failed.\n");
     }
-    else log->concat("strcasestr() failed test 2.\n");
+    else log->concat("strcasecmp() test 2 failed and should have passed.\n");
   }
-  else log->concat("strcasestr() failed test 1.\n");
+  else log->concat("strcasecmp() test 1 failed and should have passed.\n");
   return return_value;
 }
 
+
+
+int test_strcasestr(StringBuilder* log) {
+  int return_value = -1;
+  const char* haystack = "Has Anyone Really Been Far Even as Decided to Use Even Go Want to do Look More Like?";
+  const char* needle0  = "ly Been F";    // First find, case insensitive
+  const char* needle1  = "aNYoNE";      // Case sensitivity.
+  const char* needle2  = "Like? Extended";   // Should exceed haystack boundary in inner loop.
+  const char* needle3  = "defenestrate";   // This should be a winning failure.
+
+  char* target0 = ((char*) haystack + 15);
+  char* target1 = ((char*) haystack + 4);
+
+  log->concat("===< strcasestr tests >====================================\n");
+  if (target0 == StringBuilder::strcasestr(haystack, needle0)) {
+    if (target1 == StringBuilder::strcasestr(haystack, needle1)) {
+      if (nullptr == StringBuilder::strcasestr(haystack, needle2)) {
+        if (nullptr == StringBuilder::strcasestr(haystack, needle3)) {
+          if (nullptr == StringBuilder::strcasestr(needle0, haystack)) {     // Swapped order.
+            if (nullptr == StringBuilder::strcasestr(nullptr, needle0)) {    // nullptr
+              if (nullptr == StringBuilder::strcasestr(haystack, nullptr)) { // nullptr
+                return_value = 0;
+              }
+              else log->concat("strcasestr() nullptr as arg2 passed and should have failed.\n");
+            }
+            else log->concat("strcasestr() nullptr as arg1 passed and should have failed.\n");
+          }
+          else log->concat("strcasestr() test for comically-large needle passed and should have failed.\n");
+        }
+        else log->concat("strcasestr() test 4 passed and should have failed.\n");
+      }
+      else log->concat("strcasestr() test 3 passed and should have failed.\n");
+    }
+    else log->concat("strcasestr() test 2 failed and should have passed.\n");
+  }
+  else log->concat("strcasestr() test 1 failed and should have passed.\n");
+  return return_value;
+}
 
 
 int test_Tokenizer(StringBuilder* log) {
@@ -339,22 +368,25 @@ int main() {
   gettimeofday(&start_micros, nullptr);
   srand(start_micros.tv_usec);
 
-  if (0 == test_StringBuilderStatics(&log)) {
-    if (0 == test_StringBuilder(&log)) {
-      if (0 == test_Tokenizer(&log)) {
-        if (0 == test_Implode(&log)) {
-          printf("**********************************\n");
-          printf("*  StringBuilder tests all pass  *\n");
-          printf("**********************************\n");
-          exit_value = 0;
+  if (0 == test_strcasecmp(&log)) {
+    if (0 == test_strcasestr(&log)) {
+      if (0 == test_StringBuilder(&log)) {
+        if (0 == test_Tokenizer(&log)) {
+          if (0 == test_Implode(&log)) {
+            printf("**********************************\n");
+            printf("*  StringBuilder tests all pass  *\n");
+            printf("**********************************\n");
+            exit_value = 0;
+          }
+          else printTestFailure("Implode");
         }
-        else printTestFailure("Implode");
+        else printTestFailure("Tokenizer");
       }
-      else printTestFailure("Tokenizer");
+      else printTestFailure("General");
     }
-    else printTestFailure("General");
+    else printTestFailure("strcasestr");
   }
-  else printTestFailure("Statics");
+  else printTestFailure("strcasecmp");
 
   printf("%s\n\n", (const char*) log.string());
   exit(exit_value);
