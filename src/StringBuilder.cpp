@@ -112,7 +112,7 @@ void StringBuilder::printBuffer(StringBuilder* output, uint8_t* buf, unsigned in
         *(buf + i +  8), *(buf + i +  9), *(buf + i + 10), *(buf + i + 11),
         *(buf + i + 12), *(buf + i + 13), *(buf + i + 14), *(buf + i + 15)
       );
-      i   += 16;
+      i += 16;
       len -= 16;
     }
     if (len > 0) {
@@ -935,7 +935,7 @@ int StringBuilder::chunk(int csize) {
         int orig_idx   = 0;
         int remaining_len = this->col_length;
         while ((-1 != ret) && (current)) {
-          const int LL_BUF_LEN = strict_min(csize, remaining_len);
+          const int LL_BUF_LEN = strict_min((int32_t) csize, (int32_t) remaining_len);
           current->reap = true;
           current->next = nullptr;
           current->len  = LL_BUF_LEN;
