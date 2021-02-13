@@ -7,17 +7,10 @@ Date:   2016.12.17
 #include "AbstractPlatform.h"
 #include "SPIAdapter.h"
 
-/*******************************************************************************
-*      _______.___________.    ___   .___________. __    ______     _______.
-*     /       |           |   /   \  |           ||  |  /      |   /       |
-*    |   (----`---|  |----`  /  ^  \ `---|  |----`|  | |  ,----'  |   (----`
-*     \   \       |  |      /  /_\  \    |  |     |  | |  |        \   \
-* .----)   |      |  |     /  _____  \   |  |     |  | |  `----.----)   |
-* |_______/       |__|    /__/     \__\  |__|     |__|  \______|_______/
-*
-* Static members and initializers should be located here.
-*******************************************************************************/
 
+/**
+* Constructor
+*/
 SPIAdapter::SPIAdapter(
   const uint8_t adapter,
   const uint8_t clk_pin,
@@ -223,7 +216,7 @@ int8_t SPIAdapter::advance_work_queue() {
 int8_t SPIAdapter::service_callback_queue() {
   int8_t return_value = 0;
 
-  while ((return_value < spi_cb_per_event) && (0 < callback_queue.size())) {
+  while ((return_value < _cb_per_event) && (0 < callback_queue.size())) {
     SPIBusOp* temp_op = callback_queue.dequeue();
     if (getVerbosity() > 6) temp_op->printDebug(&_local_log);
     if (nullptr != temp_op->callback) {

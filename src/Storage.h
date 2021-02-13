@@ -102,12 +102,16 @@ enum class StorageErr : int8_t {
 typedef int8_t (*StorageReadCallback)(DataRecord*, StorageErr);
 
 
+/**
+* This is an optional class for the convenience of concrete implementations of
+*   Storage drivers.
+*/
 class StorageOp {
   public:
     LinkedList<StorageBlock*> _block_queue;
-    DataRecord* callback_record;
-    StringBuilder* buffer;
-    bool is_write_op;
+    DataRecord* callback_record;   //
+    StringBuilder* buffer;         //
+    bool is_write_op;              //
 
     StorageOp(DataRecord* _r, StringBuilder* _b, bool _w) :
       callback_record(_r),
@@ -141,8 +145,8 @@ class StorageBlock {
 };
 
 
-/*
-* A general data record, with a strink key assigned by the application.
+/**
+* A general data record, with a string key assigned by the application.
 * When serialized, and stored, this object represents the head of a linked list
 *   of blocks that represents a record. The real addresses of NVM locations are
 *   held in this class.
@@ -243,9 +247,11 @@ class Storage {
     virtual uint8_t    blockAddrSize() =0;  // How many bytes is a block reference?
     virtual int8_t     allocateBlocksForLength(uint32_t, DataRecord*) =0;
 
-    /* Raw buffer API. Might have more overhead on some platforms. */
-    //virtual StorageErr persistentWrite(DataRecord*, StringBuilder* buf) =0;
+    /* High-level DataRecord API. */
+    virtual StorageErr persistentWrite(DataRecord*, StringBuilder* buf) =0;
     //virtual StorageErr persistentRead(DataRecord*, StringBuilder* buf) =0;
+
+    /* Raw buffer API. Might have more overhead on some platforms. */
     virtual StorageErr persistentWrite(uint8_t* buf, unsigned int len, uint32_t offset) =0;
     virtual StorageErr persistentRead(uint8_t* buf,  unsigned int len, uint32_t offset) =0;
 
@@ -276,7 +282,7 @@ class Storage {
     uint16_t  _pl_flags     = 0;
     uint32_t  _free_space   = 0L;
     StorageReadCallback _cb = nullptr;
-    //PriorityQueue<StorageOp*> _op_queue;
+    LinkedList<StorageOp*> _op_queue;   // List of state-bearing transactions.
 
     Storage(const uint32_t ds_bytes, const uint32_t bs_bytes);  // Protected constructor.
 

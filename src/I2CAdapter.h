@@ -37,9 +37,12 @@ This file is the tortured result of growing pains since the beginning of
 #include "LightLinkedList.h"
 #include "AbstractPlatform.h"
 
+#ifndef __I2C_ABSTRACTION_LAYER_H__
+#define __I2C_ABSTRACTION_LAYER_H__
 
-#ifndef I2C_ABSTRACTION_LAYER_ADAPTER         // This is meant to prevent double-inclusion.
-  #define I2C_ABSTRACTION_LAYER_ADAPTER 1
+// Forward declaration. Definition order in this file is very important.
+class I2CDevice;
+class I2CAdapter;
 
   /* Compile-time bounds on memory usage. */
   #ifndef I2CADAPTER_MAX_QUEUE_PRINT
@@ -56,44 +59,24 @@ This file is the tortured result of growing pains since the beginning of
   #endif
 
   /*
-  * These are used as function-return codes, and have nothing to do with bus
-  *   operations.
-  */
-  #define I2C_ERR_SLAVE_NO_ERROR      0   // No error.
-  #define I2C_ERR_SLAVE_BUS_FAULT    -3   // The bus failed us.
-  #define I2C_ERR_SLAVE_NOT_FOUND   -11   // When a slave device we expected to find is not found.
-  #define I2C_ERR_SLAVE_EXISTS      -12   // When we try to add a slave device that has already been added.
-  #define I2C_ERR_SLAVE_COLLISION   -13   // When we try to add a slave device that has an address already used by another slave.
-  #define I2C_ERR_SLAVE_INSERTION   -14   // Generic error for slave insertion. Usually implies out of memory.
-  #define I2C_ERR_SLAVE_ASSIGN_CLOB -15   // Assigning a bus adapter to this slave would clobber an existing assignment.
-  #define I2C_ERR_SLAVE_INVALID     -16   // Something makes this slave not appropriate for the requested operation.
-  #define I2C_ERR_SLAVE_UNDEFD_REG  -17   // The requested register was not defined.
-  #define I2C_ERR_SLAVE_REG_IS_RO   -18   // We tried to write to a register defined as read-only.
-
-
-  #define I2C_BUS_STATE_NO_INIT  0x00
-  #define I2C_BUS_STATE_ERROR    0x01
-  #define I2C_BUS_STATE_READY    0x02
-
-  /*
   * These state flags are hosted by the superclass. This may change in the future.
   * Might be too much convention surrounding their assignment across inherritence.
   */
-  #define I2C_BUS_FLAG_BUS_ERROR  0x01    // While this is true, don't interact with the RN.
-  #define I2C_BUS_FLAG_BUS_ONLINE 0x02    // Set when the module is verified to be in command mode.
-  #define I2C_BUS_FLAG_PING_RUN   0x04    // Have we run a full bus discovery?
-  #define I2C_BUS_FLAG_PINGING    0x08    // Are we running a full ping?
+  #define I2C_BUS_FLAG_BUS_ERROR      0x0001    // While this is true, don't interact with the RN.
+  #define I2C_BUS_FLAG_BUS_ONLINE     0x0002    // Set when the module is verified to be in command mode.
+  #define I2C_BUS_FLAG_PING_RUN       0x0004    // Have we run a full bus discovery?
+  #define I2C_BUS_FLAG_PINGING        0x0008    // Are we running a full ping?
 
+  // Flags passed in at construction that become BUS_FLAGS.
+  #define I2C_ADAPT_OPT_FLAG_SCL_PU   0x0400    // SCL pullup.
+  #define I2C_ADAPT_OPT_FLAG_SDA_PU   0x0800    // SDA pullup.
 
-  /* These are transfer flags specific to I2C. */
-  #define I2C_BUSOP_FLAG_SUBADDR         0x08    // Send a sub-address?
-  #define I2C_BUSOP_FLAG_VERBOSITY_MASK  0x07    // Low three bits store verbosity.
-  // 0x80 is used by the superclass.
-
-  // Forward declaration. Definition order in this file is very important.
-  class I2CDevice;
-  class I2CAdapter;
-
+  /*
+  * These flags are hosted by the member in the BusOp class.
+  * Be careful when scrubing the field between re-use.
+  */
+  #define I2C_BUSOP_FLAG_VERBOSITY_MASK  0x0007    // Low three bits store verbosity.
+  #define I2C_BUSOP_FLAG_SUBADDR         0x0008    // Send a sub-address?
 
   enum class I2CPingState : uint8_t {
     NONE = 0,
@@ -101,14 +84,6 @@ This file is the tortured result of growing pains since the beginning of
     POS  = 2,
     RES  = 3
   };
-
-
-  #define I2C_ADAPT_OPT_FLAG_HZ0      0x0100   //
-  #define I2C_ADAPT_OPT_FLAG_HZ1      0x0200   //
-  #define I2C_ADAPT_OPT_FLAG_SCL_PU   0x0400   // SCL pullup.
-  #define I2C_ADAPT_OPT_FLAG_SDA_PU   0x0800   // SDA pullup.
-
-  #define I2C_ADAPT_OPT_FLAG_S_ADDR   0x007F   // Mask for slave address.
 
 
   class I2CAdapterOptions {
@@ -319,4 +294,4 @@ This file is the tortured result of growing pains since the beginning of
       bool readX(int sub_addr, uint8_t len, uint8_t *buf);
       bool ping_device();   // Pings the device.
   };
-#endif  //I2C_ABSTRACTION_LAYER_ADAPTER
+#endif  //__I2C_ABSTRACTION_LAYER_H__

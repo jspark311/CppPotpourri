@@ -254,18 +254,18 @@ int8_t DataRecord::save(char* name) {
 int8_t DataRecord::load(char* name) {
   int8_t ret = -1;
   // Clear the class state and copy the given key as the search term.
-  if (_sanitize_name(name)) {
-    return -3;
-  }
-  _outbound_buf.clear();
-  _blocks.clear();
-  _data_length = 0;
-  // To load a record we need a key and a record type.
-  if ((_record_type != 0) & (_key[0] != 0) & (nullptr != _storage)) {
+  if (0 == _sanitize_name(name)) {
     ret--;
-    if (StorageErr::NONE == _storage->persistentRead(nullptr, _storage->blockSize(), 0)) {
-      _dr_set_flag(DATA_RECORD_FLAG_PENDING_IO);
-      ret = 0;
+    _outbound_buf.clear();
+    _blocks.clear();
+    _data_length = 0;
+    // To load a record we need a key and a record type.
+    if ((_record_type != 0) & (_key[0] != 0) & (nullptr != _storage)) {
+      ret--;
+      if (StorageErr::NONE == _storage->persistentRead(nullptr, _storage->blockSize(), 0)) {
+        _dr_set_flag(DATA_RECORD_FLAG_PENDING_IO);
+        ret = 0;
+      }
     }
   }
   return ret;
@@ -530,8 +530,9 @@ int8_t DataRecord::_fill_from_descriptor_block(uint8_t* buf) {
 * Rules:
 *   * Names must be at least one character long.
 *   * Names must be null-terminated.
+*   * Names longer than the maximum length will be truncated without failing.
 *
-* @param name is the new name for this record.
+* @param name is the new name for this record, null-terminated.
 * @return 0 on success. -1 on failure of rule-check.
 */
 int8_t DataRecord::_sanitize_name(char* name) {

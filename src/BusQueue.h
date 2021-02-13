@@ -31,6 +31,7 @@ TODO: Finish conversion to RingBuffer, and put constraints on BusAdapter's init
 #include "PriorityQueue.h"
 #include "StringBuilder.h"
 
+// TODO: I suppose it is too late to enum this....
 #define BUSOP_CALLBACK_ERROR    -1
 #define BUSOP_CALLBACK_NOMINAL   0
 #define BUSOP_CALLBACK_RECYCLE   1
@@ -39,6 +40,7 @@ TODO: Finish conversion to RingBuffer, and put constraints on BusAdapter's init
 * Flags for memory management
 * These reside in the BusOp base class, and help automate treatment of memory.
 */
+#define BUSOP_FLAG_PROFILE         0x20    // If set, this BusOp contributes to the Adapter's profiling data.
 #define BUSOP_FLAG_FREE_BUFFER     0x40    // If set in a transaction's flags field, the buffer will be free()'d, if present.
 #define BUSOP_FLAG_NO_FREE         0x80    // If set in a transaction's flags field, it will not be free()'d.
 
@@ -266,7 +268,6 @@ class BusOp {
       _flags = x ? (_flags | BUSOP_FLAG_FREE_BUFFER) : (_flags & (uint8_t) ~BUSOP_FLAG_FREE_BUFFER);
     };
 
-
     /* Inlines for protected access... */
     inline void      set_state(XferState nu) {   _xfer_state = nu;    };   // TODO: Bad. Should be protected. Why isn't it?
     inline void      set_opcode(BusOpcode nu) {  _opcode = nu;        };   // TODO: Bad. Should be protected. Why isn't it?
@@ -279,7 +280,6 @@ class BusOp {
     inline const char* getStateString() {   return BusOp::getStateString(_xfer_state);  };
     inline const char* getErrorString() {   return BusOp::getErrorString(_xfer_fault);  };
 
-
     static const char* getStateString(XferState);
     static const char* getOpcodeString(BusOpcode);
     static const char* getErrorString(XferFault);
@@ -290,7 +290,6 @@ class BusOp {
     uint8_t*  _buf          = 0;        // Pointer to the data buffer for the transaction.
     uint16_t  _buf_len      = 0;        // How large is the above buffer?
     uint16_t  _extnd_flags  = 0;        // Flags for the concrete class to use.
-
 
     inline void set_fault(XferFault nu) {   _xfer_fault = nu;    };
 

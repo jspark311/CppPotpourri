@@ -9,16 +9,42 @@
 
 class SPIAdapter;
 
+/* Compile-time bounds on memory usage. */
+#ifndef CONFIG_SPIADAPTER_MAX_QUEUE_PRINT
+  // How many queue items should we print for debug?
+  #define CONFIG_SPIADAPTER_MAX_QUEUE_PRINT 3
+#endif
+#ifndef CONFIG_SPIADAPTER_PREALLOC_COUNT
+  // How many queue items should we have on-tap?
+  #define CONFIG_SPIADAPTER_PREALLOC_COUNT  4
+#endif
+#ifndef CONFIG_SPIADAPTER_MAX_QUEUE_DEPTH
+  // How deep should the queue be allowed to become before rejecting work?
+  #define CONFIG_SPIADAPTER_MAX_QUEUE_DEPTH 6
+#endif
+
+/*
+* Adapter flag defs. The member that holds these is located in BusAdapter.
+*/
+#define SPI_FLAG_SPI_READY    0x0001    // Is SPI1 initialized?
+#define SPI_FLAG_QUEUE_IDLE   0x0002    // Is the SPI queue idle?
+#define SPI_FLAG_QUEUE_GUARD  0x0004    // Prevent bus queue floods?
+#define SPI_FLAG_RESERVED_0   0x0008    // Reserved
+#define SPI_FLAG_RESERVED_1   0x0010    // Reserved
+#define SPI_FLAG_CPOL         0x0020    // Bus configuration details.
+#define SPI_FLAG_CPHA         0x0040    // Bus configuration details.
+#define SPI_FLAG_MASTER       0x0080    // Bus configuration details.
+
 /*
 * These flags are hosted by the member in the BusOp class.
 * Be careful when scrubing the field between re-use.
 */
 #define SPI_XFER_FLAG_FRAME_SIZE_MASK 0x0007   // Holds the enum that dictates frame size.
-#define SPI_XFER_FLAG_PROFILE         0x0008   // If set, this bus operation shall be profiled.
-#define SPI_XFER_FLAG_DEVICE_CS_ASSRT 0x0010   // CS pin is presently asserted.
-#define SPI_XFER_FLAG_DEVICE_CS_AH    0x0020   // CS pin for device is active-high.
-#define SPI_XFER_FLAG_DEVICE_REG_INC  0x0040   // If set, indicates this operation advances addresses in the target device.
-// 0x80 is used by the superclass.
+#define SPI_XFER_FLAG_DEVICE_CS_ASSRT 0x0008   // CS pin is presently asserted.
+#define SPI_XFER_FLAG_DEVICE_CS_AH    0x0010   // CS pin for device is active-high.
+#define SPI_XFER_FLAG_DEVICE_CPOL     0x0020   // Transfer-specific settings.
+#define SPI_XFER_FLAG_DEVICE_CPHA     0x0040   // Transfer-specific settings.
+#define SPI_XFER_FLAG_DEVICE_REG_INC  0x0080   // If set, indicates this operation advances addresses in the target device.
 
 
 enum class SPIFrameSize : uint8_t {
@@ -83,6 +109,16 @@ class SPIBusOp : public BusOp {
     inline void csAsserted(bool x) {   _busop_set_flag(SPI_XFER_FLAG_DEVICE_CS_ASSRT, x);   };
 
     /**
+    * CPOL/CPHA settings for this specific transfer.
+    *
+    * @return The state of the given option bit.
+    */
+    inline bool cpol() {         return _busop_flag(SPI_XFER_FLAG_DEVICE_CPOL);   };
+    inline void cpol(bool x) {   _busop_set_flag(SPI_XFER_FLAG_DEVICE_CPOL, x);   };
+    inline bool cpha() {         return _busop_flag(SPI_XFER_FLAG_DEVICE_CPHA);   };
+    inline void cpha(bool x) {   _busop_set_flag(SPI_XFER_FLAG_DEVICE_CPHA, x);   };
+
+    /**
     * Is the chip select pin supposed to be active high?
     *
     * @return true if the CS pin is active.
@@ -90,44 +126,24 @@ class SPIBusOp : public BusOp {
     inline bool csActiveHigh() {          return _busop_flag(SPI_XFER_FLAG_DEVICE_CS_AH);   };
     inline void csActiveHigh(bool x) {    _busop_set_flag(SPI_XFER_FLAG_DEVICE_CS_AH, x);   };
 
-    static uint16_t  spi_wait_timeout;   // In microseconds. Per-byte.
+    /**
+    * Accessors for the optional maximum frequency of the bus for this transaction.
+    *
+    * @return true if the CS pin is active.
+    */
+    inline uint32_t maxFreq() {          return _max_freq;   };
+    inline void maxFreq(uint32_t x) {    _max_freq = x;      };
 
 
   private:
     SPIAdapter* _bus       = nullptr;
     uint8_t xfer_params[4] = {0, 0, 0, 0};
+    uint32_t _max_freq     = 0;
     uint8_t  _param_len    = 0;
     uint8_t  _cs_pin       = 255;  // Chip-select pin.
 
     int8_t _assert_cs(bool);
 };
-
-
-/* Compile-time bounds on memory usage. */
-#ifndef CONFIG_SPIADAPTER_MAX_QUEUE_PRINT
-  // How many queue items should we print for debug?
-  #define CONFIG_SPIADAPTER_MAX_QUEUE_PRINT 3
-#endif
-#ifndef CONFIG_SPIADAPTER_PREALLOC_COUNT
-  // How many queue items should we have on-tap?
-  #define CONFIG_SPIADAPTER_PREALLOC_COUNT  4
-#endif
-#ifndef CONFIG_SPIADAPTER_MAX_QUEUE_DEPTH
-  // How deep should the queue be allowed to become before rejecting work?
-  #define CONFIG_SPIADAPTER_MAX_QUEUE_DEPTH 6
-#endif
-
-/*
-* Adapter flag defs. The member that holds these is located in BusAdapter.
-*/
-#define SPI_FLAG_SPI_READY    0x01    // Is SPI1 initialized?
-#define SPI_FLAG_QUEUE_IDLE   0x02    // Is the SPI queue idle?
-#define SPI_FLAG_QUEUE_GUARD  0x04    // Prevent bus queue floods?
-#define SPI_FLAG_RESERVED_0   0x08    // Reserved
-#define SPI_FLAG_RESERVED_1   0x10    // Reserved
-#define SPI_FLAG_CPOL         0x20    // Bus configuration details.
-#define SPI_FLAG_CPHA         0x40    // Bus configuration details.
-#define SPI_FLAG_MASTER       0x80    // Bus configuration details.
 
 
 
@@ -147,18 +163,21 @@ class SPIAdapter : public BusAdapter<SPIBusOp> {
 
     int8_t service_callback_queue();
 
+    int8_t setMode(const uint8_t);
+    int8_t frequency(const uint32_t);
+    inline uint32_t frequency() {   return _current_freq;   };
+
     int8_t init();
     void printDebug(StringBuilder*);
     void printHardwareState(StringBuilder*);
 
 
   private:
-    const uint8_t  _CLK_PIN;      // Pin assignments for SPI.
-    const uint8_t  _MOSI_PIN;     // Pin assignments for SPI.
-    const uint8_t  _MISO_PIN;     // Pin assignments for SPI.
-
-    uint8_t   spi_cb_per_event   = 3;  // Limit the number of callbacks processed per event.
-    uint32_t  bus_timeout_millis = 5;  // How long to spend in IO_WAIT?
+    const uint8_t _CLK_PIN;      // Pin assignments for SPI.
+    const uint8_t _MOSI_PIN;     // Pin assignments for SPI.
+    const uint8_t _MISO_PIN;     // Pin assignments for SPI.
+    uint8_t _cb_per_event  = 3;  // Limit the number of callbacks processed per event.
+    uint32_t _current_freq = 0;  // The current frequency of the adapter.
     PriorityQueue<SPIBusOp*> callback_queue;  // List of pending callbacks for bus transactions.
 
     /* Overrides from the BusAdapter interface */
