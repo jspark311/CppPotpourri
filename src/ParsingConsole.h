@@ -165,6 +165,8 @@ class ParsingConsole : public BufferAccepter {
 
     static const char* const errToStr(ConsoleErr);
     static const char* const typecodeToStr(TCode);
+    static void styleHeader1(StringBuilder*, const char*);
+    //static void styleHeader2(StringBuilder*, const char*);
 
     /* Common static TCode strings. */
     static const TCode tcodes_0[];

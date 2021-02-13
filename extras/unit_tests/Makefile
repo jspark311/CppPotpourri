@@ -45,8 +45,6 @@ SOURCES_CPP += ../../src/Quaternion.cpp
 SOURCES_CPP += ../../src/Storage.cpp
 SOURCES_CPP += ../../src/TripleAxisPipe.cpp
 
-
-
 CXXFLAGS  = -fsingle-precision-constant -Wdouble-promotion -fno-rtti -fno-exceptions
 CXXFLAGS += -D_GNU_SOURCE -fprofile-dir=$(COVERAGE_PATH)
 
@@ -104,7 +102,7 @@ buildtests: outputpath
 	@$(foreach test,$(TESTS),$(OUTPUT_PATH)/$(test);)
 
 coverage: outputpath
-	$(GCOV) --object-directory $(COVERAGE_PATH) --preserve-paths --demangled-names $(SOURCES_CPP)
+	$(GCOV) --object-directory $(COVERAGE_PATH) -m --preserve-paths --demangled-names $(SOURCES_CPP)
 	mv *.gcno $(COVERAGE_PATH)
 	lcov --capture --directory $(COVERAGE_PATH) --output-file $(COVERAGE_PATH)/coverage.info
 	genhtml $(COVERAGE_PATH)/coverage.info --output-directory $(COVERAGE_PATH)
@@ -117,4 +115,4 @@ outputpath:
 	mkdir -p $(COVERAGE_PATH)
 
 clean:
-	rm -rf $(OUTPUT_PATH) $(OBJS) *.gcno *.gcda *.gcov
+	rm -rf $(OUTPUT_PATH) $(OBJS) *.gcno *.gcda *.gcov *.o

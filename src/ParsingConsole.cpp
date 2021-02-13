@@ -111,6 +111,12 @@ const char* const ParsingConsole::_get_terminator(LineTerm lt) {
   return "";
 }
 
+// TODO: This is probably a general text-formatting class. But for now, it lives
+//   in the console class.
+void ParsingConsole::styleHeader1(StringBuilder* output, const char* text) {
+  output->concatf("--- %s\n---------------------------------------\n", text);
+}
+
 
 /*******************************************************************************
 * Class boilerplate

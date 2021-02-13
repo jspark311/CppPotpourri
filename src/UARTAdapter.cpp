@@ -1,5 +1,5 @@
 /*
-File:   UARTBusOp.cpp
+File:   UARTAdapter.cpp
 Author: J. Ian Lindsay
 Date:   2020.06.10
 */
