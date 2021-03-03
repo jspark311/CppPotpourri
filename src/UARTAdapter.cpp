@@ -24,11 +24,14 @@ UARTAdapter::UARTAdapter(
 * Destructor. Should never be called.
 */
 UARTAdapter::~UARTAdapter() {
-  bus_deinit();
+  _pf_deinit();
 }
 
 
-int8_t UARTAdapter::init() {
+int8_t UARTAdapter::init(const UARTOpts* o) {
   _adapter_set_flag(UART_FLAG_QUEUE_IDLE);
-  return bus_init();
+  for (uint i = 0; i < sizeof(UARTOpts); i++) {
+    *((uint8_t*) &_opts + i) = *((uint8_t*) o + i);
+  }
+  return _pf_init();
 }

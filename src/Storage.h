@@ -62,12 +62,12 @@ class StorageBlock;
 #define DATA_RECORD_FLAG_PENDING_ALLOC  0x02  // We are waiting on an allocation to happen.
 
 /* DataRecord types that are reserved for the driver's use. */
-#define STORAGE_RECORD_TYPE_UNINIT         0  // Reserved. Uninitalized.
-#define STORAGE_RECORD_TYPE_ROOT           1  // The root storage block.
-#define STORAGE_RECORD_TYPE_KEY_LISTING    2  // A listing of DataRecord keys.
-#define STORAGE_RECORD_TYPE_LOG            3  // A firmware-generated log.
-#define STORAGE_RECORD_TYPE_USER_CONF      4  // User configuration.
-#define STORAGE_RECORD_TYPE_LOCATION       5  // Location on Earth.
+#define STORAGE_RECORD_TYPE_UNINIT           0  // Reserved. Uninitalized.
+#define STORAGE_RECORD_TYPE_ROOT             1  // The root storage block.
+#define STORAGE_RECORD_TYPE_KEY_LISTING      2  // A listing of DataRecord keys.
+#define STORAGE_RECORD_TYPE_LOG              3  // A firmware-generated log.
+#define STORAGE_RECORD_TYPE_USER_CONF        4  // User configuration.
+#define STORAGE_RECORD_TYPE_LOCATION         5  // Location on Earth.
 
 /* DataRecord constants for serializer. */
 #define DATARECORD_SERIALIZER_VERSION  1  // Makes record migration possible.

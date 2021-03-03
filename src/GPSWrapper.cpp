@@ -20,6 +20,7 @@ https://geographiclib.sourceforge.io/1.40/C/
 */
 
 #include "GPSWrapper.h"
+#include "ParsingConsole.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,6 +34,27 @@ extern "C" {
 }
 #endif
 
+/*******************************************************************************
+* LocationFrame functions
+*******************************************************************************/
+
+void LocationFrame::printDebug(StringBuilder* output) {
+  output->concatf("\tTimestamp: %u\n\tSat count: %u\n", timestamp, sat_count);
+  output->concatf("\t(%.6f, %.6f) heading %.2f at %u m/s\n", lat, lon, mag_bearing, (speed / 1000));
+  output->concatf("\tDOP horiz: %.3f\n\tDOP vert:  %.3f\n", dop_horiz, dop_vert);
+}
+
+void LocationFrame::copyFrame(const LocationFrame* loc) {
+  lat         = loc->lat;
+  lon         = loc->lon;
+  dop_horiz   = loc->dop_horiz;
+  dop_vert    = loc->dop_vert;
+  timestamp   = loc->timestamp;
+  mag_bearing = loc->mag_bearing;
+  speed       = loc->speed;
+  altitude    = loc->altitude;
+  sat_count   = loc->sat_count;
+}
 
 
 /*******************************************************************************
@@ -182,8 +204,9 @@ bool GPSWrapper::_attempt_parse() {
   if (_accumulator.split("\n") == 0) return false;
   char* line = nullptr;
   bool local_success = false;
-  StringBuilder _log;
+  bool emit_callback = false;
 
+  // Always assume that the last token in the accumulator is an incomplete line.
   while (_accumulator.count() > 1) {
     line = _accumulator.position(0);
     enum minmea_sentence_id id = _sentence_id(line, false);
@@ -192,6 +215,8 @@ bool GPSWrapper::_attempt_parse() {
         {
           struct minmea_sentence_gsa frame;
           if (_parse_gsa(&frame, line)) {
+            _loc_frame.dop_horiz = (double) minmea_tofloat(&frame.hdop);
+            _loc_frame.dop_vert  = (double) minmea_tofloat(&frame.vdop);
             local_success = true;
           }
         }
@@ -208,21 +233,25 @@ bool GPSWrapper::_attempt_parse() {
         {
           struct minmea_sentence_rmc frame;
           if (_parse_rmc(&frame, line)) {
+            struct timespec ts;
+            _loc_frame.lat = minmea_tocoord(&frame.latitude);
+            _loc_frame.lon = minmea_tocoord(&frame.longitude);
+            if (0 == _gettime(&ts, &frame.date, &frame.time)) {
+              _loc_frame.timestamp = ts.tv_sec;
+            }
+            // _log.concatf("$xxRMC: raw coordinates and speed: (%d/%d,%d/%d) %d/%d\n",
+            //         frame.latitude.value, frame.latitude.scale,
+            //         frame.longitude.value, frame.longitude.scale,
+            //         frame.speed.value, frame.speed.scale);
+            // _log.concatf("$xxRMC fixed-point coordinates and speed scaled to three decimal places: (%d,%d) %d\n",
+            //         minmea_rescale(&frame.latitude, 1000),
+            //         minmea_rescale(&frame.longitude, 1000),
+            //         minmea_rescale(&frame.speed, 1000));
+            // _log.concatf("$xxRMC floating point degree coordinates and speed: (%f,%f) %f\n",
+            //         (double) minmea_tocoord(&frame.latitude),
+            //         (double) minmea_tocoord(&frame.longitude),
+            //         (double) minmea_tofloat(&frame.speed));
             local_success = true;
-            _last_lat = minmea_tocoord(&frame.latitude);
-            _last_lon = minmea_tocoord(&frame.longitude);
-              // _log.concatf("$xxRMC: raw coordinates and speed: (%d/%d,%d/%d) %d/%d\n",
-              //         frame.latitude.value, frame.latitude.scale,
-              //         frame.longitude.value, frame.longitude.scale,
-              //         frame.speed.value, frame.speed.scale);
-              // _log.concatf("$xxRMC fixed-point coordinates and speed scaled to three decimal places: (%d,%d) %d\n",
-              //         minmea_rescale(&frame.latitude, 1000),
-              //         minmea_rescale(&frame.longitude, 1000),
-              //         minmea_rescale(&frame.speed, 1000));
-              // _log.concatf("$xxRMC floating point degree coordinates and speed: (%f,%f) %f\n",
-              //         (double) minmea_tocoord(&frame.latitude),
-              //         (double) minmea_tocoord(&frame.longitude),
-              //         (double) minmea_tofloat(&frame.speed));
           }
         }
         break;
@@ -230,8 +259,13 @@ bool GPSWrapper::_attempt_parse() {
         {
           struct minmea_sentence_gga frame;
           if (_parse_gga(&frame, line)) {
-            local_success = true;
+            _loc_frame.sat_count = frame.satellites_tracked;
+            switch (frame.altitude_units) {
+              case 'M': _loc_frame.altitude = (int) (minmea_tofloat(&frame.altitude) * 1000.0);   break;
+              default:  break;
+            }
             //_log.concatf("$xxGGA: fix quality: %d\n", frame.fix_quality);
+            local_success = true;
           }
         }
         break;
@@ -239,20 +273,20 @@ bool GPSWrapper::_attempt_parse() {
         {
           struct minmea_sentence_gst frame;
           if (_parse_gst(&frame, line)) {
+            // _log.concatf("$xxGST: raw latitude,longitude and altitude error deviation: (%d/%d,%d/%d,%d/%d)\n",
+            //         frame.latitude_error_deviation.value, frame.latitude_error_deviation.scale,
+            //         frame.longitude_error_deviation.value, frame.longitude_error_deviation.scale,
+            //         frame.altitude_error_deviation.value, frame.altitude_error_deviation.scale);
+            // _log.concatf("$xxGST fixed point latitude,longitude and altitude error deviation"
+            //        " scaled to one decimal place: (%d,%d,%d)\n",
+            //         minmea_rescale(&frame.latitude_error_deviation, 10),
+            //         minmea_rescale(&frame.longitude_error_deviation, 10),
+            //         minmea_rescale(&frame.altitude_error_deviation, 10));
+            // _log.concatf("$xxGST floating point degree latitude, longitude and altitude error deviation: (%f,%f,%f)",
+            //         (double) minmea_tofloat(&frame.latitude_error_deviation),
+            //         (double) minmea_tofloat(&frame.longitude_error_deviation),
+            //         (double) minmea_tofloat(&frame.altitude_error_deviation));
             local_success = true;
-              // _log.concatf("$xxGST: raw latitude,longitude and altitude error deviation: (%d/%d,%d/%d,%d/%d)\n",
-              //         frame.latitude_error_deviation.value, frame.latitude_error_deviation.scale,
-              //         frame.longitude_error_deviation.value, frame.longitude_error_deviation.scale,
-              //         frame.altitude_error_deviation.value, frame.altitude_error_deviation.scale);
-              // _log.concatf("$xxGST fixed point latitude,longitude and altitude error deviation"
-              //        " scaled to one decimal place: (%d,%d,%d)\n",
-              //         minmea_rescale(&frame.latitude_error_deviation, 10),
-              //         minmea_rescale(&frame.longitude_error_deviation, 10),
-              //         minmea_rescale(&frame.altitude_error_deviation, 10));
-              // _log.concatf("$xxGST floating point degree latitude, longitude and altitude error deviation: (%f,%f,%f)",
-              //         (double) minmea_tofloat(&frame.latitude_error_deviation),
-              //         (double) minmea_tofloat(&frame.longitude_error_deviation),
-              //         (double) minmea_tofloat(&frame.altitude_error_deviation));
           }
         }
         break;
@@ -260,15 +294,14 @@ bool GPSWrapper::_attempt_parse() {
         {
           struct minmea_sentence_gsv frame;
           if (_parse_gsv(&frame, line)) {
+            // _log.concatf("$xxGSV: message %d of %d\n", frame.msg_nr, frame.total_msgs);
+            // for (int i = 0; i < 4; i++)
+            //     _log.concatf("$xxGSV: sat nr %d, elevation: %d, azimuth: %d, snr: %d dbm\n",
+            //         frame.sats[i].nr,
+            //         frame.sats[i].elevation,
+            //         frame.sats[i].azimuth,
+            //         frame.sats[i].snr);
             local_success = true;
-              // _log.concatf("$xxGSV: message %d of %d\n", frame.msg_nr, frame.total_msgs);
-              // _log.concatf("$xxGSV: sattelites in view: %d\n", frame.total_sats);
-              // for (int i = 0; i < 4; i++)
-              //     _log.concatf("$xxGSV: sat nr %d, elevation: %d, azimuth: %d, snr: %d dbm\n",
-              //         frame.sats[i].nr,
-              //         frame.sats[i].elevation,
-              //         frame.sats[i].azimuth,
-              //         frame.sats[i].snr);
           }
         }
         break;
@@ -276,16 +309,10 @@ bool GPSWrapper::_attempt_parse() {
         {
           struct minmea_sentence_vtg frame;
           if (_parse_vtg(&frame, line)) {
+            _loc_frame.mag_bearing = minmea_tofloat(&frame.magnetic_track_degrees);
+            _loc_frame.speed       = (minmea_tofloat(&frame.speed_kph) * 1000000) / 3600;  // Convert to mm/sec
             local_success = true;
-            _last_speed = minmea_tofloat(&frame.speed_kph);
-              // _log.concatf("$xxVTG: true track degrees = %f\n",
-              //        (double) minmea_tofloat(&frame.true_track_degrees));
-              // _log.concatf("        magnetic track degrees = %f\n",
-              //        (double) minmea_tofloat(&frame.magnetic_track_degrees));
-              // _log.concatf("        speed knots = %f\n",
-              //         (double) minmea_tofloat(&frame.speed_knots));
-              // _log.concatf("        speed kph = %f\n",
-              //         (double) minmea_tofloat(&frame.speed_kph));
+            emit_callback = true;
           }
         }
         break;
@@ -295,9 +322,8 @@ bool GPSWrapper::_attempt_parse() {
     }
     if (local_success) {
       _sentences_parsed++;
-      if (nullptr != _callback) {
-        LocationFrame loc_frame;   // TODO: Fill
-        _callback(&loc_frame);
+      if (emit_callback & (nullptr != _callback)) {
+        _callback(&_loc_frame);
       }
     }
     else {
@@ -311,12 +337,10 @@ bool GPSWrapper::_attempt_parse() {
 
 
 void GPSWrapper::printDebug(StringBuilder* output) {
-  output->concatf("GPSWrapper:\n\tSentences\n\t-------------\n\tParsed %u\n\tReject %u\n", _sentences_parsed, _sentences_rejected);
-  output->concatf("\tLAT   %.6f\n\tLON   %.6f\n\tSpeed %.2f\n", _last_lat, _last_lon, _last_speed);
-  if (_accumulator.length() > 0) {
-    output->concatf("\n\taccumulator (%d bytes):  ", _accumulator.length());
-    _accumulator.printDebug(output);
-  }
+  ParsingConsole::styleHeader1(output, "GPSWrapper");
+  output->concatf("\tParsed %u\n\tReject %u\n", _sentences_parsed, _sentences_rejected);
+  output->concatf("\tAccumulator: %d bytes\n\n", _accumulator.length());
+  _loc_frame.printDebug(output);
 }
 
 
@@ -832,26 +856,25 @@ bool GPSWrapper::_parse_vtg(struct minmea_sentence_vtg *frame, const char *sente
     return true;
 }
 
-int GPSWrapper::_gettime(struct timespec *ts, const struct minmea_date *date, const struct minmea_time *time_) {
-    if (date->year == -1 || time_->hours == -1)
-        return -1;
 
+int GPSWrapper::_gettime(struct timespec *ts, const struct minmea_date* dval, const struct minmea_time* tval) {
+  if (dval->year != -1 && tval->hours != -1) {
     struct tm tm;
     memset(&tm, 0, sizeof(tm));
-    tm.tm_year = 2000 + date->year - 1900;
-    tm.tm_mon = date->month - 1;
-    tm.tm_mday = date->day;
-    tm.tm_hour = time_->hours;
-    tm.tm_min = time_->minutes;
-    tm.tm_sec = time_->seconds;
+    tm.tm_year = 2000 + dval->year - 1900;
+    tm.tm_mon  = dval->month - 1;
+    tm.tm_mday = dval->day;
+    tm.tm_hour = tval->hours;
+    tm.tm_min  = tval->minutes;
+    tm.tm_sec  = tval->seconds;
 
     //time_t timestamp = timegm(&tm); /* See README.md if your system lacks timegm(). */
     time_t timestamp = mktime(&tm); /* See README.md if your system lacks timegm(). */
     if (timestamp != -1) {
-        ts->tv_sec = timestamp;
-        ts->tv_nsec = time_->microseconds * 1000;
-        return 0;
-    } else {
-        return -1;
+      ts->tv_sec = timestamp;
+      ts->tv_nsec = tval->microseconds * 1000;
+      return 0;
     }
+  }
+  return -1;
 }

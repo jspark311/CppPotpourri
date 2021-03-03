@@ -199,11 +199,16 @@ class LocationFrame {
     double   dop_horiz   = 0.0;  // GPS horizontal dilution of precision
     double   dop_vert    = 0.0;  // GPS vertical DOP
     uint64_t timestamp   = 0;
-    float    bearing     = 0.0;
+    float    mag_bearing = 0.0;  // In degrees
+    uint32_t speed       = 0;    // In millimeters/s.
+    uint32_t altitude    = 0;    // In millimeters.
     uint8_t  sat_count   = 0;    // GPS number of satellites
 
     LocationFrame() {};
     ~LocationFrame() {};
+
+    void printDebug(StringBuilder*);
+    void copyFrame(const LocationFrame*);
 };
 
 
@@ -238,10 +243,8 @@ class GPSWrapper : public BufferAccepter {
   protected:
     uint32_t         _sentences_parsed   = 0;
     uint32_t         _sentences_rejected = 0;
-    double           _last_lat           = 0.0;
-    double           _last_lon           = 0.0;
-    float            _last_speed         = 0.0;
     LocationCallback _callback           = nullptr;
+    LocationFrame    _loc_frame;
     StringBuilder    _accumulator;
 
     void _class_init();
@@ -300,7 +303,7 @@ class GPSWrapper : public BufferAccepter {
     /**
     * Convert GPS UTC date/time representation to a UNIX timestamp.
     */
-    int _gettime(struct timespec *ts, const struct minmea_date *date, const struct minmea_time *time_);
+    int _gettime(struct timespec*, const struct minmea_date*, const struct minmea_time*);
 };
 
 #endif   // __GPS_TOOLS_H__

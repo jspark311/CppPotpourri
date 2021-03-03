@@ -33,9 +33,11 @@ enum class UARTFlowControl : uint8_t {
 
 /* Parity bit strategies. */
 enum class UARTParityBit : uint8_t {
-  NONE  = 0,
-  EVEN  = 1,
-  ODD   = 2
+  NONE    = 0,
+  EVEN    = 1,
+  ODD     = 2,
+  FORCE_0 = 3,
+  FORCE_1 = 4
 };
 
 /* Stop bit definitions. */
@@ -45,10 +47,9 @@ enum class UARTStopBit : uint8_t {
   STOP_2    = 2
 };
 
+
 /* Conf representation for a port. */
 typedef struct {
-  uint16_t        rx_buf_len;
-  uint16_t        tx_buf_len;
   uint32_t        bitrate;
   uint8_t         start_bits;
   uint8_t         bit_per_word;
@@ -57,11 +58,7 @@ typedef struct {
   UARTFlowControl flow_control;
   uint8_t         xoff_char;
   uint8_t         xon_char;
-  uint8_t         rx_pin;
-  uint8_t         tx_pin;
-  uint8_t         rts_pin;
-  uint8_t         cts_pin;
-  uint8_t         port;
+  uint8_t         padding;
 } UARTOpts;
 
 
@@ -77,18 +74,16 @@ class UARTAdapter : public BufferAccepter {
     /* Implementation of BufferAccepter. */
     int8_t provideBuffer(StringBuilder* buf) {  _tx_buffer.concatHandoff(buf); return 1;   };
 
-    int8_t init();
+    int8_t init(const UARTOpts*);
     int8_t poll();
-    //void printDebug(StringBuilder*);
 
     // Basic management and init,
-    int8_t setParams(const UARTOpts* o);
     void reset();
     void printDebug(StringBuilder*);
 
     // On-the-fly conf accessors...
-    int8_t bitrate(uint32_t);
-    inline uint32_t bitrate() {   return _opts.bitrate;  };
+    inline UARTOpts* uartOpts() {   return &_opts;         };
+    inline uint32_t bitrate() {     return _opts.bitrate;  };
 
     inline bool ready() {    return _port_ready;    };
     inline bool flushed() {  return _port_flushed;  };
@@ -117,21 +112,14 @@ class UARTAdapter : public BufferAccepter {
     const uint8_t  _RXD_PIN;      // Pin assignment for RXD.
     const uint8_t  _CTS_PIN;      // Pin assignment for CTS.
     const uint8_t  _RTS_PIN;      // Pin assignment for RTS.
+    UARTOpts _opts;
 
-    uint16_t   _extnd_state       = 0;   // Flags for the concrete class to use.
-    uint32_t   _bitrate           = 115200;   //
     uint32_t   bus_timeout_millis = 50;  // How long is a temporal break;
     uint32_t   last_byte_rx_time  = 0;   // Time of last character RX.
     BufferAccepter* _read_cb_obj  = nullptr;
     StringBuilder  _tx_buffer;
     StringBuilder  _rx_buffer;
-
-    /* Overrides from the BusAdapter interface */
-    int8_t bus_init();
-    int8_t bus_deinit();
-
-
-    UARTOpts _opts;
+    uint16_t   _extnd_state       = 0;   // Flags for the concrete class to use.
 
     // These values manipulated by driver.
     bool     _port_ready          = false;
@@ -139,11 +127,11 @@ class UARTAdapter : public BufferAccepter {
     bool     _pending_reset       = false;  // UART sets true. Driver sets false.
     bool     _port_flushed        = true;
 
-    int8_t _pf_conf();
+	/* These functions are provided by the platform-specific code. */
+    int8_t _pf_init();
+    int8_t _pf_deinit();
     int8_t _pf_write();
     int8_t _pf_read();
-
-
 
     inline uint16_t _adapter_flags() {                 return _extnd_state;            };
     inline bool _adapter_flag(uint16_t _flag) {        return (_extnd_state & _flag);  };
