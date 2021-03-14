@@ -10,14 +10,12 @@
 /*
 * Adapter flag defs.
 */
-#define UART_FLAG_UART_READY   0x0001    // Is the UART initialized?
-#define UART_FLAG_QUEUE_IDLE   0x0002    // Is the queue idle?
-#define UART_FLAG_QUEUE_GUARD  0x0004    // Prevent bus queue floods?
-#define UART_FLAG_9_BIT_CHAR   0x0008    // Bus configuration details.
-#define UART_FLAG_RESERVED_0   0x0010    // Reserved
-#define UART_FLAG_RESERVED_1   0x0020    // Reserved
-#define UART_FLAG_HAS_TX       0x0040    // Bus configuration details.
-#define UART_FLAG_HAS_RX       0x0080    // Bus configuration details.
+#define UART_FLAG_UART_READY    0x0001    // Is the UART initialized?
+#define UART_FLAG_FLUSHED       0x0002    // Is the TX FIFO flushed?
+#define UART_FLAG_PENDING_RESET 0x0004    // Peripheral is waiting on a reset.
+#define UART_FLAG_PENDING_CONF  0x0008    // Peripheral is waiting on a reconf.
+#define UART_FLAG_HAS_TX        0x0010    // Bus configuration details.
+#define UART_FLAG_HAS_RX        0x0020    // Bus configuration details.
 
 
 /* Flow-control strategies. */
@@ -85,8 +83,8 @@ class UARTAdapter : public BufferAccepter {
     inline UARTOpts* uartOpts() {   return &_opts;         };
     inline uint32_t bitrate() {     return _opts.bitrate;  };
 
-    inline bool ready() {    return _port_ready;    };
-    inline bool flushed() {  return _port_flushed;  };
+    inline bool initialized() {  return _adapter_flag(UART_FLAG_UART_READY); };
+    inline bool flushed() {      return _adapter_flag(UART_FLAG_FLUSHED);    };
     inline bool txCapable() {    return _adapter_flag(UART_FLAG_HAS_TX);     };
     inline bool rxCapable() {    return _adapter_flag(UART_FLAG_HAS_RX);     };
 
@@ -105,27 +103,20 @@ class UARTAdapter : public BufferAccepter {
 
 
   private:
-    const uint16_t _BUF_LEN_TX;
-    const uint16_t _BUF_LEN_RX;
-    const uint8_t  ADAPTER_NUM;   // The platform-relatable index of the adapter.
-    const uint8_t  _TXD_PIN;      // Pin assignment for TXD.
-    const uint8_t  _RXD_PIN;      // Pin assignment for RXD.
-    const uint8_t  _CTS_PIN;      // Pin assignment for CTS.
-    const uint8_t  _RTS_PIN;      // Pin assignment for RTS.
-    UARTOpts _opts;
-
-    uint32_t   bus_timeout_millis = 50;  // How long is a temporal break;
-    uint32_t   last_byte_rx_time  = 0;   // Time of last character RX.
-    BufferAccepter* _read_cb_obj  = nullptr;
-    StringBuilder  _tx_buffer;
-    StringBuilder  _rx_buffer;
-    uint16_t   _extnd_state       = 0;   // Flags for the concrete class to use.
-
-    // These values manipulated by driver.
-    bool     _port_ready          = false;
-    bool     _pending_conf_change = false;  // UART sets true. Driver sets false.
-    bool     _pending_reset       = false;  // UART sets true. Driver sets false.
-    bool     _port_flushed        = true;
+    const uint16_t  _BUF_LEN_TX;
+    const uint16_t  _BUF_LEN_RX;
+    const uint8_t   ADAPTER_NUM;              // The platform-relatable index of the adapter.
+    const uint8_t   _TXD_PIN;                 // Pin assignment for TXD.
+    const uint8_t   _RXD_PIN;                 // Pin assignment for RXD.
+    const uint8_t   _CTS_PIN;                 // Pin assignment for CTS.
+    const uint8_t   _RTS_PIN;                 // Pin assignment for RTS.
+    uint16_t        _extnd_state       = 0;   // Flags for the concrete class to use.
+    UARTOpts        _opts;
+    uint32_t        bus_timeout_millis = 50;  // How long is a temporal break;
+    uint32_t        last_byte_rx_time  = 0;   // Time of last character RX.
+    BufferAccepter* _read_cb_obj       = nullptr;
+    StringBuilder   _tx_buffer;
+    StringBuilder   _rx_buffer;
 
 	/* These functions are provided by the platform-specific code. */
     int8_t _pf_init();

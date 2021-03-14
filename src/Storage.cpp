@@ -497,14 +497,14 @@ int8_t DataRecord::_fill_from_descriptor_block(uint8_t* buf) {
     | ((uint32_t) *(buf + 17) << 8)
     | ((uint32_t) *(buf + 18) << 16)
     | ((uint32_t) *(buf + 19) << 24);
-  _timestamp = ((uint32_t) *(buf + 20))
-    | ((uint32_t) *(buf + 21) << 8)
-    | ((uint32_t) *(buf + 22) << 16)
-    | ((uint32_t) *(buf + 23) << 24)
-    | ((uint32_t) *(buf + 24) << 32)
-    | ((uint32_t) *(buf + 25) << 40)
-    | ((uint32_t) *(buf + 26) << 48)
-    | ((uint32_t) *(buf + 27) << 56);
+  _timestamp = ((uint64_t) *(buf + 20))
+    | ((uint64_t) *(buf + 21) << 8)
+    | ((uint64_t) *(buf + 22) << 16)
+    | ((uint64_t) *(buf + 23) << 24)
+    | ((uint64_t) *(buf + 24) << 32)
+    | ((uint64_t) *(buf + 25) << 40)
+    | ((uint64_t) *(buf + 26) << 48)
+    | ((uint64_t) *(buf + 27) << 56);
   _nxt_rec_addr = 0;
   for (uint i = 0; i < BLOCK_ADDR_SIZE_BYTES; i++) {
     _nxt_rec_addr = (_nxt_rec_addr << 8) | *(buf + DATARECORD_BASE_SIZE + i);

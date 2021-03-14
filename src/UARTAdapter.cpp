@@ -29,7 +29,8 @@ UARTAdapter::~UARTAdapter() {
 
 
 int8_t UARTAdapter::init(const UARTOpts* o) {
-  _adapter_set_flag(UART_FLAG_QUEUE_IDLE);
+  _extnd_state = 0;
+  _adapter_set_flag(UART_FLAG_PENDING_CONF);
   for (uint i = 0; i < sizeof(UARTOpts); i++) {
     *((uint8_t*) &_opts + i) = *((uint8_t*) o + i);
   }
