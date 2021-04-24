@@ -12,6 +12,9 @@ class ParsingConsole;
 #ifndef __ABSTRACT_PLATFORM_TEMPLATE_H__
 #define __ABSTRACT_PLATFORM_TEMPLATE_H__
 
+#if defined(__HAS_CRYPT_WRAPPER)
+  #include <CryptoBurrito.h>
+#endif
 
 /**
 * These are _pflags definitions.
@@ -78,7 +81,8 @@ enum class ShutdownCause : uint8_t {
   TIMEOUT       = 5,  // The unit sat idle for too long.
   WATCHDOG      = 6,  // Something hung the firmware.
   BROWNOUT      = 7,  // The power sagged too far for comfort.
-  THERMAL       = 8   // The unit is too hot for proper operation.
+  THERMAL       = 8,  // The unit is too hot for proper operation.
+  PWR_SAVE      = 9   // Orderly shutdown to save power.
 };
 
 
@@ -90,19 +94,6 @@ typedef struct __platform_thread_opts {
   uint16_t  stack_sz;
 } PlatformThreadOpts;
 
-
-#if defined(ARDUINO)
-  // Reinstate the Arduino definitions that we collided with...
-  // TODO: This works under Teensyduino. Not certain it will work anywhere else.
-  //   Find a better solution....
-  //#define INPUT            0
-  //#define OUTPUT           1
-  //#define INPUT_PULLUP     2
-  //#define INPUT_PULLDOWN   3
-  //#define FALLING          2
-  //#define RISING           3
-  //#define CHANGE           4
-#endif
 
 
   int8_t platform_init();
@@ -158,12 +149,15 @@ typedef struct __platform_thread_opts {
 
 
 
-
 /**
 * This is base platform support. It is a pure virtual.
 */
 class AbstractPlatform {
   public:
+    #if defined(__HAS_CRYPT_WRAPPER)
+    BurritoPlate crypto;
+    #endif
+
     /* Accessors for platform capability discovery. */
     #if defined(__BUILD_HAS_THREADS)
       inline bool hasThreads() const {        return true;     };
@@ -194,7 +188,7 @@ class AbstractPlatform {
     void printCryptoOverview(StringBuilder*);
 
     virtual int8_t init()  =0;
-    virtual void printDebug(StringBuilder* out)  =0;
+    virtual void printDebug(StringBuilder*)  =0;
 
     /* Functions that don't return. */
     virtual void firmware_reset(uint8_t)     =0;
@@ -226,6 +220,9 @@ class AbstractPlatform {
   private:
     uint32_t   _pflags    = 0;
 };
+
+
+AbstractPlatform* platformObj();   // TODO: Until something smarter is done.
 
 
 #endif  // __ABSTRACT_PLATFORM_TEMPLATE_H__
