@@ -61,8 +61,9 @@ enum class LineTerm : uint8_t {
 enum class ConsoleErr : uint8_t {
   NONE          = 0x00,    // Reserved. Denotes end-of-list.
   NO_MEM        = 0x01,    // Class ran out of memory.
-  MISSING_ARG   = 0x02,    // Command regognized, but an argument was missing.
-  INVALID_ARG   = 0x03,    // Command regognized, but an argument was wrong.
+  MISSING_ARG   = 0x02,    // Command recognized, but an argument was missing.
+  INVALID_ARG   = 0x03,    // Command recognized, but an argument was wrong.
+  CMD_NOT_FOUND = 0x04,    // Command not found.
   RESERVED      = 0xFF     // Reserved for custom extension.
 };
 
@@ -76,6 +77,7 @@ class ConsoleCommand {
     const char*   cmd;          // The string that identifies the command.
     const char    shortcut;     // Single letter shortcut.
     const uint8_t req_count;    // How many of the arguments are required?
+    const uint8_t should_free;  // Should this object be freed?
     const TCode*  fmt;          // A null-terminated string of TCodes.
     const consoleCallback ccb;  // Callback for successful parse.
     const char*   help_text;    // One-line help text for this command.
@@ -85,15 +87,29 @@ class ConsoleCommand {
       cmd(c),
       shortcut(sc),
       req_count(r),
+      should_free(0),
       fmt(f),
       ccb(cb),
       help_text(h),
       param_text(p) {};
 
+    ConsoleCommand(const char* c, const char sc, const TCode* f, const char* h, const char* p, const uint8_t r, const consoleCallback cb, const bool s_free) :
+      cmd(c),
+      shortcut(sc),
+      req_count(r),
+      should_free(1),
+      fmt(f),
+      ccb(cb),
+      help_text(h),
+      param_text(p) {};
+
+
     ~ConsoleCommand() {};
 
     void printDetailedHelp(StringBuilder* output);
     int maxArgumentCount();
+
+    inline const bool shouldFree() {   return (0 != should_free);   };
 };
 
 
@@ -106,7 +122,7 @@ class ConsoleCommand {
 *   ConsoleCommand, if applicable
 *   Original input
 */
-typedef int (*consoleErrCallback)(StringBuilder*, ConsoleErr, ConsoleCommand*, StringBuilder*);
+typedef int (*consoleErrCallback)(StringBuilder*, const ConsoleErr, const ConsoleCommand*, StringBuilder*);
 
 
 /*
@@ -196,6 +212,8 @@ class ParsingConsole : public BufferAccepter {
     BufferAccepter* _output_target = nullptr;
     LinkedList<StringBuilder*>  _history;   // Stores a list of prior commands.
     LinkedList<ConsoleCommand*> _cmd_list;  // Stores a list of command definitions.
+
+    int8_t _relay_to_output_target();
 
     int8_t _exec_line(StringBuilder*);          // Executes a single entered line.
     void   _append_to_history(StringBuilder*);  // Appends a command to the history.

@@ -45,6 +45,7 @@ const char* const ParsingConsole::errToStr(ConsoleErr err) {
     case ConsoleErr::NO_MEM:        return "Out of memory";
     case ConsoleErr::MISSING_ARG:   return "Missing argument";
     case ConsoleErr::INVALID_ARG:   return "Invalid argument";
+    case ConsoleErr::CMD_NOT_FOUND: return "Invalid command";
     case ConsoleErr::RESERVED:      return "Reserved err code";
   }
   return "UNKNOWN";
@@ -136,7 +137,10 @@ ParsingConsole::~ParsingConsole() {
   clearHistory();
   while (0 < _cmd_list.size()) {
     // Clear out all the command definitions.
-    delete _cmd_list.remove(_cmd_list.size() - 1);
+    ConsoleCommand* tmp_cmd = _cmd_list.remove(_cmd_list.size() - 1);
+    if (tmp_cmd->shouldFree()) {
+      delete tmp_cmd;
+    }
   }
 }
 
@@ -231,9 +235,17 @@ int8_t ParsingConsole::_process_buffer() {
       }
     }
   }
+  _relay_to_output_target();
+  return ret;
+}
+
+
+int8_t ParsingConsole::_relay_to_output_target() {
+  int8_t ret = -1;
   if ((_log.length() > 0) && (nullptr != _output_target)) {
     if (0 == _output_target->provideBuffer(&_log)) {
       _log.clear();
+      ret = 0;
     }
   }
   return ret;
@@ -247,11 +259,7 @@ void ParsingConsole::printToLog(StringBuilder* l) {
   if (nullptr != l) {
     _log.concatHandoff(l);
   }
-  if (nullptr != _output_target) {
-    if (0 == _output_target->provideBuffer(&_log)) {
-      _log.clear();
-    }
-  }
+  _relay_to_output_target();
 }
 
 
@@ -267,7 +275,7 @@ void ParsingConsole::fetchLog(StringBuilder* l) {
 
 
 int8_t ParsingConsole::defineCommand(const char* c, const TCode* f, const char* h, const char* p, const uint8_t r, const consoleCallback ccb) {
-  ConsoleCommand* cmd = new ConsoleCommand(c, '\0', f, h, p, r, ccb);
+  ConsoleCommand* cmd = new ConsoleCommand(c, '\0', f, h, p, r, ccb, true);
   if (nullptr != cmd) {
     _max_cmd_len = strict_max(_max_cmd_len, (uint8_t) strlen(c));
     _cmd_list.insert(cmd);
@@ -278,7 +286,7 @@ int8_t ParsingConsole::defineCommand(const char* c, const TCode* f, const char* 
 
 
 int8_t ParsingConsole::defineCommand(const char* c, const char sc, const TCode* f, const char* h, const char* p, const uint8_t r, const consoleCallback ccb) {
-  ConsoleCommand* cmd = new ConsoleCommand(c, sc, f, h, p, r, ccb);
+  ConsoleCommand* cmd = new ConsoleCommand(c, sc, f, h, p, r, ccb, true);
   if (nullptr != cmd) {
     _max_cmd_len = strict_max(_max_cmd_len, (uint8_t) strlen(c));
     _cmd_list.insert(cmd);
@@ -342,6 +350,7 @@ int8_t ParsingConsole::_exec_line(StringBuilder* line) {
     }
     else if (nullptr != errCB) {
       // Call the error callback with a report of the user's sins.
+      errCB(&_log, ConsoleErr::MISSING_ARG, cmd, &tmp_line);
     }
     else {
       // Report to the log.
@@ -350,7 +359,8 @@ int8_t ParsingConsole::_exec_line(StringBuilder* line) {
     }
   }
   else if (nullptr != errCB) {
-    // Call the error callback with a report of the user's sins.
+    // If we have an error callback pointer, ping it with CMD_NOT_FOUND.
+    errCB(&_log, ConsoleErr::CMD_NOT_FOUND, nullptr, &tmp_line);
   }
   else {
     _log.concatf("Command '%s' not supported.\n", cmd_str);
