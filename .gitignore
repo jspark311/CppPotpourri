@@ -2,6 +2,7 @@
 *.gch
 *.o
 *.a
+*.d
 *.map
 
 # Example binaries

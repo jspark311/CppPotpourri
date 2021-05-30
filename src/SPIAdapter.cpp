@@ -67,7 +67,11 @@ int8_t SPIAdapter::init() {
 * @param  _op  The bus operation to execute.
 * @return Zero on success, or appropriate error code.
 */
-int8_t SPIAdapter::queue_io_job(BusOp* _op) {
+int8_t SPIAdapter::queue_io_job(BusOp* _op){
+  return SPIAdapter::queue_io_job(_op, 0);
+}
+
+int8_t SPIAdapter::queue_io_job(BusOp* _op, int priority) {
   SPIBusOp* op = (SPIBusOp*) _op;
   int8_t ret = -5;
 
@@ -90,9 +94,9 @@ int8_t SPIAdapter::queue_io_job(BusOp* _op) {
           ret = -1;
           _local_log.concatf("SPI%u:\t Bus queue at max size. Dropping transaction.\n", ADAPTER_NUM);
           op->abort(XferFault::QUEUE_FLUSH);
-          callback_queue.insertIfAbsent(op);
+          callback_queue.insertIfAbsent(op, priority);
         }
-        else if (0 > work_queue.insertIfAbsent(op)) {
+        else if (0 > work_queue.insertIfAbsent(op, priority)) {
           ret = -3;
           //if (getVerbosity() > 2) {
           //  _local_log.concatf("SPI%u:\t Double-insertion. Dropping transaction with no status change.\n", ADAPTER_NUM);

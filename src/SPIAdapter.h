@@ -159,6 +159,7 @@ class SPIAdapter : public BusAdapter<SPIBusOp> {
     int8_t io_op_callahead(BusOp*);
     int8_t io_op_callback(BusOp*);
     int8_t queue_io_job(BusOp*);
+    int8_t queue_io_job(BusOp*, int);
     int8_t advance_work_queue();
 
     int8_t service_callback_queue();
