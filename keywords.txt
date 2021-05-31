@@ -6,6 +6,11 @@
 # Datatypes (StringBuilder)
 StringBuilder       KEYWORD1
 
+# Datatypes (FlagContainer)
+FlagContainer8      KEYWORD1
+FlagContainer16     KEYWORD1
+FlagContainer32     KEYWORD1
+
 # Datatypes (TripleAxisPipe)
 TripleAxisTerminalCB KEYWORD1
 
@@ -34,6 +39,10 @@ Vector3f64          KEYWORD1
 
 # Datatypes (UUID)
 UUID                KEYWORD1
+
+# Datatypes (Battery)
+BatteryOpts          KEYWORD1
+BatteryStateCallback KEYWORD1
 
 
 #########################################
@@ -119,7 +128,6 @@ reset              KEYWORD2
 printDebug         KEYWORD2
 printDebugHeader   KEYWORD2
 
-
 # Methods and Functions (Vector3)
 normalize          KEYWORD2
 normalized         KEYWORD2
@@ -129,7 +137,6 @@ projected          KEYWORD2
 angle              KEYWORD2
 angle_normalized   KEYWORD2
 
-
 # Methods and Functions (UUID)
 uuid_from_str      KEYWORD2
 uuid_to_str        KEYWORD2
@@ -137,6 +144,9 @@ uuid_to_sb         KEYWORD2
 uuid_gen           KEYWORD2
 uuid_compare       KEYWORD2
 uuid_copy          KEYWORD2
+
+# Methods and Functions (Battery)
+batteryStateStr    KEYWORD2
 
 
 #########################################
@@ -160,6 +170,9 @@ tcodes_str_3       LITERAL1
 tcodes_str_4       LITERAL1
 tcodes_float_1     LITERAL1
 
-
 # Constants (Vector3)
 GnomonType         LITERAL1
+
+# Constants (Battery)
+BatteryChemistry   LITERAL1
+ChargeState        LITERAL1
