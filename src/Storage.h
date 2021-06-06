@@ -68,6 +68,8 @@ class StorageBlock;
 #define STORAGE_RECORD_TYPE_LOG              3  // A firmware-generated log.
 #define STORAGE_RECORD_TYPE_USER_CONF        4  // User configuration.
 #define STORAGE_RECORD_TYPE_LOCATION         5  // Location on Earth.
+#define STORAGE_RECORD_TYPE_CAL_DATA         6
+#define STORAGE_RECORD_TYPE_AUDIO           14  // Audio stream.
 
 /* DataRecord constants for serializer. */
 #define DATARECORD_SERIALIZER_VERSION  1  // Makes record migration possible.

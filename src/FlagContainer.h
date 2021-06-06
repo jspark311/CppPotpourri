@@ -23,6 +23,11 @@ This set of classes aggregates many boolean flags (defined elsewhere) into a
   repeated in all classes that need flags.
 */
 
+#include <inttypes.h>
+#include <stdint.h>
+
+#ifndef __FLAG_CONTAINERS_H__
+#define __FLAG_CONTAINERS_H__
 
 /* Takes a single byte of memory. */
 class FlagContainer8 {
@@ -76,3 +81,5 @@ class FlagContainer32 {
       else    raw &= ~_flag;
     };
 };
+
+#endif    // __FLAG_CONTAINERS_H__
