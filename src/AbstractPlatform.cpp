@@ -229,7 +229,6 @@ int callback_gpio_value(StringBuilder* text_return, StringBuilder* args) {
 }
 
 
-
 int callback_platform_info(StringBuilder* text_return, StringBuilder* args) {
   char* group = args->position_trimmed(0);
   switch (args->count()) {
@@ -253,12 +252,20 @@ int callback_platform_info(StringBuilder* text_return, StringBuilder* args) {
 }
 
 
-const ConsoleCommand cmd00 = ConsoleCommand("gpio",   '\0', ParsingConsole::tcodes_str_3,  "GPIO values.", "[val|mode] [pin] [value]", 2, callback_gpio_value);
-const ConsoleCommand cmd01 = ConsoleCommand("pfinfo", '\0', ParsingConsole::tcodes_str_1,  "Platform information.", "[subgroup]", 0, callback_platform_info);
+int callback_reboot(StringBuilder* text_return, StringBuilder* args) {
+  platformObj()->firmware_reset(args->position_as_int(0));
+  return 0;
+}
+
+
+const ConsoleCommand cmd00 = ConsoleCommand("gpio",   '\0', ParsingConsole::tcodes_str_3,  "GPIO values", "[val|mode] [pin] [value]", 2, callback_gpio_value);
+const ConsoleCommand cmd01 = ConsoleCommand("pfinfo", '\0', ParsingConsole::tcodes_str_1,  "Platform information", "[subgroup]", 0, callback_platform_info);
+const ConsoleCommand cmd02 = ConsoleCommand("reboot", '\0', ParsingConsole::tcodes_uint_1, "Reboot firmware", "[subgroup]", 0, callback_reboot);
 
 
 int8_t AbstractPlatform::configureConsole(ParsingConsole* console) {
   console->defineCommand(&cmd00);
   console->defineCommand(&cmd01);
+  console->defineCommand(&cmd02);
   return 0;
 }
