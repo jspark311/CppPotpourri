@@ -38,7 +38,6 @@ I2CBusOp::I2CBusOp() {
 I2CBusOp::I2CBusOp(BusOpcode nu_op, BusOpCallback* requester) : I2CBusOp() {
   set_opcode(nu_op);
   callback = requester;
-  subaddr_sent((sub_addr >= 0) ? false : true);
 };
 
 
@@ -51,7 +50,6 @@ I2CBusOp::I2CBusOp(BusOpcode nu_op, uint8_t dev_addr, int16_t sub_addr, uint8_t*
   sub_addr     = sub_addr;
   set_opcode(nu_op);
   setBuffer(buffer, len);
-  subaddr_sent((sub_addr >= 0) ? false : true);
 };
 
 
@@ -104,8 +102,8 @@ void I2CBusOp::printDebug(StringBuilder* output) {
   BusOp::printBusOp("I2COp", this, output);
   output->concatf("\t device          0x%02x\n", dev_addr);
 
-  if (sub_addr >= 0x00) {
-    output->concatf("\t subaddress      0x%02x (%ssent)\n", sub_addr, (subaddr_sent() ? "" : "un"));
+  if (sub_addr != -1) {
+    output->concatf("\t subaddress      0x%02x\n", sub_addr);
   }
   output->concat("\n\n");
 }

@@ -187,14 +187,11 @@ class I2CAdapter;
       *
       * @return true if we do. False otherwise.
       */
-      inline bool need_to_send_subaddr() {  return ((sub_addr != -1) && !subaddr_sent());  }
+      inline bool need_to_send_subaddr() {  return (sub_addr != -1);  }
 
 
     private:
       I2CAdapter* device = nullptr;
-
-      inline bool subaddr_sent() {  return _busop_flag(I2C_BUSOP_FLAG_SUBADDR);          };
-      inline void subaddr_sent(bool x) {   _busop_set_flag(I2C_BUSOP_FLAG_SUBADDR, x);   };
   };
 
 
