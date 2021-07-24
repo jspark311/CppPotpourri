@@ -235,6 +235,8 @@ class GPSWrapper : public BufferAccepter {
     void printDebug(StringBuilder*);
 
     inline void setCallback(LocationCallback cb) {   _callback = cb;   };
+    inline uint32_t sentencesParsed() {    return _sentences_parsed;   };
+    inline uint32_t sentencesRejected() {  return _sentences_rejected; };
 
 
     static int32_t haversineDistance(LocationFrame*, LocationFrame*);
