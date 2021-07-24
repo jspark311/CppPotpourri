@@ -34,6 +34,10 @@ A template for a ring buffer.
 
 A template for vectors in 3-space.
 
+#### [FlagContainer](extras/doc/FlagContainer.md)
+
+A class to contain a mess of bitwise flags.
+
 #### [StopWatch](extras/doc/StopWatch.md)
 
 A class for implementing a stop watch from the platform's notion of microseconds.
