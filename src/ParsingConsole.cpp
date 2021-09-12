@@ -263,6 +263,14 @@ void ParsingConsole::printToLog(StringBuilder* l) {
 }
 
 
+void ParsingConsole::printPrompt() {
+  if (nullptr != _prompt_string) {
+    _log.concat(_prompt_string);
+    _relay_to_output_target();
+  }
+};
+
+
 /*
 * Allow the application to retreive the log. Ideally, this would be done after
 *   each discrete command to minimize peak memory usage to hold the log.

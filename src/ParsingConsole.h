@@ -143,6 +143,7 @@ class ParsingConsole : public BufferAccepter {
     void   printHelp(StringBuilder*);
     void   printHelp(StringBuilder*, char*);
     void   printHistory(StringBuilder*);
+    void   printPrompt();
     inline void setTXTerminator(LineTerm x) {  _tx_terminator = x; };
     inline void setRXTerminator(LineTerm x) {  _rx_terminator = x; };
     inline LineTerm getTXTerminator() {   return _tx_terminator;   };
@@ -162,7 +163,7 @@ class ParsingConsole : public BufferAccepter {
     inline uint8_t historyDepth() {       return _history.size();    };
     inline uint8_t logLength() {          return _log.length();      };
 
-
+    // Console features...
     inline bool localEcho() {          return _console_flag(CONSOLE_FLAG_LOCAL_ECHO);           };
     inline void localEcho(bool x) {    return _console_set_flag(CONSOLE_FLAG_LOCAL_ECHO, x);    };
     inline bool forceReturn() {        return _console_flag(CONSOLE_FLAG_FORCE_RETURN);         };
