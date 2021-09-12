@@ -95,6 +95,14 @@ typedef struct __platform_thread_opts {
 } PlatformThreadOpts;
 
 
+/*
+* These are callbacks for ParsingConsole that the application
+*   might rather use in isolation.
+*/
+int callback_gpio_value(StringBuilder* text_return, StringBuilder* args);
+int callback_platform_info(StringBuilder* text_return, StringBuilder* args);
+int callback_reboot(StringBuilder* text_return, StringBuilder* args);
+
 
   int8_t platform_init();
 
@@ -203,7 +211,6 @@ class AbstractPlatform {
 
     void _print_abstract_debug(StringBuilder* out);
     void _discover_alu_params();
-
 
     /* Inlines for altering and reading the flags. */
     inline void _alter_flags(bool en, uint32_t mask) {
