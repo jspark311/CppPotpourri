@@ -88,18 +88,19 @@ class UARTAdapter : public BufferAccepter {
     inline bool txCapable() {    return _adapter_flag(UART_FLAG_HAS_TX);     };
     inline bool rxCapable() {    return _adapter_flag(UART_FLAG_HAS_RX);     };
 
+    /* These functions are provided by the platform-specific code. */
     uint write(uint8_t* buf, uint len);
     uint write(char c);
-    inline uint write(const char* str) {  return write((uint8_t*) str, strlen(str));  }
     uint read(uint8_t* buf, uint len);
     uint read(StringBuilder*);
+    void irq_handler();
 
+    inline uint write(const char* str) {  return write((uint8_t*) str, strlen(str));  }
     inline void readCallback(BufferAccepter* cb) {   _read_cb_obj = cb;   };
 
     inline int pendingRxBytes() {   return _rx_buffer.length();   };
     inline int pendingTxBytes() {   return _tx_buffer.length();   };
 
-    void irq_handler();
 
 
   private:
@@ -118,11 +119,9 @@ class UARTAdapter : public BufferAccepter {
     StringBuilder   _tx_buffer;
     StringBuilder   _rx_buffer;
 
-	/* These functions are provided by the platform-specific code. */
+    /* These functions are provided by the platform-specific code. */
     int8_t _pf_init();
     int8_t _pf_deinit();
-    int8_t _pf_write();
-    int8_t _pf_read();
 
     inline uint16_t _adapter_flags() {                 return _extnd_state;            };
     inline bool _adapter_flag(uint16_t _flag) {        return (_extnd_state & _flag);  };
