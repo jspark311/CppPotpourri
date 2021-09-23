@@ -163,6 +163,15 @@ void AbstractPlatform::printCryptoOverview(StringBuilder* out) {
 
 
 /*******************************************************************************
+* Weak-references to placate builds that don't use AbstractPlatform.
+*******************************************************************************/
+int8_t __attribute__((weak)) pinMode(uint8_t, GPIOMode) {   return -1;       }
+int8_t __attribute__((weak)) setPin(uint8_t, bool) {        return -1;       }
+int8_t __attribute__((weak)) readPin(uint8_t) {             return -1;       }
+AbstractPlatform* __attribute__((weak)) platformObj() {     return nullptr;  }
+
+
+/*******************************************************************************
 * Console callbacks
 *******************************************************************************/
 
