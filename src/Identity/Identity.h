@@ -24,6 +24,7 @@ This might be better-viewed as a data structure. Notions of identity should
 
 #include <CppPotpourri.h>
 #include <StringBuilder.h>
+#include <LightLinkedList.h>
 
 // TODO: This was a really good idea. But it implies too much knowledge
 //   of build system. There might be a better way.
@@ -73,8 +74,9 @@ class Identity;  // Forward-dec
                                         MANUVR_IDENT_FLAG_RESERVED_0 | \
                                         MANUVR_IDENT_FLAG_DIRTY)
 
-// This is the minimum size of or base identity class.
-#define IDENTITY_BASE_PERSIST_LENGTH    6
+
+#define IDENTITY_BASE_PERSIST_LENGTH   6  // The minimum size of the base identity class.
+#define IDENTITY_BASE_SERIAL_VERSION   1  // The serializer version.
 
 
 /* Interface for factory function. */
@@ -169,5 +171,25 @@ class Identity {
 *   allow for features like authentication chains, PKI caching,
 *   and multiple-self-identity.
 */
+
+
+
+
+/*
+* Systems that manage communication with several peers will probably want some
+*   means of handling collections of such objects.
+*/
+class IdentityManager {
+  public:
+    IdentityManager() {};
+    ~IdentityManager() {};
+
+    inline Identity* selfIdentity() {   return _self;  };
+
+
+  private:
+    Identity*   _self      = nullptr;
+    LinkedList<Identity*> _idents;   // List of identities that are not ours.
+};
 
 #endif // __MANUVR_IDENTITY_H__

@@ -103,5 +103,6 @@ inline TCode IntToTcode(const uint8_t code) {   return (const TCode) code;   };
 
 const char* const typecodeToStr(TCode);
 const bool typeIsFixedLength(TCode);
+const int sizeOfType(const TCode);
 
 #endif // __ENUMERATED_TYPE_CODES_H__

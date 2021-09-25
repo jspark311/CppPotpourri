@@ -22,6 +22,7 @@ Basic machinery of Identity objects.
 */
 
 #include "Identity.h"
+#include "IdentityUUID.h"
 #include <alloca.h>
 #include <stdlib.h>
 
@@ -113,7 +114,7 @@ Identity* Identity::fromBuffer(uint8_t* buf, int len) {
           // TODO: Ill-conceived? Why persist a hardware serial number???
           break;
         case IdentFormat::UUID:
-          //return_value = (Identity*) new IdentityUUID(buf, (uint16_t) len);
+          return_value = (Identity*) new IdentityUUID(buf, (uint16_t) len);
           break;
         case IdentFormat::L2_MAC:
           // TODO: This

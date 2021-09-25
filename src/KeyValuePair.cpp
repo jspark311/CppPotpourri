@@ -16,10 +16,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
-
-This class represents our type-abstraction layer. It is the means by which
-  we parse from messages without copying.
 */
 
 
@@ -296,7 +292,7 @@ KeyValuePair::KeyValuePair(TCode code) : KeyValuePair() {
   _alter_flags(_is_type_copy_by_value((const TCode) code), MANUVR_ARG_FLAG_DIRECT_VALUE);
   // If we can know the length with certainty, record it.
   if (typeIsFixedLength(_t_code)) {
-    len = sizeOfType(_t_code);
+    len = (_t_code);
   }
 }
 

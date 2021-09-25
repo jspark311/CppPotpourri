@@ -18,7 +18,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 
-This class descends from ManuvrOS's KeyValuePair and TypeTranscriber classes.
+This class descends from ManuvrOS's Argument and TypeTranscriber classes.
+
+Lessons learned from ManuvrOS:
+--------------------------------------------------------------------------------
+This class can easily become obnoxious and brittle. ManuvrOS tried to use this
+  idea as a richly-typed data carrier for general internal use. Although this
+  strategy functioned, it was prone to memory faults and ownership confusion.
+The use of this class should be restricted to working as an intermediary
+  between the serialized and the in-memory forms of class data. Unless/until
+  the API can be made to work without the problems it grew the last time.
 */
 
 
@@ -36,6 +45,7 @@ This class descends from ManuvrOS's KeyValuePair and TypeTranscriber classes.
 #endif
 
 class Image;
+class Identity;
 //class StringBuilder;
 
 /*
@@ -80,7 +90,7 @@ class KeyValuePair {
     KeyValuePair(Vector3ui16* val) : KeyValuePair((void*) val, 6,  TCode::VECT_3_UINT16) {};
     KeyValuePair(Vector3i16*  val) : KeyValuePair((void*) val, 6,  TCode::VECT_3_INT16)  {};
     KeyValuePair(Vector3f*    val) : KeyValuePair((void*) val, 12, TCode::VECT_3_FLOAT)  {};
-    KeyValuePair(Vector4f*    val) : KeyValuePair((void*) val, 16, TCode::VECT_4_FLOAT)  {};
+    //KeyValuePair(Vector4f*    val) : KeyValuePair((void*) val, 16, TCode::VECT_4_FLOAT)  {};
 
     /* Character pointers. */
     KeyValuePair(const char* val) : KeyValuePair((void*) val, (strlen(val)+1), TCode::STR) {};
@@ -154,7 +164,7 @@ class KeyValuePair {
     inline KeyValuePair* append(Vector3ui16 *val) {     return link(new KeyValuePair(val));   }
     inline KeyValuePair* append(Vector3i16 *val) {      return link(new KeyValuePair(val));   }
     inline KeyValuePair* append(Vector3f *val) {        return link(new KeyValuePair(val));   }
-    inline KeyValuePair* append(Vector4f *val) {        return link(new KeyValuePair(val));   }
+    //inline KeyValuePair* append(Vector4f *val) {        return link(new KeyValuePair(val));   }
 
     inline KeyValuePair* append(void *val, int len) {   return link(new KeyValuePair(val, len));   }
     inline KeyValuePair* append(const char *val) {      return link(new KeyValuePair(val));   }
@@ -184,7 +194,7 @@ class KeyValuePair {
     inline int8_t setValue(Vector3ui16 *val) {     return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT16), TCode::VECT_3_UINT16);  }
     inline int8_t setValue(Vector3i16 *val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_INT16),  TCode::VECT_3_INT16);   }
     inline int8_t setValue(Vector3f *val) {        return setValue((void*) val, sizeOfType(TCode::VECT_3_FLOAT),  TCode::VECT_3_FLOAT);   }
-    inline int8_t setValue(Vector4f *val) {        return setValue((void*) val, sizeOfType(TCode::VECT_4_FLOAT),  TCode::VECT_4_FLOAT);   }
+    //inline int8_t setValue(Vector4f *val) {        return setValue((void*) val, sizeOfType(TCode::VECT_4_FLOAT),  TCode::VECT_4_FLOAT);   }
     inline int8_t setValue(void *val, int len) {   return setValue((void*) val, len, TCode::BINARY);     }
     inline int8_t setValue(const char *val) {      return setValue((void*) val, strlen(val),   TCode::STR);         }
     inline int8_t setValue(StringBuilder *val) {   return setValue((void*) val, val->length(), TCode::STR_BUILDER);        }
@@ -233,6 +243,9 @@ class KeyValuePair {
     *
     * Glorious, glorious hackery. Keeping it.
     *        ---J. Ian Lindsay   Mon Oct 05 22:55:41 MST 2015
+    *
+    * Still keeping it.
+    *        ---J. Ian Lindsay   Sat Sep 25 01:05:52 MST 2021
     */
     const char*   _key       = nullptr;
     KeyValuePair* _next      = nullptr;

@@ -221,9 +221,9 @@ void TripleAxisTerminus::printPipe(StringBuilder* output, uint8_t stage, uint8_t
   output->concatf("%s| Has callback:   %c\n", (char*) indent.string(), (nullptr != _CALLBACK)?'y':'n');
   output->concatf("%s| Seq number:     %u\n", (char*) indent.string(), _update_count);
   output->concatf("%s| SpatialSense:   %s\n", (char*) indent.string(), TripleAxisPipe::spatialSenseStr(_SENSE));
-  output->concatf("%s| Value %s:    (%.3f, %.3f, %.3f)\n", (char*) indent.string(), (_fresh_data?"FRESH":"STALE"), _DATA.x, _DATA.y, _DATA.z);
+  output->concatf("%s| Value %s:    (%.3f, %.3f, %.3f)\n", (char*) indent.string(), (_fresh_data?"FRESH":"STALE"), (double) _DATA.x, (double) _DATA.y, (double) _DATA.z);
   if (_has_error) {
-    output->concatf("%s| Error:          (%.3f, %.3f, %.3f)\n", (char*) indent.string(), _ERR.x, _ERR.y, _ERR.z);
+    output->concatf("%s| Error:          (%.3f, %.3f, %.3f)\n", (char*) indent.string(), (double) _ERR.x, (double) _ERR.y, (double) _ERR.z);
   }
   output->concatf("%s| Last update:    %u\n", (char*) indent.string(), _last_update);
 }
@@ -318,9 +318,9 @@ void TripleAxisSingleFilter::printPipe(StringBuilder* output, uint8_t stage, uin
   if (verbosity > 5) {
     SensorFilter3<float>::printFilter(output);
   }
-  output->concatf("%s| Value %s:    (%.3f, %.3f, %.3f)\n", (char*) indent.string(), (was_dirty?"FRESH":"STALE"), value()->x, value()->y, value()->z);
+  output->concatf("%s| Value %s:    (%.3f, %.3f, %.3f)\n", (char*) indent.string(), (was_dirty?"FRESH":"STALE"), (double) value()->x, (double) value()->y, (double) value()->z);
   if (_has_error) {
-    output->concatf("%s| Error:          (%.3f, %.3f, %.3f)\n", (char*) indent.string(), _ERR.x, _ERR.y, _ERR.z);
+    output->concatf("%s| Error:          (%.3f, %.3f, %.3f)\n", (char*) indent.string(), (double) _ERR.x, (double) _ERR.y, (double) _ERR.z);
   }
   if ((verbosity > 0) && (nullptr != _NXT)) {
     _NXT->printPipe(output, stage+1, verbosity);

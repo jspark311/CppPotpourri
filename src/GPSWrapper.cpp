@@ -39,8 +39,8 @@ extern "C" {
 
 void LocationFrame::printDebug(StringBuilder* output) {
   output->concatf("\tTimestamp: %u\n\tSat count: %u\n", timestamp, sat_count);
-  output->concatf("\t(%.6f, %.6f) heading %.2f at %u m/s\n", lat, lon, mag_bearing, (speed / 1000));
-  output->concatf("\tDOP horiz: %.3f\n\tDOP vert:  %.3f\n", dop_horiz, dop_vert);
+  output->concatf("\t(%.6f, %.6f) heading %.2f at %u m/s\n", (double) lat, (double) lon, (double) mag_bearing, (speed / 1000));
+  output->concatf("\tDOP horiz: %.3f\n\tDOP vert:  %.3f\n", (double) dop_horiz, (double) dop_vert);
 }
 
 void LocationFrame::copyFrame(const LocationFrame* loc) {
@@ -75,10 +75,10 @@ void LocationFrame::copyFrame(const LocationFrame* loc) {
 */
 int32_t GPSWrapper::haversineDistance(LocationFrame* p0, LocationFrame* p1) {
   int32_t ret = 0;
-  double theta0 = p0->lat * (PI/180.0);
-  double theta1 = p1->lat * (PI/180.0);
-  double delta_theta  = (p1->lat - p0->lat) * (PI/180.0);
-  double delta_lambda = (p1->lon - p0->lon) * (PI/180.0);
+  double theta0 = p0->lat * (double) (PI/180.0);
+  double theta1 = p1->lat * (double) (PI/180.0);
+  double delta_theta  = (p1->lat - p0->lat) * (double) (PI/180.0);
+  double delta_lambda = (p1->lon - p0->lon) * (double) (PI/180.0);
   double half_delta_theta  = sin(delta_theta / 2);
   double half_delta_lambda = sin(delta_lambda / 2);
   double haversine_angle   = (half_delta_theta * half_delta_theta) + cos(theta0) * cos(theta1) * (half_delta_lambda * half_delta_lambda);

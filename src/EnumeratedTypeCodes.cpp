@@ -146,3 +146,76 @@ const bool typeIsFixedLength(const TCode TC) {
       return false;
   }
 }
+
+
+/**
+* Given type code, find size in bytes. Returns 0 for variable-length arguments,
+*   since this is their minimum size.
+*
+* @param  TCode the type code being asked about.
+* @return The size of the type (in bytes), or -1 on failure.
+*/
+const int sizeOfType(const TCode TC) {
+  switch (TC) {
+    case TCode::NONE:
+    case TCode::RESERVED:
+    case TCode::BINARY:
+    case TCode::STR:
+    case TCode::URL:
+    case TCode::JSON:
+    case TCode::CBOR:
+    case TCode::BASE64:
+    case TCode::KVP:
+    case TCode::STR_BUILDER:
+    case TCode::IDENTITY:
+    case TCode::AUDIO:
+    case TCode::IMAGE:
+      return 0;
+    case TCode::INT8:
+    case TCode::UINT8:
+    case TCode::BOOLEAN:
+    case TCode::COLOR8:
+    case TCode::SI_UNIT:
+      return 1;
+    case TCode::INT16:
+    case TCode::UINT16:
+    case TCode::VECT_2_INT8:
+    case TCode::VECT_2_UINT8:
+    case TCode::COLOR16:
+      return 2;
+    case TCode::VECT_3_INT8:
+    case TCode::VECT_3_UINT8:
+    case TCode::COLOR24:
+      return 3;
+    case TCode::INT32:
+    case TCode::UINT32:
+    case TCode::FLOAT:
+    case TCode::VECT_2_INT16:
+    case TCode::VECT_2_UINT16:
+    case TCode::IPV4_ADDR:
+      return 4;
+    case TCode::VECT_3_INT16:
+    case TCode::VECT_3_UINT16:
+      return 6;
+    case TCode::INT64:
+    case TCode::UINT64:
+    case TCode::DOUBLE:
+    case TCode::VECT_2_FLOAT:
+    case TCode::VECT_2_INT32:
+    case TCode::VECT_2_UINT32:
+      return 8;
+    case TCode::VECT_3_FLOAT:
+    case TCode::VECT_3_INT32:
+    case TCode::VECT_3_UINT32:
+      return 12;
+    case TCode::INT128:
+    case TCode::UINT128:
+    case TCode::VECT_2_DOUBLE:
+    case TCode::LATLON:
+    case TCode::VECT_4_FLOAT:
+      return 16;
+    case TCode::VECT_3_DOUBLE:
+      return 24;
+  }
+  return -1;
+}

@@ -35,6 +35,8 @@ SOURCES_TESTS_CPP  = StringBuilderTest.cpp TestDataStructures.cpp ParsingConsole
 SOURCES_CPP  = ../../src/SensorFilter.cpp
 SOURCES_CPP += ../../src/StopWatch.cpp
 SOURCES_CPP += ../../src/StringBuilder.cpp
+SOURCES_CPP += ../../src/EnumeratedTypeCodes.cpp
+SOURCES_CPP += ../../src/KeyValuePair.cpp
 SOURCES_CPP += ../../src/uuid.cpp
 SOURCES_CPP += ../../src/WakeLock.cpp
 SOURCES_CPP += ../../src/Image/Image.cpp
@@ -46,6 +48,7 @@ SOURCES_CPP += ../../src/Quaternion.cpp
 SOURCES_CPP += ../../src/Storage.cpp
 SOURCES_CPP += ../../src/TripleAxisPipe.cpp
 SOURCES_CPP += ../../src/Identity/*.cpp
+
 
 CXXFLAGS  = -fsingle-precision-constant -Wdouble-promotion -fno-rtti -fno-exceptions
 CXXFLAGS += -D_GNU_SOURCE -fprofile-dir=$(COVERAGE_PATH)

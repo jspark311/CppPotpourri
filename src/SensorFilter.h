@@ -628,7 +628,7 @@ template <typename T> void SensorFilter3<T>::printFilter(StringBuilder* output) 
       lv_label = "Value";
       break;
   }
-  output->concatf("\t%15s = (%.4f, %.4f, %.4f)\n", lv_label, last_value.x, last_value.y, last_value.z);
+  output->concatf("\t%15s = (%.4f, %.4f, %.4f)\n", lv_label, (double) last_value.x, (double) last_value.y, (double) last_value.z);
 }
 
 
@@ -776,9 +776,9 @@ template <typename T> int8_t SensorFilter3<T>::_calculate_rms() {
   if ((window_size > 1) && (nullptr != samples)) {
     double squared_samples[3] = {0.0, 0.0, 0.0};
     for (uint16_t i = 0; i < window_size; i++) {
-      squared_samples[0] += samples[i].x * samples[i].x;
-      squared_samples[1] += samples[i].y * samples[i].y;
-      squared_samples[2] += samples[i].z * samples[i].z;
+      squared_samples[0] += (double) (samples[i].x * samples[i].x);
+      squared_samples[1] += (double) (samples[i].y * samples[i].y);
+      squared_samples[2] += (double) (samples[i].z * samples[i].z);
     }
     rms(
       sqrt(squared_samples[0] / window_size),
@@ -801,9 +801,9 @@ template <typename T> int8_t SensorFilter3<T>::_calculate_stdev() {
   if ((window_size > 1) && (nullptr != samples)) {
     double deviation_sum[3] = {0.0, 0.0, 0.0};
     for (uint16_t i = 0; i < window_size; i++) {
-      deviation_sum[0] += (samples[i].x * samples[i].x) - last_value.x;
-      deviation_sum[1] += (samples[i].y * samples[i].y) - last_value.y;
-      deviation_sum[2] += (samples[i].z * samples[i].z) - last_value.z;
+      deviation_sum[0] += (double) ((samples[i].x * samples[i].x) - last_value.x);
+      deviation_sum[1] += (double) ((samples[i].y * samples[i].y) - last_value.y);
+      deviation_sum[2] += (double) ((samples[i].z * samples[i].z) - last_value.z);
     }
     stdev(
       sqrt(deviation_sum[0] / window_size),
