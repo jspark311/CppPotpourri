@@ -30,7 +30,10 @@ export COVERAGE_PATH = $(BUILD_ROOT)/build/coverage
 INCLUDES    = -I$(BUILD_ROOT)/../../src
 
 # Use the line below for discrete test executables.
-SOURCES_TESTS_CPP  = StringBuilderTest.cpp TestDataStructures.cpp ParsingConsoleTest.cpp IdentityTest.cpp
+# TODO: Find a way to agglomerate the coverage data from the running of several
+#   executables. Until then, we run all the tests in a single translation unit.
+#SOURCES_TESTS_CPP  = StringBuilderTest.cpp TestDataStructures.cpp ParsingConsoleTest.cpp IdentityTest.cpp
+SOURCES_TESTS_CPP  = AllTests.cpp
 
 SOURCES_CPP  = ../../src/SensorFilter.cpp
 SOURCES_CPP += ../../src/StopWatch.cpp

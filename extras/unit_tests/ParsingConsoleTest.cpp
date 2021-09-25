@@ -29,21 +29,6 @@ This class makes extensive use of the heap, low-level memory assumptions, and is
   be extensively unit-tested.
 */
 
-#include <cstdio>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <ctype.h>
-#include <unistd.h>
-#include <math.h>
-#include <sys/time.h>
-
-#include <fstream>
-#include <iostream>
-
-#include <StringBuilder.h>
-#include <CppPotpourri.h>
-#include <ParsingConsole.h>
 
 #define TOTAL_TEST_COUNT   8
 
@@ -55,44 +40,6 @@ ParsingConsole console(128);   // This is the console object under test.
 
 static bool test_result_array[TOTAL_TEST_COUNT] = {false, };
 static uint test_result_count = 0;
-
-/*******************************************************************************
-* Support functions
-* TODO: Some of this should be subsumed by the general linux platform.
-*   some of what remains should be collected into a general testing framework?
-* TODO: Research testing frameworks for C++ again.
-*******************************************************************************/
-struct timeval start_micros;
-
-uint32_t randomUInt32() {
-  uint32_t ret = ((uint8_t) rand()) << 24;
-  ret += ((uint8_t) rand()) << 16;
-  ret += ((uint8_t) rand()) << 8;
-  ret += ((uint8_t) rand());
-  return ret;
-}
-
-int8_t random_fill(uint8_t* buf, uint len) {
-  uint i = 0;
-  while (i < len) {
-    *(buf + i++) = ((uint8_t) rand());
-  }
-  return 0;
-}
-
-unsigned long micros() {
-	uint32_t ret = 0;
-	struct timeval current;
-	gettimeofday(&current, nullptr);
-	return (current.tv_usec - start_micros.tv_usec);
-}
-
-unsigned long millis() {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (ts.tv_sec * 1000 + ts.tv_nsec / 1000000L);
-}
-
 
 
 /*******************************************************************************
@@ -168,7 +115,7 @@ int console_error_callback(StringBuilder* text_return, const ConsoleErr err, con
 
 
 /*
-* These
+* These. Just.
 */
 const ConsoleCommand commands_that_should_be_added[] = {
   ConsoleCommand("test1",  '1', ParsingConsole::tcodes_0, "Test callback #1", "Detailed help for test1", 0, callback_test1),
@@ -182,14 +129,6 @@ const ConsoleCommand cmd5("test5",  '5', ParsingConsole::tcodes_0, "Test callbac
 /*******************************************************************************
 * Console test routines
 *******************************************************************************/
-
-void printTestFailure(const char* test) {
-  printf("\n");
-  printf("*********************************************\n");
-  printf("* %s FAILED tests.\n", test);
-  printf("*********************************************\n");
-}
-
 
 int feed_console_bytewise(const char* str) {
   const int STR_LEN_TO_SEND = strlen(str);
@@ -316,11 +255,9 @@ int run_history_tests(StringBuilder* output) {
 /*******************************************************************************
 * The main function.
 *******************************************************************************/
-int main() {
-  int exit_value = 1;   // Failure is the default result.
+int parsing_console_main() {
+  int ret = 1;   // Failure is the default result.
   StringBuilder log;
-  gettimeofday(&start_micros, nullptr);
-  srand(start_micros.tv_usec);
   if (0 == setup_console(&log)) {
     if (0 == run_command_tests(&log)) {
       if (0 == run_history_tests(&log)) {
@@ -338,7 +275,7 @@ int main() {
             log.concat("**********************************\n");
             log.concat("*  ParsingConsole tests all pass *\n");
             log.concat("**********************************\n");
-            exit_value = 0;
+            ret = 0;
           }
           else log.concatf("Callback for test6 was called %d times. This is wrong.\n", test_result_count);
         }
@@ -352,5 +289,5 @@ int main() {
   if (0 < log.length()) {
     printf("%s\n\n", (const char*) log.string());
   }
-  exit(exit_value);
+  return ret;
 }

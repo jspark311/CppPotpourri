@@ -24,75 +24,12 @@ This class makes extensive use of the heap, low-level memory assumptions, and is
   be extensively unit-tested.
 */
 
-#include <cstdio>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <ctype.h>
-#include <unistd.h>
-#include <math.h>
-#include <sys/time.h>
-
-#include <fstream>
-#include <iostream>
-
-#include "CppPotpourri.h"
-#include "StringBuilder.h"
-#include "RingBuffer.h"
-#include "PriorityQueue.h"
-#include "LightLinkedList.h"
-#include "SensorFilter.h"
-#include "Vector3.h"
-#include "StopWatch.h"
-#include "uuid.h"
-
 #define STRBUILDER_STATICTEST_STRING "I CAN cOUNT to PoTaTo   "
-
-
-/*******************************************************************************
-* Support functions
-* TODO: Some of this should be subsumed by the general linux platform.
-*   some of what remains should be collected into a general testing framework?
-* TODO: Research testing frameworks for C++ again.
-*******************************************************************************/
-struct timeval start_micros;
-
-
-uint32_t randomUInt32() {
-  uint32_t ret = ((uint8_t) rand()) << 24;
-  ret += ((uint8_t) rand()) << 16;
-  ret += ((uint8_t) rand()) << 8;
-  ret += ((uint8_t) rand());
-  return ret;
-}
-
-int8_t random_fill(uint8_t* buf, uint len) {
-  uint i = 0;
-  while (i < len) {
-    *(buf + i++) = ((uint8_t) rand());
-  }
-  return 0;
-}
-
-unsigned long micros() {
-	uint32_t ret = 0;
-	struct timeval current;
-	gettimeofday(&current, nullptr);
-	return (current.tv_usec - start_micros.tv_usec);
-}
-
-unsigned long millis() {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (ts.tv_sec * 1000 + ts.tv_nsec / 1000000L);
-}
-
 
 
 /*******************************************************************************
 * StringBuilder test routines
 *******************************************************************************/
-
 
 int test_strcasecmp(StringBuilder* log) {
   int return_value = -1;
@@ -350,23 +287,12 @@ int test_StringBuilderHeapVersusStack(StringBuilder* log) {
 
 
 
-
-void printTestFailure(const char* test) {
-  printf("\n");
-  printf("*********************************************\n");
-  printf("* %s FAILED tests.\n", test);
-  printf("*********************************************\n");
-}
-
-
 /*******************************************************************************
 * The main function.
 *******************************************************************************/
-int main() {
-  int exit_value = 1;   // Failure is the default result.
+int stringbuilder_main() {
+  int ret = 1;   // Failure is the default result.
   StringBuilder log;
-  gettimeofday(&start_micros, nullptr);
-  srand(start_micros.tv_usec);
 
   if (0 == test_strcasecmp(&log)) {
     if (0 == test_strcasestr(&log)) {
@@ -376,7 +302,7 @@ int main() {
             printf("**********************************\n");
             printf("*  StringBuilder tests all pass  *\n");
             printf("**********************************\n");
-            exit_value = 0;
+            ret = 0;
           }
           else printTestFailure("Implode");
         }
@@ -389,5 +315,5 @@ int main() {
   else printTestFailure("strcasecmp");
 
   printf("%s\n\n", (const char*) log.string());
-  exit(exit_value);
+  return ret;
 }
