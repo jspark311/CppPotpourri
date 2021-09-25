@@ -164,6 +164,9 @@ class StringBuilder {
     static char* strcasestr(const char* haystack, const char* needle);
     static int   strcasecmp(const char*, const char*);
 
+    static void styleHeader1(StringBuilder*, const char*);
+    static void styleHeader2(StringBuilder*, const char*);
+
 
   private:
     StrLL *root;         // The root of the linked-list.

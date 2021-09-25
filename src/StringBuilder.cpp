@@ -132,6 +132,27 @@ void StringBuilder::printBuffer(StringBuilder* output, uint8_t* buf, unsigned in
 }
 
 
+/**
+* Static utility function for uniformly formatting output strings.
+*
+* @param output is the StringBuilder* that should receive this function's output
+* @param text contains the content of the header
+*/
+void StringBuilder::styleHeader1(StringBuilder* output, const char* text) {
+  output->concatf("--- %s\n---------------------------------------\n", text);
+}
+
+/**
+* Static utility function for uniformly formatting output strings.
+*
+* @param output is the StringBuilder* that should receive this function's output
+* @param text contains the content of the header
+*/
+void StringBuilder::styleHeader2(StringBuilder* output, const char* text) {
+  output->concatf("===< %s >=======================================\n", text);
+}
+
+
 
 /*******************************************************************************
 *   ___ _              ___      _ _              _      _

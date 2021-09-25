@@ -83,16 +83,13 @@ inline uint16_t endianSwap16(uint16_t x) {   return __builtin_bswap16(x);    };
 inline uint32_t endianSwap32(uint32_t x) {   return __builtin_bswap32(x);    };
 inline uint64_t endianSwap64(uint64_t x) {   return __builtin_bswap64(x);    };
 
-
+/**
+* High-level string operations.
+* TODO: These feel like they are in the wrong place.
+*/
 void timestampToString(StringBuilder*, uint64_t);
 uint64_t stringToTimestamp(const char*);
-
-
-/*
-* String constants
-*/
-#define PRINT_DIVIDER_1_STR "\n================================================================================\n"
-#define PRINT_DIVIDER_2_STR "\n--------------------------------------------------------------------------------\n"
+int randomArt(uint8_t* dgst_raw, unsigned int dgst_raw_len, const char* title, StringBuilder*);
 
 
 /*

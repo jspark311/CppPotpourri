@@ -20,7 +20,6 @@ https://geographiclib.sourceforge.io/1.40/C/
 */
 
 #include "GPSWrapper.h"
-#include "ParsingConsole.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -337,7 +336,7 @@ bool GPSWrapper::_attempt_parse() {
 
 
 void GPSWrapper::printDebug(StringBuilder* output) {
-  ParsingConsole::styleHeader1(output, "GPSWrapper");
+  StringBuilder::styleHeader1(output, "GPSWrapper");
   output->concatf("\tParsed %u\n\tReject %u\n", _sentences_parsed, _sentences_rejected);
   output->concatf("\tAccumulator: %d bytes\n\n", _accumulator.length());
   _loc_frame.printDebug(output);

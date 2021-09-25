@@ -28,7 +28,11 @@ limitations under the License.
 #define __ENUMERATED_TYPE_CODES_H__
 
 
-/* A list of parameter types that are handled by the input parser. */
+/*
+* A list of parameter types that are handled by the input parser.
+* These should be supported in the type system, regardless of support in the
+*   actual binary.
+*/
 enum class TCode : uint8_t {
   /* Primitives */
   NONE          = 0x00,    // Reserved. Denotes end-of-list.
@@ -68,15 +72,19 @@ enum class TCode : uint8_t {
   VECT_4_FLOAT  = 0x40,    // A vector of floats in 4-space
 
   /* Encoded buffers and semantic aliases to other types */
-  URL           = 0x60,    // An alias of string that carries the semantic 'URL'.
+  URL           = 0x60,    // An alias of STR that carries the semantic 'URL'.
   JSON          = 0x61,    // A JSON object. Semantic layer on STR.
   CBOR          = 0x62,    // A CBOR object. Semantic layer on BINARY.
   LATLON        = 0x63,    // An alias of VECT_2_DOUBLE that indicates a point on a sphere.
   COLOR8        = 0x64,    // Alias of UINT8. 8-bit color data
   COLOR16       = 0x65,    // Alias of UINT16. 16-bit color data
   COLOR24       = 0x66,    // Alias of UINT32. 24-bit color data
+  SI_UNIT       = 0x67,    // Alias of UINT8. An SIUnit enum value.
+  BASE64        = 0x68,    // Alias of STR that carries the semantic 'Base-64 encoded'.
+  IPV4_ADDR     = 0x69,    // Alias of UINT32. An IP address, in network byte-order.
 
   /* Pointers to internal class instances */
+  KVP           = 0xFA,    // A pointer to a KeyValuePair
   STR_BUILDER   = 0xFB,    // A pointer to a StringBuilder
   IDENTITY      = 0xFC,    // A pointer to an Identity class
   AUDIO         = 0xFD,    // A pointer to an audio stream
@@ -93,5 +101,7 @@ enum class TCode : uint8_t {
 inline uint8_t TcodeToInt(const TCode code) {   return (const uint8_t) code; };
 inline TCode IntToTcode(const uint8_t code) {   return (const TCode) code;   };
 
+const char* const typecodeToStr(TCode);
+const bool typeIsFixedLength(TCode);
 
 #endif // __ENUMERATED_TYPE_CODES_H__

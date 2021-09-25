@@ -51,56 +51,6 @@ const char* const ParsingConsole::errToStr(ConsoleErr err) {
   return "UNKNOWN";
 }
 
-const char* const ParsingConsole::typecodeToStr(TCode tc) {
-  switch (tc) {
-    case TCode::NONE:          return "NONE";
-    case TCode::INT8:          return "INT8";
-    case TCode::INT16:         return "INT16";
-    case TCode::INT32:         return "INT32";
-    case TCode::UINT8:         return "UINT8";
-    case TCode::UINT16:        return "UINT16";
-    case TCode::UINT32:        return "UINT32";
-    case TCode::INT64:         return "INT64";
-    case TCode::INT128:        return "INT128";
-    case TCode::UINT64:        return "UINT64";
-    case TCode::UINT128:       return "UINT128";
-    case TCode::BOOLEAN:       return "BOOLEAN";
-    case TCode::FLOAT:         return "FLOAT";
-    case TCode::DOUBLE:        return "DOUBLE";
-    case TCode::BINARY:        return "BINARY";
-    case TCode::STR:           return "STR";
-    case TCode::VECT_2_FLOAT:  return "VECT_2_FLOAT";
-    case TCode::VECT_2_DOUBLE: return "VECT_2_DOUBLE";
-    case TCode::VECT_2_INT8:   return "VECT_2_INT8";
-    case TCode::VECT_2_UINT8:  return "VECT_2_UINT8";
-    case TCode::VECT_2_INT16:  return "VECT_2_INT16";
-    case TCode::VECT_2_UINT16: return "VECT_2_UINT16";
-    case TCode::VECT_2_INT32:  return "VECT_2_INT32";
-    case TCode::VECT_2_UINT32: return "VECT_2_UINT32";
-    case TCode::VECT_3_FLOAT:  return "VECT_3_FLOAT";
-    case TCode::VECT_3_DOUBLE: return "VECT_3_DOUBLE";
-    case TCode::VECT_3_INT8:   return "VECT_3_INT8";
-    case TCode::VECT_3_UINT8:  return "VECT_3_UINT8";
-    case TCode::VECT_3_INT16:  return "VECT_3_INT16";
-    case TCode::VECT_3_UINT16: return "VECT_3_UINT16";
-    case TCode::VECT_3_INT32:  return "VECT_3_INT32";
-    case TCode::VECT_3_UINT32: return "VECT_3_UINT32";
-    case TCode::VECT_4_FLOAT:  return "VECT_4_FLOAT";
-    case TCode::URL:           return "URL";
-    case TCode::JSON:          return "JSON";
-    case TCode::CBOR:          return "CBOR";
-    case TCode::LATLON:        return "LATLON";
-    case TCode::COLOR8:        return "COLOR8";
-    case TCode::COLOR16:       return "COLOR16";
-    case TCode::COLOR24:       return "COLOR24";
-    case TCode::STR_BUILDER:   return "STR_BUILDER";
-    case TCode::IDENTITY:      return "IDENTITY";
-    case TCode::AUDIO:         return "AUDIO";
-    case TCode::IMAGE:         return "IMAGE";
-    case TCode::RESERVED:      return "RESERVED";
-  }
-  return "UNKNOWN";
-}
 
 const char* const ParsingConsole::_get_terminator(LineTerm lt) {
   switch (lt) {
@@ -110,12 +60,6 @@ const char* const ParsingConsole::_get_terminator(LineTerm lt) {
     default:              break;
   }
   return "";
-}
-
-// TODO: This is probably a general text-formatting class. But for now, it lives
-//   in the console class.
-void ParsingConsole::styleHeader1(StringBuilder* output, const char* text) {
-  output->concatf("--- %s\n---------------------------------------\n", text);
 }
 
 
@@ -549,7 +493,7 @@ void ConsoleCommand::printDetailedHelp(StringBuilder* output) {
   for (int i = 0; i < maxArgumentCount(); i++) {
     output->concatf(
       ((i < req_count) ? "%s " : "[%s] "),
-      ParsingConsole::typecodeToStr(*(fmt + i))
+      typecodeToStr(*(fmt + i))
     );
   }
   output->concatf("\n%s\n", param_text);

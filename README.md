@@ -64,6 +64,10 @@ A library for dynamic-depth filtering of scalar and vector quantities.
 
 A library for a configurable serial console.
 
+#### [Identity](extras/doc/Identity.md)
+
+A library for a configurable serial console.
+
 #### [BusQueue](extras/doc/BusQueue.md)
 
 A template for implementing I/O queues in a hardware-agnostic manner.
@@ -109,6 +113,14 @@ These have no dependencies outside of those normally supplied by the environment
 These have dependency on other classes in this repo...
 
     ParsingConsole
+      |
+      +---StringBuilder
+      |
+      +---LightLinkedList
+
+    Identity
+      |
+      +---UUID
       |
       +---StringBuilder
       |
