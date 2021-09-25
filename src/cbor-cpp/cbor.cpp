@@ -516,7 +516,7 @@ void decoder::run() {
             break;
           case 4:
             temp = _in->get_int();
-            if (temp <= (INT32_MAX << 1) + 1) {  // Unsigned int can take the extra bit.
+            if (temp <= ((uint32_t) INT32_MAX << 1) + 1) {  // Unsigned int can take the extra bit.
               _listener->on_integer((uint32_t) temp);
             }
             else {  // Signed integers need to grow one byte.
