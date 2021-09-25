@@ -18,6 +18,10 @@ There is also a type-code enum system in use in this library.
 
 A library for dynamic string abstraction.
 
+#### [KeyValuePair](extras/doc/KeyValuePair.md)
+
+A data type for describing, parsing, and packing rich data types.
+
 #### [LightLinkedList](extras/doc/LightLinkedList.md)
 
 A template for a linked list.
@@ -175,6 +179,12 @@ These have dependency on other classes in this repo...
     UUID
       |
       +---StringBuilder
+
+    KeyValuePair
+      |
+      +---StringBuilder
+      |
+      +---(see notes in KeyValuePair doc)
 
 ----------------------
 
