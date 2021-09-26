@@ -38,88 +38,114 @@ StopWatch stopwatch_3;
 
 
 /*******************************************************************************
-* Vector3 test routines
+* KVP test routines
 *******************************************************************************/
 
 /**
-* Test the capability of KeyValuePairs to hold KVP data.
+* Test the capability of KeyValuePairs to hold mixed KVP data, test lookup, and
+*   to test the mechanics of the pointer-hack on PODs.
+* Failure here might result in segfaults. This also needs to be tested against
+*   both 32/64-bit builds.
 * @return 0 on pass. Non-zero otherwise.
 */
-// int test_KeyValuePair_KVP() {
-//   int return_value = -1;
-//   StringBuilder log("===< KeyValuePairs KVP >====================================\n");
-//
-//   uint32_t val0  = (uint32_t) randomUInt32();
-//   uint16_t val1  = (uint16_t) randomUInt32();
-//   uint8_t  val2  = (uint8_t)  randomUInt32();
-//   int32_t  val3  = (int32_t)  randomUInt32();
-//   int16_t  val4  = (int16_t)  randomUInt32();
-//   int8_t   val5  = (int8_t)   randomUInt32();
-//   float    val6  = 0.8374f;
-//   float    val8  = -0.8374f;
-//   double   val9  = -0.123456789d;
-//   Vector3<float> val7(0.5f, -0.5f, 0.2319f);
-//
-//   uint32_t ret0 = 0;
-//   uint16_t ret1 = 0;
-//   uint8_t  ret2 = 0;
-//   int32_t  ret3 = 0;
-//   int16_t  ret4 = 0;
-//   int8_t   ret5 = 0;
-//   float    ret6 = 0.0f;
-//   float    ret8 = 0.0f;
-//   Vector3<float> ret7(0.0f, 0.0f, 0.0f);
-//   //float    ret9 = 0.0d;
-//
-//   log.concat("\t Adding arguments...\n\n");
-//   KeyValuePair a(val3);
-//
-//   a.append(val0)->setKey("value0");
-//   a.append(val1)->setKey("value1");
-//   a.append(val2);  // NOTE: Mixed in with non-KVP.
-//   a.append(val4)->setKey("value4");
-//   a.append(val5)->setKey("value5");
-//   a.append(val6)->setKey("value6");
-//   a.append(val8)->setKey("value8");
-//   a.append(&val7)->setKey("value7");
-//   //a.append(val9)->setKey("value9");
-//
-//   a.printDebug(&log);
-//   log.concat("\n");
-//
-//   StringBuilder temp_buffer;
-//   int key_count = a.collectKeys(&temp_buffer);
-//   log.concatf("\t Breadth-first keyset (%d total keys):   ", key_count);
-//   for (int i = 0; i < key_count; i++) {
-//     log.concatf("%s ", temp_buffer.position(i));
-//   }
-//   log.concat("\n");
-//
-//   temp_buffer.clear();
-//   a.serialize(&temp_buffer);
-//   log.concatf("\t temp_buffer is %u bytes long.\n", temp_buffer.length());
-//   temp_buffer.printDebug(&log);
-//
-//   if ((0 == a.getValueAs("value0", &ret0)) && (ret0 == val0)) {
-//     if ((0 == a.getValueAs("value4", &ret4)) && (ret4 == val4)) {
-//       if ((0 == a.getValueAs("value5", &ret5)) && (ret5 == val5)) {
-//         if (0 != a.getValueAs("non-key", &ret0)) {
-//           // We shouldn't be able to get a value for a key that doesn't exist...
-//           if (0 != a.getValueAs(nullptr, &ret0)) {
-//             // Nor for a NULL key...
-//             return_value = 0;
-//           }
-//         }
-//       }
-//       else log.concat("Failed to vet key 'value5'...\n");
-//     }
-//     else log.concat("Failed to vet key 'value4'...\n");
-//   }
-//   else log.concat("Failed to vet key 'value0'...\n");
-//
-//   printf("%s\n\n", (const char*) log.string());
-//   return return_value;
-// }
+int test_KeyValuePair_KVP() {
+  int return_value = -1;
+  StringBuilder log("===< KeyValuePairs KVP >====================================\n");
+
+  uint32_t val0  = (uint32_t) randomUInt32();
+  uint16_t val1  = (uint16_t) randomUInt32();
+  uint8_t  val2  = (uint8_t)  randomUInt32();
+  int32_t  val3  = (int32_t)  randomUInt32();
+  int16_t  val4  = (int16_t)  randomUInt32();
+  int8_t   val5  = (int8_t)   randomUInt32();
+  float    val6  = (float)    randomUInt32()/1000000.0f;
+  float    val8  = -0.8374f;
+  double   val9  = -0.123456789d;
+  Vector3<float> val7(0.5f, -0.5f, 0.2319f);
+
+  uint32_t ret0 = 0;
+  uint16_t ret1 = 0;
+  uint8_t  ret2 = 0;
+  int32_t  ret3 = 0;
+  int16_t  ret4 = 0;
+  int8_t   ret5 = 0;
+  float    ret6 = 0.0f;
+  float    ret8 = 0.0f;
+  Vector3<float> ret7(0.0f, 0.0f, 0.0f);
+  //float    ret9 = 0.0d;
+
+  log.concat("\t Adding arguments...\n\n");
+  KeyValuePair a(val3);
+  a.append(val0)->setKey("value0");
+  a.append(val1, "value1");
+  a.append(val2);  // NOTE: Mixed in with non-KVP.
+  a.append(val4, "value4");
+  a.append(val5, "value5");
+  a.append(val6, "value6");
+  a.append(val8, "value8");
+  a.append(&val7)->setKey("value7");
+  a.append(val9)->setKey("value9");
+
+  a.printDebug(&log);
+  log.concat("\n");
+
+  StringBuilder temp_buffer;
+  int key_count = a.collectKeys(&temp_buffer);
+  log.concatf("\t Breadth-first keyset (%d total keys):   ", key_count);
+  for (int i = 0; i < key_count; i++) {
+    log.concatf("%s ", temp_buffer.position(i));
+  }
+  log.concat("\n");
+
+  temp_buffer.clear();
+  a.serialize(&temp_buffer, TCode::BINARY);
+  log.concatf("\t temp_buffer is %u bytes long.\n", temp_buffer.length());
+  temp_buffer.printDebug(&log);
+
+  if (a.count() == 10) {
+    if ((0 == a.valueWithKey("value6", &ret6)) && (ret6 == val6)) {
+      if ((0 == a.valueWithKey("value0", &ret0)) && (ret0 == val0)) {
+        if ((0 == a.valueWithKey("value4", &ret4)) && (ret4 == val4)) {
+          if ((0 == a.valueWithKey("value5", &ret5)) && (ret5 == val5)) {
+            if (0 != a.valueWithKey("non-key", &ret0)) {   // We shouldn't be able to get a value for a key that doesn't exist...
+              if (0 != a.valueWithKey(nullptr, &ret0)) {   // Nor for a NULL key...
+                if ((0 == a.valueWithIdx(1, &ret0)) && (ret0 == val0)) {
+                  if ((0 == a.valueWithIdx(2, &ret1)) && (ret1 == val1)) {
+                    if ((0 == a.valueWithIdx(3, &ret2)) && (ret2 == val2)) {
+                      if ((0 == a.valueWithIdx(0, &ret3)) && (ret3 == val3)) {
+                        if ((0 == a.valueWithIdx(4, &ret4)) && (ret4 == val4)) {
+                          if ((0 == a.valueWithIdx(5, &ret5)) && (ret5 == val5)) {
+                            return_value = 0;
+                          }
+                          else log.concatf("int8_t failed (%d vs %d)...\n", val5, ret5);
+                        }
+                        else log.concatf("int16_t failed (%d vs %d)...\n", val4, ret4);
+                      }
+                      else log.concatf("int32_t failed (%d vs %d)...\n", val3, ret3);
+                    }
+                    else log.concatf("uint8_t failed (%u vs %u)...\n", val2, ret2);
+                  }
+                  else log.concatf("uint16_t failed (%u vs %u)...\n", val1, ret1);
+                }
+                else log.concatf("uint32_t failed (%u vs %u)...\n", val0, ret0);
+              }
+              else log.concat("Found key (nullptr), which should have been nonexistant...\n");
+            }
+            else log.concat("Found key 'non-key', which should have been nonexistant...\n");
+          }
+          else log.concat("Failed to vet key 'value5'...\n");
+        }
+        else log.concat("Failed to vet key 'value4'...\n");
+      }
+      else log.concat("Failed to vet key 'value0'...\n");
+    }
+    else log.concatf("Failed for float (%f vs %f)...\n", (double) val6, (double) ret6);
+  }
+  else log.concatf("Total KeyValuePairs:  %d\tExpected 10.\n", a.count());
+
+  printf("%s\n\n", (const char*) log.string());
+  return return_value;
+}
 
 
 /**
@@ -127,207 +153,221 @@ StopWatch stopwatch_3;
 *   types.
 * @return 0 on pass. Non-zero otherwise.
 */
-// int test_KeyValuePair_InternalTypes() {
-//   int return_value = 1;
-//   StringBuilder log("===< KeyValuePairs Internal Types >=========================\n");
-//   StringBuilder val0("Some string");
-//   KeyValuePair a(&val0);
-//   a.printDebug(&log);
-//
-//   StringBuilder* ret0 = nullptr;
-//
-//   if (0 == a.getValueAs(&ret0)) {
-//     if (&val0 == ret0) {
-//       return_value = 0;
-//     }
-//     else log.concat("StringBuilder pointer retrieved from KeyValuePair is not the same as what went in. Fail...\n");
-//   }
-//   else log.concat("Failed to retrieve StringBuilder pointer.\n");
-//
-//   printf("%s\n\n", (const char*) log.string());
-//   return return_value;
-// }
+int test_KeyValuePair_InternalTypes() {
+  int return_value = 1;
+  StringBuilder log("===< KeyValuePairs Internal Types >=========================\n");
+  StringBuilder val0("Some string");
+  KeyValuePair a(&val0);
+  a.printDebug(&log);
 
+  StringBuilder* ret0 = nullptr;
 
-/**
-* These tests are meant to test the mechanics of the pointer-hack on PODs.
-* Failure here might result in segfaults. This also needs to be tested against
-*   both 32/64-bit builds.
-* @return 0 on pass. Non-zero otherwise.
-*/
-// int test_KeyValuePair_PODs() {
-//   int return_value = 1;
-//   StringBuilder log("===< KeyValuePairs POD >====================================\n");
-//   const char* val_base = "This is the base argument";
-//   uint32_t val0  = (uint32_t) randomUInt32();
-//   uint16_t val1  = (uint16_t) randomUInt32();
-//   uint8_t  val2  = (uint8_t)  randomUInt32();
-//   int32_t  val3  = (int32_t)  randomUInt32();
-//   int16_t  val4  = (int16_t)  randomUInt32();
-//   int8_t   val5  = (int8_t)   randomUInt32();
-//   float    val6  = (float)    randomUInt32()/1000000.0f;
-//
-//   KeyValuePair a(val_base);
-//
-//   int real_size = strlen(val_base)+1;  // We count the null-terminator.
-//   real_size += sizeof(val0);
-//   real_size += sizeof(val1);
-//   real_size += sizeof(val2);
-//   real_size += sizeof(val3);
-//   real_size += sizeof(val4);
-//   real_size += sizeof(val5);
-//   real_size += sizeof(val6);
-//
-//   log.concatf("Adding arguements with a real size of %d bytes...\n", real_size);
-//
-//   a.append(val0);
-//   a.append(val1);
-//   a.append(val2);
-//   a.append(val3);
-//   a.append(val4);
-//   a.append(val5);
-//   a.append(val6);
-//   a.printDebug(&log);
-//
-//   if ((a.argCount() == 8) && (a.sumAllLengths() == real_size)) {
-//     uint32_t ret0 = 0;
-//     uint16_t ret1 = 0;
-//     uint8_t  ret2 = 0;
-//     int32_t  ret3 = 0;
-//     int16_t  ret4 = 0;
-//     int8_t   ret5 = 0;
-//     float    ret6 = 0.0;
-//     if ((0 == a.getValueAs(1, &ret0)) && (ret0 == val0)) {
-//       if ((0 == a.getValueAs(2, &ret1)) && (ret1 == val1)) {
-//         if ((0 == a.getValueAs(3, &ret2)) && (ret2 == val2)) {
-//           if ((0 == a.getValueAs(4, &ret3)) && (ret3 == val3)) {
-//             if ((0 == a.getValueAs(5, &ret4)) && (ret4 == val4)) {
-//               if ((0 == a.getValueAs(6, &ret5)) && (ret5 == val5)) {
-//                 //if ((0 == a.getValueAs(7, (float*) &ret6)) && (ret6 == val6)) {
-//                   log.concatf("Test passes.\n", a.argCount());
-//                   return_value = 0;
-//                 //}
-//                 //else log.concatf("float failed (%f vs %f)...\n", (double) val6, (double) ret6);
-//               }
-//               else log.concatf("int8_t failed (%d vs %d)...\n", val5, ret5);
-//             }
-//             else log.concatf("int16_t failed (%d vs %d)...\n", val4, ret4);
-//           }
-//           else log.concatf("int32_t failed (%d vs %d)...\n", val3, ret3);
-//         }
-//         else log.concatf("uint8_t failed (%u vs %u)...\n", val2, ret2);
-//       }
-//       else log.concatf("uint16_t failed (%u vs %u)...\n", val1, ret1);
-//     }
-//     else log.concatf("uint32_t failed (%u vs %u)...\n", val0, ret0);
-//   }
-//   else {
-//     log.concatf("Total KeyValuePairs:  %d\tExpected 8.\n", a.argCount());
-//     log.concatf("Total payload size:   %d\tExpected %d.\n", a.sumAllLengths(), real_size);
-//     log.concat("\n");
-//   }
-//
-//   printf("%s\n\n", (const char*) log.string());
-//   return return_value;
-// }
+  if (0 == a.getValueAs(&ret0)) {
+    if (&val0 == ret0) {
+      return_value = 0;
+    }
+    else log.concat("StringBuilder pointer retrieved from KeyValuePair is not the same as what went in. Fail...\n");
+  }
+  else log.concat("Failed to retrieve StringBuilder pointer.\n");
+
+  printf("%s\n\n", (const char*) log.string());
+  return return_value;
+}
 
 
 /**
 * [test_KeyValuePair_Value_Placement description]
 * @return [description]
 */
-// int test_KeyValuePair_Value_Placement() {
-//   int return_value = -1;
-//   StringBuilder log("===< KeyValuePair Value Placement >=========================\n");
-//   StringBuilder shuttle;  // We will transport the CBOR encoded-bytes through this.
-//
-//   int32_t  val0  = (int32_t)  randomUInt32();
-//   int16_t  val1  = (int16_t)  randomUInt32();
-//   int8_t   val2  = (int8_t)   randomUInt32();
-//   uint32_t val3  = (uint32_t) randomUInt32();
-//   uint16_t val4  = (uint16_t) randomUInt32();
-//   uint8_t  val5  = (uint8_t)  randomUInt32();
-//   float    val6  = ((uint32_t) randomUInt32()) / ((float) randomUInt32());
-//   Vector3<float> val7(0.5f, -0.5f, 0.2319f);
-//   double   val8  = ((uint32_t) randomUInt32()) / ((double) randomUInt32());
-//
-//   KeyValuePair arg0(val0);
-//   KeyValuePair arg1(val1);
-//   KeyValuePair arg2(val2);
-//   KeyValuePair arg3(val3);
-//   KeyValuePair arg4(val4);
-//   KeyValuePair arg5(val5);
-//   KeyValuePair arg6(val6);
-//   KeyValuePair arg7(&val7);
-//   KeyValuePair arg8(val8);
-//
-//   int32_t  ret0 = 0;
-//   int16_t  ret1 = 0;
-//   int8_t   ret2 = 0;
-//   uint32_t ret3 = 0;
-//   uint16_t ret4 = 0;
-//   uint8_t  ret5 = 0;
-//   float    ret6 = 0.0f;
-//   Vector3<float> ret7(0.0f, 0.0f, 0.0f);
-//   double   ret8 = 0.0f;
-//
-//   val0  = (int32_t)  randomUInt32();
-//   val1  = (int16_t)  randomUInt32();
-//   val2  = (int8_t)   randomUInt32();
-//   val3  = (uint32_t) randomUInt32();
-//   val4  = (uint16_t) randomUInt32();
-//   val5  = (uint8_t)  randomUInt32();
-//   val6  = ((uint32_t) randomUInt32()) / ((float) randomUInt32());
-//   val7(
-//     ((uint32_t) randomUInt32()) / ((float) randomUInt32()),
-//     ((uint32_t) randomUInt32()) / ((float) randomUInt32()),
-//     ((uint32_t) randomUInt32()) / ((float) randomUInt32())
-//   );
-//   val8  = ((uint32_t) randomUInt32()) / ((double) randomUInt32());
-//
-//   arg0.setValue(val0);
-//   arg1.setValue(val1);
-//   arg2.setValue(val2);
-//   arg3.setValue(val3);
-//   arg4.setValue(val4);
-//   arg5.setValue(val5);
-//   arg6.setValue(val6);
-//   arg7.setValue(&val7);
-//   arg8.setValue(val8);
-//
-//   if ((0 == arg0.getValueAs(&ret0)) && (ret0 == val0)) {
-//     if ((0 == arg1.getValueAs(&ret1)) && (ret1 == val1)) {
-//       if ((0 == arg2.getValueAs(&ret2)) && (ret2 == val2)) {
-//         if ((0 == arg3.getValueAs(&ret3)) && (ret3 == val3)) {
-//           if ((0 == arg4.getValueAs(&ret4)) && (ret4 == val4)) {
-//             if ((0 == arg5.getValueAs(&ret5)) && (ret5 == val5)) {
-//               if ((0 == arg6.getValueAs(&ret6)) && (ret6 == val6)) {
-//                 if ((0 == arg8.getValueAs(&ret8)) && (ret8 == val8)) {
-//                   log.concatf("Value placement tests good for all types.\n");
-//                   return_value = 0;
-//                 }
-//                 else log.concatf("Failed to vet key 'value8'... %.20f vs %.20f\n", ret8, val8);
-//               }
-//               else log.concatf("Failed to vet key 'value6'... %.3f vs %.3f\n", (double) ret6, (double) val6);
-//             }
-//             else log.concatf("Failed to vet key 'value5'... %u vs %u\n", ret5, val5);
-//           }
-//           else log.concatf("Failed to vet key 'value4'... %u vs %u\n", ret4, val4);
-//         }
-//         else log.concatf("Failed to vet key 'value3'... %u vs %u\n", ret3, val3);
-//       }
-//       else log.concatf("Failed to vet key 'value2'... %u vs %u\n", ret2, val2);
-//     }
-//     else log.concatf("Failed to vet key 'value1'... %u vs %u\n", ret1, val1);
-//   }
-//   else log.concatf("Failed to vet key 'value0'... %u vs %u\n", ret0, val0);
-//
-//   if (return_value) {
-//     //a.printDebug(&log);
-//   }
-//   printf("%s\n\n", (const char*) log.string());
-//   return return_value;
-// }
+int test_KeyValuePair_Value_Placement() {
+  int return_value = -1;
+  StringBuilder log("===< KeyValuePair Value Placement >=========================\n");
+  StringBuilder shuttle;  // We will transport the CBOR encoded-bytes through this.
+
+  int32_t  val0  = (int32_t)  randomUInt32();
+  int16_t  val1  = (int16_t)  randomUInt32();
+  int8_t   val2  = (int8_t)   randomUInt32();
+  uint32_t val3  = (uint32_t) randomUInt32();
+  uint16_t val4  = (uint16_t) randomUInt32();
+  uint8_t  val5  = (uint8_t)  randomUInt32();
+  float    val6  = ((uint32_t) randomUInt32()) / ((float) randomUInt32());
+  Vector3<float> val7(0.5f, -0.5f, 0.2319f);
+  double   val8  = ((uint32_t) randomUInt32()) / ((double) randomUInt32());
+
+  KeyValuePair arg0(val0);
+  KeyValuePair arg1(val1);
+  KeyValuePair arg2(val2);
+  KeyValuePair arg3(val3);
+  KeyValuePair arg4(val4);
+  KeyValuePair arg5(val5);
+  KeyValuePair arg6(val6);
+  KeyValuePair arg7(&val7);
+  KeyValuePair arg8(val8);
+
+  int32_t  ret0 = 0;
+  int16_t  ret1 = 0;
+  int8_t   ret2 = 0;
+  uint32_t ret3 = 0;
+  uint16_t ret4 = 0;
+  uint8_t  ret5 = 0;
+  float    ret6 = 0.0f;
+  Vector3<float> ret7(0.0f, 0.0f, 0.0f);
+  double   ret8 = 0.0f;
+
+  val0  = (int32_t)  randomUInt32();
+  val1  = (int16_t)  randomUInt32();
+  val2  = (int8_t)   randomUInt32();
+  val3  = (uint32_t) randomUInt32();
+  val4  = (uint16_t) randomUInt32();
+  val5  = (uint8_t)  randomUInt32();
+  val6  = ((uint32_t) randomUInt32()) / ((float) randomUInt32());
+  val7(
+    ((uint32_t) randomUInt32()) / ((float) randomUInt32()),
+    ((uint32_t) randomUInt32()) / ((float) randomUInt32()),
+    ((uint32_t) randomUInt32()) / ((float) randomUInt32())
+  );
+  val8  = ((uint32_t) randomUInt32()) / ((double) randomUInt32());
+
+  arg0.setValue(val0);
+  arg1.setValue(val1);
+  arg2.setValue(val2);
+  arg3.setValue(val3);
+  arg4.setValue(val4);
+  arg5.setValue(val5);
+  arg6.setValue(val6);
+  arg7.setValue(&val7);
+  arg8.setValue(val8);
+
+  if ((0 == arg0.getValueAs(&ret0)) && (ret0 == val0)) {
+    if ((0 == arg1.getValueAs(&ret1)) && (ret1 == val1)) {
+      if ((0 == arg2.getValueAs(&ret2)) && (ret2 == val2)) {
+        if ((0 == arg3.getValueAs(&ret3)) && (ret3 == val3)) {
+          if ((0 == arg4.getValueAs(&ret4)) && (ret4 == val4)) {
+            if ((0 == arg5.getValueAs(&ret5)) && (ret5 == val5)) {
+              if ((0 == arg6.getValueAs(&ret6)) && (ret6 == val6)) {
+                if ((0 == arg8.getValueAs(&ret8)) && (ret8 == val8)) {
+                  log.concatf("Value placement tests good for all types.\n");
+                  return_value = 0;
+                }
+                else log.concatf("Failed to vet key 'value8'... %.20f vs %.20f\n", ret8, val8);
+              }
+              else log.concatf("Failed to vet key 'value6'... %.3f vs %.3f\n", (double) ret6, (double) val6);
+            }
+            else log.concatf("Failed to vet key 'value5'... %u vs %u\n", ret5, val5);
+          }
+          else log.concatf("Failed to vet key 'value4'... %u vs %u\n", ret4, val4);
+        }
+        else log.concatf("Failed to vet key 'value3'... %u vs %u\n", ret3, val3);
+      }
+      else log.concatf("Failed to vet key 'value2'... %u vs %u\n", ret2, val2);
+    }
+    else log.concatf("Failed to vet key 'value1'... %u vs %u\n", ret1, val1);
+  }
+  else log.concatf("Failed to vet key 'value0'... %u vs %u\n", ret0, val0);
+
+  if (return_value) {
+    //a.printDebug(&log);
+  }
+  printf("%s\n\n", (const char*) log.string());
+  return return_value;
+}
+
+
+#if defined(CONFIG_MANUVR_CBOR)
+/**
+* [test_CBOR_Argument description]
+* @return [description]
+*/
+int test_CBOR_KeyValuePair() {
+  int return_value = -1;
+  StringBuilder log("===< Arguments CBOR >===================================\n");
+  StringBuilder shuttle;  // We will transport the CBOR encoded-bytes through this.
+
+  int32_t  val0  = (int32_t)  randomUInt32();
+  int16_t  val1  = (int16_t)  randomUInt32();
+  int8_t   val2  = (int8_t)   randomUInt32();
+  uint32_t val3  = (uint32_t) randomUInt32();
+  uint16_t val4  = (uint16_t) randomUInt32();
+  uint8_t  val5  = (uint8_t)  randomUInt32();
+  float    val6  = ((uint32_t) randomUInt32()) / ((float) randomUInt32());
+  Vector3<float> val7(0.5f, -0.5f, 0.2319f);
+  double   val8  = ((uint32_t) randomUInt32()) / ((double) randomUInt32());
+
+  int32_t  ret0 = 0;
+  int16_t  ret1 = 0;
+  int8_t   ret2 = 0;
+  uint32_t ret3 = 0;
+  uint16_t ret4 = 0;
+  uint8_t  ret5 = 0;
+  float    ret6 = 0.0f;
+  Vector3<float> ret7(0.0f, 0.0f, 0.0f);
+  double   ret8 = 0.0f;
+
+  KeyValuePair a(val0, "val0");
+  a.append(val1)->setKey("val1");
+  a.append(val2)->setKey("val2");
+  a.append(val3)->setKey("val3");
+  a.append(val4)->setKey("val4");
+  a.append(val5)->setKey("val5");
+  a.append(val6)->setKey("val6");
+  a.append(&val7)->setKey("val7");
+  a.append(val8, "val8");
+
+  a.printDebug(&log);
+
+  int8_t ret_local = a.serialize(&shuttle, TCode::CBOR);
+
+  if (0 == ret_local) {
+    log.concatf("CBOR encoding occupies %d bytes\n\t", shuttle.length());
+    shuttle.printDebug(&log);
+    log.concat("\n");
+
+    KeyValuePair* r = KeyValuePair::unserialize(shuttle.string(), shuttle.length(), TCode::CBOR);
+
+    if (nullptr != r) {
+      log.concat("CBOR decoded:\n");
+      r->printDebug(&log);
+
+      log.concat("\n");
+      if ((0 == r->valueWithIdx(0, &ret0)) && (ret0 == val0)) {
+        if ((0 == r->valueWithIdx(1, &ret1)) && (ret1 == val1)) {
+          if ((0 == r->valueWithIdx(2, &ret2)) && (ret2 == val2)) {
+            if ((0 == r->valueWithIdx(3, &ret3)) && (ret3 == val3)) {
+              if ((0 == r->valueWithIdx(4, &ret4)) && (ret4 == val4)) {
+                if ((0 == r->valueWithIdx(5, &ret5)) && (ret5 == val5)) {
+                  if ((0 == r->valueWithIdx(6, &ret6)) && (ret6 == val6)) {
+                    if ((0 == r->valueWithKey("val8", &ret8)) && (ret8 == val8)) {
+                      if (r->count() == a.count()) {
+                        return_value = 0;
+                      }
+                      else log.concatf("Arg counts don't match: %d vs %d\n", r->count(), a.count());
+                    }
+                    else log.concatf("Failed to vet key 'value8'... %.6f vs %.6f\n", ret8, val8);
+                  }
+                  else log.concatf("Failed to vet key 'value6'... %.3f vs %.3f\n", (double) ret6, (double) val6);
+                }
+                else log.concatf("Failed to vet key 'value5'... %u vs %u\n", ret5, val5);
+              }
+              else log.concatf("Failed to vet key 'value4'... %u vs %u\n", ret4, val4);
+            }
+            else log.concatf("Failed to vet key 'value3'... %u vs %u\n", ret3, val3);
+          }
+          else log.concatf("Failed to vet key 'value2'... %u vs %u\n", ret2, val2);
+        }
+        else log.concatf("Failed to vet key 'value1'... %u vs %u\n", ret1, val1);
+      }
+      else log.concatf("Failed to vet key 'value0'... %u vs %u\n", ret0, val0);
+    }
+    else log.concat("Failed to decode Argument chain from CBOR...\n");
+  }
+  else log.concatf("Failed to encode Argument chain into CBOR: %d\n", ret_local);
+
+  if (return_value) {
+    a.printDebug(&log);
+  }
+  printf("%s\n\n", (const char*) log.string());
+  return return_value;
+}
 
 
 /**
@@ -377,16 +417,16 @@ StopWatch stopwatch_3;
 //       r->printDebug(&log);
 //
 //       log.concat("\n");
-//       if ((0 == r->getValueAs((uint8_t) 0, &ret0)) && (ret0 == val0)) {
-//         if ((0 == r->getValueAs((uint8_t) 1, &ret1)) && (ret1 == val1)) {
-//           if ((0 == r->getValueAs((uint8_t) 2, &ret2)) && (ret2 == val2)) {
-//             if ((0 == r->getValueAs((uint8_t) 3, &ret3)) && (ret3 == val3)) {
-//               if ((0 == r->getValueAs((uint8_t) 4, &ret4)) && (ret4 == val4)) {
-//                 if ((0 == r->getValueAs((uint8_t) 5, &ret5)) && (ret5 == val5)) {
-//                     if (r->argCount() == a.argCount()) {
+//       if ((0 == r->valueWithIdx((uint8_t) 0, &ret0)) && (ret0 == val0)) {
+//         if ((0 == r->valueWithIdx((uint8_t) 1, &ret1)) && (ret1 == val1)) {
+//           if ((0 == r->valueWithIdx((uint8_t) 2, &ret2)) && (ret2 == val2)) {
+//             if ((0 == r->valueWithIdx((uint8_t) 3, &ret3)) && (ret3 == val3)) {
+//               if ((0 == r->valueWithIdx((uint8_t) 4, &ret4)) && (ret4 == val4)) {
+//                 if ((0 == r->valueWithIdx((uint8_t) 5, &ret5)) && (ret5 == val5)) {
+//                     if (r->count() == a.count()) {
 //                       return_value = 0;
 //                     }
-//                     else log.concatf("Arg counts don't match: %d vs %d\n", r->argCount(), a.argCount());
+//                     else log.concatf("Arg counts don't match: %d vs %d\n", r->count(), a.count());
 //                 }
 //                 else log.concatf("Failed to vet key 'value5'... %u vs %u\n", ret5, val5);
 //               }
@@ -410,31 +450,27 @@ StopWatch stopwatch_3;
 //   printf("%s\n\n", (const char*) log.string());
 //   return return_value;
 // }
-
+#endif  // CONFIG_MANUVR_CBOR
 
 int test_KeyValuePair() {
-  //int return_value = test_KeyValuePair_KVP();
-  //if (0 == return_value) {
-  //  return_value = test_KeyValuePair_InternalTypes();
-  //  if (0 == return_value) {
-  //    return_value = test_KeyValuePair_PODs();
-  //    if (0 == return_value) {
-  //      return_value = test_KeyValuePair_Value_Placement();
-  //      if (0 == return_value) {
-  //      #if defined(CONFIG_MANUVR_CBOR)
-  //        return_value = test_CBOR_KeyValuePair();
-  //        if (0 == return_value) {
-  //          return_value = test_CBOR_Problematic_KeyValuePair();
-  //          if (0 == return_value) {
-  //          }
-  //        }
-  //      #endif
-  //      }
-  //    }
-  //  }
-  //}
-  //return return_value;
-  return 0;
+  int return_value = test_KeyValuePair_KVP();
+  if (0 == return_value) {
+    return_value = test_KeyValuePair_InternalTypes();
+    if (0 == return_value) {
+      return_value = test_KeyValuePair_Value_Placement();
+      if (0 == return_value) {
+        #if defined(CONFIG_MANUVR_CBOR)
+        return_value = test_CBOR_KeyValuePair();
+        if (0 == return_value) {
+          //          return_value = test_CBOR_Problematic_KeyValuePair();
+          if (0 == return_value) {
+          }
+        }
+        #endif  // CONFIG_MANUVR_CBOR
+      }
+    }
+  }
+  return return_value;
 }
 
 

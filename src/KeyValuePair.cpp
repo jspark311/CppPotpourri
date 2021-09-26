@@ -85,27 +85,28 @@ static bool _is_type_copy_by_value(const TCode TC) {
 /**
 * Protected delegate constructor.
 */
-KeyValuePair::KeyValuePair(void* ptr, int l, const TCode TC, const char* k, uint8_t f) : _key(k), target_mem(ptr), len(l), _flags(f), _t_code(TC) {
-  _alter_flags(_is_type_copy_by_value(TC), MANUVR_ARG_FLAG_DIRECT_VALUE);
+KeyValuePair::KeyValuePair(void* ptr, int l, const TCode TC, uint8_t f) : target_mem(ptr), len(l), _t_code(TC), _flags(f) {
+  _alter_flags(_is_type_copy_by_value(TC), MANUVR_KVP_FLAG_DIRECT_VALUE);
   // If we can know the length with certainty, record it.
   if (typeIsFixedLength(TC)) {
     len = sizeOfType(TC);
   }
+}
 
-  // TODO: Until behavior is defined WRT key mem ownership, we _always_ allocate
-  //   and mark for reap.
-  if (nullptr != _key) {
-    const int K_LEN = strlen(_key)+1;
-    char* tk = (char*) malloc(K_LEN);
-    if (nullptr != tk) {
-      memcpy(tk, _key, K_LEN);
-      _key = tk;
-      _alter_flags(true, MANUVR_ARG_FLAG_REAP_KEY);
-    }
-    else {
-      _alter_flags(true, MANUVR_ARG_FLAG_ERR_MEM);
-    }
-  }
+
+/**
+* Protected delegate constructor.
+*/
+KeyValuePair::KeyValuePair(void* ptr, int l, const TCode TC, const char* k, uint8_t f) : KeyValuePair(ptr, l, TC, f) {
+  setKey(k);
+}
+
+
+/**
+* Protected delegate constructor.
+*/
+KeyValuePair::KeyValuePair(void* ptr, int l, const TCode TC, char* k, uint8_t f) : KeyValuePair(ptr, l, TC, f) {
+  setKey(k);
 }
 
 
@@ -124,11 +125,7 @@ KeyValuePair::~KeyValuePair() {
     target_mem = nullptr;
     if (reapValue()) free(p);
   }
-  if (nullptr != _key) {
-    char* k = (char*) _key;
-    _key = nullptr;
-    if (_reap_key()) free(k);
-  }
+  _set_new_key(nullptr);
   _t_code    = TCode::NONE;
   len        = 0;
   _flags     = 0;
@@ -139,7 +136,7 @@ KeyValuePair::~KeyValuePair() {
 * Typed constructors and value accessor functions.
 *******************************************************************************/
 
-KeyValuePair::KeyValuePair(float val, char* key) : KeyValuePair(nullptr, sizeof(float), TCode::FLOAT, key) {
+KeyValuePair::KeyValuePair(float val, const char* key) : KeyValuePair(nullptr, sizeof(float), TCode::FLOAT, key) {
   uint8_t* src = (uint8_t*) &val;
   *(((uint8_t*) &target_mem) + 0) = *(src + 0);
   *(((uint8_t*) &target_mem) + 1) = *(src + 1);
@@ -149,13 +146,13 @@ KeyValuePair::KeyValuePair(float val, char* key) : KeyValuePair(nullptr, sizeof(
 
 
 // TODO: We might be able to treat this as a direct value on a 64-bit system.
-KeyValuePair::KeyValuePair(double val, char* key) : KeyValuePair(malloc(sizeof(double)), sizeof(double), TCode::DOUBLE, key, (MANUVR_ARG_FLAG_REAP_VALUE)) {
+KeyValuePair::KeyValuePair(double val, const char* key) : KeyValuePair(malloc(sizeof(double)), sizeof(double), TCode::DOUBLE, key, (MANUVR_KVP_FLAG_REAP_VALUE)) {
   if (nullptr != target_mem) {
     *((double*) target_mem) = val;
   }
   else {
-    _alter_flags(false, MANUVR_ARG_FLAG_REAP_VALUE);
-    _alter_flags(true,  MANUVR_ARG_FLAG_ERR_MEM);
+    _alter_flags(false, MANUVR_KVP_FLAG_REAP_VALUE);
+    _alter_flags(true,  MANUVR_KVP_FLAG_ERR_MEM);
   }
 }
 
@@ -163,7 +160,6 @@ KeyValuePair::KeyValuePair(double val, char* key) : KeyValuePair(malloc(sizeof(d
 #if defined(CONFIG_MANUVR_IMG_SUPPORT)
 KeyValuePair::KeyValuePair(Image* val, char* key) : KeyValuePair((void*) val, val->bytesUsed()), TCode::IMAGE, key) {};
 #endif  // CONFIG_MANUVR_IMG_SUPPORT
-
 
 
 
@@ -175,30 +171,39 @@ KeyValuePair::KeyValuePair(Image* val, char* key) : KeyValuePair((void*) val, va
 * Take a key allocated elsewhere, and decline responsibility for it.
 */
 void KeyValuePair::setKey(const char* k) {
-  setKey(k);
-  reapKey(false);
+  _set_new_key((char*) k);
+  _reap_key(false);
 }
 
 /*
 * Take a key allocated elsewhere, and takes responsibility for it.
 */
 void KeyValuePair::setKey(char* k) {
+  if (nullptr != k) {
+    const int K_LEN = strlen(k)+1;
+    char* nk = (char*) malloc(K_LEN);
+    if (nullptr != nk) {
+      memcpy(nk, k, K_LEN);
+      _set_new_key(nk);
+      _reap_key(true);
+    }
+    else {
+      _alter_flags(true, MANUVR_KVP_FLAG_ERR_MEM);
+    }
+  }
+  else {
+    _set_new_key(k);
+  }
+}
+
+
+void KeyValuePair::_set_new_key(char* k) {
   if ((nullptr != _key) && _reap_key()) {
     free((void*)_key);
-    reapKey(false);
+    _reap_key(false);
   }
   _key = k;
 }
-
-
-/*
-* Take a key allocated elsewhere, and takes responsibility for it.
-*/
-void KeyValuePair::setKeyWithFree(char* k) {
-  setKey(k);
-  reapKey(true);
-}
-
 
 
 /*******************************************************************************
@@ -239,7 +244,7 @@ KeyValuePair* KeyValuePair::retrieveByIdx(unsigned int idx) {
       // NOTE: No break
       // Fall-through if the index is greater than the list's cardinality.
     case 1:
-      return _next;  // Terminus of recursion for all args but 0.
+      return _next;  // Terminus of recursion for all kvps but 0.
   }
 }
 
@@ -302,13 +307,6 @@ KeyValuePair* KeyValuePair::link(KeyValuePair* kvp) {
 }
 
 /**
-* @return [description]
-*/
-int KeyValuePair::sumAllLengths() {
-  return (len + ((nullptr == _next) ? 0 : _next->sumAllLengths()));
-}
-
-/**
 * @return The number of KVPs in this list.
 */
 int KeyValuePair::count() {
@@ -331,6 +329,7 @@ int8_t KeyValuePair::setValue(void* trg_buf, int len, TCode tc) {
   switch (tc) {
     case TCode::INT8:    // This frightens the compiler. Its fears are unfounded.
     case TCode::UINT8:   // This frightens the compiler. Its fears are unfounded.
+    case TCode::BOOLEAN:
       return_value = 0;
       *((uint8_t*)&target_mem) = *((uint8_t*) trg_buf);
       break;
@@ -351,31 +350,21 @@ int8_t KeyValuePair::setValue(void* trg_buf, int len, TCode tc) {
       *(((uint8_t*) &target_mem) + 2) = *((uint8_t*) trg_buf + 2);
       *(((uint8_t*) &target_mem) + 3) = *((uint8_t*) trg_buf + 3);
       break;
-    //case TCode::UINT32_PTR:  // These are *pointers* to the indicated types. They
-    //case TCode::UINT16_PTR:  //   therefore take the whole 4 bytes of memory allocated
-    //case TCode::UINT8_PTR:   //   and can be returned as such.
-    //case TCode::INT32_PTR:
-    //case TCode::INT16_PTR:
-    //case TCode::INT8_PTR:
-    //case TCode::FLOAT_PTR:
+
     case TCode::DOUBLE:
     case TCode::VECT_4_FLOAT:
     case TCode::VECT_3_FLOAT:
     case TCode::VECT_3_UINT16:
     case TCode::VECT_3_INT16:
+      // TODO: This is probably wrong.
       return_value = 0;
       for (int i = 0; i < len; i++) {
         *((uint8_t*) target_mem + i) = *((uint8_t*) trg_buf + i);
       }
       break;
-
     case TCode::STR_BUILDER:          // This is a pointer to some StringBuilder. Presumably this is on the heap.
     case TCode::STR:                  // This is a pointer to a string constant. Presumably this is stored in flash.
     case TCode::IMAGE:                // This is a pointer to an Image.
-    //case TCode::BUFFERPIPE:           // This is a pointer to a BufferPipe/.
-    //case TCode::SYS_MANUVRMSG:        // This is a pointer to ManuvrMsg.
-    //case TCode::SYS_EVENTRECEIVER:    // This is a pointer to an EventReceiver.
-    //case TCode::SYS_MANUVR_XPORT:     // This is a pointer to a transport.
     default:
       return_value = 0;
       target_mem = trg_buf;  // TODO: Need to do an allocation check and possible cleanup.
@@ -391,11 +380,11 @@ int8_t KeyValuePair::setValue(void* trg_buf, int len, TCode tc) {
 * @param  trg_buf  A pointer to the place where we should write the result.
 * @return 0 on success or appropriate failure code.
 */
-int8_t KeyValuePair::getValueAs(uint8_t idx, void* trg_buf) {
+int8_t KeyValuePair::valueWithIdx(uint8_t idx, void* trg_buf) {
   int8_t return_value = -1;
   if (0 < idx) {
     if (nullptr != _next) {
-      return_value = _next->getValueAs(--idx, trg_buf);
+      return_value = _next->valueWithIdx(--idx, trg_buf);
     }
   }
   else {
@@ -411,7 +400,7 @@ int8_t KeyValuePair::getValueAs(uint8_t idx, void* trg_buf) {
 * @param  trg_buf  A pointer to the place where we should write the result.
 * @return 0 on success or appropriate failure code.
 */
-int8_t KeyValuePair::getValueAs(const char* k, void* trg_buf) {
+int8_t KeyValuePair::valueWithKey(const char* k, void* trg_buf) {
   if (nullptr != k) {
     if (nullptr != _key) {
       //if (_key == k) {
@@ -423,7 +412,7 @@ int8_t KeyValuePair::getValueAs(const char* k, void* trg_buf) {
     }
 
     if (nullptr != _next) {
-      return _next->getValueAs(k, trg_buf);
+      return _next->valueWithKey(k, trg_buf);
     }
   }
   return -1;
@@ -462,29 +451,25 @@ int8_t KeyValuePair::getValueAs(void* trg_buf) {
       *((uint8_t*) trg_buf + 3) = *(((uint8_t*) &target_mem) + 3);
       break;
 
-    case TCode::DOUBLE:         // These are fixed-length allocated data.
-    case TCode::VECT_4_FLOAT:   //
-    case TCode::VECT_3_FLOAT:   //
+    case TCode::DOUBLE:
+      // TODO: This is probably wrong.
+      return_value = 0;
+      *((double*) trg_buf) = *((double*) target_mem);
+      break;
+    case TCode::VECT_4_FLOAT:
+    case TCode::VECT_3_FLOAT:
     case TCode::VECT_3_UINT16:
     case TCode::VECT_3_INT16:
+      // TODO: This is probably wrong.
       return_value = 0;
-      memcpy(trg_buf, target_mem, len);
+      for (int i = 0; i < len; i++) {
+        *((uint8_t*) trg_buf + i) = *((uint8_t*) target_mem + i);
+      }
       break;
-
-    //case TCode::UINT32_PTR:  // These are *pointers* to the indicated types. They
-    //case TCode::UINT16_PTR:  //   therefore take the whole 4 bytes of memory allocated
-    //case TCode::UINT8_PTR:   //   and can be returned as such.
-    //case TCode::INT32_PTR:
-    //case TCode::INT16_PTR:
-    //case TCode::INT8_PTR:
 
     case TCode::STR_BUILDER:          // This is a pointer to some StringBuilder. Presumably this is on the heap.
     case TCode::STR:                  // This is a pointer to a string constant. Presumably this is stored in flash.
     case TCode::IMAGE:                // This is a pointer to an Image.
-    //case TCode::BUFFERPIPE:           // This is a pointer to a BufferPipe/.
-    //case TCode::SYS_MANUVRMSG:        // This is a pointer to ManuvrMsg.
-    //case TCode::SYS_EVENTRECEIVER:    // This is a pointer to an EventReceiver.
-    //case TCode::SYS_MANUVR_XPORT:     // This is a pointer to a transport.
     default:
       return_value = 0;
       *((uintptr_t*) trg_buf) = *((uintptr_t*)&target_mem);
@@ -539,6 +524,12 @@ void KeyValuePair::valToString(StringBuilder* out) {
     case TCode::BOOLEAN:
       out->concatf("%s", ((uintptr_t) pointer() ? "true" : "false"));
       break;
+    case TCode::STR_BUILDER:
+      out->concat((StringBuilder*) pointer());
+      break;
+    case TCode::STR:
+      out->concatf("%s", (const char*) pointer());
+      break;
     case TCode::VECT_3_FLOAT:
       {
         Vector3<float>* v = (Vector3<float>*) pointer();
@@ -567,10 +558,11 @@ void KeyValuePair::valToString(StringBuilder* out) {
 * Warning: call is propagated across entire list.
 */
 void KeyValuePair::printDebug(StringBuilder* out) {
-  out->concatf("\t%s\t%s\t%s",
+  out->concatf("\t%s\t%s\t%6s %6s ",
     (nullptr == _key ? "" : _key),
     typecodeToStr(_t_code),
-    (reapValue() ? "(reap)" : "\t")
+    (_reap_key() ? "(rkey)" : ""),
+    (reapValue() ? "(rval)" : "")
   );
   valToString(out);
   out->concat("\n");
@@ -605,6 +597,30 @@ int8_t KeyValuePair::serialize(StringBuilder* out, TCode TC) {
 }
 
 
+KeyValuePair* KeyValuePair::unserialize(uint8_t* src, unsigned int len, const TCode TC) {
+  KeyValuePair* ret = nullptr;
+  switch (TC) {
+    default:  break;
+    //case TCode::BINARY:  ret = (0 == _encode_to_bin(out)) ? 0 : -2;     break;
+    //case TCode::STR:     ret = (0 == _encode_to_string(out)) ? 0 : -2;  break;
+    #if defined(CONFIG_MANUVR_CBOR)
+    case TCode::CBOR:
+      {
+        CBORArgListener listener(&ret);
+        cbor::input input(src, len);
+        cbor::decoder decoder(input, listener);
+        decoder.run();
+      }
+      break;
+    #endif  // CONFIG_MANUVR_CBOR
+    #if defined(CONFIG_MANUVR_JSON)
+    #endif  // CONFIG_MANUVR_JSON
+    #if defined(CONFIG_MANUVR_BASE64)
+    #endif  // CONFIG_MANUVR_BASE64
+  }
+  return ret;
+}
+
 
 /*******************************************************************************
 * Parse-Pack: BIN
@@ -620,29 +636,15 @@ int8_t KeyValuePair::serialize(StringBuilder* out, TCode TC) {
 */
 int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
   int8_t ret = 0;
-  if (out == nullptr) return -1;
 
   switch (_t_code) {
-    /* These are hard types that we can send as-is. */
     case TCode::INT8:
     case TCode::UINT8:
-      out->concat((unsigned char*) &target_mem, 1);
-      break;
     case TCode::INT16:
     case TCode::UINT16:
-      out->concat((unsigned char*) &target_mem, 2);
-      break;
     case TCode::INT32:
     case TCode::UINT32:
     case TCode::FLOAT:
-      out->concat((unsigned char*) &target_mem, 4);
-      break;
-
-    /* These are pointer types that require conversion. */
-    case TCode::STR_BUILDER:
-    case TCode::URL:             // This is a pointer to some StringBuilder. Presumably this is on the heap.
-      out->concat((StringBuilder*) target_mem);
-      break;
     case TCode::STR:
     case TCode::DOUBLE:
     case TCode::VECT_4_FLOAT:
@@ -650,22 +652,32 @@ int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
     case TCode::VECT_3_UINT16:
     case TCode::VECT_3_INT16:
     case TCode::BINARY:     // This is a pointer to a big binary blob.
-      out->concat((unsigned char*) target_mem, len);
+      if (_is_type_copy_by_value(_t_code)) {
+        out->concat((unsigned char*) &target_mem, len);
+      }
+      else {
+        out->concat((unsigned char*) target_mem, len);
+      }
       break;
 
+    /* These are pointer types that require conversion. */
+    case TCode::STR_BUILDER:     // This is a pointer to some StringBuilder.
+      out->concat((StringBuilder*) target_mem);
+      break;
+
+    #if defined(CONFIG_MANUVR_IMG_SUPPORT)
     case TCode::IMAGE:      // This is a pointer to an Image.
-      #if defined(CONFIG_MANUVR_IMG_SUPPORT)
-        {
-          Image* img = (Image*) target_mem;
-          uint32_t sz_buf = img->bytesUsed();
-          if (sz_buf > 0) {
-            if (0 != img->serialize(out)) {
-              // Failure
-            }
+      {
+        Image* img = (Image*) target_mem;
+        uint32_t sz_buf = img->bytesUsed();
+        if (sz_buf > 0) {
+          if (0 != img->serialize(out)) {
+            // Failure
           }
         }
-      #endif   // CONFIG_MANUVR_IMG_SUPPORT
+      }
       break;
+    #endif   // CONFIG_MANUVR_IMG_SUPPORT
 
     /* Anything else should be dropped. */
     default:
@@ -690,6 +702,7 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
   cbor::output_dynamic output;
   cbor::encoder encoder(output);
   KeyValuePair* src = this;
+  int8_t ret = 0;
   while (nullptr != src) {
     if (nullptr != src->getKey()) {
       // This is a map.
@@ -870,18 +883,7 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
   if (final_size) {
     out->concat(output.data(), final_size);
   }
-  return final_size;
-}
-
-
-
-KeyValuePair* KeyValuePair::_decode_from_cbor(uint8_t* src, unsigned int len) {
-  KeyValuePair* return_value = nullptr;
-  CBORArgListener listener(&return_value);
-  cbor::input input(src, len);
-  cbor::decoder decoder(input, listener);
-  decoder.run();
-  return return_value;
+  return ret;
 }
 
 
@@ -904,7 +906,7 @@ CBORArgListener::~CBORArgListener() {
 
 void CBORArgListener::_caaa(KeyValuePair* nu) {
   if (nullptr != _wait) {
-    nu->setKeyWithFree(_wait);
+    nu->setKey(_wait);
     _wait = nullptr;
   }
 
@@ -932,7 +934,7 @@ void CBORArgListener::on_string(char* val) {
   }
   else {
     // There is a key assignment waiting. This must be the value.
-    _caaa(new KeyValuePair(val));
+    _caaa(new KeyValuePair(val, _wait));
   }
 };
 
@@ -940,17 +942,10 @@ void CBORArgListener::on_bytes(uint8_t* data, int size) {
   if (TCode::NONE != _pending_manuvr_tag) {
     // If we've seen our vendor code in a tag, we interpret the first byte as a Manuvr
     //   Typecode, and build an KeyValuePair the hard way.
-    const TypeCodeDef* const m_type_def = getManuvrTypeDef(_pending_manuvr_tag) ;
-    if (m_type_def) {
-      if (m_type_def->fixed_len) {
-        if (size == (m_type_def->fixed_len)) {
-          _caaa(new KeyValuePair(data, (m_type_def->fixed_len), m_type_def->type_code));
-        }
-      }
-      else {
-        // We will have to pass validation to the KeyValuePair class.
-        _caaa(new KeyValuePair((data+1), (size-1), m_type_def->type_code));
-      }
+    const TCode TC = (const TCode) _pending_manuvr_tag;
+    KeyValuePair* temp_kvp = _inflate_manuvr_type(data, size, TC);
+    if (nullptr != temp_kvp) {
+      _caaa(temp_kvp);
     }
     _pending_manuvr_tag = TCode::NONE;
   }
@@ -1004,5 +999,75 @@ void CBORArgListener::on_extra_integer(unsigned long long value, int sign) {}
 void CBORArgListener::on_extra_integer(long long value, int sign) {}
 void CBORArgListener::on_extra_tag(unsigned long long tag) {}
 void CBORArgListener::on_extra_special(unsigned long long tag) {}
+
+
+KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, const TCode TC) {
+  KeyValuePair* ret = nullptr;
+  if (typeIsFixedLength(TC)) {
+    if (size != sizeOfType(TC)) {
+      return ret;
+    }
+  }
+
+  if (nullptr != ret) {
+    // If we can't fit the value into the KVP class, it means we new'd it.
+    ret->reapValue(!_is_type_copy_by_value(TC));
+  }
+
+  switch (TC) {
+    case TCode::NONE:
+    case TCode::INT8:            ret = new KeyValuePair(*((int8_t*)data));    break;
+    case TCode::INT16:           ret = new KeyValuePair(*((int16_t*)data));   break;
+    case TCode::INT32:           ret = new KeyValuePair(*((int32_t*)data));   break;
+    case TCode::UINT8:           ret = new KeyValuePair(*((uint8_t*)data));   break;
+    case TCode::UINT16:          ret = new KeyValuePair(*((uint16_t*)data));  break;
+    case TCode::UINT32:          ret = new KeyValuePair(*((uint32_t*)data));  break;
+    case TCode::INT64:
+    case TCode::INT128:
+    case TCode::UINT64:
+    case TCode::UINT128:
+    case TCode::BOOLEAN:         ret = new KeyValuePair((0 != *data));  break;
+    case TCode::FLOAT:           ret = new KeyValuePair(*((float*)data));   break;
+    case TCode::DOUBLE:          ret = new KeyValuePair(*((double*)data));  break;
+    //case TCode::BINARY:
+    //case TCode::STR:
+    //case TCode::VECT_2_FLOAT:
+    //case TCode::VECT_2_DOUBLE:
+    //case TCode::VECT_2_INT8:
+    //case TCode::VECT_2_UINT8:
+    //case TCode::VECT_2_INT16:
+    //case TCode::VECT_2_UINT16:
+    //case TCode::VECT_2_INT32:
+    //case TCode::VECT_2_UINT32:
+    case TCode::VECT_3_FLOAT:    ret = new KeyValuePair(new Vector3<float>(*((float*)(data+0)), *((float*)(data+4)), *((float*)(data+8))));  break;
+    //case TCode::VECT_3_DOUBLE:
+    //case TCode::VECT_3_INT8:
+    //case TCode::VECT_3_UINT8:
+    //case TCode::VECT_3_INT16:
+    //case TCode::VECT_3_UINT16:
+    //case TCode::VECT_3_INT32:
+    //case TCode::VECT_3_UINT32:
+    //case TCode::VECT_4_FLOAT:
+    //case TCode::URL:
+    //case TCode::JSON:
+    //case TCode::CBOR:
+    //case TCode::LATLON:
+    //case TCode::COLOR8:
+    //case TCode::COLOR16:
+    //case TCode::COLOR24:
+    //case TCode::SI_UNIT:
+    //case TCode::BASE64:
+    //case TCode::IPV4_ADDR:
+    //case TCode::KVP:
+    //case TCode::STR_BUILDER:
+    //case TCode::IDENTITY:
+    //case TCode::AUDIO:
+    //case TCode::IMAGE:
+    //case TCode::RESERVED:
+    default:
+      break;
+  }
+  return ret;
+}
 
 #endif // CONFIG_MANUVR_CBOR

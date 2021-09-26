@@ -76,7 +76,7 @@ int UUID_IDENT_TESTS() {
   }
 
   log.concat("\n\n");
-  printf((const char*) log.string());
+  printf("%s\n", (const char*) log.string());
   return return_value;
 }
 

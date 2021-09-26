@@ -88,7 +88,7 @@ void printTypeSizes(StringBuilder* output) {
   output->concatf("\tUUID                  %u\n", sizeof(UUID));
   output->concatf("\tStopWatch             %u\n", sizeof(StopWatch));
   output->concatf("\tSensorFilter<float>   %u\n\n", sizeof(SensorFilter<float>));
-  output->concatf("\tIdentityUUID          %u\n", sizeof(IdentityUUID));  
+  output->concatf("\tIdentityUUID          %u\n", sizeof(IdentityUUID));
 }
 
 
@@ -120,8 +120,8 @@ int main(int argc, char *argv[]) {
   srand(time(NULL));
   gettimeofday(&start_micros, nullptr);
 
-  if (0 == data_structure_main()) {
-    if (0 == stringbuilder_main()) {
+  if (0 == stringbuilder_main()) {
+    if (0 == data_structure_main()) {
       if (0 == parsing_console_main()) {
         if (0 == identity_main()) {
           exit_value = 0;
