@@ -59,9 +59,9 @@ int test_KeyValuePair_KVP() {
   int16_t  val4  = (int16_t)  randomUInt32();
   int8_t   val5  = (int8_t)   randomUInt32();
   float    val6  = (float)    randomUInt32()/1000000.0f;
-  float    val8  = -0.8374f;
-  double   val9  = -0.123456789d;
-  Vector3<float> val7(0.5f, -0.5f, 0.2319f);
+  float    val8  = (float)    randomUInt32()/1000000.0f;
+  double   val9  = (double)   (double)randomUInt32()/(double)randomUInt32();
+  Vector3<float> val7(randomUInt32()/1000000.0f, randomUInt32()/1000000.0f, randomUInt32()/1000000.0f);
 
   uint32_t ret0 = 0;
   uint16_t ret1 = 0;
@@ -191,8 +191,8 @@ int test_KeyValuePair_Value_Placement() {
   uint16_t val4  = (uint16_t) randomUInt32();
   uint8_t  val5  = (uint8_t)  randomUInt32();
   float    val6  = ((uint32_t) randomUInt32()) / ((float) randomUInt32());
-  Vector3<float> val7(0.5f, -0.5f, 0.2319f);
-  double   val8  = ((uint32_t) randomUInt32()) / ((double) randomUInt32());
+  Vector3<float> val7(randomUInt32()/1000000.0f, randomUInt32()/1000000.0f, randomUInt32()/1000000.0f);
+  double   val8  = (double)randomUInt32()/(double)randomUInt32();
 
   KeyValuePair arg0(val0);
   KeyValuePair arg1(val1);
@@ -273,6 +273,99 @@ int test_KeyValuePair_Value_Placement() {
 }
 
 
+/**
+* The KVP API allows values to be type-degraded transparently. These tests
+*   verify that such behavior is correct.
+*
+* @return [description]
+*/
+int test_KeyValuePair_Value_Translation() {
+  int return_value = -1;
+  StringBuilder log("===< KeyValuePair Value Translation >=========================\n");
+
+  uint32_t val0  = (uint32_t) randomUInt32();
+  uint16_t val1  = (uint16_t) randomUInt32();
+  uint8_t  val2  = (uint8_t)  randomUInt32();
+  int32_t  val3  = (int32_t)  randomUInt32();
+  int16_t  val4  = (int16_t)  randomUInt32();
+  int8_t   val5  = (int8_t)   randomUInt32();
+  float    val6  = (float)    randomUInt32()/1000000.0f;
+  double   val7  = (double)randomUInt32()/(double)randomUInt32();
+  Vector3<float> val8(randomUInt32()/1000000.0f, randomUInt32()/1000000.0f, randomUInt32()/1000000.0f);
+
+  KeyValuePair a(val0, "uint32");
+  a.append(val1, "uint16");
+  a.append(val2, "uint8");
+  a.append(val3, "int32");
+  a.append(val4, "int16");
+  a.append(val5, "int8");
+  a.append(val6, "float");
+  a.append(val7, "double");
+  a.append(&val8, "Vector3<f>");
+  a.printDebug(&log);
+
+  // Experimental values.
+  double   ret0 = 0;
+  uint32_t ret1 = 0;
+  uint16_t ret2 = 0;
+  double   ret3 = 0;
+  int32_t  ret4 = 0;
+  int16_t  ret5 = 0;
+  int8_t   ret6 = 0.0f;
+  int32_t  ret7 = 0.0f;
+  Vector3<int32_t> ret8(0, 0, 0);
+
+  // Control values.
+  double   compare0 = (double)   val0;
+  uint32_t compare1 = (uint32_t) val1;
+  uint16_t compare2 = (uint16_t) val2;
+  double   compare3 = (double)   val3;
+  int32_t  compare4 = (int32_t)  val4;
+  int16_t  compare5 = (int16_t)  val5;
+  int8_t   compare6 = (int8_t)   val6;
+  int32_t  compare7 = (double)   val7;
+  Vector3<int32_t> compare8((int32_t) val8.x, (int32_t) val8.y, (int32_t) val8.z);
+
+  if ((0 == a.valueWithKey("uint32", &ret0)) && (ret0 == compare0)) {
+    if ((0 == a.valueWithKey("uint16", &ret1)) && (ret1 == compare1)) {
+      if ((0 == a.valueWithKey("uint8", &ret2)) && (ret2 == compare2)) {
+        if ((0 == a.valueWithKey("int32", &ret3)) && (ret3 == compare3)) {
+          if ((0 == a.valueWithKey("int16", &ret4)) && (ret4 == compare4)) {
+            if ((0 == a.valueWithKey("int8", &ret5)) && (ret5 == compare5)) {
+              if ((0 == a.valueWithKey("float", &ret6)) && (ret6 == compare6)) {
+                if ((0 == a.valueWithKey("double", &ret7)) && (ret7 == compare7)) {
+                  if ((0 == a.valueWithKey("Vector3<f>", &ret8)) && (ret8 == compare8)) {
+                    log.concatf("Value Translation tests pass.\n");
+                    return_value = 0;
+                  }
+                  else log.concat("Failed to vet Vector3<float> --> Vector3<int32>\n");
+                }
+                else log.concat("Failed to vet double --> int32_t\n");
+              }
+              else log.concat("Failed to vet float --> int8\n");
+            }
+            else log.concat("Failed to vet int8 --> int16\n");
+          }
+          else log.concat("Failed to vet int16 --> int32\n");
+        }
+        else log.concat("Failed to vet int32 --> double\n");
+      }
+      else log.concat("Failed to vet uint8_t --> uint16_t\n");
+    }
+    else log.concat("Failed to vet uint16_t --> uint32_t\n");
+  }
+  else log.concat("Failed to vet uint32_t --> double\n");
+
+  // If the safe translations passed, try the ones that should be error-cases.
+  if (0 == return_value) {
+  }
+
+  printf("\n%s\n\n", (const char*) log.string());
+  return return_value;
+}
+
+
+
 #if defined(CONFIG_MANUVR_CBOR)
 /**
 * [test_CBOR_KVP description]
@@ -290,7 +383,7 @@ int test_CBOR_KeyValuePair() {
   uint16_t val4  = (uint16_t) randomUInt32();
   uint8_t  val5  = (uint8_t)  randomUInt32();
   float    val6  = ((uint32_t) randomUInt32()) / ((float) randomUInt32());
-  Vector3<float> val7(0.5f, -0.5f, 0.2319f);
+  Vector3<float> val7(randomUInt32()/1000000.0f, randomUInt32()/1000000.0f, randomUInt32()/1000000.0f);
   double   val8  = ((uint32_t) randomUInt32()) / ((double) randomUInt32());
 
   int32_t  ret0 = 0;
@@ -463,11 +556,12 @@ int test_KeyValuePair() {
     if (0 == return_value) {
       return_value = test_KeyValuePair_Value_Placement();
       if (0 == return_value) {
+        //return_value = test_KeyValuePair_Value_Translation();
         #if defined(CONFIG_MANUVR_CBOR)
-        return_value = test_CBOR_KeyValuePair();
         if (0 == return_value) {
-          return_value = test_CBOR_Problematic_KeyValuePair();
+          return_value = test_CBOR_KeyValuePair();
           if (0 == return_value) {
+            return_value = test_CBOR_Problematic_KeyValuePair();
           }
         }
         #endif  // CONFIG_MANUVR_CBOR
