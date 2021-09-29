@@ -275,12 +275,12 @@ int test_KeyValuePair_Value_Placement() {
 
 #if defined(CONFIG_MANUVR_CBOR)
 /**
-* [test_CBOR_Argument description]
+* [test_CBOR_KVP description]
 * @return [description]
 */
 int test_CBOR_KeyValuePair() {
   int return_value = -1;
-  StringBuilder log("===< Arguments CBOR >===================================\n");
+  StringBuilder log("===< KVPs CBOR >===================================\n");
   StringBuilder shuttle;  // We will transport the CBOR encoded-bytes through this.
 
   int32_t  val0  = (int32_t)  randomUInt32();
@@ -358,9 +358,9 @@ int test_CBOR_KeyValuePair() {
       }
       else log.concatf("Failed to vet key 'value0'... %u vs %u\n", ret0, val0);
     }
-    else log.concat("Failed to decode Argument chain from CBOR...\n");
+    else log.concat("Failed to decode KVP chain from CBOR...\n");
   }
-  else log.concatf("Failed to encode Argument chain into CBOR: %d\n", ret_local);
+  else log.concatf("Failed to encode KVP chain into CBOR: %d\n", ret_local);
 
   if (return_value) {
     a.printDebug(&log);
@@ -372,85 +372,89 @@ int test_CBOR_KeyValuePair() {
 
 /**
 * These are values that give the CBOR implementation special flavors of grief.
+* Usually, this is due to a boundary condition in the CBOR spec being
+*   implemented poorly. All such known cases are implemented here.
 *
 * [test_CBOR_Problematic_KeyValuePair description]
 * @return [description]
 */
-// int test_CBOR_Problematic_KeyValuePair() {
-//   int return_value = -1;
-//   StringBuilder log("===< KeyValuePairs CBOR Minefield >=========================\n");
-//   StringBuilder shuttle;  // We will transport the CBOR encoded-bytes through this.
-//
-//   int32_t  val0  = (int32_t)  -65500;
-//   int16_t  val1  = (int16_t)  -230;
-//   int8_t   val2  = (int8_t)   -23;
-//   uint32_t val3  = (uint32_t) 3643900856;
-//   uint16_t val4  = (uint16_t) 59041;
-//   uint8_t  val5  = (uint8_t)  250;
-//
-//   int32_t  ret0 = 0;
-//   int16_t  ret1 = 0;
-//   int8_t   ret2 = 0;
-//   uint32_t ret3 = 0;
-//   uint16_t ret4 = 0;
-//   uint8_t  ret5 = 0;
-//
-//   KeyValuePair a(val0);
-//
-//   a.setKey("val0");
-//   a.append(val1)->setKey("val1");
-//   a.append(val2)->setKey("val2");  // NOTE: Mixed in with non-KVP.
-//   a.append(val3)->setKey("val3");
-//   a.append(val4)->setKey("val4");
-//   a.append(val5)->setKey("val5");
-//
-//   a.printDebug(&log);
-//
-//   if (0 <= KeyValuePair::encodeToCBOR(&a, &shuttle)) {
-//     log.concatf("CBOR encoding occupies %d bytes\n\t", shuttle.length());
-//     shuttle.printDebug(&log);
-//     log.concat("\n");
-//
-//     KeyValuePair* r = KeyValuePair::decodeFromCBOR(&shuttle);
-//     if (nullptr != r) {
-//       log.concat("CBOR decoded:\n");
-//       r->printDebug(&log);
-//
-//       log.concat("\n");
-//       if ((0 == r->valueWithIdx((uint8_t) 0, &ret0)) && (ret0 == val0)) {
-//         if ((0 == r->valueWithIdx((uint8_t) 1, &ret1)) && (ret1 == val1)) {
-//           if ((0 == r->valueWithIdx((uint8_t) 2, &ret2)) && (ret2 == val2)) {
-//             if ((0 == r->valueWithIdx((uint8_t) 3, &ret3)) && (ret3 == val3)) {
-//               if ((0 == r->valueWithIdx((uint8_t) 4, &ret4)) && (ret4 == val4)) {
-//                 if ((0 == r->valueWithIdx((uint8_t) 5, &ret5)) && (ret5 == val5)) {
-//                     if (r->count() == a.count()) {
-//                       return_value = 0;
-//                     }
-//                     else log.concatf("Arg counts don't match: %d vs %d\n", r->count(), a.count());
-//                 }
-//                 else log.concatf("Failed to vet key 'value5'... %u vs %u\n", ret5, val5);
-//               }
-//               else log.concatf("Failed to vet key 'value4'... %u vs %u\n", ret4, val4);
-//             }
-//             else log.concatf("Failed to vet key 'value3'... %u vs %u\n", ret3, val3);
-//           }
-//           else log.concatf("Failed to vet key 'value2'... %u vs %u\n", ret2, val2);
-//         }
-//         else log.concatf("Failed to vet key 'value1'... %u vs %u\n", ret1, val1);
-//       }
-//       else log.concatf("Failed to vet key 'value0'... %u vs %u\n", ret0, val0);
-//     }
-//     else log.concat("Failed to decode KeyValuePair chain from CBOR...\n");
-//   }
-//   else log.concat("Failed to encode KeyValuePair chain into CBOR...\n");
-//
-//   if (return_value) {
-//     a.printDebug(&log);
-//   }
-//   printf("%s\n\n", (const char*) log.string());
-//   return return_value;
-// }
+int test_CBOR_Problematic_KeyValuePair() {
+  int return_value = -1;
+  StringBuilder log("===< KeyValuePairs CBOR Minefield >=========================\n");
+  StringBuilder shuttle;  // We will transport the CBOR encoded-bytes through this.
+
+  int32_t  val0  = (int32_t)  -65500;
+  int16_t  val1  = (int16_t)  -230;
+  int8_t   val2  = (int8_t)   -23;
+  uint32_t val3  = (uint32_t) 3643900856;
+  uint16_t val4  = (uint16_t) 59041;
+  uint8_t  val5  = (uint8_t)  250;
+
+  int32_t  ret0 = 0;
+  int16_t  ret1 = 0;
+  int8_t   ret2 = 0;
+  uint32_t ret3 = 0;
+  uint16_t ret4 = 0;
+  uint8_t  ret5 = 0;
+
+  KeyValuePair a(val0);
+
+  a.setKey("val0");
+  a.append(val1)->setKey("val1");
+  a.append(val2)->setKey("val2");  // NOTE: Mixed in with non-KVP.
+  a.append(val3)->setKey("val3");
+  a.append(val4)->setKey("val4");
+  a.append(val5)->setKey("val5");
+
+  a.printDebug(&log);
+
+  int8_t ret_local = a.serialize(&shuttle, TCode::CBOR);
+  if (0 == ret_local) {
+    log.concatf("CBOR encoding occupies %d bytes\n\t", shuttle.length());
+    shuttle.printDebug(&log);
+    log.concat("\n");
+
+    KeyValuePair* r = KeyValuePair::unserialize(shuttle.string(), shuttle.length(), TCode::CBOR);
+    if (nullptr != r) {
+      log.concat("CBOR decoded:\n");
+      r->printDebug(&log);
+
+      log.concat("\n");
+      if ((0 == r->valueWithIdx((uint8_t) 0, &ret0)) && (ret0 == val0)) {
+        if ((0 == r->valueWithIdx((uint8_t) 1, &ret1)) && (ret1 == val1)) {
+          if ((0 == r->valueWithIdx((uint8_t) 2, &ret2)) && (ret2 == val2)) {
+            if ((0 == r->valueWithIdx((uint8_t) 3, &ret3)) && (ret3 == val3)) {
+              if ((0 == r->valueWithIdx((uint8_t) 4, &ret4)) && (ret4 == val4)) {
+                if ((0 == r->valueWithIdx((uint8_t) 5, &ret5)) && (ret5 == val5)) {
+                    if (r->count() == a.count()) {
+                      return_value = 0;
+                    }
+                    else log.concatf("Arg counts don't match: %d vs %d\n", r->count(), a.count());
+                }
+                else log.concatf("Failed to vet key 'value5'... %u vs %u\n", ret5, val5);
+              }
+              else log.concatf("Failed to vet key 'value4'... %u vs %u\n", ret4, val4);
+            }
+            else log.concatf("Failed to vet key 'value3'... %u vs %u\n", ret3, val3);
+          }
+          else log.concatf("Failed to vet key 'value2'... %u vs %u\n", ret2, val2);
+        }
+        else log.concatf("Failed to vet key 'value1'... %u vs %u\n", ret1, val1);
+      }
+      else log.concatf("Failed to vet key 'value0'... %u vs %u\n", ret0, val0);
+    }
+    else log.concat("Failed to decode KeyValuePair chain from CBOR...\n");
+  }
+  else log.concat("Failed to encode KeyValuePair chain into CBOR...\n");
+
+  if (return_value) {
+    a.printDebug(&log);
+  }
+  printf("%s\n\n", (const char*) log.string());
+  return return_value;
+}
 #endif  // CONFIG_MANUVR_CBOR
+
 
 int test_KeyValuePair() {
   int return_value = test_KeyValuePair_KVP();
@@ -462,7 +466,7 @@ int test_KeyValuePair() {
         #if defined(CONFIG_MANUVR_CBOR)
         return_value = test_CBOR_KeyValuePair();
         if (0 == return_value) {
-          //          return_value = test_CBOR_Problematic_KeyValuePair();
+          return_value = test_CBOR_Problematic_KeyValuePair();
           if (0 == return_value) {
           }
         }
