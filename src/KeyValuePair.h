@@ -81,25 +81,31 @@ class KeyValuePair {
     KeyValuePair(char* val,       const char* key = nullptr) : KeyValuePair((void*) val, (strlen(val)+1), TCode::STR, key) {};
     KeyValuePair(void* val, size_t len, const char* key = nullptr) : KeyValuePair(val, len, TCode::BINARY, key) {};
     KeyValuePair(StringBuilder* val, const char* key = nullptr) : KeyValuePair(val, val->length(), TCode::STR_BUILDER, key)  {};
+    KeyValuePair(Vector3ui32* val, const char* key = nullptr) : KeyValuePair((void*) val, 12, TCode::VECT_3_UINT32, key) {};
     KeyValuePair(Vector3ui16* val, const char* key = nullptr) : KeyValuePair((void*) val, 6,  TCode::VECT_3_UINT16, key) {};
+    KeyValuePair(Vector3ui8*  val, const char* key = nullptr) : KeyValuePair((void*) val, 3,  TCode::VECT_3_UINT8, key)  {};
+    KeyValuePair(Vector3i32*  val, const char* key = nullptr) : KeyValuePair((void*) val, 12, TCode::VECT_3_INT32, key)  {};
     KeyValuePair(Vector3i16*  val, const char* key = nullptr) : KeyValuePair((void*) val, 6,  TCode::VECT_3_INT16, key)  {};
+    KeyValuePair(Vector3i8*   val, const char* key = nullptr) : KeyValuePair((void*) val, 3,  TCode::VECT_3_INT8, key)   {};
     KeyValuePair(Vector3f*    val, const char* key = nullptr) : KeyValuePair((void*) val, 12, TCode::VECT_3_FLOAT, key)  {};
 
-    inline KeyValuePair* append(uint8_t val, const char* key = nullptr) {          return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(uint16_t val, const char* key = nullptr) {         return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(uint32_t val, const char* key = nullptr) {         return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(int8_t val, const char* key = nullptr) {           return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(int16_t val, const char* key = nullptr) {          return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(int32_t val, const char* key = nullptr) {          return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(bool val, const char* key = nullptr) {             return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(float val, const char* key = nullptr) {            return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(double val, const char* key = nullptr) {           return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(const char *val, const char* key = nullptr) {      return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(char *val, const char* key = nullptr) {            return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(StringBuilder* val, const char* key = nullptr) {   return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(Vector3ui16 *val, const char* key = nullptr) {     return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(Vector3i16 *val, const char* key = nullptr) {      return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(Vector3f *val, const char* key = nullptr) {        return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(uint8_t val, const char* key = nullptr) {               return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(uint16_t val, const char* key = nullptr) {              return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(uint32_t val, const char* key = nullptr) {              return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(int8_t val, const char* key = nullptr) {                return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(int16_t val, const char* key = nullptr) {               return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(int32_t val, const char* key = nullptr) {               return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(bool val, const char* key = nullptr) {                  return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(float val, const char* key = nullptr) {                 return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(double val, const char* key = nullptr) {                return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(const char* val, const char* key = nullptr) {           return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(char* val, const char* key = nullptr) {                 return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(void* v, size_t l, const char* k = nullptr) {           return link(new KeyValuePair(v, l, k));    };
+    inline KeyValuePair* append(StringBuilder* val, const char* key = nullptr) {        return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(Vector3ui32* val, const char* key = nullptr) {          return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(Vector3ui16* val, const char* key = nullptr) {          return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(Vector3i16* val, const char* key = nullptr) {           return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(Vector3f* val, const char* key = nullptr) {             return link(new KeyValuePair(val, key));   };
 
     inline int8_t setValue(uint8_t val) {          return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::UINT8);   };
     inline int8_t setValue(uint16_t val) {         return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::UINT16);  };
@@ -112,9 +118,10 @@ class KeyValuePair {
     inline int8_t setValue(double val) {           return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::DOUBLE);  };
     inline int8_t setValue(const char* val) {      return setValue((void*) val, strlen(val),   TCode::STR);         };
     inline int8_t setValue(char* val) {            return setValue((void*) val, strlen(val),   TCode::STR);         };
-    inline int8_t setValue(Vector3ui16 *val) {     return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT16), TCode::VECT_3_UINT16);  };
-    inline int8_t setValue(Vector3i16 *val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_INT16),  TCode::VECT_3_INT16);   };
-    inline int8_t setValue(Vector3f *val) {        return setValue((void*) val, sizeOfType(TCode::VECT_3_FLOAT),  TCode::VECT_3_FLOAT);   };
+    inline int8_t setValue(Vector3ui32* val) {     return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT32), TCode::VECT_3_UINT32);  };
+    inline int8_t setValue(Vector3ui16* val) {     return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT16), TCode::VECT_3_UINT16);  };
+    inline int8_t setValue(Vector3i16* val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_INT16),  TCode::VECT_3_INT16);   };
+    inline int8_t setValue(Vector3f* val) {        return setValue((void*) val, sizeOfType(TCode::VECT_3_FLOAT),  TCode::VECT_3_FLOAT);   };
 
     // Conditional types.
     #if defined(CONFIG_MANUVR_IMG_SUPPORT)

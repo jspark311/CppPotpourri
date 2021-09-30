@@ -13,6 +13,8 @@
 #include "CppPotpourri.h"
 #include "StringBuilder.h"
 #include "ParsingConsole.h"
+#include "ElementPool.h"
+#include "GPSWrapper.h"
 #include "RingBuffer.h"
 #include "PriorityQueue.h"
 #include "KeyValuePair.h"
@@ -78,16 +80,22 @@ void printTypeSizes(StringBuilder* output) {
   output->concatf("\tvoid*                 %u\n", sizeof(void*));
   output->concatf("\tFloat                 %u\n", sizeof(float));
   output->concatf("\tDouble                %u\n", sizeof(double));
+  output->concat("-- Singletons:\n");
+  output->concatf("\tAbstractPlatform      %u\n", sizeof(AbstractPlatform));
+  output->concatf("\tParsingConsole        %u\n", sizeof(ParsingConsole));
   output->concat("-- Elemental data structures:\n");
   output->concatf("\tStringBuilder         %u\n", sizeof(StringBuilder));
   output->concatf("\tKeyValuePair          %u\n", sizeof(KeyValuePair));
   output->concatf("\tVector3<float>        %u\n", sizeof(Vector3<float>));
   output->concatf("\tLinkedList<void*>     %u\n", sizeof(LinkedList<void*>));
+  output->concatf("\tElementPool<void*>    %u\n", sizeof(ElementPool<void*>));
   output->concatf("\tPriorityQueue<void*>  %u\n", sizeof(PriorityQueue<void*>));
   output->concatf("\tRingBuffer<void*>     %u\n", sizeof(RingBuffer<void*>));
   output->concatf("\tUUID                  %u\n", sizeof(UUID));
   output->concatf("\tStopWatch             %u\n", sizeof(StopWatch));
-  output->concatf("\tSensorFilter<float>   %u\n\n", sizeof(SensorFilter<float>));
+  output->concatf("\tGPSWrapper            %u\n", sizeof(GPSWrapper));
+  output->concatf("\tSensorFilter<float>   %u\n", sizeof(SensorFilter<float>));
+  output->concatf("\tIdentity              %u\n", sizeof(Identity));
   output->concatf("\tIdentityUUID          %u\n", sizeof(IdentityUUID));
 }
 
@@ -119,6 +127,11 @@ int main(int argc, char *argv[]) {
   int exit_value = 1;   // Failure is the default result.
   srand(time(NULL));
   gettimeofday(&start_micros, nullptr);
+
+  StringBuilder out;
+  printTypeSizes(&out);
+  printf("%s\n\n", (const char*) out.string());
+  out.clear();
 
   if (0 == stringbuilder_main()) {
     if (0 == data_structure_main()) {

@@ -219,12 +219,12 @@ template <typename T> class Vector3 {
 
 };
 
+typedef Vector3<int32_t>       Vector3i32;
 typedef Vector3<int16_t>       Vector3i16;
+typedef Vector3<int8_t>        Vector3i8;
+typedef Vector3<uint32_t>      Vector3ui32;
 typedef Vector3<uint16_t>      Vector3ui16;
-typedef Vector3<int>           Vector3i;
-typedef Vector3<unsigned int>  Vector3ui;
-typedef Vector3<long>          Vector3l;
-typedef Vector3<unsigned long> Vector3ul;
+typedef Vector3<uint8_t>       Vector3ui8;
 typedef Vector3<float>         Vector3f;
 typedef Vector3<double>        Vector3f64;
 

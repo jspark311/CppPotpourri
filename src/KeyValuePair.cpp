@@ -354,8 +354,12 @@ int8_t KeyValuePair::setValue(void* trg_buf, int len, TCode tc) {
     case TCode::DOUBLE:
     case TCode::VECT_4_FLOAT:
     case TCode::VECT_3_FLOAT:
+    case TCode::VECT_3_UINT32:
     case TCode::VECT_3_UINT16:
+    case TCode::VECT_3_UINT8:
+    case TCode::VECT_3_INT32:
     case TCode::VECT_3_INT16:
+    case TCode::VECT_3_INT8:
       // TODO: This is probably wrong.
       return_value = 0;
       for (int i = 0; i < len; i++) {
@@ -458,8 +462,12 @@ int8_t KeyValuePair::getValueAs(void* trg_buf) {
       break;
     case TCode::VECT_4_FLOAT:
     case TCode::VECT_3_FLOAT:
+    case TCode::VECT_3_UINT32:
     case TCode::VECT_3_UINT16:
+    case TCode::VECT_3_UINT8:
+    case TCode::VECT_3_INT32:
     case TCode::VECT_3_INT16:
+    case TCode::VECT_3_INT8:
       // TODO: This is probably wrong.
       return_value = 0;
       for (int i = 0; i < len; i++) {
@@ -534,6 +542,12 @@ void KeyValuePair::valToString(StringBuilder* out) {
       {
         Vector3<float>* v = (Vector3<float>*) pointer();
         out->concatf("(%.4f, %.4f, %.4f)", (double)(v->x), (double)(v->y), (double)(v->z));
+      }
+      break;
+    case TCode::VECT_3_UINT32:
+      {
+        Vector3<uint32_t>* v = (Vector3<uint32_t>*) pointer();
+        out->concatf("(%u, %u, %u)", v->x, v->y, v->z);
       }
       break;
     //case TCode::VECT_4_FLOAT:
@@ -649,8 +663,12 @@ int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
     case TCode::DOUBLE:
     case TCode::VECT_4_FLOAT:
     case TCode::VECT_3_FLOAT:
+    case TCode::VECT_3_UINT32:
     case TCode::VECT_3_UINT16:
+    case TCode::VECT_3_UINT8:
+    case TCode::VECT_3_INT32:
     case TCode::VECT_3_INT16:
+    case TCode::VECT_3_INT8:
     case TCode::BINARY:     // This is a pointer to a big binary blob.
       if (_is_type_copy_by_value(_t_code)) {
         out->concat((unsigned char*) &target_mem, len);
@@ -812,6 +830,12 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
       case TCode::BINARY:
       case TCode::VECT_3_FLOAT:
       case TCode::VECT_4_FLOAT:
+      case TCode::VECT_3_UINT32:
+      case TCode::VECT_3_UINT16:
+      case TCode::VECT_3_UINT8:
+      case TCode::VECT_3_INT32:
+      case TCode::VECT_3_INT16:
+      case TCode::VECT_3_INT8:
         // NOTE: This ought to work for any types retaining portability isn't important.
         // TODO: Gradually convert types out of this block. As much as possible should
         //   be portable. VECT_3_FLOAT ought to be an array of floats, for instance.
@@ -969,7 +993,7 @@ void CBORArgListener::on_undefined() {   _caaa(new KeyValuePair("<UNDEF>"));   }
 void CBORArgListener::on_null() {        _caaa(new KeyValuePair("<NULL>"));    };
 void CBORArgListener::on_bool(bool x) {  _caaa(new KeyValuePair(x));           };
 
-// NOTE: IANA gives of _some_ guidance....
+// NOTE: IANA gives us _some_ guidance....
 // https://www.iana.org/assignments/cbor-tags/cbor-tags.xhtml
 void CBORArgListener::on_tag(unsigned int tag) {
   switch (tag & 0xFFFFFF00) {
@@ -1039,14 +1063,35 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
     //case TCode::VECT_2_UINT16:
     //case TCode::VECT_2_INT32:
     //case TCode::VECT_2_UINT32:
-    case TCode::VECT_3_FLOAT:    ret = new KeyValuePair(new Vector3<float>(*((float*)(data+0)), *((float*)(data+4)), *((float*)(data+8))));  break;
+    case TCode::VECT_3_FLOAT:
+      ret = new KeyValuePair(new Vector3<float>(*((float*)(data+0)), *((float*)(data+4)), *((float*)(data+8))));
+      if (nullptr != ret) ret->reapValue(true);
+      break;
     //case TCode::VECT_3_DOUBLE:
-    //case TCode::VECT_3_INT8:
-    //case TCode::VECT_3_UINT8:
-    //case TCode::VECT_3_INT16:
-    //case TCode::VECT_3_UINT16:
-    //case TCode::VECT_3_INT32:
-    //case TCode::VECT_3_UINT32:
+    case TCode::VECT_3_INT8:
+      ret = new KeyValuePair(new Vector3<int8_t>(*((int8_t*)(data+0)), *((int8_t*)(data+1)), *((int8_t*)(data+2))));
+      if (nullptr != ret) ret->reapValue(true);
+      break;
+    case TCode::VECT_3_UINT8:
+      ret = new KeyValuePair(new Vector3<uint8_t>(*((uint8_t*)(data+0)), *((uint8_t*)(data+1)), *((uint8_t*)(data+2))));
+      if (nullptr != ret) ret->reapValue(true);
+      break;
+    case TCode::VECT_3_INT16:
+      ret = new KeyValuePair(new Vector3<int16_t>(*((int16_t*)(data+0)), *((int16_t*)(data+2)), *((int16_t*)(data+4))));
+      if (nullptr != ret) ret->reapValue(true);
+      break;
+    case TCode::VECT_3_UINT16:
+      ret = new KeyValuePair(new Vector3<uint16_t>(*((uint16_t*)(data+0)), *((uint16_t*)(data+2)), *((uint16_t*)(data+4))));
+      if (nullptr != ret) ret->reapValue(true);
+      break;
+    case TCode::VECT_3_INT32:
+      ret = new KeyValuePair(new Vector3<int32_t>(*((int32_t*)(data+0)), *((int32_t*)(data+4)), *((int32_t*)(data+8))));
+      if (nullptr != ret) ret->reapValue(true);
+      break;
+    case TCode::VECT_3_UINT32:
+      ret = new KeyValuePair(new Vector3<uint32_t>(*((uint32_t*)(data+0)), *((uint32_t*)(data+4)), *((uint32_t*)(data+8))));
+      if (nullptr != ret) ret->reapValue(true);
+      break;
     //case TCode::VECT_4_FLOAT:
     //case TCode::URL:
     //case TCode::JSON:

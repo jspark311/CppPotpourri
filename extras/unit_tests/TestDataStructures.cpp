@@ -21,6 +21,8 @@ limitations under the License.
 This program runs tests against our raw data-handling classes.
 */
 
+#define TEST_BUFFER_SIZE  16
+
 
 /*******************************************************************************
 * Globals
@@ -35,6 +37,9 @@ StopWatch stopwatch_0;
 StopWatch stopwatch_1;
 StopWatch stopwatch_2;
 StopWatch stopwatch_3;
+StopWatch stopwatch_4;
+StopWatch stopwatch_99;
+
 
 
 /*******************************************************************************
@@ -74,7 +79,7 @@ int test_KeyValuePair_KVP() {
   Vector3<float> ret7(0.0f, 0.0f, 0.0f);
   //float    ret9 = 0.0d;
 
-  log.concat("\t Adding arguments...\n\n");
+  log.concat("Adding arguments...\n\n");
   KeyValuePair a(val3);
   a.append(val0)->setKey("value0");
   a.append(val1, "value1");
@@ -193,6 +198,8 @@ int test_KeyValuePair_Value_Placement() {
   float    val6  = ((uint32_t) randomUInt32()) / ((float) randomUInt32());
   Vector3<float> val7(randomUInt32()/1000000.0f, randomUInt32()/1000000.0f, randomUInt32()/1000000.0f);
   double   val8  = (double)randomUInt32()/(double)randomUInt32();
+  bool     val9  = true;
+  bool     val10 = false;
 
   KeyValuePair arg0(val0);
   KeyValuePair arg1(val1);
@@ -203,6 +210,8 @@ int test_KeyValuePair_Value_Placement() {
   KeyValuePair arg6(val6);
   KeyValuePair arg7(&val7);
   KeyValuePair arg8(val8);
+  KeyValuePair arg9(val9);
+  KeyValuePair arg10(val10);
 
   int32_t  ret0 = 0;
   int16_t  ret1 = 0;
@@ -213,6 +222,8 @@ int test_KeyValuePair_Value_Placement() {
   float    ret6 = 0.0f;
   Vector3<float> ret7(0.0f, 0.0f, 0.0f);
   double   ret8 = 0.0f;
+  bool     ret9  = false;
+  bool     ret10 = false;
 
   val0  = (int32_t)  randomUInt32();
   val1  = (int16_t)  randomUInt32();
@@ -227,6 +238,8 @@ int test_KeyValuePair_Value_Placement() {
     ((uint32_t) randomUInt32()) / ((float) randomUInt32())
   );
   val8  = ((uint32_t) randomUInt32()) / ((double) randomUInt32());
+  val9  = !val9;
+  val10 = !val10;
 
   arg0.setValue(val0);
   arg1.setValue(val1);
@@ -237,6 +250,8 @@ int test_KeyValuePair_Value_Placement() {
   arg6.setValue(val6);
   arg7.setValue(&val7);
   arg8.setValue(val8);
+  arg9.setValue(val9);
+  arg10.setValue(val10);
 
   if ((0 == arg0.getValueAs(&ret0)) && (ret0 == val0)) {
     if ((0 == arg1.getValueAs(&ret1)) && (ret1 == val1)) {
@@ -246,8 +261,14 @@ int test_KeyValuePair_Value_Placement() {
             if ((0 == arg5.getValueAs(&ret5)) && (ret5 == val5)) {
               if ((0 == arg6.getValueAs(&ret6)) && (ret6 == val6)) {
                 if ((0 == arg8.getValueAs(&ret8)) && (ret8 == val8)) {
-                  log.concatf("Value placement tests good for all types.\n");
-                  return_value = 0;
+                  if ((0 == arg9.getValueAs(&ret9)) && (ret9 == val9)) {
+                    if ((0 == arg10.getValueAs(&ret10)) && (ret10 == val10)) {
+                      log.concatf("Value placement tests good for all types.\n");
+                      return_value = 0;
+                    }
+                    else log.concat("Failed to vet bool placement.\n");
+                  }
+                  else log.concat("Failed to vet bool placement.\n");
                 }
                 else log.concatf("Failed to vet key 'value8'... %.20f vs %.20f\n", ret8, val8);
               }
@@ -366,6 +387,103 @@ int test_KeyValuePair_Value_Translation() {
 
 
 
+/**
+* This is the test of key-related edge-cases.
+*
+* @return [description]
+*/
+int test_KeyValuePair_Key_Abuse() {
+  int return_value = -1;
+  StringBuilder log("===< KeyValuePair Key Abuse >=========================\n");
+
+  const char* feed_str = "mallocd_key";
+  uint m_str_len = strlen(feed_str);
+
+  uint32_t val0 = (uint32_t) randomUInt32();
+  uint32_t val1 = (uint32_t) randomUInt32();
+  uint32_t val2 = (uint32_t) randomUInt32();
+  uint32_t val3 = (uint32_t) randomUInt32();
+  uint32_t val4 = (uint32_t) randomUInt32();
+  uint32_t val5 = (uint32_t) randomUInt32();
+  uint32_t val6 = (uint32_t) randomUInt32();
+  uint32_t val7 = (uint32_t) randomUInt32();
+  uint32_t val8 = (uint32_t) randomUInt32();
+  uint32_t val9 = (uint32_t) randomUInt32();
+
+  // Experimental values.
+  uint32_t ret0 = 0;
+  uint32_t ret1 = 0;
+  uint32_t ret2 = 0;
+  uint32_t ret3 = 0;
+  uint32_t ret4 = 0;
+  uint32_t ret5 = 0;
+  uint32_t ret6 = 0;
+  uint32_t ret7 = 0;
+  uint32_t ret8 = 0;
+  uint32_t ret9 = 0;
+
+  const char* key0 = "safe";       // A safe test key.
+  const char* key1 = "\t \n\r  ";  // Exotic whitespace is also valid.
+  const char* key2 = "duplicate";  // Duplicate keys are allowed, but the second
+  const char* key3 = "duplicate";  //   key will only be accessible by index.
+  const char* key4 = nullptr;      // This should be the same as not passing a key.
+  const char* key5 = "";           // Empty string is a valid key.
+  const char* key6 = "test6";
+  const char* key7 = "test7";
+  const char* key8 = "test8";
+  char* key9 = (char*) malloc(m_str_len);
+  memcpy(key9, feed_str, m_str_len);
+  *(key9 + m_str_len) = '\0';
+
+  KeyValuePair a(val0, key0);
+  if (a.append(val1, key1)) {
+    if (a.append(val2, key2)) {
+      if (a.append(val3, key3)) {
+        if (a.append(val4, key4)) {
+          if (a.append(val5, key5)) {
+            if (a.append(val6, key6)) {
+              if (a.append(val7, key7)) {
+                if (a.append(val8, key8)) {
+                  if (a.append(val9, key9)) {
+                    if ((0 == a.valueWithKey(key0, &ret0)) && (ret0 == val0)) {
+                      if ((0 == a.valueWithKey(key1, &ret1)) && (ret1 == val1)) {
+                        if ((0 == a.valueWithKey(key2, &ret2)) && (ret2 == val2)) {
+                          if ((0 == a.valueWithKey(key3, &ret3)) && (ret3 == val3)) {
+                            if ((0 == a.valueWithKey(key4, &ret4)) && (ret4 == val4)) {
+                              if ((0 == a.valueWithKey(key5, &ret5)) && (ret5 == val5)) {
+                                if ((0 == a.valueWithKey(key6, &ret6)) && (ret6 == val6)) {
+                                  if ((0 == a.valueWithKey(key7, &ret7)) && (ret7 == val7)) {
+                                    if ((0 == a.valueWithKey(key8, &ret8)) && (ret8 == val8)) {
+                                      if ((0 == a.valueWithKey(key9, &ret9)) && (ret9 == val9)) {
+                                        log.concatf("Key abuse tests pass.\n");
+                                        return_value = 0;
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  a.printDebug(&log);
+
+  printf("\n%s\n\n", (const char*) log.string());
+  return return_value;
+}
+
+
+
 #if defined(CONFIG_MANUVR_CBOR)
 /**
 * [test_CBOR_KVP description]
@@ -409,13 +527,12 @@ int test_CBOR_KeyValuePair() {
   a.printDebug(&log);
 
   int8_t ret_local = a.serialize(&shuttle, TCode::CBOR);
+  KeyValuePair* r = KeyValuePair::unserialize(shuttle.string(), shuttle.length(), TCode::CBOR);
 
   if (0 == ret_local) {
     log.concatf("CBOR encoding occupies %d bytes\n\t", shuttle.length());
     shuttle.printDebug(&log);
     log.concat("\n");
-
-    KeyValuePair* r = KeyValuePair::unserialize(shuttle.string(), shuttle.length(), TCode::CBOR);
 
     if (nullptr != r) {
       log.concat("CBOR decoded:\n");
@@ -455,9 +572,6 @@ int test_CBOR_KeyValuePair() {
   }
   else log.concatf("Failed to encode KVP chain into CBOR: %d\n", ret_local);
 
-  if (return_value) {
-    a.printDebug(&log);
-  }
   printf("%s\n\n", (const char*) log.string());
   return return_value;
 }
@@ -549,22 +663,112 @@ int test_CBOR_Problematic_KeyValuePair() {
 #endif  // CONFIG_MANUVR_CBOR
 
 
+/**
+* This is the test of KVP's ability to accept the types it claims to support.
+*
+* @return [description]
+*/
+int test_KeyValuePair_Build_Polytyped_KVP(KeyValuePair* a) {
+  int return_value = -1;
+  StringBuilder log("===< KeyValuePair Build_Polytyped_KVP >=========================\n");
+
+  int32_t  val0  = (int32_t)  randomUInt32();
+  int16_t  val1  = (int16_t)  randomUInt32();
+  int8_t   val2  = (int8_t)   randomUInt32();
+  uint32_t val3  = (uint32_t) randomUInt32();
+  uint16_t val4  = (uint16_t) randomUInt32();
+  uint8_t  val5  = (uint8_t)  randomUInt32();
+  float    val6  = (randomUInt32() / (float) randomUInt32());
+  double   val7  = (double)randomUInt32()/(double)randomUInt32();
+  char*    val8  = (char*) "A non-const test string";
+  bool     val9  = true;
+  Vector3<float> val10(
+    randomUInt32()/(float)randomUInt32(),
+    randomUInt32()/(float)randomUInt32(),
+    randomUInt32()/(float)randomUInt32()
+  );
+  Vector3<uint32_t> val11(randomUInt32(), randomUInt32(), randomUInt32());
+  void* val20 = malloc(TEST_BUFFER_SIZE);
+  for (uint8_t i = 0; i < TEST_BUFFER_SIZE; i++) {   *((uint8_t*) val20 + i) = i;   }
+
+  if (nullptr != a->append(val0, "int32")) {
+    if (nullptr != a->append(val1, "int16")) {
+      if (nullptr != a->append(val2, "int8")) {
+        if (nullptr != a->append(val3, "uint32")) {
+          if (nullptr != a->append(val4, "uint16")) {
+            if (nullptr != a->append(val5, "uint8")) {
+              if (nullptr != a->append(val6, "float")) {
+                if (nullptr != a->append(val7, "double")) {
+                  if (nullptr != a->append(val8, "char*")) {
+                    if (nullptr != a->append(val9, "bool")) {
+                      if (nullptr != a->append(&val10, "Vector3<f>")) {
+                        if (nullptr != a->append(&val11, "Vector3<u32>")) {
+                          KeyValuePair* raw_buf_kvp = a->append(val20, TEST_BUFFER_SIZE, "raw_buf");
+                          if (nullptr != raw_buf_kvp) {
+                            raw_buf_kvp->reapValue(true);
+                            log.concat("Successfully built a test KVP:\n");
+                            a->printDebug(&log);
+                            return_value = 0;
+                          }
+                          else log.concat("Failed to append a void*/len\n");
+                        }
+                        else log.concat("Failed to append a Vector3<u32>\n");
+                      }
+                      else log.concat("Failed to append a Vector3<f>\n");
+                    }
+                    else log.concat("Failed to append a bool\n");
+                  }
+                  else log.concat("Failed to append a char*\n");
+                }
+                else log.concat("Failed to append a double\n");
+              }
+              else log.concat("Failed to append a float\n");
+            }
+            else log.concat("Failed to append a uint8\n");
+          }
+          else log.concat("Failed to append a uint16\n");
+        }
+        else log.concat("Failed to append a uint32\n");
+      }
+      else log.concat("Failed to append a int8\n");
+    }
+    else log.concat("Failed to append a int16\n");
+  }
+  else log.concat("Failed to append a int32\n");
+
+  printf("%s\n\n", (const char*) log.string());
+  return return_value;
+}
+
+
+/**
+* This is the root of the KeyValuePair tests.
+*
+* @return 0 on success. Nonzero otherwise.
+*/
 int test_KeyValuePair() {
-  int return_value = test_KeyValuePair_KVP();
+  KeyValuePair a("A const test string", "constchar*");    // const char* test
+  int return_value = test_KeyValuePair_Build_Polytyped_KVP(&a);
   if (0 == return_value) {
-    return_value = test_KeyValuePair_InternalTypes();
+    return_value = test_KeyValuePair_KVP();
     if (0 == return_value) {
-      return_value = test_KeyValuePair_Value_Placement();
+      return_value = test_KeyValuePair_InternalTypes();
       if (0 == return_value) {
-        //return_value = test_KeyValuePair_Value_Translation();
-        #if defined(CONFIG_MANUVR_CBOR)
+        return_value = test_KeyValuePair_Value_Placement();
         if (0 == return_value) {
-          return_value = test_CBOR_KeyValuePair();
+          //return_value = test_KeyValuePair_Key_Abuse();
           if (0 == return_value) {
-            return_value = test_CBOR_Problematic_KeyValuePair();
+            //return_value = test_KeyValuePair_Value_Translation();
+            #if defined(CONFIG_MANUVR_CBOR)
+            if (0 == return_value) {
+              return_value = test_CBOR_KeyValuePair();
+              if (0 == return_value) {
+                return_value = test_CBOR_Problematic_KeyValuePair();
+              }
+            }
+            #endif  // CONFIG_MANUVR_CBOR
           }
         }
-        #endif  // CONFIG_MANUVR_CBOR
       }
     }
   }
@@ -582,28 +786,28 @@ int test_KeyValuePair() {
  * @param  log Buffer to receive test log.
  * @return   0 on success. Non-zero on failure.
  */
-int vector3_float_test(StringBuilder* log) {
+int vector3_float_test() {
   float x = 0.7f;
   float y = 0.8f;
   float z = 0.01f;
-  log->concat("===< Vector3<float> >===================================\n");
+  StringBuilder log("===< Vector3<float> >===================================\n");
   Vector3<float> test;
   Vector3<float> test_vect_0(-0.4f, -0.1f, 0.4f);
   Vector3<float> *test1 = &test_vect_0;
-  log->concatf("\t (test) (%.4f, %.4f, %.4f)\n", (double)(test.x), (double)(test.y), (double)(test.z));
+  log.concatf("\t (test) (%.4f, %.4f, %.4f)\n", (double)(test.x), (double)(test.y), (double)(test.z));
 
   test(1.0f, 0.5f, 0.24f);
-  log->concatf("\t (test) (%.4f, %.4f, %.4f)\n", (double)(test.x), (double)(test.y), (double)(test.z));
+  log.concatf("\t (test) (%.4f, %.4f, %.4f)\n", (double)(test.x), (double)(test.y), (double)(test.z));
 
   test(test_vect_0.x, test_vect_0.y, test_vect_0.z);
-  log->concatf("\t (test) (%.4f, %.4f, %.4f)\n", (double)(test.x), (double)(test.y), (double)(test.z));
+  log.concatf("\t (test) (%.4f, %.4f, %.4f)\n", (double)(test.x), (double)(test.y), (double)(test.z));
 
   test(test1->x, test1->y, test1->z);
-  log->concatf("\t (test) (%.4f, %.4f, %.4f)\n", (double)(test.x), (double)(test.y), (double)(test.z));
+  log.concatf("\t (test) (%.4f, %.4f, %.4f)\n", (double)(test.x), (double)(test.y), (double)(test.z));
 
   test(x, y, z);
-  log->concatf("\t (test) (%.4f, %.4f, %.4f)\n", (double)(test.x), (double)(test.y), (double)(test.z));
-  printf("%s\n\n", (const char*) log->string());
+  log.concatf("\t (test) (%.4f, %.4f, %.4f)\n", (double)(test.x), (double)(test.y), (double)(test.z));
+  printf("%s\n\n", (const char*) log.string());
   return 0;
 }
 
@@ -743,7 +947,7 @@ int test_PriorityQueue1(StringBuilder* log) {
 }
 
 
-int test_PriorityQueue(void) {
+int test_PriorityQueue() {
   StringBuilder log("===< PriorityQueue >====================================\n");
   int return_value = -1;
   if (0 == test_PriorityQueue0(&log)) {
@@ -927,19 +1131,41 @@ int test_UUID() {
   return 0;
 }
 
+
+void printStopWatches() {
+  StringBuilder out;
+  StopWatch::printDebugHeader(&out);
+  stopwatch_0.printDebug("PriorityQueue", &out);
+  stopwatch_1.printDebug("Vector", &out);
+  stopwatch_2.printDebug("KVP", &out);
+  stopwatch_3.printDebug("UUID", &out);
+  stopwatch_4.printDebug("RingBuffer", &out);
+  stopwatch_99.printDebug("UNUSED", &out);
+  printf("%s\n\n", (const char*) out.string());
+}
+
+
 /****************************************************************************************************
 * The main function.                                                                                *
 ****************************************************************************************************/
 int data_structure_main() {
   int ret = 1;   // Failure is the default result.
-  StringBuilder out;
-  printTypeSizes(&out);
 
+  stopwatch_0.markStart();
   if (0 == test_PriorityQueue()) {
-    if (0 == vector3_float_test(&out)) {
+    stopwatch_0.markStop();
+    stopwatch_1.markStart();
+    if (0 == vector3_float_test()) {
+      stopwatch_1.markStop();
+      stopwatch_2.markStart();
       if (0 == test_KeyValuePair()) {
+        stopwatch_2.markStop();
+        stopwatch_3.markStart();
         if (0 == test_UUID()) {
+          stopwatch_3.markStop();
+          stopwatch_4.markStart();
           if (0 == test_RingBuffer()) {
+            stopwatch_4.markStop();
             printf("**********************************\n");
             printf("*  DataStructure tests all pass  *\n");
             printf("**********************************\n");
@@ -955,5 +1181,6 @@ int data_structure_main() {
   }
   else printTestFailure("PriorityQueue");
 
+  printStopWatches();
   return ret;
 }
