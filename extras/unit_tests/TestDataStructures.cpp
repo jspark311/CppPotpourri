@@ -970,6 +970,81 @@ int test_PriorityQueue() {
 }
 
 
+/*******************************************************************************
+* LinkedList test routines
+*******************************************************************************/
+
+int test_LinkedList() {
+  int return_value = -1;
+  StringBuilder log("===< LinkedList >=======================================\n");
+  const int TEST_SIZE = 18;
+  LinkedList<uint32_t*> a;
+  uint32_t ref_vals[TEST_SIZE] = {0, };
+  for (unsigned int i = 0; i < TEST_SIZE; i++) {
+    ref_vals[i] = randomUInt32();
+    if (0 > a.insert(&ref_vals[i])) {
+      log.concat("\nFailed to insert.\n");
+      printf("%s\n\n", (const char*) log.string());
+      return -1;
+    }
+    log.concatf(" (%u: %08x)", a.size(), ref_vals[i]);
+  }
+  if (TEST_SIZE == a.size()) {
+    log.concat("\n\tGetting:  ");
+    for (unsigned int i = 0; i < TEST_SIZE/2; i++) {
+      uint32_t* val = a.get(i);
+      log.concatf(" (%u: %08x)", i, *val);
+      if (*val != ref_vals[i]) {
+        log.concatf("Value mismatch at index %u.\n", i);
+        printf("%s\n\n", (const char*) log.string());
+        return -2;
+      }
+    }
+    if (TEST_SIZE == a.size()) {
+      log.concat("\n\tRemoving:  ");
+      for (unsigned int i = 0; i < TEST_SIZE; i++) {
+        uint32_t* val = a.remove();
+        log.concatf(" (%u: %08x)", i, *val);
+        if (*val != ref_vals[i]) {
+          log.concatf("Value mismatch at index %u.\n", i);
+          printf("%s\n\n", (const char*) log.string());
+          return -3;
+        }
+      }
+      if (0 == a.size()) {
+        if (nullptr == a.remove()) {
+          a.insert(&ref_vals[0]);
+          a.insert(&ref_vals[1]);
+          if (nullptr == a.remove(15)) {
+            if (nullptr == a.get(15)) {
+              a.clear();
+              if (0 == a.size()) {
+                a.insert(&ref_vals[2]);
+                return_value = 0;
+              }
+              else log.concatf("Count should be 0, but is %u\n", a.size());
+            }
+            else log.concatf("Sadly worked. Count is %u\n", a.size());
+          }
+          else log.concatf("Sadly worked. Count is %u\n", a.size());
+        }
+        else log.concatf("Sadly worked. Count is %u\n", a.size());
+      }
+      else log.concatf("Count should have been 0 but is %u\n", a.size());
+    }
+    else log.concatf("It appears get() removed elements. The count says %u.\n", a.size());
+  }
+  else log.concatf("Fairly certain we inserted %u elements, but the count says %u.\n", TEST_SIZE, a.size());
+
+  printf("%s\n\n", (const char*) log.string());
+  return return_value;
+}
+
+
+/*******************************************************************************
+* RingBuffer test routines
+*******************************************************************************/
+
 int test_RingBuffer() {
   int return_value = -1;
   StringBuilder log("===< RingBuffer >=======================================\n");
@@ -1042,6 +1117,10 @@ int test_RingBuffer() {
   return return_value;
 }
 
+
+/*******************************************************************************
+* UUID test routines
+*******************************************************************************/
 
 /**
 * UUID battery.
@@ -1135,7 +1214,7 @@ int test_UUID() {
 void printStopWatches() {
   StringBuilder out;
   StopWatch::printDebugHeader(&out);
-  stopwatch_0.printDebug("PriorityQueue", &out);
+  stopwatch_0.printDebug("LinkedList", &out);
   stopwatch_1.printDebug("Vector", &out);
   stopwatch_2.printDebug("KVP", &out);
   stopwatch_3.printDebug("UUID", &out);
@@ -1152,34 +1231,37 @@ int data_structure_main() {
   int ret = 1;   // Failure is the default result.
 
   stopwatch_0.markStart();
-  if (0 == test_PriorityQueue()) {
-    stopwatch_0.markStop();
-    stopwatch_1.markStart();
-    if (0 == vector3_float_test()) {
-      stopwatch_1.markStop();
-      stopwatch_2.markStart();
-      if (0 == test_KeyValuePair()) {
-        stopwatch_2.markStop();
-        stopwatch_3.markStart();
-        if (0 == test_UUID()) {
-          stopwatch_3.markStop();
-          stopwatch_4.markStart();
-          if (0 == test_RingBuffer()) {
-            stopwatch_4.markStop();
-            printf("**********************************\n");
-            printf("*  DataStructure tests all pass  *\n");
-            printf("**********************************\n");
-            ret = 0;
+  if (0 == test_LinkedList()) {
+    if (0 == test_PriorityQueue()) {
+      stopwatch_0.markStop();
+      stopwatch_1.markStart();
+      if (0 == vector3_float_test()) {
+        stopwatch_1.markStop();
+        stopwatch_2.markStart();
+        if (0 == test_KeyValuePair()) {
+          stopwatch_2.markStop();
+          stopwatch_3.markStart();
+          if (0 == test_UUID()) {
+            stopwatch_3.markStop();
+            stopwatch_4.markStart();
+            if (0 == test_RingBuffer()) {
+              stopwatch_4.markStop();
+              printf("**********************************\n");
+              printf("*  DataStructure tests all pass  *\n");
+              printf("**********************************\n");
+              ret = 0;
+            }
+            else printTestFailure("RingBuffer");
           }
-          else printTestFailure("RingBuffer");
+          else printTestFailure("UUID");
         }
-        else printTestFailure("UUID");
+        else printTestFailure("KeyValuePair");
       }
-      else printTestFailure("KeyValuePair");
+      else printTestFailure("Vector3");
     }
-    else printTestFailure("Vector3");
+    else printTestFailure("PriorityQueue");
   }
-  else printTestFailure("PriorityQueue");
+  else printTestFailure("LinkedList");
 
   printStopWatches();
   return ret;
