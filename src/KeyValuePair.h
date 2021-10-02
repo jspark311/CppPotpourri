@@ -28,6 +28,10 @@ This class can easily become obnoxious and brittle. ManuvrOS tried to use this
 The use of this class should be restricted to working as an intermediary
   between the serialized and the in-memory forms of class data. Unless/until
   the API can be made to work without the problems it grew the last time.
+
+TODO: Since this class renders large chains of function calls opaque to the
+  linker, it would be nice to put bounds on binary size with pre-processor
+  case-offs.
 */
 
 
@@ -218,6 +222,7 @@ class KeyValuePair {
     inline bool _reap_key() {         return _check_flags(MANUVR_KVP_FLAG_REAP_KEY);      };
     inline bool _direct_value() {     return _check_flags(MANUVR_KVP_FLAG_DIRECT_VALUE);  };
     void _set_new_key(char*);
+    void _set_new_value(void*);
 
     /* Private parse/pack functions functions. */
     int8_t _encode_to_bin(StringBuilder*);

@@ -120,12 +120,8 @@ KeyValuePair::~KeyValuePair() {
     _next       = nullptr;
     delete a;
   }
-  if (nullptr != target_mem) {
-    void* p = target_mem;
-    target_mem = nullptr;
-    if (reapValue()) free(p);
-  }
   _set_new_key(nullptr);
+  _set_new_value(nullptr);
   _t_code    = TCode::NONE;
   len        = 0;
   _flags     = 0;
@@ -197,12 +193,64 @@ void KeyValuePair::setKey(char* k) {
 }
 
 
+/**
+* Conditionally handles any cleanup associated with replacing the key.
+* Passing nullptr will free any existing key without reassignment.
+* Calling this function will reset the reapKey flag.
+*
+* @param  k A replacement key.
+*/
 void KeyValuePair::_set_new_key(char* k) {
   if ((nullptr != _key) && _reap_key()) {
     free((void*)_key);
     _reap_key(false);
   }
   _key = k;
+}
+
+/**
+* Conditionally handles any cleanup associated with replacing the value.
+* Passing nullptr will free any existing value without reassignment.
+* Calling this function will reset the reapValue flag.
+*
+* @param  v A replacement value.
+*/
+void KeyValuePair::_set_new_value(void* v) {
+  if ((nullptr != target_mem) && reapValue()) {
+    switch (_t_code) {
+      // Types with destructors.
+      case TCode::KVP:          delete (KeyValuePair*) target_mem;   break;
+      case TCode::STR_BUILDER:  delete (StringBuilder*) target_mem;  break;
+      case TCode::IDENTITY:     delete (Identity*) target_mem;       break;
+
+      #if defined(CONFIG_MANUVR_IMG_SUPPORT)
+      case TCode::IMAGE:        delete (Image*) target_mem;          break;
+      #endif   // CONFIG_MANUVR_IMG_SUPPORT
+
+      // Types that are malloc()'d.
+      case TCode::INT64:
+      case TCode::INT128:
+      case TCode::UINT64:
+      case TCode::UINT128:
+      case TCode::DOUBLE:
+      case TCode::BINARY:
+      case TCode::STR:
+      case TCode::VECT_3_FLOAT:
+      case TCode::VECT_3_DOUBLE:
+      case TCode::VECT_3_INT8:
+      case TCode::VECT_3_UINT8:
+      case TCode::VECT_3_INT16:
+      case TCode::VECT_3_UINT16:
+      case TCode::VECT_3_INT32:
+      case TCode::VECT_3_UINT32:
+        free((void*)target_mem);
+        break;
+
+      default: break;   // Anything else is left alone.
+    }
+    reapValue(false);   // Reset the reap flag in all cases.
+  }
+  target_mem = v;
 }
 
 
