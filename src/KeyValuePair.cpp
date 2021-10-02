@@ -1003,6 +1003,9 @@ CBORArgListener::~CBORArgListener() {
   }
 }
 
+/*
+* Causes the KVP given as the argument to be added to the existing data.
+*/
 void CBORArgListener::_caaa(KeyValuePair* nu) {
   if (nullptr != _wait) {
     nu->setKey(_wait);
@@ -1128,8 +1131,6 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
     case TCode::BOOLEAN:         ret = new KeyValuePair((0 != *data));  break;
     case TCode::FLOAT:           ret = new KeyValuePair(*((float*)data));   break;
     case TCode::DOUBLE:          ret = new KeyValuePair(*((double*)data));  break;
-    //case TCode::BINARY:
-    //case TCode::STR:
     //case TCode::VECT_2_FLOAT:
     //case TCode::VECT_2_DOUBLE:
     //case TCode::VECT_2_INT8:
@@ -1178,12 +1179,30 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
     //case TCode::SI_UNIT:
     //case TCode::BASE64:
     //case TCode::IPV4_ADDR:
-    //case TCode::KVP:
-    //case TCode::STR_BUILDER:
-    //case TCode::IDENTITY:
     //case TCode::AUDIO:
-    //case TCode::IMAGE:
-    //case TCode::RESERVED:
+    case TCode::KVP:
+      {
+        KeyValuePair* tmp = KeyValuePair::unserialize(data, size, TCode::CBOR);
+        if (tmp) {
+          ret = new KeyValuePair(tmp);
+          if (nullptr != ret) ret->reapValue(true);
+        }
+      }
+      break;
+    case TCode::IDENTITY:
+      {
+        Identity* tmp = Identity::fromBuffer(data, size);
+        if (tmp) {
+          ret = new KeyValuePair(tmp);
+          if (nullptr != ret) ret->reapValue(true);
+        }
+      }
+      break;
+    case TCode::IMAGE:
+      break;
+
+    // Any other TCodes will either be handled by a CBOR native type, or should
+    //   never have been serialized in the first place.
     default:
       break;
   }

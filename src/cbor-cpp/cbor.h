@@ -30,17 +30,23 @@
 #include <stdint.h>
 #include <string.h>
 
+// NOTE: For some typecodes, we benefit from the context of having the type
+//   spelled out with a TCode, rather than using the built-in CBOR types.
+// We will be using a tag from the IANA 'unassigned' space to avoid confusion.
+//   The first byte after the tag is the native Manuvr TCode.
+#define MANUVR_CBOR_VENDOR_TYPE 0x00E97800
+
+// TODO: Everything inside this block is almost certainly garbage. Remove it.
 #ifdef ARDUINO
   #include <Arduino.h>
 #else
   #include <stdlib.h>
 #endif
 
-
 #include <stdio.h>
 #define logger(line) fprintf(stderr, "%s:%d [%s]: %s\n", __FILE__, __LINE__, __PRETTY_FUNCTION__, line)
 #define loggerf(format, ...) fprintf(stderr, "%s:%d [%s]: " format "\n", __FILE__, __LINE__, __PRETTY_FUNCTION__, __VA_ARGS__)
-
+// TODO: End of garbage block.
 
 namespace cbor {
   typedef enum {

@@ -115,23 +115,25 @@ class KeyValuePair {
     inline KeyValuePair* append(KeyValuePair* val, const char* key = nullptr) {         return link(new KeyValuePair(val, key));   };
     inline KeyValuePair* append(Identity* val, const char* key = nullptr) {             return link(new KeyValuePair(val, key));   };
 
-    inline int8_t setValue(uint8_t val) {          return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::UINT8);   };
-    inline int8_t setValue(uint16_t val) {         return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::UINT16);  };
-    inline int8_t setValue(uint32_t val) {         return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::UINT32);  };
-    inline int8_t setValue(int8_t val) {           return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::INT8);    };
-    inline int8_t setValue(int16_t val) {          return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::INT16);   };
-    inline int8_t setValue(int32_t val) {          return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::INT32);   };
-    inline int8_t setValue(bool val) {             return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::BOOLEAN); };
-    inline int8_t setValue(float val) {            return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::FLOAT);   };
-    inline int8_t setValue(double val) {           return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::DOUBLE);  };
-    inline int8_t setValue(const char* val) {      return setValue((void*) val, strlen(val),   TCode::STR);         };
-    inline int8_t setValue(char* val) {            return setValue((void*) val, strlen(val),   TCode::STR);         };
+    inline int8_t setValue(uint8_t val) {          return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::UINT8);          };
+    inline int8_t setValue(uint16_t val) {         return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::UINT16);         };
+    inline int8_t setValue(uint32_t val) {         return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::UINT32);         };
+    inline int8_t setValue(int8_t val) {           return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::INT8);           };
+    inline int8_t setValue(int16_t val) {          return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::INT16);          };
+    inline int8_t setValue(int32_t val) {          return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::INT32);          };
+    inline int8_t setValue(bool val) {             return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::BOOLEAN);        };
+    inline int8_t setValue(float val) {            return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::FLOAT);          };
+    inline int8_t setValue(double val) {           return setValue((void*)(uintptr_t) &val, sizeof(val),          TCode::DOUBLE);         };
+    inline int8_t setValue(const char* val) {      return setValue((void*) val, strlen(val),                      TCode::STR);            };
+    inline int8_t setValue(char* val) {            return setValue((void*) val, strlen(val),                      TCode::STR);            };
+    inline int8_t setValue(void* val, int len) {   return setValue((void*) val, len,                              TCode::BINARY);         };
+    inline int8_t setValue(StringBuilder* val) {   return setValue((void*) val, val->length(),                    TCode::STR_BUILDER);    };
     inline int8_t setValue(Vector3ui32* val) {     return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT32), TCode::VECT_3_UINT32);  };
     inline int8_t setValue(Vector3ui16* val) {     return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT16), TCode::VECT_3_UINT16);  };
     inline int8_t setValue(Vector3i16* val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_INT16),  TCode::VECT_3_INT16);   };
     inline int8_t setValue(Vector3f* val) {        return setValue((void*) val, sizeOfType(TCode::VECT_3_FLOAT),  TCode::VECT_3_FLOAT);   };
-    inline int8_t setValue(KeyValuePair* val) {    return setValue((void*) val, 0, TCode::KVP);            };
-    inline int8_t setValue(Identity* val) {        return setValue((void*) val, 0, TCode::IDENTITY);       };
+    inline int8_t setValue(KeyValuePair* val) {    return setValue((void*) val, 0,                                TCode::KVP);            };
+    inline int8_t setValue(Identity* val) {        return setValue((void*) val, 0,                                TCode::IDENTITY);       };
 
     // Conditional types.
     #if defined(CONFIG_MANUVR_IMG_SUPPORT)
@@ -172,23 +174,9 @@ class KeyValuePair {
     void   printDebug(StringBuilder*);
     int8_t serialize(StringBuilder*, TCode);
 
-
+    /* Statics */
     static KeyValuePair* unserialize(uint8_t*, unsigned int, const TCode);
 
-
-/*******************************************************************************
-* Temporary porting boundary.
-*******************************************************************************/
-    //inline KeyValuePair* append(Vector4f *val) {        return link(new KeyValuePair(val));   }
-
-    //inline KeyValuePair* append(void *val, int len) {   return link(new KeyValuePair(val, len));   }
-
-    // //inline int8_t setValue(Vector4f *val) {        return setValue((void*) val, sizeOfType(TCode::VECT_4_FLOAT),  TCode::VECT_4_FLOAT);   }
-    // inline int8_t setValue(void *val, int len) {   return setValue((void*) val, len, TCode::BINARY);     }
-    // inline int8_t setValue(StringBuilder *val) {   return setValue((void*) val, val->length(), TCode::STR_BUILDER);        }
-/*******************************************************************************
-* Temporary porting boundary.
-*******************************************************************************/
 
   private:
     /*
@@ -244,16 +232,8 @@ class KeyValuePair {
 
 
 
-/*******************************************************************************
-* This class is an interchange construct for decomposing CBOR blobs into KVPs.
-*******************************************************************************/
+/* If we have CBOR support, we define a helper class to assist decomposition. */
 #if defined(CONFIG_MANUVR_CBOR)
-  // Until per-type ideosyncracies are migrated to standard CBOR representations,
-  //   we will be using a tag from the IANA 'unassigned' space to avoid confusion.
-  //   The first byte after the tag is the native Manuvr type.
-  #define MANUVR_CBOR_VENDOR_TYPE 0x00E97800
-
-  /* If we have CBOR support, we define a helper class to assist decomposition. */
   class CBORArgListener : public cbor::listener {
     public:
       CBORArgListener(KeyValuePair**);
