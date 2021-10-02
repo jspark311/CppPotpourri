@@ -366,9 +366,11 @@ int8_t KeyValuePair::setValue(void* trg_buf, int len, TCode tc) {
         *((uint8_t*) target_mem + i) = *((uint8_t*) trg_buf + i);
       }
       break;
-    case TCode::STR_BUILDER:          // This is a pointer to some StringBuilder. Presumably this is on the heap.
-    case TCode::STR:                  // This is a pointer to a string constant. Presumably this is stored in flash.
-    case TCode::IMAGE:                // This is a pointer to an Image.
+    case TCode::STR_BUILDER:     // A pointer to some StringBuilder.
+    case TCode::STR:             // A pointer to a string constant.
+    case TCode::IMAGE:           // A pointer to an Image.
+    case TCode::KVP:             // A pointer to another KVP.
+    case TCode::IDENTITY:        // A pointer to an Identity.
     default:
       return_value = 0;
       target_mem = trg_buf;  // TODO: Need to do an allocation check and possible cleanup.
@@ -475,9 +477,11 @@ int8_t KeyValuePair::getValueAs(void* trg_buf) {
       }
       break;
 
-    case TCode::STR_BUILDER:          // This is a pointer to some StringBuilder. Presumably this is on the heap.
-    case TCode::STR:                  // This is a pointer to a string constant. Presumably this is stored in flash.
-    case TCode::IMAGE:                // This is a pointer to an Image.
+    case TCode::STR_BUILDER:     // A pointer to some StringBuilder.
+    case TCode::STR:             // A pointer to a string constant.
+    case TCode::IMAGE:           // A pointer to an Image.
+    case TCode::KVP:             // A pointer to another KVP.
+    case TCode::IDENTITY:        // A pointer to an Identity.
     default:
       return_value = 0;
       *((uintptr_t*) trg_buf) = *((uintptr_t*)&target_mem);
@@ -556,6 +560,12 @@ void KeyValuePair::valToString(StringBuilder* out) {
     //    out->concatf("(%.4f, %.4f, %.4f, %.4f)", (double)(v->w), (double)(v->x), (double)(v->y), (double)(v->z));
     //  }
     //  break;
+    case TCode::KVP:
+      if (nullptr != target_mem) ((KeyValuePair*) target_mem)->printDebug(out);
+      break;
+    case TCode::IDENTITY:
+      if (nullptr != target_mem) ((Identity*) target_mem)->toString(out);
+      break;
     default:
       {
         int l_ender = (len < 16) ? len : 16;
@@ -675,6 +685,29 @@ int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
       }
       else {
         out->concat((unsigned char*) target_mem, len);
+      }
+      break;
+
+    case TCode::IDENTITY:
+      {
+        Identity* ident = (Identity*) target_mem;
+        uint16_t i_len = ident->length();
+        uint8_t buf[i_len];
+        if (ident->toBuffer(buf)) {
+          out->concat(&buf[0], i_len);
+        }
+      }
+      break;
+
+    case TCode::KVP:
+      {
+        KeyValuePair* subj = (KeyValuePair*) target_mem;
+        StringBuilder intermediary;
+        // NOTE: Recursion.
+        if (0 == subj->_encode_to_bin(&intermediary)) {
+          intermediary.string();  // Cause the buffer to be made contiguous.
+          out->concatHandoff(&intermediary);
+        }
       }
       break;
 
@@ -856,19 +889,19 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
           }
         }
         break;
-      //case TCode::ARGUMENT:
-      //  {
-      //    StringBuilder intermediary;
-      //    KeyValuePair *subj;
-      //    if (0 == src->getValueAs(&subj)) {
-      //      // NOTE: Recursion.
-      //      if (KeyValuePair::encodeToCBOR(subj, &intermediary)) {
-      //        encoder.write_tag(MANUVR_CBOR_VENDOR_TYPE | TcodeToInt(src->typeCode()));
-      //        encoder.write_bytes(intermediary.string(), intermediary.length());
-      //      }
-      //    }
-      //  }
-      //  break;
+      case TCode::KVP:
+        {
+          StringBuilder intermediary;
+          KeyValuePair* subj;
+          if (0 == src->getValueAs(&subj)) {
+            // NOTE: Recursion.
+            if (0 == subj->_encode_to_cbor(&intermediary)) {
+              encoder.write_tag(MANUVR_CBOR_VENDOR_TYPE | TcodeToInt(src->typeCode()));
+              encoder.write_bytes(intermediary.string(), intermediary.length());
+            }
+          }
+        }
+        break;
       case TCode::IMAGE:
         #if defined(CONFIG_MANUVR_IMG_SUPPORT)
           {
@@ -888,12 +921,6 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
           }
         #endif   // CONFIG_MANUVR_IMG_SUPPORT
         break;
-      //case TCode::SYS_PIPE_FXN_PTR:
-      //case TCode::SYS_ARG_FXN_PTR:
-      //case TCode::SYS_MANUVR_XPORT:
-      //case TCode::SYS_FXN_PTR:
-      //case TCode::SYS_THREAD_FXN_PTR:
-      //case TCode::SYS_MANUVRMSG:
       case TCode::RESERVED:
         // Peacefully ignore the types we can't export.
         break;

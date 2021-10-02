@@ -28,9 +28,7 @@ limitations under the License.
 #ifndef __PARSING_CONSOLE_H__
 #define __PARSING_CONSOLE_H__
 
-/*
-* Class flags.
-*/
+/* Class flags. */
 #define CONSOLE_FLAG_LOCAL_ECHO         0x01  // Should the console echo back?
 #define CONSOLE_FLAG_EMIT_PROMPT        0x02  // Emit a prompt when idle?
 #define CONSOLE_FLAG_FORCE_RETURN       0x04  // Force a non-empty response to commands.
