@@ -110,7 +110,10 @@ class KeyValuePair {
     inline KeyValuePair* append(StringBuilder* val, const char* key = nullptr) {        return link(new KeyValuePair(val, key));   };
     inline KeyValuePair* append(Vector3ui32* val, const char* key = nullptr) {          return link(new KeyValuePair(val, key));   };
     inline KeyValuePair* append(Vector3ui16* val, const char* key = nullptr) {          return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(Vector3ui8* val, const char* key = nullptr) {           return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(Vector3i32* val, const char* key = nullptr) {           return link(new KeyValuePair(val, key));   };
     inline KeyValuePair* append(Vector3i16* val, const char* key = nullptr) {           return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(Vector3i8* val, const char* key = nullptr) {            return link(new KeyValuePair(val, key));   };
     inline KeyValuePair* append(Vector3f* val, const char* key = nullptr) {             return link(new KeyValuePair(val, key));   };
     inline KeyValuePair* append(KeyValuePair* val, const char* key = nullptr) {         return link(new KeyValuePair(val, key));   };
     inline KeyValuePair* append(Identity* val, const char* key = nullptr) {             return link(new KeyValuePair(val, key));   };
@@ -130,7 +133,10 @@ class KeyValuePair {
     inline int8_t setValue(StringBuilder* val) {   return setValue((void*) val, val->length(),                    TCode::STR_BUILDER);    };
     inline int8_t setValue(Vector3ui32* val) {     return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT32), TCode::VECT_3_UINT32);  };
     inline int8_t setValue(Vector3ui16* val) {     return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT16), TCode::VECT_3_UINT16);  };
+    inline int8_t setValue(Vector3ui8* val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT8),  TCode::VECT_3_UINT8);   };
+    inline int8_t setValue(Vector3i32* val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_INT32),  TCode::VECT_3_INT32);   };
     inline int8_t setValue(Vector3i16* val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_INT16),  TCode::VECT_3_INT16);   };
+    inline int8_t setValue(Vector3i8* val) {       return setValue((void*) val, sizeOfType(TCode::VECT_3_INT8),   TCode::VECT_3_INT8);    };
     inline int8_t setValue(Vector3f* val) {        return setValue((void*) val, sizeOfType(TCode::VECT_3_FLOAT),  TCode::VECT_3_FLOAT);   };
     inline int8_t setValue(KeyValuePair* val) {    return setValue((void*) val, 0,                                TCode::KVP);            };
     inline int8_t setValue(Identity* val) {        return setValue((void*) val, 0,                                TCode::IDENTITY);       };
