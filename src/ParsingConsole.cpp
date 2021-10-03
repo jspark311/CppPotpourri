@@ -78,12 +78,6 @@ const char* const ParsingConsole::_get_terminator(LineTerm lt) {
 * Class boilerplate
 *******************************************************************************/
 /*
-* Constructor
-*/
-ParsingConsole::ParsingConsole(const uint16_t max_len) : _MAX_LEN(max_len) {
-}
-
-/*
 * Destructor
 */
 ParsingConsole::~ParsingConsole() {
