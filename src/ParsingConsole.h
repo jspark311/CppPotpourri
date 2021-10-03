@@ -101,8 +101,8 @@ class ConsoleCommand {
       help_text(h),
       param_text(p) {};
 
-
     ~ConsoleCommand() {};
+
 
     void printDetailedHelp(StringBuilder* output);
     int maxArgumentCount();
@@ -128,7 +128,7 @@ typedef int (*consoleErrCallback)(StringBuilder*, const ConsoleErr, const Consol
 */
 class ParsingConsole : public BufferAccepter {
   public:
-    ParsingConsole(const uint16_t max_len);
+    ParsingConsole(const uint16_t max_len) : _MAX_LEN(max_len) {};
     ~ParsingConsole();
 
     int8_t init();

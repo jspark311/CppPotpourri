@@ -40,39 +40,6 @@ limitations under the License.
 * Static members and initializers should be located here.
 *******************************************************************************/
 
-/*
-* On a given ALU width, some types fit into the same space as a pointer.
-* This function returns true if the given TCode represents such a type.
-*/
-static bool _is_type_copy_by_value(const TCode TC) {
-  switch (TC) {
-    case TCode::NONE:           // No data. So: yes.
-    case TCode::INT8:           // 8-bit integer
-    case TCode::INT16:          // 16-bit integer
-    case TCode::INT32:          // 32-bit integer
-    case TCode::UINT8:          // Unsigned 8-bit integer
-    case TCode::UINT16:         // Unsigned 16-bit integer
-    case TCode::UINT32:         // Unsigned 32-bit integer
-    case TCode::INT64:          // 64-bit integer
-    case TCode::INT128:         // 128-bit integer
-    case TCode::UINT64:         // Unsigned 64-bit integer
-    case TCode::UINT128:        // Unsigned 128-bit integer
-    case TCode::BOOLEAN:        // A boolean
-    case TCode::FLOAT:          // A float
-    case TCode::COLOR8:         // Alias of UINT8. 8-bit color data
-    case TCode::COLOR16:        // Alias of UINT16. 16-bit color data
-    case TCode::COLOR24:        // Alias of UINT32. 24-bit color data
-    case TCode::SI_UNIT:        // Alias of UINT8. An SIUnit enum value.
-    case TCode::IPV4_ADDR:      // Alias of UINT32. An IP address, in network byte-order.
-    case TCode::RESERVED:       // Reserved for custom extension.
-      return true;
-    case TCode::DOUBLE:         // A double
-    default:
-      return false;
-  }
-}
-
-
 /*******************************************************************************
 *   ___ _              ___      _ _              _      _
 *  / __| |__ _ ______ | _ ) ___(_) |___ _ _ _ __| |__ _| |_ ___
@@ -86,7 +53,7 @@ static bool _is_type_copy_by_value(const TCode TC) {
 * Protected delegate constructor.
 */
 KeyValuePair::KeyValuePair(void* ptr, int l, const TCode TC, uint8_t f) : _target_mem(ptr), _len(l), _flags(f), _t_code(TC) {
-  _alter_flags(_is_type_copy_by_value(TC), MANUVR_KVP_FLAG_DIRECT_VALUE);
+  _alter_flags(typeIsPointerPunned(TC), MANUVR_KVP_FLAG_DIRECT_VALUE);
   // If we can know the length with certainty, record it.
   if (typeIsFixedLength(TC)) {
     _len = sizeOfType(TC);
@@ -728,7 +695,7 @@ int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
     case TCode::VECT_3_INT16:
     case TCode::VECT_3_INT8:
     case TCode::BINARY:     // This is a pointer to a big binary blob.
-      if (_is_type_copy_by_value(_t_code)) {
+      if (typeIsPointerPunned(_t_code)) {
         out->concat((unsigned char*) &_target_mem, _len);
       }
       else {
@@ -1089,7 +1056,6 @@ void CBORArgListener::on_array(int size) {
 
 void CBORArgListener::on_map(int size) {
   _wait_map   = (int32_t) size;
-
   if (nullptr != _wait) {
     // Flush so we can discover problems.
     free(_wait);
@@ -1113,7 +1079,7 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
 
   if (nullptr != ret) {
     // If we can't fit the value into the KVP class, it means we new'd it.
-    ret->reapValue(!_is_type_copy_by_value(TC));
+    ret->reapValue(!typeIsPointerPunned(TC));
   }
 
   switch (TC) {
