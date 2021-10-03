@@ -154,6 +154,7 @@ class StringBuilder {
     bool contains(char);                // Does the buffer contain the given character?
     bool contains(const char*);         // Does the buffer contain the given string?
     int cmpBinString(uint8_t*, int);    // Compare byte-wise a given length.
+    int replace(const char*, const char*); // Replace the former argument with the latter.
     // int cmpCaseless(const char* unknown);
 
     void printDebug(StringBuilder*);

@@ -80,6 +80,7 @@ int test_strcasestr(StringBuilder* log) {
           if (nullptr == StringBuilder::strcasestr(needle0, haystack)) {     // Swapped order.
             if (nullptr == StringBuilder::strcasestr(nullptr, needle0)) {    // nullptr
               if (nullptr == StringBuilder::strcasestr(haystack, nullptr)) { // nullptr
+                log->concat("\tstrcasestr() tests pass:\n");
                 return_value = 0;
               }
               else log->concat("strcasestr() nullptr as arg2 passed and should have failed.\n");
@@ -148,6 +149,7 @@ int test_Tokenizer(StringBuilder* log) {
 
   if ((-1 != chunks) & (p_count == chunks)) {
     if ((i_length == p_length) & (i_length == f_length)) {
+      log->concat("\tTokenizer tests pass:\n");
       ret = 0;
     }
   }
@@ -193,10 +195,165 @@ int test_Implode(StringBuilder* log) {
     if (f_count == toks) {       // That token count equals the return value from implode.
       if (p_count == 1) {        // Implode fully reduced the original set of tokens.
         if (toks == retoks) {    // implode and split have the same return value.
+          log->concat("\tImplode tests pass:\n");
           ret = 0;
         }
       }
     }
+  }
+  return ret;
+}
+
+
+int test_replace(StringBuilder* log) {
+  const char* DELIM_STR = "\n\t";
+  StringBuilder stack_obj;
+  int ret = -1;
+  int replacements = 0;
+  log->concat("===< Replace tests >====================================\n");
+
+  const int REPLACE_COUNT_0 = 7;
+  const int REPLACE_COUNT_1 = 6;
+  const int REPLACE_COUNT_2 = 5;
+  const char* exp_string_0 = "ANOTHER|DELIMITER||TEST|STRING|||";
+  const char* exp_string_1 = ":TAG:torture:TAG:case:TAG::TAG:With:TAG long:TAG:NEEDLE:TAG::T";
+  const char* exp_string_2 = "This is a typical text layout.\n\nIt has double-spacing,\nas well as a terminal\nline ending.\n";
+
+  const char* ref_string_0_0 = "ANOTHER.DELIMITER..TEST.STRING...";
+  const char* ref_string_0_1 = "ANOTHER---DELIMITER------TEST---STRING---------";
+  const char* ref_string_0_2 = "ANOTHERDELIMITERTESTSTRING";
+
+  const char* ref_string_1_0 = ":tag:torture:tag:case:tag::tag:With:TAG long:tag:NEEDLE:tag::T";
+  const char* ref_string_1_1 = "***torture***case******With:TAG long***NEEDLE***:T";
+  const char* ref_string_1_2 = "*torture*case**With:TAG long*NEEDLE*:T";
+
+  const char* ref_string_2_0 = "This is a typical text layout.\r\n\r\nIt has double-spacing,\r\nas well as a terminal\r\nline ending.\r\n";
+  const char* ref_string_2_1 = "This is a typical text layout.\n\nIt has double-spacing,\nas well as a terminal\nline ending.\n";
+  const char* ref_string_2_2 = "This is a typical text layout.\n\t\n\tIt has double-spacing,\n\tas well as a terminal\n\tline ending.\n\t";
+
+  stack_obj.concat(exp_string_0);
+  replacements = stack_obj.replace("|", ".");
+  if (REPLACE_COUNT_0 == replacements) {
+    if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), ref_string_0_0)) {
+      replacements = stack_obj.replace(".", "---");
+      if (REPLACE_COUNT_0 == replacements) {
+        if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), ref_string_0_1)) {
+          replacements = stack_obj.replace("---", "");
+          if (REPLACE_COUNT_0 == replacements) {
+            if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), ref_string_0_2)) {
+              log->concatf("\tReplacement test block 0 passes:\t%s\n", (char*)stack_obj.string());
+              ret = 0;
+            }
+            else log->concatf("replace() result does not match ref_string_0_2.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_0_2);
+          }
+          else log->concatf("replace(\"--\", \"\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_0, (char*)stack_obj.string());
+        }
+        else log->concatf("replace() result does not match ref_string_0_1.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_0_1);
+      }
+      else log->concatf("replace(\".\", \"--\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_0, (char*)stack_obj.string());
+    }
+    else log->concatf("replace() result does not match ref_string_0_0.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_0_0);
+  }
+  else log->concatf("replace(\"|\", \".\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_0, (char*)stack_obj.string());
+
+  if (0 == ret) {
+    ret--;
+    stack_obj.clear();
+    stack_obj.concat(exp_string_1);
+    replacements = stack_obj.replace(":TAG:", ":tag:");
+    if (REPLACE_COUNT_1 == replacements) {
+      if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), ref_string_1_0)) {
+        replacements = stack_obj.replace(":tag:", "***");
+        if (REPLACE_COUNT_1 == replacements) {
+          if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), ref_string_1_1)) {
+            replacements = stack_obj.replace("***", "*");
+            if (REPLACE_COUNT_1 == replacements) {
+              if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), ref_string_1_2)) {
+                log->concatf("\tReplacement test block 1 passes:\t%s\n", (char*)stack_obj.string());
+                ret = 0;
+              }
+              else log->concatf("replace() result does not match ref_string_1_2.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_1_2);
+            }
+            else log->concatf("replace(\"***\", \"*\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_1, (char*)stack_obj.string());
+          }
+          else log->concatf("replace() result does not match ref_string_1_1.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_1_1);
+        }
+        else log->concatf("replace(\":tag:\", \"***\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_1, (char*)stack_obj.string());
+      }
+      else log->concatf("replace() result does not match ref_string_1_0.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_1_0);
+    }
+    else log->concatf("replace(\":TAG:\", \":tag:\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_1, (char*)stack_obj.string());
+  }
+
+  if (0 == ret) {
+    ret--;
+    bool print_err = true;
+    uint8_t* debug_str = (uint8_t*) "\0\0\0";
+    stack_obj.clear();
+    stack_obj.concat(exp_string_2);
+    debug_str = (uint8_t*) ref_string_2_0;
+    int debug_str_len = strlen((char*)debug_str);
+    replacements = stack_obj.replace("\n", "\r\n");
+    if (REPLACE_COUNT_2 == replacements) {
+      if (1 == stack_obj.cmpBinString(debug_str, debug_str_len)) {
+        debug_str = (uint8_t*) ref_string_2_1;
+        debug_str_len = strlen((char*)debug_str);
+        replacements = stack_obj.replace("\r\n", "\n");
+        if (REPLACE_COUNT_2 == replacements) {
+          if (1 == stack_obj.cmpBinString(debug_str, debug_str_len)) {
+            debug_str = (uint8_t*) ref_string_2_2;
+            debug_str_len = strlen((char*)debug_str);
+            replacements = stack_obj.replace("\n", "\n\t");
+            if (REPLACE_COUNT_2 == replacements) {
+              if (1 == stack_obj.cmpBinString(debug_str, debug_str_len)) {
+                log->concatf("\tReplacement test block 2 passes:\t%s\n", (char*)stack_obj.string());
+                print_err = false;
+                ret = 0;
+              }
+              else log->concatf("replace() result does not match ref_string_2_2.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_2_2);
+            }
+            else log->concatf("replace(LF, TAB+LF) returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_2, (char*)stack_obj.string());
+          }
+          else log->concatf("replace() result does not match ref_string_2_1.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_2_1);
+        }
+        else log->concatf("replace(CR+LF, LF) returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_2, (char*)stack_obj.string());
+      }
+      else log->concatf("replace() result does not match ref_string_2_0.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_2_0);
+    }
+    else log->concatf("replace(LF, CR+LF) returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_2, (char*)stack_obj.string());
+
+    if (print_err) {
+      log->concat("\n\nExpected:\n");
+      StringBuilder::printBuffer(log, debug_str, debug_str_len);
+      log->concat("\n\nActual:\n");
+      StringBuilder::printBuffer(log, stack_obj.string(), stack_obj.length());
+    }
+  }
+
+  if (0 == ret) {
+    // Empty needle/subject tests.
+    ret--;
+    stack_obj.clear();
+    stack_obj.concat("");
+    replacements = stack_obj.replace(" ", "+");
+    if (0 == replacements) {
+      replacements = stack_obj.replace("", "+");
+      if (0 == replacements) {
+        stack_obj.concat("Some not-empty string");
+        replacements = stack_obj.replace("", "+");
+        if (0 == replacements) {
+          replacements = stack_obj.replace("Some not-empty string key that is too long", "+");
+          if (0 == replacements) {
+            log->concatf("\tReplacement test block 3 passes:\t%s\n", (char*)stack_obj.string());
+            ret = 0;
+          }
+          else log->concatf("replace() called with a needle longer than the subject string should return 0 but returned %d instead.\n", replacements);
+        }
+        else log->concatf("replace() called on an empty needle should return 0 but returned %d instead.\n", replacements);
+      }
+      else log->concatf("replace() called on an empty StringBuilder and with an empty needle should return 0 but returned %d instead.\n", replacements);
+    }
+    else log->concatf("replace() called on an empty StringBuilder should return 0 but returned %d instead.\n", replacements);
   }
   return ret;
 }
@@ -299,10 +456,13 @@ int stringbuilder_main() {
       if (0 == test_StringBuilder(&log)) {
         if (0 == test_Tokenizer(&log)) {
           if (0 == test_Implode(&log)) {
-            printf("**********************************\n");
-            printf("*  StringBuilder tests all pass  *\n");
-            printf("**********************************\n");
-            ret = 0;
+            if (0 == test_replace(&log)) {
+              log.concat("**********************************\n");
+              log.concat("*  StringBuilder tests all pass  *\n");
+              log.concat("**********************************\n");
+              ret = 0;
+            }
+            else printTestFailure("Replace");
           }
           else printTestFailure("Implode");
         }

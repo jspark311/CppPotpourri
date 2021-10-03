@@ -334,32 +334,16 @@ int StringBuilder::position_as_int(int pos) {
       int max_bytes = (len > 8) ? 8 : len;
       for (int i = 0; i < max_bytes; i++) {
         switch (*(temp + i)) {
-          case '0':
-          case '1':
-          case '2':
-          case '3':
-          case '4':
-          case '5':
-          case '6':
-          case '7':
-          case '8':
-          case '9':
+          case '0':  case '1':  case '2':  case '3':  case '4':
+          case '5':  case '6':  case '7':  case '8':  case '9':
             result = (result << 4) + (*(temp + i) - 0x30);
             break;
-          case 'a':
-          case 'b':
-          case 'c':
-          case 'd':
-          case 'e':
-          case 'f':
+          case 'a':  case 'b':  case 'c':  case 'd':
+          case 'e':  case 'f':
             result = (result << 4) + 10 + (*(temp + i) - 0x61);
             break;
-          case 'A':
-          case 'B':
-          case 'C':
-          case 'D':
-          case 'E':
-          case 'F':
+          case 'A':  case 'B':  case 'C':  case 'D':
+          case 'E':  case 'F':
             result = (result << 4) + 10 + (*(temp + i) - 0x41);
             break;
           default: return result;
@@ -607,7 +591,7 @@ void StringBuilder::prepend(const char *nu) {
 }
 
 
-void StringBuilder::concat(uint8_t*nu, int len) {
+void StringBuilder::concat(uint8_t* nu, int len) {
   if ((nu != nullptr) && (len > 0)) {
     #if defined(__BUILD_HAS_PTHREADS)
       //pthread_mutex_lock(&_mutex);
@@ -874,7 +858,7 @@ bool StringBuilder::contains(const char* needle) {
 * Compares two binary strings on a byte-by-byte basis.
 * Returns 1 if the values match. 0 otherwise.
 * Collapses the buffer prior to comparing.
-* Will compare ONLY the first len bytes, or the length of out present string. Whichever is less.
+* Will compare ONLY the first len bytes, or the length of our present string. Whichever is less.
 *
 * @param unknown The byte string under test.
 * @param len The number of bytes to compare.
@@ -887,6 +871,118 @@ int StringBuilder::cmpBinString(uint8_t* unknown, int len) {
     if (*(unknown+i) != *(this->str+i)) return 0;
   }
   return 1;
+}
+
+
+/**
+* If we are going to do something that requires a null-terminated string,
+*   make sure that we have one. If we do, this call does nothing.
+*   If we don't, we will add it.
+*/
+void StringBuilder::_null_term_check() {
+  if (nullptr != this->str) {
+    if (*(this->str + (this->col_length-1)) != '\0') {
+      uint8_t* temp = (uint8_t*) malloc(this->col_length+1);
+      if (nullptr != temp) {
+        *(temp + this->col_length) = '\0';
+        memcpy(temp, this->str, this->col_length);
+        free(this->str);
+        this->str = temp;
+      }
+    }
+  }
+}
+
+
+/**
+* Replaces instances of the former argument with the latter.
+* Collapses the buffer. Possibly twice.
+*
+* @param search The string to search for.
+* @param replace The string to replace it with.
+* @return The number of replacements, or -1 on memory error.
+*/
+int StringBuilder::replace(const char* needle, const char* replace) {
+  int return_value = 0;
+  const int NEEDLE_LEN   = strlen(needle);
+  const int REPLACE_LEN  = strlen(replace);
+  bool dangling_bulk = false;
+  this->_collapse_into_buffer();
+  if ((this->col_length >= NEEDLE_LEN) && (0 < NEEDLE_LEN)) {
+    #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_lock(&_mutex);
+    #elif defined(__BUILD_HAS_FREERTOS)
+    #endif
+    _null_term_check();   // This will depend on a null-terminator.
+
+    const int HAYSTACK_LEN = this->col_length;
+    uint8_t* tok_start = this->str;
+    int haystack_offset = 0;   // Offset in the haystack.
+    while (haystack_offset < (HAYSTACK_LEN - (NEEDLE_LEN-1))) {
+      int needle_bytes_found = 0;
+      // Seek to the end of any potential needle at this offset.
+      while ((*(needle + needle_bytes_found) == *(this->str + haystack_offset + needle_bytes_found)) && (needle_bytes_found < NEEDLE_LEN)) {
+        needle_bytes_found++;
+      }
+      if (needle_bytes_found == NEEDLE_LEN) {
+        // There is a needle here. Calculate the length of the new string
+        //   segment, and insert a list item.
+        int len_bulk  = haystack_offset - (tok_start - this->str);
+        int len_total = len_bulk + REPLACE_LEN;
+
+        StrLL* nu_element = (StrLL*) malloc(sizeof(StrLL));
+        if (nu_element != nullptr) {
+          nu_element->reap = true;
+          nu_element->next = nullptr;
+          nu_element->len  = len_total;
+          nu_element->str  = (uint8_t*) malloc(len_total+1);
+          if (nu_element->str != nullptr) {
+            *(nu_element->str + len_total) = '\0';
+            int local_offset = 0;
+            if (0 < len_bulk) {
+              memcpy(nu_element->str, tok_start, len_bulk);
+              local_offset = len_bulk;
+            }
+            if (0 < REPLACE_LEN) {
+              memcpy(nu_element->str + local_offset, replace, REPLACE_LEN);
+            }
+          }
+          else {
+            return -1;
+          }
+          this->_stack_str_onto_list(nu_element);
+        }
+        else {
+          return -1;
+        }
+        haystack_offset += NEEDLE_LEN;  // Don't scan the delimiter space again.
+        tok_start = this->str + haystack_offset;
+        dangling_bulk = (haystack_offset < (HAYSTACK_LEN-1));
+        return_value++;
+      }
+      else {
+        haystack_offset++;
+      }
+    }
+
+    if (0 < return_value) {
+      if (dangling_bulk) {
+        int len_dangling  = HAYSTACK_LEN - haystack_offset;
+        this->concat(tok_start, len_dangling);
+      }
+      // If we made a replacement, then the collapsed string is obsoleted by the
+      //   list. Free to collapsed string, and implode.
+      free(this->str);
+      this->str = nullptr;
+      this->col_length = 0;
+    }
+
+    #if defined(__BUILD_HAS_PTHREADS)
+    //pthread_mutex_unlock(&_mutex);
+    #elif defined(__BUILD_HAS_FREERTOS)
+    #endif
+  }
+  return return_value;
 }
 
 
@@ -1016,22 +1112,7 @@ int StringBuilder::split(const char* delims) {
   if (this->col_length == 0) {
     return 0;
   }
-
-  // If we are going to do something that requires a null-terminated string,
-  //   make sure that we have one. If we do, this call does nothing.
-  //   If we don't, we will add it.
-  if (nullptr != this->str) {
-    if (*(this->str + (this->col_length-1)) != '\0') {
-      uint8_t* temp = (uint8_t*) malloc(this->col_length+1);
-      if (nullptr != temp) {
-        *(temp + this->col_length) = '\0';
-        memcpy(temp, this->str, this->col_length);
-        free(this->str);
-        this->str = temp;
-      }
-    }
-  }
-
+  _null_term_check();   // This will depend on a null-terminator.
   char *temp_str  = strtok((char *)this->str, delims);
   if (nullptr != temp_str) {
     while (nullptr != temp_str) {

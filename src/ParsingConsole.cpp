@@ -187,9 +187,13 @@ int8_t ParsingConsole::_process_buffer() {
 int8_t ParsingConsole::_relay_to_output_target() {
   int8_t ret = -1;
   if ((_log.length() > 0) && (nullptr != _output_target)) {
-    if (0 == _output_target->provideBuffer(&_log)) {
-      _log.clear();
-      ret = 0;
+    if (LineTerm::LF != _tx_terminator) {
+      _log.replace("\n", _get_terminator(_tx_terminator));
+    }
+    switch (_output_target->provideBuffer(&_log)) {
+      case 0:   _log.clear();
+      case 1:   ret = 0;
+      default:  break;
     }
   }
   return ret;
