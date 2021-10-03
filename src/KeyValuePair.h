@@ -83,8 +83,8 @@ class KeyValuePair {
     KeyValuePair(double   val, const char* key = nullptr);
     KeyValuePair(const char* val, const char* key = nullptr) : KeyValuePair((void*) val, (strlen(val)+1), TCode::STR, key) {};
     KeyValuePair(char* val,       const char* key = nullptr) : KeyValuePair((void*) val, (strlen(val)+1), TCode::STR, key) {};
-    KeyValuePair(void* val, size_t len, const char* key = nullptr) : KeyValuePair(val, len, TCode::BINARY, key) {};
-    KeyValuePair(StringBuilder* val, const char* key = nullptr) : KeyValuePair(val, val->length(), TCode::STR_BUILDER, key)  {};
+    KeyValuePair(void* v, size_t l, const char* k = nullptr) : KeyValuePair(v, l, TCode::BINARY, k) {};
+    KeyValuePair(StringBuilder* v, const char* key = nullptr) : KeyValuePair(v, v->length(),  TCode::STR_BUILDER, key)  {};
     KeyValuePair(Vector3ui32* val, const char* key = nullptr) : KeyValuePair((void*) val, 12, TCode::VECT_3_UINT32, key) {};
     KeyValuePair(Vector3ui16* val, const char* key = nullptr) : KeyValuePair((void*) val, 6,  TCode::VECT_3_UINT16, key) {};
     KeyValuePair(Vector3ui8*  val, const char* key = nullptr) : KeyValuePair((void*) val, 3,  TCode::VECT_3_UINT8, key)  {};
@@ -171,9 +171,9 @@ class KeyValuePair {
     int8_t getValueAs(void* trg_buf);
     int8_t valueWithIdx(uint8_t idx, void* trg_buf);
     int8_t valueWithKey(const char*, void* trg_buf);
-    inline void*    pointer() {       return target_mem; };
-    inline uint16_t length() {        return len;        };
-    inline TCode    typeCode() {      return _t_code;    };
+    inline void*    pointer() {      return _target_mem; };
+    inline uint16_t length() {       return _len;        };
+    inline TCode    typeCode() {     return _t_code;     };
 
     /* String processing and debug. */
     void   valToString(StringBuilder*);
@@ -199,12 +199,12 @@ class KeyValuePair {
     * Still keeping it.
     *        ---J. Ian Lindsay   Sat Sep 25 01:05:52 MST 2021
     */
-    KeyValuePair* _next      = nullptr;
-    char*         _key       = nullptr;
-    void*         target_mem = nullptr;
-    uint16_t      len        = 0;
-    uint8_t       _flags     = 0;
-    TCode         _t_code    = TCode::NONE;
+    KeyValuePair* _next       = nullptr;
+    char*         _key        = nullptr;       // Optional
+    void*         _target_mem = nullptr;       // Type-punned pointer.
+    uint16_t      _len        = 0;
+    uint8_t       _flags      = 0;
+    TCode         _t_code     = TCode::NONE;
 
     /* Private constructor to which we delegate. */
     KeyValuePair(void* ptr, int len, const TCode, uint8_t flgs);

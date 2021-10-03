@@ -85,11 +85,11 @@ static bool _is_type_copy_by_value(const TCode TC) {
 /**
 * Protected delegate constructor.
 */
-KeyValuePair::KeyValuePair(void* ptr, int l, const TCode TC, uint8_t f) : target_mem(ptr), len(l), _t_code(TC), _flags(f) {
+KeyValuePair::KeyValuePair(void* ptr, int l, const TCode TC, uint8_t f) : _target_mem(ptr), _len(l), _t_code(TC), _flags(f) {
   _alter_flags(_is_type_copy_by_value(TC), MANUVR_KVP_FLAG_DIRECT_VALUE);
   // If we can know the length with certainty, record it.
   if (typeIsFixedLength(TC)) {
-    len = sizeOfType(TC);
+    _len = sizeOfType(TC);
   }
 }
 
@@ -123,7 +123,7 @@ KeyValuePair::~KeyValuePair() {
   _set_new_key(nullptr);
   _set_new_value(nullptr);
   _t_code    = TCode::NONE;
-  len        = 0;
+  _len       = 0;
   _flags     = 0;
 }
 
@@ -134,17 +134,17 @@ KeyValuePair::~KeyValuePair() {
 
 KeyValuePair::KeyValuePair(float val, const char* key) : KeyValuePair(nullptr, sizeof(float), TCode::FLOAT, key) {
   uint8_t* src = (uint8_t*) &val;
-  *(((uint8_t*) &target_mem) + 0) = *(src + 0);
-  *(((uint8_t*) &target_mem) + 1) = *(src + 1);
-  *(((uint8_t*) &target_mem) + 2) = *(src + 2);
-  *(((uint8_t*) &target_mem) + 3) = *(src + 3);
+  *(((uint8_t*) &_target_mem) + 0) = *(src + 0);
+  *(((uint8_t*) &_target_mem) + 1) = *(src + 1);
+  *(((uint8_t*) &_target_mem) + 2) = *(src + 2);
+  *(((uint8_t*) &_target_mem) + 3) = *(src + 3);
 }
 
 
 // TODO: We might be able to treat this as a direct value on a 64-bit system.
 KeyValuePair::KeyValuePair(double val, const char* key) : KeyValuePair(malloc(sizeof(double)), sizeof(double), TCode::DOUBLE, key, (MANUVR_KVP_FLAG_REAP_VALUE)) {
-  if (nullptr != target_mem) {
-    *((double*) target_mem) = val;
+  if (nullptr != _target_mem) {
+    *((double*) _target_mem) = val;
   }
   else {
     _alter_flags(false, MANUVR_KVP_FLAG_REAP_VALUE);
@@ -216,15 +216,15 @@ void KeyValuePair::_set_new_key(char* k) {
 * @param  v A replacement value.
 */
 void KeyValuePair::_set_new_value(void* v) {
-  if ((nullptr != target_mem) && reapValue()) {
+  if ((nullptr != _target_mem) && reapValue()) {
     switch (_t_code) {
       // Types with destructors.
-      case TCode::KVP:          delete (KeyValuePair*) target_mem;   break;
-      case TCode::STR_BUILDER:  delete (StringBuilder*) target_mem;  break;
-      case TCode::IDENTITY:     delete (Identity*) target_mem;       break;
+      case TCode::KVP:          delete (KeyValuePair*) _target_mem;   break;
+      case TCode::STR_BUILDER:  delete (StringBuilder*) _target_mem;  break;
+      case TCode::IDENTITY:     delete (Identity*) _target_mem;       break;
 
       #if defined(CONFIG_MANUVR_IMG_SUPPORT)
-      case TCode::IMAGE:        delete (Image*) target_mem;          break;
+      case TCode::IMAGE:        delete (Image*) _target_mem;          break;
       #endif   // CONFIG_MANUVR_IMG_SUPPORT
 
       // Types that are malloc()'d.
@@ -243,14 +243,14 @@ void KeyValuePair::_set_new_value(void* v) {
       case TCode::VECT_3_UINT16:
       case TCode::VECT_3_INT32:
       case TCode::VECT_3_UINT32:
-        free((void*)target_mem);
+        free((void*)_target_mem);
         break;
 
       default: break;   // Anything else is left alone.
     }
     reapValue(false);   // Reset the reap flag in all cases.
   }
-  target_mem = v;
+  _target_mem = v;
 }
 
 
@@ -379,24 +379,24 @@ int8_t KeyValuePair::setValue(void* trg_buf, int len, TCode tc) {
     case TCode::UINT8:   // This frightens the compiler. Its fears are unfounded.
     case TCode::BOOLEAN:
       return_value = 0;
-      *((uint8_t*)&target_mem) = *((uint8_t*) trg_buf);
+      *((uint8_t*)&_target_mem) = *((uint8_t*) trg_buf);
       break;
     case TCode::INT16:    // This frightens the compiler. Its fears are unfounded.
     case TCode::UINT16:   // This frightens the compiler. Its fears are unfounded.
       return_value = 0;
-      *((uint16_t*)&target_mem) = *((uint16_t*) trg_buf);
+      *((uint16_t*)&_target_mem) = *((uint16_t*) trg_buf);
       break;
     case TCode::INT32:    // This frightens the compiler. Its fears are unfounded.
     case TCode::UINT32:   // This frightens the compiler. Its fears are unfounded.
       return_value = 0;
-      *((uint32_t*)&target_mem) = *((uint32_t*) trg_buf);
+      *((uint32_t*)&_target_mem) = *((uint32_t*) trg_buf);
       break;
     case TCode::FLOAT:    // This frightens the compiler. Its fears are unfounded.
       return_value = 0;
-      *(((uint8_t*) &target_mem) + 0) = *((uint8_t*) trg_buf + 0);
-      *(((uint8_t*) &target_mem) + 1) = *((uint8_t*) trg_buf + 1);
-      *(((uint8_t*) &target_mem) + 2) = *((uint8_t*) trg_buf + 2);
-      *(((uint8_t*) &target_mem) + 3) = *((uint8_t*) trg_buf + 3);
+      *(((uint8_t*) &_target_mem) + 0) = *((uint8_t*) trg_buf + 0);
+      *(((uint8_t*) &_target_mem) + 1) = *((uint8_t*) trg_buf + 1);
+      *(((uint8_t*) &_target_mem) + 2) = *((uint8_t*) trg_buf + 2);
+      *(((uint8_t*) &_target_mem) + 3) = *((uint8_t*) trg_buf + 3);
       break;
 
     case TCode::DOUBLE:
@@ -410,8 +410,8 @@ int8_t KeyValuePair::setValue(void* trg_buf, int len, TCode tc) {
     case TCode::VECT_3_INT8:
       // TODO: This is probably wrong.
       return_value = 0;
-      for (int i = 0; i < len; i++) {
-        *((uint8_t*) target_mem + i) = *((uint8_t*) trg_buf + i);
+      for (int i = 0; i < _len; i++) {
+        *((uint8_t*) _target_mem + i) = *((uint8_t*) trg_buf + i);
       }
       break;
     case TCode::STR_BUILDER:     // A pointer to some StringBuilder.
@@ -421,7 +421,7 @@ int8_t KeyValuePair::setValue(void* trg_buf, int len, TCode tc) {
     case TCode::IDENTITY:        // A pointer to an Identity.
     default:
       return_value = 0;
-      target_mem = trg_buf;  // TODO: Need to do an allocation check and possible cleanup.
+      _target_mem = trg_buf;  // TODO: Need to do an allocation check and possible cleanup.
       break;
   }
   return return_value;
@@ -485,30 +485,30 @@ int8_t KeyValuePair::getValueAs(void* trg_buf) {
     case TCode::INT8:    // This frightens the compiler. Its fears are unfounded.
     case TCode::UINT8:   // This frightens the compiler. Its fears are unfounded.
       return_value = 0;
-      *((uint8_t*) trg_buf) = *((uint8_t*)&target_mem);
+      *((uint8_t*) trg_buf) = *((uint8_t*)&_target_mem);
       break;
     case TCode::INT16:    // This frightens the compiler. Its fears are unfounded.
     case TCode::UINT16:   // This frightens the compiler. Its fears are unfounded.
       return_value = 0;
-      *((uint16_t*) trg_buf) = *((uint16_t*)&target_mem);
+      *((uint16_t*) trg_buf) = *((uint16_t*)&_target_mem);
       break;
     case TCode::INT32:    // This frightens the compiler. Its fears are unfounded.
     case TCode::UINT32:   // This frightens the compiler. Its fears are unfounded.
       return_value = 0;
-      *((uint32_t*) trg_buf) = *((uint32_t*)&target_mem);
+      *((uint32_t*) trg_buf) = *((uint32_t*)&_target_mem);
       break;
     case TCode::FLOAT:    // This frightens the compiler. Its fears are unfounded.
       return_value = 0;
-      *((uint8_t*) trg_buf + 0) = *(((uint8_t*) &target_mem) + 0);
-      *((uint8_t*) trg_buf + 1) = *(((uint8_t*) &target_mem) + 1);
-      *((uint8_t*) trg_buf + 2) = *(((uint8_t*) &target_mem) + 2);
-      *((uint8_t*) trg_buf + 3) = *(((uint8_t*) &target_mem) + 3);
+      *((uint8_t*) trg_buf + 0) = *(((uint8_t*) &_target_mem) + 0);
+      *((uint8_t*) trg_buf + 1) = *(((uint8_t*) &_target_mem) + 1);
+      *((uint8_t*) trg_buf + 2) = *(((uint8_t*) &_target_mem) + 2);
+      *((uint8_t*) trg_buf + 3) = *(((uint8_t*) &_target_mem) + 3);
       break;
 
     case TCode::DOUBLE:
       // TODO: This is probably wrong.
       return_value = 0;
-      *((double*) trg_buf) = *((double*) target_mem);
+      *((double*) trg_buf) = *((double*) _target_mem);
       break;
     case TCode::VECT_4_FLOAT:
     case TCode::VECT_3_FLOAT:
@@ -520,8 +520,8 @@ int8_t KeyValuePair::getValueAs(void* trg_buf) {
     case TCode::VECT_3_INT8:
       // TODO: This is probably wrong.
       return_value = 0;
-      for (int i = 0; i < len; i++) {
-        *((uint8_t*) trg_buf + i) = *((uint8_t*) target_mem + i);
+      for (int i = 0; i < _len; i++) {
+        *((uint8_t*) trg_buf + i) = *((uint8_t*) _target_mem + i);
       }
       break;
 
@@ -532,7 +532,7 @@ int8_t KeyValuePair::getValueAs(void* trg_buf) {
     case TCode::IDENTITY:        // A pointer to an Identity.
     default:
       return_value = 0;
-      *((uintptr_t*) trg_buf) = *((uintptr_t*)&target_mem);
+      *((uintptr_t*) trg_buf) = *((uintptr_t*)&_target_mem);
       break;
   }
   return return_value;
@@ -609,14 +609,14 @@ void KeyValuePair::valToString(StringBuilder* out) {
     //  }
     //  break;
     case TCode::KVP:
-      if (nullptr != target_mem) ((KeyValuePair*) target_mem)->printDebug(out);
+      if (nullptr != _target_mem) ((KeyValuePair*) _target_mem)->printDebug(out);
       break;
     case TCode::IDENTITY:
-      if (nullptr != target_mem) ((Identity*) target_mem)->toString(out);
+      if (nullptr != _target_mem) ((Identity*) _target_mem)->toString(out);
       break;
     default:
       {
-        int l_ender = (len < 16) ? len : 16;
+        int l_ender = (_len < 16) ? _len : 16;
         for (int n = 0; n < l_ender; n++) {
           out->concatf("%02x ", *((uint8_t*) buf + n));
         }
@@ -729,16 +729,16 @@ int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
     case TCode::VECT_3_INT8:
     case TCode::BINARY:     // This is a pointer to a big binary blob.
       if (_is_type_copy_by_value(_t_code)) {
-        out->concat((unsigned char*) &target_mem, len);
+        out->concat((unsigned char*) &_target_mem, _len);
       }
       else {
-        out->concat((unsigned char*) target_mem, len);
+        out->concat((unsigned char*) _target_mem, _len);
       }
       break;
 
     case TCode::IDENTITY:
       {
-        Identity* ident = (Identity*) target_mem;
+        Identity* ident = (Identity*) _target_mem;
         uint16_t i_len = ident->length();
         uint8_t buf[i_len];
         if (ident->toBuffer(buf)) {
@@ -749,7 +749,7 @@ int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
 
     case TCode::KVP:
       {
-        KeyValuePair* subj = (KeyValuePair*) target_mem;
+        KeyValuePair* subj = (KeyValuePair*) _target_mem;
         StringBuilder intermediary;
         // NOTE: Recursion.
         if (0 == subj->_encode_to_bin(&intermediary)) {
@@ -761,13 +761,13 @@ int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
 
     /* These are pointer types that require conversion. */
     case TCode::STR_BUILDER:     // This is a pointer to some StringBuilder.
-      out->concat((StringBuilder*) target_mem);
+      out->concat((StringBuilder*) _target_mem);
       break;
 
     #if defined(CONFIG_MANUVR_IMG_SUPPORT)
     case TCode::IMAGE:      // This is a pointer to an Image.
       {
-        Image* img = (Image*) target_mem;
+        Image* img = (Image*) _target_mem;
         uint32_t sz_buf = img->bytesUsed();
         if (sz_buf > 0) {
           if (0 != img->serialize(out)) {
