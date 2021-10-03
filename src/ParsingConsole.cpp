@@ -52,6 +52,17 @@ const char* const ParsingConsole::errToStr(ConsoleErr err) {
 }
 
 
+const char* const ParsingConsole::terminatorStr(LineTerm lt) {
+  switch (lt) {
+    case LineTerm::CR:    return "CR";
+    case LineTerm::LF:    return "LF";
+    case LineTerm::CRLF:  return "CRLF";
+    default:              break;
+  }
+  return "";
+}
+
+
 const char* const ParsingConsole::_get_terminator(LineTerm lt) {
   switch (lt) {
     case LineTerm::CR:    return "\r";
@@ -407,8 +418,7 @@ void ParsingConsole::printHelp(StringBuilder* output) {
   int count = _cmd_list.size();
   StringBuilder fmt("%-");
   fmt.concatf("%ds %%s   %%s\n", _max_cmd_len+2);
-
-  output->concat("---< Help >-------------------------------------------------\n");
+  StringBuilder::styleHeader2(output, "Help");
   ConsoleCommand* tmpcmd = nullptr;
   for (int i = 0; i < count; i++) {
     tmpcmd = _cmd_list.get(i);
@@ -442,17 +452,19 @@ void ParsingConsole::printHelp(StringBuilder* output, char* specific_cmd) {
 * Print the running history of commands.
 */
 void ParsingConsole::printHistory(StringBuilder* output) {
-  output->concat("---< History >----------------------------------------------\n");
+  StringBuilder::styleHeader2(output, "History");
   int count = _history.size();
   for (int i = 0; i < count; i++) {
-    output->concatf("%d:  %s\n", i, (char*) _history.get(i)->string());
+    output->concatf("\t%d:  %s\n", i, (char*) _history.get(i)->string());
   }
 }
 
 
-/*
-* Returns true if there is a line-ending in the buffer.
-* Tokenizes the line.
+/**
+* Checks for the configured terminator in the input stream, and tokenizes the
+*   line if found.
+*
+* @return true if there is a line-ending in the buffer.
 */
 bool ParsingConsole::_line_ending_rxd() {
   const char* const L_TERM = _get_terminator(_rx_terminator);
@@ -473,16 +485,12 @@ bool ParsingConsole::_line_ending_rxd() {
 
   if (buf_has_lterm) {
     if (0 < _buffer.split(L_TERM)) {
-      //Serial.println("Returning true");
       ret = true;
     }
     else {
       _buffer.clear();
-      //Serial.print("Had term, but returning faslse  ");
-      //Serial.println(_buffer.length(), DEC);
     }
   }
-  //else {    Serial.println("no term");    }
   return ret;
 }
 
@@ -492,7 +500,9 @@ bool ParsingConsole::_line_ending_rxd() {
 *******************************************************************************/
 
 void ConsoleCommand::printDetailedHelp(StringBuilder* output) {
-  output->concatf("---< %s >-------------------------------------------------\n", cmd);
+  StringBuilder tmp("Help: ");
+  tmp.concat(cmd);
+  StringBuilder::styleHeader2(output, (const char*) tmp.string());
   output->concatf("%s\nUsage: ", help_text);
   for (int i = 0; i < maxArgumentCount(); i++) {
     output->concatf(

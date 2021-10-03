@@ -85,7 +85,7 @@ static bool _is_type_copy_by_value(const TCode TC) {
 /**
 * Protected delegate constructor.
 */
-KeyValuePair::KeyValuePair(void* ptr, int l, const TCode TC, uint8_t f) : _target_mem(ptr), _len(l), _t_code(TC), _flags(f) {
+KeyValuePair::KeyValuePair(void* ptr, int l, const TCode TC, uint8_t f) : _target_mem(ptr), _len(l), _flags(f), _t_code(TC) {
   _alter_flags(_is_type_copy_by_value(TC), MANUVR_KVP_FLAG_DIRECT_VALUE);
   // If we can know the length with certainty, record it.
   if (typeIsFixedLength(TC)) {

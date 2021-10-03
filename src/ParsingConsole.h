@@ -177,8 +177,8 @@ class ParsingConsole : public BufferAccepter {
     inline bool printHelpOnFail() {        return _console_flag(CONSOLE_FLAG_PRINT_HELP_ON_FAIL);         };
     inline void printHelpOnFail(bool x) {  return _console_set_flag(CONSOLE_FLAG_PRINT_HELP_ON_FAIL, x);  };
 
-
     static const char* const errToStr(ConsoleErr);
+    static const char* const terminatorStr(LineTerm);
 
     /* Common static TCode strings. */
     static const TCode tcodes_0[];
@@ -200,7 +200,7 @@ class ParsingConsole : public BufferAccepter {
     uint8_t _history_idx = 0;
     uint8_t _flags       = 0;
     LineTerm _tx_terminator  = LineTerm::CRLF;
-    LineTerm _rx_terminator  = LineTerm::CRLF;
+    LineTerm _rx_terminator  = LineTerm::LF;   // Default should also support the CRLF case.
     char*    _prompt_string  = nullptr;    // Pointer to the optional prompt string.
     consoleErrCallback errCB = nullptr;    // Optional function pointer for failed commands.
     StringBuilder _buffer;     // Unused input is accumulated here.

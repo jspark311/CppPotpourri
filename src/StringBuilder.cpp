@@ -149,7 +149,7 @@ void StringBuilder::styleHeader1(StringBuilder* output, const char* text) {
 * @param text contains the content of the header
 */
 void StringBuilder::styleHeader2(StringBuilder* output, const char* text) {
-  output->concatf("===< %s >=======================================\n", text);
+  output->concatf("===< %s >=================================================\n", text);
 }
 
 
