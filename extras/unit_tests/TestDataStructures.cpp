@@ -823,7 +823,7 @@ int vector3_float_test() {
   Vector3<float> test_vect_0(x0, y0, z0);
   Vector3<float> test_vect_1(x1, y1, z1);
   Vector3<float> test_vect_2(x2, y2, z2);
-  Vector3<float> test_vect_4(x2, y2, z2);
+  Vector3<float> test_vect_4(&test_vect_2);
   Vector3<float> test_vect_3(x3, y3, z3);
   Vector3<float> test_vect_5;
   test_vect_5.set(x0, y0, z0);
@@ -832,12 +832,14 @@ int vector3_float_test() {
   Vector3<float> result_vect_1 = test_vect_0 * 5;
   Vector3<float> result_vect_2 = test_vect_0 - test_vect_1;
   Vector3<float> result_vect_3(x3, y3, z3);
+  Vector3<float> result_vect_4 = -test_vect_1;
   Vector3<float> result_vect_5;
   result_vect_5.set(&test_vect_0);
   result_vect_5 += test_vect_1;
 
   float length_r_0 = test_vect_0.length();
   float length_r_1 = test_vect_1.length();
+  float length_r_2 = test_vect_1.length_squared();
 
   print0 = &test_vect_0;
   print1 = &test_vect_1;
@@ -850,44 +852,61 @@ int vector3_float_test() {
       if ((result_vect_1.x == xR1) && (result_vect_1.y == yR1) && (result_vect_1.z == zR1)) {
         print2 = &result_vect_2;
         if ((result_vect_2.x == xR2) && (result_vect_2.y == yR2) && (result_vect_2.z == zR2)) {
-          float length_r_3 = test_vect_3.length();
-          float scalar_0   = test_vect_3.normalize();
-          if (1000 == round(1000 * test_vect_3.length())) {
-            if (1000 == round(1000 * scalar_0*length_r_3)) {
-              if (result_vect_3 != test_vect_3) {
-                result_vect_3.normalize();   // Independently normalized vector.
-                if (result_vect_3 == test_vect_3) {
-                  float angle_0 = Vector3<float>::angle_normalized(result_vect_3, test_vect_3);
-                  if (0 == round(1000 * angle_0)) {
-                    test_vect_2.reflect(x_axis);
-                    float angle_1 = Vector3<float>::angle(test_vect_2, x_axis);
-                    float angle_2 = Vector3<float>::angle(test_vect_2, test_vect_4);
-                    if (round(1000 * angle_1*2) == round(1000 * angle_2)) {
-                      const float RENORM_SCALAR = 6.5f;
-                      result_vect_3 *= RENORM_SCALAR;   // Stretch.
-                      if ((RENORM_SCALAR*1000) == round(1000 * result_vect_3.length())) {
-                        // Normalize to a given length.
-                        result_vect_3.normalize(result_vect_3.length());
-                        if (1000 == round(1000 * result_vect_3.length())) {
-                          log.concat("Vector3 tests pass.\n");
-                          print_vectors = false;
-                          return_value = 0;
+          if (round(1000 * length_r_1) == round(1000 * sqrt(length_r_2))) {
+            print0 = &result_vect_0;
+            print1 = &result_vect_4;
+            print2 = &test_vect_0;
+            result_vect_0 += result_vect_4;
+            result_vect_0 -= test_vect_0;
+            if (0 == round(1000 * result_vect_0.length())) {
+              float length_r_3 = test_vect_3.length();
+              float scalar_0   = test_vect_3.normalize();
+              if (1000 == round(1000 * test_vect_3.length())) {
+                if (1000 == round(1000 * scalar_0*length_r_3)) {
+                  if (result_vect_3 != test_vect_3) {
+                    result_vect_3.normalize();   // Independently normalized vector.
+                    if (result_vect_3 == test_vect_3) {
+                      float angle_0 = Vector3<float>::angle_normalized(result_vect_3, test_vect_3);
+                      if (0 == round(1000 * angle_0)) {
+                        test_vect_2.reflect(x_axis);
+                        float angle_1 = Vector3<float>::angle(test_vect_2, x_axis);
+                        float angle_2 = Vector3<float>::angle(test_vect_2, test_vect_4);
+                        if (round(1000 * angle_1*2) == round(1000 * angle_2)) {
+                          const float RENORM_SCALAR = 6.5f;
+                          result_vect_3 *= RENORM_SCALAR;   // Stretch.
+                          if ((RENORM_SCALAR*1000) == round(1000 * result_vect_3.length())) {
+                            // Normalize to a given length.
+                            result_vect_3.normalize(result_vect_3.length());
+                            if (1000 == round(1000 * result_vect_3.length())) {
+                              Vector3<float> cross_product = test_vect_0 % test_vect_1;
+                              float angle_3 = Vector3<float>::angle(cross_product, test_vect_0);
+                              float angle_4 = Vector3<float>::angle(cross_product, test_vect_1);
+                              if ((round(1000 * (PI/2)) == round(1000 * angle_4)) && (round(1000 * angle_3) == round(1000 * angle_4))) {
+                                log.concat("Vector3 tests pass.\n");
+                                print_vectors = false;
+                                return_value = 0;
+                              }
+                              else log.concatf("The cross-product of two vectors was not orthogonal to both. %.3f and %.3f.\n", angle_3, angle_4);
+                            }
+                            else log.concat("Failed vector Scaling/renormalizing.\n");
+                          }
+                          else log.concatf("Scaled vector should be length %.3f, but got %.3f.\n", RENORM_SCALAR, result_vect_3.length());
                         }
-                        else log.concat("Failed vector Scaling/renormalizing.\n");
+                        else log.concatf("The angle between vector0 and its reflection about vector1 should be twice the angle between vector0 nad vector1, but got %.3f and %.3f, respectively.\n", angle_1, angle_2);
                       }
-                      else log.concatf("Scaled vector should be length 6.5, but got %.3f.\n", result_vect_3.length());
+                      else log.concatf("The angle between two equal vectors should be 0.0, but got %.3f.\n", angle_0);
                     }
-                    else log.concatf("The angle between vector0 and its reflection about vector1 should be twice the angle between vector0 nad vector1, but got %.3f and %.3f, respectively.\n", angle_1, angle_2);
+                    else log.concat("Failed vector equality test.\n");
                   }
-                  else log.concatf("The angle between two equal vectors should be 0.0, but got %.3f.\n", angle_0);
+                  else log.concat("Failed vector inequality test.\n");
                 }
-                else log.concat("Failed vector equality test.\n");
+                else log.concatf("The scalar value returned by normalize (%.3f) doesn't comport with the original length (%.3f).\n", scalar_0, length_r_3);
               }
-              else log.concat("Failed vector inequality test.\n");
+              else log.concatf("Normalized vector should be length 1.0, but got %.3f.\n", test_vect_3.length());
             }
-            else log.concatf("The scalar value returned by normalize (%.3f) doesn't comport with the original length (%.3f).\n", scalar_0, length_r_3);
+            else log.concat("Failed test of -= operator.\n");
           }
-          else log.concatf("Normalized vector should be length 1.0, but got %.3f.\n", test_vect_3.length());
+          else log.concat("Failed len^2.\n");
         }
         else log.concat("Failed vector subtraction.\n");
       }
