@@ -178,19 +178,19 @@ template <typename T> class Vector3 {
           *this *=stacked_len;
         }
       }
-        return stacked_len;
+      return stacked_len;
     }
 
-    // Normalize against the supllied length, for code that caches this information.
+    // Set function with components broken out.
     void set(T _x, T _y, T _z) {
       x = _x;
       y = _y;
       z = _z;
     }
 
-    // Normalize against the supllied length, for code that caches this information.
+    // Normalize against the supplied length, for code that caches this information.
     void normalize(float len) {
-        if (len) *this/=len;
+      if (len) *this/=len;
     }
 
     // returns the normalized version of this vector
