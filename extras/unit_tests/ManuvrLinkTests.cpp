@@ -35,6 +35,26 @@ void callback_carl(uint32_t tag, XenoMessage* msg) {
 }
 
 
+bool poll_until_finished(ManuvrLink* vlad, ManuvrLink* carl) {
+  int maximum_polling_cycles = 1000;
+  bool idle = false;
+  while ((0 < maximum_polling_cycles) & (!idle)) {
+    StringBuilder log_v;
+    StringBuilder log_c;
+    vlad->poll(&log_v);
+    carl->poll(&log_c);
+    //idle = true;
+    if (0 < log_v.length()) {   printf("Vlad (%04d):   %s", (1000 - maximum_polling_cycles), (const char*) log_v.string());  }
+    if (0 < log_c.length()) {   printf("Carl (%04d):   %s", (1000 - maximum_polling_cycles), (const char*) log_c.string());  }
+    maximum_polling_cycles--;
+  }
+  printf("poll_until_finished completed in %d cycles.\n", (1000-maximum_polling_cycles));
+  return (0 < maximum_polling_cycles);
+}
+
+
+
+
 /*
 * Setup two Link objects, and connect them together.
 * Note that this test is entirely synthetic. The pathway looks like this...
@@ -53,6 +73,10 @@ int link_tests_build_and_connect(ManuvrLink* vlad, ManuvrLink* carl) {
     // Now connect each of them to their respective application callbacks.
     vlad->setCallback(callback_vlad);
     carl->setCallback(callback_carl);
+    poll_until_finished(vlad, carl);
+    vlad->printDebug(&log);
+    carl->printDebug(&log);
+
   }
   else log.concat("Failed to allocate two ManuvrLinks.\n");
   printf("%s\n\n", (const char*) log.string());

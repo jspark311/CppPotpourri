@@ -126,21 +126,21 @@ int vector3_float_test() {
                     result_vect_3.normalize();   // Independently normalized vector.
                     if (result_vect_3 == test_vect_3) {
                       float angle_0 = Vector3<float>::angle_normalized(result_vect_3, test_vect_3);
-                      if (0 == round(1000 * angle_0)) {
+                      if (0.0 == round(100 * angle_0)) {
                         test_vect_2.reflect(x_axis);
                         float angle_1 = Vector3<float>::angle(test_vect_2, x_axis);
                         float angle_2 = Vector3<float>::angle(test_vect_2, test_vect_4);
-                        if (round(1000 * angle_1*2) == round(1000 * angle_2)) {
+                        if (round(100 * angle_1*2) == round(100 * angle_2)) {
                           const float RENORM_SCALAR = 6.5f;
                           result_vect_3 *= RENORM_SCALAR;   // Stretch.
                           if ((RENORM_SCALAR*1000) == round(1000 * result_vect_3.length())) {
                             // Normalize to a given length.
                             result_vect_3.normalize(result_vect_3.length());
-                            if (1000 == round(1000 * result_vect_3.length())) {
+                            if (100 == round(100 * result_vect_3.length())) {
                               Vector3<float> cross_product = test_vect_0 % test_vect_1;
                               float angle_3 = Vector3<float>::angle(cross_product, test_vect_0);
                               float angle_4 = Vector3<float>::angle(cross_product, test_vect_1);
-                              if ((round(1000 * (PI/2)) == round(1000 * angle_4)) && (round(1000 * angle_3) == round(1000 * angle_4))) {
+                              if ((round(100 * (PI/2)) == round(100 * angle_4)) && (round(100 * angle_3) == round(100 * angle_4))) {
                                 log.concat("Vector3 tests pass.\n");
                                 print_vectors = false;
                                 return_value = 0;

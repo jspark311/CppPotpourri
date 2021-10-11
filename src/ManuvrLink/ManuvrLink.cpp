@@ -23,6 +23,9 @@ limitations under the License.
 
 #if defined(CONFIG_MANUVR_M2M_SUPPORT)
 
+// We define the 4th sync byte.
+#define XENOMSG_4TH_SYNC_BYTE (XENOMSG_MINIMUM_HEADER_SIZE + 0x10 + (uint8_t) ManuvrMsgCode::SYNC_KEEPALIVE + MANUVRLINK_SERIALIZATION_VERSION)
+
 /*******************************************************************************
 *      _______.___________.    ___   .___________. __    ______     _______.
 *     /       |           |   /   \  |           ||  |  /      |   /       |
@@ -33,15 +36,6 @@ limitations under the License.
 *
 * Static members and initializers should be located here.
 *******************************************************************************/
-
-/* This is what a sync packet looks like. Always. So common, we'll hard-code it. */
-static const uint8_t SYNC_PACKET_BYTES[4] = {
-  (uint8_t) ManuvrMsgCode::SYNC_KEEPALIVE,
-  0x10,  // One byte of encoded length, no ID.
-  0x04,  // Length
-  MANUVRLINK_SERIALIZATION_VERSION
-};
-
 
 const char* ManuvrLink::manuvMsgCodeStr(const ManuvrMsgCode CODE) {
   switch (CODE) {
@@ -62,7 +56,6 @@ const char* ManuvrLink::manuvMsgCodeStr(const ManuvrMsgCode CODE) {
 const char* ManuvrLink::sessionStateStr(const ManuvrLinkState CODE) {
   switch (CODE) {
     case ManuvrLinkState::UNINIT:           return "UNINIT";
-    case ManuvrLinkState::READY:            return "READY";
     case ManuvrLinkState::PENDING_SETUP:    return "PENDING_SETUP";
     case ManuvrLinkState::SYNC_BEGIN:       return "SYNC_BEGIN";
     case ManuvrLinkState::SYNC_CASTING:     return "SYNC_CASTING";
@@ -107,7 +100,6 @@ const bool ManuvrLink::msgCodeValid(const ManuvrMsgCode CODE) {
 static const bool _link_fsm_code_valid(const ManuvrLinkState CODE) {
   switch (CODE) {
     case ManuvrLinkState::UNINIT:
-    case ManuvrLinkState::READY:
     case ManuvrLinkState::PENDING_SETUP:
     case ManuvrLinkState::SYNC_BEGIN:
     case ManuvrLinkState::SYNC_CASTING:
@@ -136,10 +128,10 @@ static int _contains_sync_pattern(StringBuilder* dat_in) {
   uint8_t* buf = dat_in->string();
   int      len = dat_in->length();
   while (i < (len-3)) {
-    if (*(buf + i + 0) == SYNC_PACKET_BYTES[0]) {
-      if ((*(buf + i + 1) & XENOMSG_FLAG_SYNC_MASK) == SYNC_PACKET_BYTES[1]) {
-        if (*(buf + i + 2) == SYNC_PACKET_BYTES[2]) {
-          if (*(buf + i + 3) == SYNC_PACKET_BYTES[3]) {
+    if (*(buf + i + 0) == (uint8_t) ManuvrMsgCode::SYNC_KEEPALIVE) {
+      if ((*(buf + i + 1) & XENOMSG_FLAG_SYNC_MASK) == 0x10) {
+        if (*(buf + i + 2) == XENOMSG_MINIMUM_HEADER_SIZE) {
+          if (*(buf + i + 3) == XENOMSG_4TH_SYNC_BYTE) {
             return i;
           }
         }
@@ -165,10 +157,10 @@ static void _cull_sync_data(StringBuilder* dat_in) {
   uint8_t* buf = dat_in->string();
   int      len = dat_in->length();
   while (i < (len-3)) {
-    bool bail = (*(buf + i + 0) != SYNC_PACKET_BYTES[0]);
-    bail |= ((*(buf + i + 1) & XENOMSG_FLAG_SYNC_MASK) != SYNC_PACKET_BYTES[1]);
-    bail |= (*(buf + i + 2) != SYNC_PACKET_BYTES[2]);
-    bail |= (*(buf + i + 3) != SYNC_PACKET_BYTES[3]);
+    bool bail = (*(buf + i + 0) != (uint8_t) ManuvrMsgCode::SYNC_KEEPALIVE);
+    bail |= ((*(buf + i + 1) & XENOMSG_FLAG_SYNC_MASK) != 0x10);
+    bail |= (*(buf + i + 2) != XENOMSG_MINIMUM_HEADER_SIZE);
+    bail |= (*(buf + i + 3) != XENOMSG_4TH_SYNC_BYTE);
     if (bail) {
       dat_in->cull(i);
       return;
@@ -194,7 +186,15 @@ static void _cull_sync_data(StringBuilder* dat_in) {
 /**
 * Constructor
 */
-ManuvrLink::ManuvrLink(const ManuvrLinkOpts* opts) : _opts(opts) {}
+ManuvrLink::ManuvrLink(const ManuvrLinkOpts* opts) : _opts(opts) {
+  _set_fsm_route(4, ManuvrLinkState::PENDING_SETUP, ManuvrLinkState::SYNC_BEGIN, ManuvrLinkState::SYNC_CASTING, ManuvrLinkState::SYNC_TENTATIVE);
+  if (_flags.value(MANUVRLINK_FLAG_AUTH_REQUIRED)) {
+    _append_fsm_route(2, ManuvrLinkState::PENDING_AUTH, ManuvrLinkState::ESTABLISHED);
+  }
+  else {
+    _append_fsm_route(1, ManuvrLinkState::ESTABLISHED);
+  }
+}
 
 
 /**
@@ -246,25 +246,32 @@ int8_t ManuvrLink::poll(StringBuilder* text_return) {
 */
 int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
   int8_t ret = 1;
+  _ms_last_rec = millis();
 
   switch (_fsm_pos) {   // Consider the session state.
-    case ManuvrLinkState::PENDING_SETUP:
     case ManuvrLinkState::SYNC_BEGIN:
     case ManuvrLinkState::SYNC_CASTING:
-    case ManuvrLinkState::READY:        // We're getting data before we are setup to proc it.
+      _inbound_buf.concatHandoff(buf);
+      _inbound_buf.printDebug(&_local_log);
+      _process_for_sync(&_inbound_buf);
+      break;
+
     case ManuvrLinkState::SYNC_TENTATIVE:  // We have exchanged sync packets with the counterparty.
     case ManuvrLinkState::PENDING_AUTH:
     case ManuvrLinkState::ESTABLISHED:    // The nominal case. Session is in-sync. Do nothing.
     case ManuvrLinkState::PENDING_HANGUP:
       _inbound_buf.concatHandoff(buf);
+      _inbound_buf.printDebug(&_local_log);
       if (nullptr == _working) {
         if (_inbound_buf.length() >= 4) {
           XenoMsgHeader _header;
           _working = new XenoMessage(&_header);
+          _working->accumulate(&_inbound_buf);
         }
       }
       if (nullptr != _working) {
-        _working->accumulate(buf);
+        _inbound_buf.concatHandoff(buf);
+        _working->accumulate(&_inbound_buf);
         if (_working->rxComplete()) {
           if (_working->isValidMsg()) {
             _inbound_messages.insert(_working);
@@ -290,9 +297,10 @@ int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
       break;
 
     case ManuvrLinkState::UNINIT:
-    case ManuvrLinkState::HUNGUP:            // Drop the data.
+    case ManuvrLinkState::PENDING_SETUP: // We're getting data before we are setup to proc it.
+    case ManuvrLinkState::HUNGUP:
     case ManuvrLinkState::DISCONNECTED:
-      buf->clear();
+      buf->clear();  // Drop the data.
       break;
 
     default:
@@ -313,14 +321,14 @@ void ManuvrLink::printDebug(StringBuilder* output) {
   StringBuilder temp("ManuvrLink ");
   temp.concatf("(tag: 0x%x)", _session_tag);
   StringBuilder::styleHeader2(output, (const char*) temp.string());
+  output->concatf("\tMTU:           %u\n", _opts.mtu);
   output->concatf("\tTimeout:       %ums\n", _opts.ms_timeout);
   output->concatf("\tLast outbound: %ums ago\n", (now - _ms_last_send));
   output->concatf("\tLast inbound:  %ums ago\n", (now - _ms_last_rec));
   output->concatf("\tEncoding:      %s\n", typecodeToStr(_opts.encoding));
   output->concatf("\tSync losses:   %u\n", _sync_losses);
   output->concatf("\tACK timeouts:  %u\n", _seq_ack_fails);
-  output->concatf("\tMTU:           %u\n", _opts.mtu);
-  output->concatf("\tTimeout:       %ums\n", _opts.ms_timeout);
+  output->concatf("\tBuffer size:   %u\n", _inbound_buf.length());
   printFSM(output);
 
   int x = _outbound_messages.size();
@@ -542,20 +550,23 @@ int8_t ManuvrLink::_fsm_insert_sync_states() {
 
 
 int8_t ManuvrLink::_relay_to_output_target(StringBuilder* buf) {
-  int8_t ret = 0;
+  int8_t ret = -1;
   if (nullptr != _output_target) {
+    ret = 0;
     switch (_output_target->provideBuffer(buf)) {
       case 0:
         buf->clear();
         // NOTE: No break;
       case 1:
         _ms_last_send = millis();
-        ret++;
+        ret = 1;
         break;
       default:
+        ret = -2;
         break;
     }
   }
+  if ((0 > ret) & (3 < _verbosity)) _local_log.concatf("Link 0x%x failed in _relay_to_output_target(): %d\n", _session_tag, ret);
   return ret;
 }
 
@@ -599,11 +610,14 @@ int ManuvrLink::_process_for_sync(StringBuilder* dat_in) {
 
 
 int8_t ManuvrLink::_send_sync_packet(bool need_reply) {
-  StringBuilder sync_packet((uint8_t*) SYNC_PACKET_BYTES, 4);
-  uint8_t* buf = sync_packet.string();
-  *(buf + 1) = *(buf + 1) | (need_reply ? XENOMSG_FLAG_EXPECTING_REPLY : XENOMSG_FLAG_IS_REPLY);
-  _relay_to_output_target(&sync_packet);
-  return 0;
+  int8_t ret = -1;
+  StringBuilder sync_packet;
+  XenoMsgHeader sync_header(ManuvrMsgCode::SYNC_KEEPALIVE, 0, (need_reply ? XENOMSG_FLAG_EXPECTING_REPLY : XENOMSG_FLAG_IS_REPLY));
+  if (sync_header.serialize(&sync_packet)) {
+    ret = (0 < _relay_to_output_target(&sync_packet)) ? 0 : -2;
+  }
+  else if (3 < _verbosity) _local_log.concatf("Link 0x%x failed to serialize a sync header.\n", _session_tag);
+  return ret;
 }
 
 
@@ -633,20 +647,19 @@ int8_t ManuvrLink::_poll_fsm() {
       break;
 
     // Exit conditions: The class has seen the first data for this session.
-    case ManuvrLinkState::READY:
-      fsm_advance = (0 < _inbound_buf.length());
-      break;
-
-    // Exit conditions:
     case ManuvrLinkState::PENDING_SETUP:
+      fsm_advance = true;
+      //fsm_advance = (0 < _inbound_buf.length());
       break;
 
     // Exit conditions:
     case ManuvrLinkState::SYNC_BEGIN:
+      fsm_advance = true;
       break;
 
     // Exit conditions:
     case ManuvrLinkState::SYNC_CASTING:
+      fsm_advance = true;
       break;
 
     // Exit conditions: Incoming data is no longer preceeded by sync packets.
@@ -699,27 +712,6 @@ int8_t ManuvrLink::_poll_fsm() {
 }
 
 
-
-/**
-* Resets the object to a fresh state in preparation for a new session.
-*/
-void ManuvrLink::_reset_class() {
-  _inbound_buf.clear();
-  _purge_inbound();
-  _purge_outbound();
-  if (nullptr != _working) {
-    delete _working;
-    _working = nullptr;
-  }
-  _session_tag    = 0;
-  _ms_last_send   = 0;
-  _ms_last_rec    = 0;
-  _seq_parse_errs = 0;
-  _seq_ack_fails  = 0;
-  _sync_losses    = 0;
-}
-
-
 /**
 * Takes actions appropriate for entry into the given state, and sets the current
 *   FSM position if successful. Records the existing state as having been the
@@ -738,16 +730,12 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
   if (!_fsm_is_waiting()) {
     switch (new_state) {
 
-      // Entry into READY means that the class has been wiped, and the values
-      //   we depend upon later have been validated.
-      case ManuvrLinkState::READY:
-        _reset_class();
-        break;
-
-      // Entry into PENDING_SETUP means that the session values we depend upon
-      //   later have been validated, and
+      // Entry into PENDING_SETUP means that the class has been wiped, and the
+      //   values we depend upon later have been validated.
       case ManuvrLinkState::PENDING_SETUP:
+        _reset_class();
         _session_tag = randomUInt32();
+        state_entry_success = (_session_tag != 0);
         break;
 
       // Entry into SYNC_BEGIN means we trash any unprocessed inbound data, and
@@ -761,7 +749,7 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
       //   default timeout interval.
       case ManuvrLinkState::SYNC_CASTING:
         if (wrap_accounted_delta(_ms_last_send, now) > _opts.ms_timeout) {
-          _send_sync_packet(true);
+          state_entry_success = (0 == _send_sync_packet(true));
         }
         break;
 
@@ -773,12 +761,15 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
         break;
 
       case ManuvrLinkState::PENDING_AUTH:
+        state_entry_success = true;
         break;
 
       case ManuvrLinkState::ESTABLISHED:
+        state_entry_success = true;
         break;
 
       case ManuvrLinkState::PENDING_HANGUP:
+        state_entry_success = true;
         break;
 
       // Entry into HUNGUP involves clearing/releasing any buffers and states
@@ -788,6 +779,7 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
         break;
 
       case ManuvrLinkState::DISCONNECTED:
+        state_entry_success = true;
         break;
 
       // Entry into any other state is disallowed.
@@ -937,6 +929,25 @@ int8_t ManuvrLink::_prepend_fsm_state(ManuvrLinkState nxt) {
 }
 
 
+/**
+* Resets the object to a fresh state in preparation for a new session.
+*/
+void ManuvrLink::_reset_class() {
+  _inbound_buf.clear();
+  _purge_inbound();
+  _purge_outbound();
+  if (nullptr != _working) {
+    delete _working;
+    _working = nullptr;
+  }
+  _session_tag    = 0;
+  _ms_last_send   = 0;
+  _ms_last_rec    = 0;
+  _seq_parse_errs = 0;
+  _seq_ack_fails  = 0;
+  _sync_losses    = 0;
+}
+
 
 
 /*******************************************************************************
@@ -988,9 +999,27 @@ int8_t ManuvrLink::hangup(bool graceful) {
 *******************************************************************************/
 
 /**
-* Is the given FSM code valid? Used to do safe enum conversion.
+* Is this object out of the setup phase and exchanging data?
 *
-* @param The FSM code to test.
+* @return true if so. False otherwise.
+*/
+bool ManuvrLink::isConnected() {
+  switch (_fsm_pos) {
+    case ManuvrLinkState::SYNC_BEGIN:
+    case ManuvrLinkState::SYNC_CASTING:
+    case ManuvrLinkState::SYNC_TENTATIVE:
+    case ManuvrLinkState::PENDING_AUTH:
+    case ManuvrLinkState::ESTABLISHED:
+    case ManuvrLinkState::PENDING_HANGUP:
+      return true;
+  }
+  return false;
+}
+
+
+/**
+* Is this object syncd with a remote version of itself?
+*
 * @return true if so. False otherwise.
 */
 bool ManuvrLink::_link_syncd() {
@@ -1025,7 +1054,7 @@ XenoMsgHeader::XenoMsgHeader() : msg_code(ManuvrMsgCode::UNDEFINED), flags(0), c
 
 XenoMsgHeader::XenoMsgHeader(ManuvrMsgCode m) : msg_code(m), flags(0), chk_byte(0), msg_len(0), msg_id(0) {}
 
-XenoMsgHeader::XenoMsgHeader(ManuvrMsgCode m, uint8_t f, uint8_t pl_len, uint32_t i) :
+XenoMsgHeader::XenoMsgHeader(ManuvrMsgCode m, uint8_t pl_len, uint8_t f, uint32_t i) :
     msg_code(m), flags(f & ~(XENOMSG_SETTABLE_FLAG_BITS)),
     chk_byte(0),
     msg_len(0),
@@ -1105,6 +1134,16 @@ bool XenoMsgHeader::serialize(StringBuilder* buf) {
 
 bool XenoMsgHeader::set_payload_length(uint32_t pl_len) {
   bool ret = false;
+  uint8_t calcd_len_sz = 1;
+  uint32_t needed_total_sz = id_length() + pl_len + XENOMSG_MINIMUM_HEADER_SIZE;
+  if (needed_total_sz > 0x000000FF) calcd_len_sz++;
+  if (needed_total_sz > 0x0000FFFE) calcd_len_sz++;
+  if (needed_total_sz <= 0x00FFFFFD) {  // Anything larger than this is invalid.
+    flags = ((flags & ~XENOMSG_FLAG_ENCODES_LENGTH_BYTES) | (calcd_len_sz << 4));
+    msg_len = needed_total_sz;
+    chk_byte = (uint8_t) (flags + msg_len + (uint8_t)msg_code + MANUVRLINK_SERIALIZATION_VERSION);
+    ret = true;
+  }
   return ret;
 }
 
@@ -1129,7 +1168,11 @@ bool XenoMsgHeader::isValid() {
           if (calcd_id_sz == id_length()) {               // Is the len field properly sized?
             if (msg_len >= XENOMSG_MINIMUM_HEADER_SIZE) {   // If the total length is legal...
               if (calcd_len_sz == len_length()) {           // Is the length field properly sized?
-                ret = ((isReply() | expectsReply()) == (0 < id_length()));  // Reply logic needs an ID.
+                // Reply logic needs an ID if the message isn't a sync frame.
+                if (ManuvrMsgCode::SYNC_KEEPALIVE != msg_code) {
+                  ret = ((isReply() | expectsReply()) == (0 < id_length()));
+                }
+                else {   ret = true;   }
               }
             }
           }
@@ -1139,7 +1182,5 @@ bool XenoMsgHeader::isValid() {
   }
   return ret;
 }
-
-
 
 #endif   // CONFIG_MANUVR_M2M_SUPPORT

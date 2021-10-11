@@ -107,16 +107,15 @@ TODO: Since this class renders large chains of function calls opaque to the
 */
 enum class ManuvrLinkState : uint8_t {
   UNINIT         = 0x00,  // Nothing has happened. Freshly-instantiated session.
-  READY          = 0x01,  // Class is clean and ready for a session.
-  PENDING_SETUP  = 0x02,  // Local memory allocation and validity checking.
-  SYNC_BEGIN     = 0x03,  // Session has not demonstrated itself to be in sync.
-  SYNC_CASTING   = 0x04,  // Casting sync, and awaiting like replies.
-  SYNC_TENTATIVE = 0x05,  // Stop casting sync. Churn until non-sync data arrives.
-  PENDING_AUTH   = 0x06,  // Waiting on optional authentication.
-  ESTABLISHED    = 0x07,  // Session is in the nominal state.
-  PENDING_HANGUP = 0x08,  // Session hangup is imminent.
-  HUNGUP         = 0x09,  // Session is hungup and pending cleanup for re-use.
-  DISCONNECTED   = 0x0A   // Session is broken, but we have hope of recovery.
+  PENDING_SETUP  = 0x01,  // Class is clean and ready for a session.
+  SYNC_BEGIN     = 0x02,  // Session has not demonstrated itself to be in sync.
+  SYNC_CASTING   = 0x03,  // Casting sync, and awaiting like replies.
+  SYNC_TENTATIVE = 0x04,  // Stop casting sync. Churn until non-sync data arrives.
+  PENDING_AUTH   = 0x05,  // Waiting on optional authentication.
+  ESTABLISHED    = 0x06,  // Session is in the nominal state.
+  PENDING_HANGUP = 0x07,  // Session hangup is imminent.
+  HUNGUP         = 0x08,  // Session is hungup and pending cleanup for re-use.
+  DISCONNECTED   = 0x09   // Session is broken, but we have hope of recovery.
 };
 
 /*
@@ -328,14 +327,12 @@ class ManuvrLink : public BufferAccepter {
     void   mark_session_desync(uint8_t desync_source);
     void   mark_session_sync(bool pending);
 
-    bool isEstablished();
     bool isConnected();
 
 
     static const bool  msgCodeValid(const ManuvrMsgCode);
     static const char* manuvMsgCodeStr(const ManuvrMsgCode);
     static const char* sessionStateStr(const ManuvrLinkState);
-
 
 
   private:
@@ -347,7 +344,7 @@ class ManuvrLink : public BufferAccepter {
     uint32_t          _fsm_lockout_ms = 0;        // Used to enforce a delay between state transitions.
     ManuvrLinkState   _fsm_pos        = ManuvrLinkState::UNINIT;
     ManuvrLinkState   _fsm_pos_prior  = ManuvrLinkState::UNINIT;
-    uint8_t           _verbosity      = 5;
+    uint8_t           _verbosity      = 7;
     uint32_t          _session_tag    = 0;        // Allows the application to keep track of our callbacks.
     uint32_t          _ms_last_send   = 0;        // At what time did the last message go out?
     uint32_t          _ms_last_rec    = 0;        // At what time did the last message come in?
