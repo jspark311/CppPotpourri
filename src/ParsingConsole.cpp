@@ -179,7 +179,8 @@ int8_t ParsingConsole::_process_buffer() {
           if (hasColor()) {
             // TODO: Change to prompt color.
           }
-          _log.concat(_prompt_string);   // Write the prompt to the log.
+          // Write the prompt to the log.
+          _log.concatf("\n%s", _prompt_string);
         }
       }
     }

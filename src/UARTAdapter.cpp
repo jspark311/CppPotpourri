@@ -36,3 +36,16 @@ int8_t UARTAdapter::init(const UARTOpts* o) {
   }
   return _pf_init();
 }
+
+
+void UARTAdapter::printDebug(StringBuilder* output) {
+  StringBuilder temp("UART");
+  temp.concatf("%u (%sinitialized)", ADAPTER_NUM, (initialized() ? "":"un"));
+  StringBuilder::styleHeader1(output, (char*) temp.string());
+  output->concatf("\tLast RX: \t%u\n", last_byte_rx_time);
+  output->concatf("\tFlushed: \t%c\n", (flushed()?'y':'n'));
+  output->concatf("\tRX bytes:\t%u\n", pendingRxBytes());
+  output->concatf("\tTX bytes:\t%u\n", pendingTxBytes());
+
+  output->concatf("\tbitrate: \t%u\n", _opts.bitrate);
+}
