@@ -50,6 +50,7 @@ SOURCES_CPP += ../../src/ParsingConsole.cpp
 SOURCES_CPP += ../../src/Quaternion.cpp
 SOURCES_CPP += ../../src/Storage.cpp
 SOURCES_CPP += ../../src/TripleAxisPipe.cpp
+SOURCES_CPP += ../../src/ManuvrLink/*.cpp
 SOURCES_CPP += ../../src/Identity/*.cpp
 
 

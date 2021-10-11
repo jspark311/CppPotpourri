@@ -27,6 +27,7 @@
 #include "Image/Image.h"
 #include "Identity/IdentityUUID.h"
 #include "Identity/Identity.h"
+#include "ManuvrLink/ManuvrLink.h"
 
 
 /*******************************************************************************
@@ -117,7 +118,7 @@ void printTestFailure(const char* test) {
 #include "TestDataStructures.cpp"
 #include "ParsingConsoleTest.cpp"
 #include "IdentityTest.cpp"
-
+#include "ManuvrLinkTests.cpp"
 
 
 /****************************************************************************************************
@@ -137,7 +138,9 @@ int main(int argc, char *argv[]) {
     if (0 == data_structure_main()) {
       if (0 == parsing_console_main()) {
         if (0 == identity_main()) {
-          exit_value = 0;
+          if (0 == manuvrlink_main()) {
+            exit_value = 0;
+          }
         }
       }
     }
