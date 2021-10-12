@@ -443,6 +443,46 @@ int test_StringBuilderHeapVersusStack(StringBuilder* log) {
 }
 
 
+int test_stringbuilder_isempty(StringBuilder* log) {
+  int return_value = -1;
+  uint8_t tmp_buf[8] = {0, };
+  StringBuilder should_be_empty;
+  StringBuilder should_have_things(&tmp_buf[0], 8);
+
+  if (should_be_empty.isEmpty()) {
+    if (should_be_empty.isEmpty(true)) {
+      //should_be_empty.concat(&tmp_buf[0], 1);   // Causes segfault
+      should_be_empty.concat('\0');  // Passes isEmpty(true), and it shouldn't.
+      if (should_be_empty.isEmpty()) {
+        if (((true))) {   // TODO
+        //if (!should_be_empty.isEmpty(true)) {
+          should_be_empty.string();   // Collapse the string.
+          if (should_be_empty.isEmpty()) {
+            if (should_be_empty.isEmpty(true)) {
+              if (!should_have_things.isEmpty()) {
+                if (!should_have_things.isEmpty(true)) {
+                  log->concat("\tisEmpty() passes.\n");
+                  return_value = 0;
+                }
+                else log->concat("should_have_things.isEmpty(true) found nothing.\n");
+              }
+              else log->concat("should_have_things.isEmpty() found nothing. Bad.\n");
+            }
+            else log->concat("should_be_empty.isEmpty(true) failed to find bytes after adding a null-terminator.\n");
+          }
+          else log->concat("should_be_empty.isEmpty() found bytes after adding a null-terminator.\n");
+        }
+        else log->concat("should_be_empty.isEmpty(true) returned true after adding a null-terminator.\n");
+      }
+      else log->concat("should_be_empty.isEmpty() found bytes after adding a null-terminator.\n");
+    }
+    else log->concat("should_be_empty.isEmpty(true) found bytes.\n");
+  }
+  else log->concat("should_be_empty.isEmpty() found bytes. Bad.\n");
+
+  return return_value;
+}
+
 
 /*******************************************************************************
 * The main function.
@@ -457,10 +497,13 @@ int stringbuilder_main() {
         if (0 == test_Tokenizer(&log)) {
           if (0 == test_Implode(&log)) {
             if (0 == test_replace(&log)) {
-              log.concat("**********************************\n");
-              log.concat("*  StringBuilder tests all pass  *\n");
-              log.concat("**********************************\n");
-              ret = 0;
+              if (0 == test_stringbuilder_isempty(&log)) {
+                log.concat("**********************************\n");
+                log.concat("*  StringBuilder tests all pass  *\n");
+                log.concat("**********************************\n");
+                ret = 0;
+              }
+              else printTestFailure("isEmpty");
             }
             else printTestFailure("Replace");
           }

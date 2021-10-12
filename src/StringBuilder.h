@@ -93,6 +93,7 @@ class StringBuilder {
     ~StringBuilder();
 
     int length();
+    bool isEmpty(const bool strict = false);
     uint8_t* string();
     void prepend(unsigned char *nu, int len);
 

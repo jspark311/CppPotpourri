@@ -230,6 +230,33 @@ int StringBuilder::length() {
   return return_value;
 }
 
+/**
+* Public fxn to quickly decide if a String is empty. This is significantly
+*   faster than testing the actual length.
+* A string is considered empty if either...
+*   a) The total length is zero.
+*   b) The total length is one, but the only byte is a null-terminator and checking is not strict.
+*
+* @param strict will consider the presence of a null-terminator to be "not-empty".
+* @return True if this StringBuilder is empty (or zero-length).
+*/
+bool StringBuilder::isEmpty(const bool strict) {
+  const int TLEN = this->col_length + ((nullptr == this->root) ? 0 : root->len);
+  if (strict) {
+    return (0 == TLEN);
+  }
+  switch (TLEN) {
+    case 0:   return true;  // No length means no string.
+    case 1:
+      // An allocated string with only a null-terminator is considered empty if
+      //   there are fewer than 2 bytes in the StringBuilder.
+      // That single byte either came from the collapsed string or the list.
+      return (0 == col_length) ? (*str != 0) : (*(root->str) != 0);
+    default:  return false;  // Many bytes means "not-empty" in all cases.
+  }
+}
+
+
 
 /**
 * How many discrete elements are in this object?
