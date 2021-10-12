@@ -1,7 +1,7 @@
 /*
-File:   ManuvrLink.cpp
+File:   ManuvrMsgHeader.cpp
 Author: J. Ian Lindsay
-Date:   2021.10.08
+Date:   2021.10.11
 
 Copyright 2021 Manuvr, Inc
 
@@ -22,7 +22,6 @@ limitations under the License.
 #include "BusQueue.h"
 
 #if defined(CONFIG_MANUVR_M2M_SUPPORT)
-
 
 /*******************************************************************************
 *   ___ _              ___      _ _              _      _

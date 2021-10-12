@@ -34,22 +34,6 @@ limitations under the License.
 * Static members and initializers should be located here.
 *******************************************************************************/
 
-const char* ManuvrLink::manuvMsgCodeStr(const ManuvrMsgCode CODE) {
-  switch (CODE) {
-    case ManuvrMsgCode::UNDEFINED:          return "UNDEFINED";
-    case ManuvrMsgCode::SYNC_KEEPALIVE:     return "SYNC_KEEPALIVE";
-    case ManuvrMsgCode::CONNECT:            return "CONNECT";
-    case ManuvrMsgCode::PROTOCOL:           return "PROTOCOL";
-    case ManuvrMsgCode::AUTH_CHALLENGE:     return "AUTH_CHALLENGE";
-    case ManuvrMsgCode::HANGUP:             return "HANGUP";
-    case ManuvrMsgCode::DESCRIBE:           return "DESCRIBE";
-    case ManuvrMsgCode::MSG_FORWARD:        return "MSG_FORWARD";
-    case ManuvrMsgCode::LOG:                return "LOG";
-    case ManuvrMsgCode::APPLICATION:        return "APPLICATION";
-    default:                                return "<UNKNOWN>";
-  }
-}
-
 const char* ManuvrLink::sessionStateStr(const ManuvrLinkState CODE) {
   switch (CODE) {
     case ManuvrLinkState::UNINIT:           return "UNINIT";
@@ -62,6 +46,22 @@ const char* ManuvrLink::sessionStateStr(const ManuvrLinkState CODE) {
     case ManuvrLinkState::PENDING_HANGUP:   return "PENDING_HANGUP";
     case ManuvrLinkState::HUNGUP:           return "HUNGUP";
     case ManuvrLinkState::DISCONNECTED:     return "DISCONNECTED";
+    default:                                return "<UNKNOWN>";
+  }
+}
+
+const char* ManuvrLink::manuvMsgCodeStr(const ManuvrMsgCode CODE) {
+  switch (CODE) {
+    case ManuvrMsgCode::UNDEFINED:          return "UNDEFINED";
+    case ManuvrMsgCode::SYNC_KEEPALIVE:     return "SYNC_KEEPALIVE";
+    case ManuvrMsgCode::CONNECT:            return "CONNECT";
+    case ManuvrMsgCode::PROTOCOL:           return "PROTOCOL";
+    case ManuvrMsgCode::AUTH_CHALLENGE:     return "AUTH_CHALLENGE";
+    case ManuvrMsgCode::HANGUP:             return "HANGUP";
+    case ManuvrMsgCode::DESCRIBE:           return "DESCRIBE";
+    case ManuvrMsgCode::MSG_FORWARD:        return "MSG_FORWARD";
+    case ManuvrMsgCode::LOG:                return "LOG";
+    case ManuvrMsgCode::APPLICATION:        return "APPLICATION";
     default:                                return "<UNKNOWN>";
   }
 }
@@ -211,7 +211,6 @@ ManuvrLink::ManuvrLink(const ManuvrLinkOpts* opts) : _opts(opts) {
 ManuvrLink::~ManuvrLink() {
   _purge_inbound();
   _purge_outbound();
-
   if (nullptr != _working) {
     delete _working;
     _working = nullptr;
@@ -221,91 +220,8 @@ ManuvrLink::~ManuvrLink() {
 
 
 /*******************************************************************************
-* Exposed member functions.                                                    *
+* Implementation of BufferAccepter                                             *
 *******************************************************************************/
-
-/*
-* This should be called periodically to service events in the link.
-*/
-int8_t ManuvrLink::poll(StringBuilder* text_return) {
-  uint32_t now = millis();
-  _churn_inbound();
-  _churn_outbound();
-  _poll_fsm();
-  // If we need to send an obligatory sync packet, do so.
-  if (_flags.value(MANUVRLINK_FLAG_SYNC_CASTING)) {
-    if (wrap_accounted_delta(_ms_last_send, now) > _opts.ms_keepalive) {
-      if (0 == _send_sync_packet(true)) {
-        _ms_last_send = now;
-      }
-    }
-  }
-  // Aggregate or trash any logs...
-  if (_local_log.length() > 0) {
-    // If the link has generated logs...
-    if (nullptr != text_return) {
-      // ...and the caller wants them relay them to the caller.
-      text_return->concatHandoff(&_local_log);
-    }
-    else {
-      _local_log.clear();
-    }
-  }
-  return 0;
-}
-
-
-
-/**
-* Take the accumulated bytes from the transport and try to put them into their
-*   respective slots in a header object.
-* If we can do that, see if the header makes sense.
-* If it does make sense, check for message completeness.
-*
-* This function will assume good sync, and a packet starting at offset zero.
-*
-* @param hdr A blank header object.
-* @return -3 for no header found because the initial bytes are totally wrong. Sync error.
-*         -2 for no header found because not enough bytes to complete it.
-*         -1 for header found, but total size exceeds MTU.
-*          0 for header found, but message incomplete.
-*          1 for header found, and message complete with no payload.
-*          2 for header found, and message complete with payload.
-*/
-int8_t ManuvrLink::_attempt_header_parse(ManuvrMsgHdr* hdr) {
-  int8_t ret = -2;
-  const int AVAILABLE_LEN = _inbound_buf.length();
-  if (AVAILABLE_LEN >= MANUVRMSGHDR_MINIMUM_HEADER_SIZE) {
-    uint8_t* tmp_buf = _inbound_buf.string();
-    hdr->msg_code = (ManuvrMsgCode) *(tmp_buf++);
-    hdr->flags    = *(tmp_buf++);
-
-    const uint8_t len_l = hdr->len_length();
-    const uint8_t id_l  = hdr->id_length();
-    if (hdr->header_length() <= AVAILABLE_LEN) {
-      // Write the multibyte value as big-endian.
-      for (uint8_t i = 0; i < len_l; i++) hdr->msg_len = ((hdr->msg_len << 8) | *(tmp_buf++));
-      for (uint8_t i = 0; i < id_l; i++)  hdr->msg_id  = ((hdr->msg_id << 8)  | *(tmp_buf++));
-      hdr->chk_byte = *(tmp_buf++);
-      ret = -3;
-      if (hdr->chk_byte == hdr->calc_hdr_chcksm()) {       // Does the checksum match?
-        ret = -1;
-        if (hdr->total_length() > _opts.mtu) {
-          ret = 1;
-          if (0 < hdr->payload_length()) {
-            ret = (hdr->total_length() > AVAILABLE_LEN) ? 0 : 2;
-          }
-        }
-      }
-    }
-  }
-
-  if (_verbosity > 6) {
-    _local_log.concatf("ManuvrLink (tag: 0x%x) _attempt_header_parse returned %d.\n", _session_tag, ret);
-  }
-  return ret;
-}
-
 
 /**
 * When we take bytes from the transport, and can't use them all right away,
@@ -404,6 +320,123 @@ int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
 }
 
 
+/*******************************************************************************
+* Exposed member functions.                                                    *
+*******************************************************************************/
+
+/*
+* This should be called periodically to service events in the link.
+*/
+int8_t ManuvrLink::poll(StringBuilder* text_return) {
+  uint32_t now = millis();
+  _churn_inbound();
+  _churn_outbound();
+  _poll_fsm();
+  // If we need to send an obligatory sync packet, do so.
+  if (_flags.value(MANUVRLINK_FLAG_SYNC_CASTING)) {
+    if (wrap_accounted_delta(_ms_last_send, now) > _opts.ms_keepalive) {
+      if (0 == _send_sync_packet(true)) {
+        _ms_last_send = now;
+      }
+    }
+  }
+  // Aggregate or trash any logs...
+  if (_local_log.length() > 0) {
+    // If the link has generated logs...
+    if (nullptr != text_return) {
+      // ...and the caller wants them relay them to the caller.
+      text_return->concatHandoff(&_local_log);
+    }
+    else {
+      _local_log.clear();
+    }
+  }
+  return 0;
+}
+
+
+/**
+* Public function to hang up on the counterparty.
+*
+* @param graceful should be true if the application wants to be polite.
+* @return 0 on success, nonzero otherwise.
+*/
+int8_t ManuvrLink::hangup(bool graceful) {
+  int8_t ret = -1;
+
+  switch (_fsm_pos) {
+    case ManuvrLinkState::PENDING_SETUP:
+    case ManuvrLinkState::SYNC_BEGIN:
+    case ManuvrLinkState::SYNC_CASTING:
+    case ManuvrLinkState::SYNC_TENTATIVE:
+    case ManuvrLinkState::PENDING_AUTH:
+    case ManuvrLinkState::ESTABLISHED:
+      if (graceful) {
+        ret = _append_fsm_route(3, ManuvrLinkState::PENDING_HANGUP, ManuvrLinkState::HUNGUP, ManuvrLinkState::PENDING_SETUP);
+      }
+      else {
+        // If we just want to kill the connection with no delay, we won't bother
+        //   with the PENDING_HANGUP state.
+        ret = _append_fsm_route(2, ManuvrLinkState::HUNGUP, ManuvrLinkState::PENDING_SETUP);
+      }
+      break;
+
+    // We might be seeing a repeat call from the application.
+    case ManuvrLinkState::PENDING_HANGUP:
+    case ManuvrLinkState::HUNGUP:
+      break;
+
+    default:
+      break;
+  }
+
+  return ret;
+}
+
+
+/**
+* Is this object out of the setup phase and exchanging data?
+*
+* @return true if so. False otherwise.
+*/
+bool ManuvrLink::isConnected() {
+  switch (_fsm_pos) {
+    case ManuvrLinkState::SYNC_BEGIN:
+    case ManuvrLinkState::SYNC_CASTING:
+    case ManuvrLinkState::SYNC_TENTATIVE:
+    case ManuvrLinkState::PENDING_AUTH:
+    case ManuvrLinkState::ESTABLISHED:
+    case ManuvrLinkState::PENDING_HANGUP:
+      return true;
+  }
+  return false;
+}
+
+/**
+* Is the link idle? Not connected implies not idle.
+* Empty buffers. Empty message queues. In sync.
+*
+* @return true if so. False otherwise.
+*/
+bool ManuvrLink::linkIdle() {
+  if (ManuvrLinkState::ESTABLISHED == _fsm_pos) {
+    if (0 < _outbound_messages.size()) {
+      if (0 < _inbound_messages.size()) {
+        if (nullptr == _working) {
+          return (_inbound_buf.isEmpty());
+        }
+      }
+    }
+  }
+  return false;
+}
+
+
+
+/*******************************************************************************
+* Debugging                                                                    *
+*******************************************************************************/
+
 /**
 * Debug support method.
 *
@@ -483,21 +516,6 @@ void ManuvrLink::printFSM(StringBuilder* output) {
 *******************************************************************************/
 
 /**
-* Empties the outbound message queue (those bytes designated for the transport).
-*
-* @return  int The number of outbound messages that were purged.
-*/
-int ManuvrLink::_purge_outbound() {
-  int return_value = _outbound_messages.size();
-  while (_outbound_messages.hasNext()) {
-    ManuvrMsg* temp = _outbound_messages.dequeue();
-    delete temp;
-  }
-  return return_value;
-}
-
-
-/**
 * Empties the inbound message queue (those bytes from the transport that we need to proc).
 *
 * @return  int The number of inbound messages that were purged.
@@ -506,6 +524,21 @@ int ManuvrLink::_purge_inbound() {
   int return_value = _inbound_messages.size();
   while (_inbound_messages.hasNext()) {
     ManuvrMsg* temp = _inbound_messages.dequeue();
+    delete temp;
+  }
+  return return_value;
+}
+
+
+/**
+* Empties the outbound message queue (those bytes designated for the transport).
+*
+* @return  int The number of outbound messages that were purged.
+*/
+int ManuvrLink::_purge_outbound() {
+  int return_value = _outbound_messages.size();
+  while (_outbound_messages.hasNext()) {
+    ManuvrMsg* temp = _outbound_messages.dequeue();
     delete temp;
   }
   return return_value;
@@ -628,18 +661,28 @@ int8_t ManuvrLink::_clear_waiting_send_by_id(uint32_t id) {
 }
 
 
-int8_t ManuvrLink::_fsm_insert_sync_states() {
-  int8_t ret = -1;
-  if (0 == _prepend_fsm_state(ManuvrLinkState::SYNC_TENTATIVE)) {
-    if (0 == _prepend_fsm_state(ManuvrLinkState::SYNC_CASTING)) {
-      if (0 == _prepend_fsm_state(ManuvrLinkState::SYNC_BEGIN)) {
-        ret = 0;
-      }
-    }
-  }
-  return ret;
-}
+/*******************************************************************************
+* Buffers, parsing, and scattered low-level functions                          *
+*******************************************************************************/
 
+/**
+* Resets the object to a fresh state in preparation for a new session.
+*/
+void ManuvrLink::_reset_class() {
+  _inbound_buf.clear();
+  _purge_inbound();
+  _purge_outbound();
+  if (nullptr != _working) {
+    delete _working;
+    _working = nullptr;
+  }
+  _session_tag    = 0;
+  _ms_last_send   = 0;
+  _ms_last_rec    = 0;
+  _seq_parse_errs = 0;
+  _seq_ack_fails  = 0;
+  _sync_losses    = 0;
+}
 
 
 int8_t ManuvrLink::_relay_to_output_target(StringBuilder* buf) {
@@ -673,6 +716,57 @@ int8_t ManuvrLink::_invoke_msg_callback(ManuvrMsg* msg) {
   return ret;
 }
 
+
+
+/**
+* Take the accumulated bytes from the transport and try to put them into their
+*   respective slots in a header object.
+* If we can do that, see if the header makes sense.
+* If it does make sense, check for message completeness.
+*
+* This function will assume good sync, and a packet starting at offset zero.
+*
+* @param hdr A blank header object.
+* @return -3 for no header found because the initial bytes are totally wrong. Sync error.
+*         -2 for no header found because not enough bytes to complete it.
+*         -1 for header found, but total size exceeds MTU.
+*          0 for header found, but message incomplete.
+*          1 for header found, and message complete with no payload.
+*          2 for header found, and message complete with payload.
+*/
+int8_t ManuvrLink::_attempt_header_parse(ManuvrMsgHdr* hdr) {
+  int8_t ret = -2;
+  const int AVAILABLE_LEN = _inbound_buf.length();
+  if (AVAILABLE_LEN >= MANUVRMSGHDR_MINIMUM_HEADER_SIZE) {
+    uint8_t* tmp_buf = _inbound_buf.string();
+    hdr->msg_code = (ManuvrMsgCode) *(tmp_buf++);
+    hdr->flags    = *(tmp_buf++);
+
+    const uint8_t len_l = hdr->len_length();
+    const uint8_t id_l  = hdr->id_length();
+    if (hdr->header_length() <= AVAILABLE_LEN) {
+      // Write the multibyte value as big-endian.
+      for (uint8_t i = 0; i < len_l; i++) hdr->msg_len = ((hdr->msg_len << 8) | *(tmp_buf++));
+      for (uint8_t i = 0; i < id_l; i++)  hdr->msg_id  = ((hdr->msg_id << 8)  | *(tmp_buf++));
+      hdr->chk_byte = *(tmp_buf++);
+      ret = -3;
+      if (hdr->chk_byte == hdr->calc_hdr_chcksm()) {       // Does the checksum match?
+        ret = -1;
+        if (hdr->total_length() > _opts.mtu) {
+          ret = 1;
+          if (0 < hdr->payload_length()) {
+            ret = (hdr->total_length() > AVAILABLE_LEN) ? 0 : 2;
+          }
+        }
+      }
+    }
+  }
+
+  if (_verbosity > 6) {
+    _local_log.concatf("ManuvrLink (tag: 0x%x) _attempt_header_parse returned %d.\n", _session_tag, ret);
+  }
+  return ret;
+}
 
 
 /*******************************************************************************
@@ -718,6 +812,22 @@ int8_t ManuvrLink::_send_sync_packet(bool need_reply) {
   }
   else if (3 < _verbosity) _local_log.concatf("Link 0x%x failed to serialize a sync header.\n", _session_tag);
   return ret;
+}
+
+
+/**
+* Is this object syncd with a remote version of itself?
+*
+* @return true if so. False otherwise.
+*/
+bool ManuvrLink::_link_syncd() {
+  switch (_fsm_pos) {
+    case ManuvrLinkState::PENDING_AUTH:
+    case ManuvrLinkState::ESTABLISHED:
+    case ManuvrLinkState::PENDING_HANGUP:
+      return true;
+  }
+  return false;
 }
 
 
@@ -1020,137 +1130,25 @@ int8_t ManuvrLink::_prepend_fsm_state(ManuvrLinkState nxt) {
 }
 
 
-/**
-* Resets the object to a fresh state in preparation for a new session.
-*/
-void ManuvrLink::_reset_class() {
-  _inbound_buf.clear();
-  _purge_inbound();
-  _purge_outbound();
-  if (nullptr != _working) {
-    delete _working;
-    _working = nullptr;
-  }
-  _session_tag    = 0;
-  _ms_last_send   = 0;
-  _ms_last_rec    = 0;
-  _seq_parse_errs = 0;
-  _seq_ack_fails  = 0;
-  _sync_losses    = 0;
-}
-
-
-
-/*******************************************************************************
-* High-level FSM fxns.
-*******************************************************************************/
-
-/**
-* Public function to hang up on the counterparty.
-*
-* @param graceful should be true if the application wants to be polite.
-* @return 0 on success, nonzero otherwise.
-*/
-int8_t ManuvrLink::hangup(bool graceful) {
-  int8_t ret = -1;
-
-  switch (_fsm_pos) {
-    case ManuvrLinkState::PENDING_SETUP:
-    case ManuvrLinkState::SYNC_BEGIN:
-    case ManuvrLinkState::SYNC_CASTING:
-    case ManuvrLinkState::SYNC_TENTATIVE:
-    case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::ESTABLISHED:
-      if (graceful) {
-        ret = _append_fsm_route(3, ManuvrLinkState::PENDING_HANGUP, ManuvrLinkState::HUNGUP, ManuvrLinkState::PENDING_SETUP);
-      }
-      else {
-        // If we just want to kill the connection with no delay, we won't bother
-        //   with the PENDING_HANGUP state.
-        ret = _append_fsm_route(2, ManuvrLinkState::HUNGUP, ManuvrLinkState::PENDING_SETUP);
-      }
-      break;
-
-    // We might be seeing a repeat call from the application.
-    case ManuvrLinkState::PENDING_HANGUP:
-    case ManuvrLinkState::HUNGUP:
-      break;
-
-    default:
-      break;
-  }
-
-  return ret;
-}
-
-
-
-/*******************************************************************************
-* FSM state accessor functions.
-*******************************************************************************/
-
-/**
-* Is this object out of the setup phase and exchanging data?
-*
-* @return true if so. False otherwise.
-*/
-bool ManuvrLink::isConnected() {
-  switch (_fsm_pos) {
-    case ManuvrLinkState::SYNC_BEGIN:
-    case ManuvrLinkState::SYNC_CASTING:
-    case ManuvrLinkState::SYNC_TENTATIVE:
-    case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::ESTABLISHED:
-    case ManuvrLinkState::PENDING_HANGUP:
-      return true;
-  }
-  return false;
-}
-
-
-/**
-* Is the link idle? Not connected implies not idle.
-* Empty buffers. Empty message queues. In sync.
-*
-* @return true if so. False otherwise.
-*/
-bool ManuvrLink::linkIdle() {
-  if (ManuvrLinkState::ESTABLISHED == _fsm_pos) {
-    if (0 < _outbound_messages.size()) {
-      if (0 < _inbound_messages.size()) {
-        if (nullptr == _working) {
-          if (_inbound_buf.isEmpty()) {
-            return true;
-          }
-        }
-      }
-    }
-  }
-  return false;
-}
-
-
-/**
-* Is this object syncd with a remote version of itself?
-*
-* @return true if so. False otherwise.
-*/
-bool ManuvrLink::_link_syncd() {
-  switch (_fsm_pos) {
-    case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::ESTABLISHED:
-    case ManuvrLinkState::PENDING_HANGUP:
-      return true;
-  }
-  return false;
-}
-
 bool ManuvrLink::_fsm_is_waiting() {
   bool ret = false;
   if (0 != _fsm_lockout_ms) {
     ret = !(millis() >= _fsm_lockout_ms);
     if (!ret) {
       _fsm_lockout_ms = 0;
+    }
+  }
+  return ret;
+}
+
+
+int8_t ManuvrLink::_fsm_insert_sync_states() {
+  int8_t ret = -1;
+  if (0 == _prepend_fsm_state(ManuvrLinkState::SYNC_TENTATIVE)) {
+    if (0 == _prepend_fsm_state(ManuvrLinkState::SYNC_CASTING)) {
+      if (0 == _prepend_fsm_state(ManuvrLinkState::SYNC_BEGIN)) {
+        ret = 0;
+      }
     }
   }
   return ret;

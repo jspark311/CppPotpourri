@@ -110,17 +110,6 @@ int ManuvrMsg::reply(KeyValuePair* kvp) {
 }
 
 
-/**
-* Debug support method. This fxn is only present in debug builds.
-*
-* @param   StringBuilder* The buffer into which this fxn should write its output.
-*/
-void ManuvrMsg::printDebug(StringBuilder* output) {
-  output->concatf("\t ManuvrMsg [%s: %s], id: %u\n", BusOp::getOpcodeString(_op), ManuvrLink::manuvMsgCodeStr(_header.msg_code), _header.msg_id);
-  output->concatf("\t   %u bytes of %u expected payload with %s encoding.\n", _accumulator.length(), _header.payload_length(), typecodeToStr(_encoding));
-}
-
-
 // Application calls this to gain access to the message payload.
 int ManuvrMsg::getPayload(KeyValuePair**) {
   int ret = -1;
@@ -200,6 +189,17 @@ int ManuvrMsg::accumulate(StringBuilder* buf) {
     }
   }
   return ret;
+}
+
+
+/**
+* Debug support method. This fxn is only present in debug builds.
+*
+* @param   StringBuilder* The buffer into which this fxn should write its output.
+*/
+void ManuvrMsg::printDebug(StringBuilder* output) {
+  output->concatf("\t ManuvrMsg [%s: %s], id: %u\n", BusOp::getOpcodeString(_op), ManuvrLink::manuvMsgCodeStr(_header.msg_code), _header.msg_id);
+  output->concatf("\t   %u bytes of %u expected payload with %s encoding.\n", _accumulator.length(), _header.payload_length(), typecodeToStr(_encoding));
 }
 
 #endif   // CONFIG_MANUVR_M2M_SUPPORT

@@ -215,9 +215,9 @@ class ManuvrMsgHdr {
       msg_len(obj->msg_len),
       msg_id(obj->msg_id) {};
 
-    ManuvrMsgHdr(ManuvrMsgCode, uint8_t pl_len, uint8_t flags, uint32_t i = 0);
-    ManuvrMsgHdr(ManuvrMsgCode);
     ManuvrMsgHdr();
+    ManuvrMsgHdr(ManuvrMsgCode);
+    ManuvrMsgHdr(ManuvrMsgCode, uint8_t pl_len, uint8_t flags, uint32_t i = 0);
 
 
     inline bool isReply() {        return (flags & MANUVRMSGHDR_FLAG_IS_REPLY);                     };
@@ -248,33 +248,32 @@ class ManuvrMsgHdr {
 */
 class ManuvrMsg {
   public:
-    ManuvrMsg(KeyValuePair*);   // Construct this way for outbound KVP.
+    ManuvrMsg(KeyValuePair*);  // Construct this way for outbound KVP.
     ManuvrMsg(ManuvrMsgHdr*);  // Construct this way for inbound data.
-    ManuvrMsg() {};   // Featureless constructor for static allocation.
-
+    ManuvrMsg() {};            // Featureless constructor for static allocation.
     ~ManuvrMsg();
 
-    inline bool isReply() {             return _header.isReply();          };
-    inline bool expectsReply() {        return _header.expectsReply();     };
-    inline void expectsReply(bool x) {  return _header.expectsReply(x);    };
-    inline ManuvrMsgCode msgCode() {    return _header.msg_code;           };
-    inline uint32_t uniqueId() {        return _header.msg_id;             };
+    /* Inline accessors for the message header */
+    inline bool isReply() {             return _header.isReply();        };
+    inline bool expectsReply() {        return _header.expectsReply();   };
+    inline void expectsReply(bool x) {  return _header.expectsReply(x);  };
+    inline ManuvrMsgCode msgCode() {    return _header.msg_code;         };
+    inline uint32_t uniqueId() {        return _header.msg_id;           };
 
+    /* Inlines for message status markers. */
     inline void     markSent() {     _ms_io_mark = millis();                                     };
     inline bool     wasSent() {      return (_ms_io_mark != 0);                                  };
     inline uint32_t msSinceSend() {  return wrap_accounted_delta(_ms_io_mark, millis());         };
     inline bool     rxComplete() {   return (_accumulator.length() == _header.payload_length()); };
 
-    bool   isValidMsg();
-    int    getPayload(KeyValuePair**);  // Application calls this to gain access to the message payload.
-    int    setPayload(KeyValuePair*);   // Application calls this to set the message payload.
-    int    reply(KeyValuePair*);
-
-    int serialize(StringBuilder*);   // Link calls this to render this message as a buffer for the transport.
-    int accumulate(StringBuilder*);  // Link calls this to feed the message parser.
-
-    void wipe();         // Put this object into a fresh state for re-use.
-    void printDebug(StringBuilder*);
+    void  wipe();                      // Put this object into a fresh state for re-use.
+    bool  isValidMsg();
+    int   reply(KeyValuePair*);
+    int   getPayload(KeyValuePair**);  // Application calls this to gain access to the message payload.
+    int   setPayload(KeyValuePair*);   // Application calls this to set the message payload.
+    int   serialize(StringBuilder*);   // Link calls this to render this message as a buffer for the transport.
+    int   accumulate(StringBuilder*);  // Link calls this to feed the message parser.
+    void  printDebug(StringBuilder*);
 
 
   private:
@@ -311,25 +310,28 @@ class ManuvrLink : public BufferAccepter {
     /* Implementation of BufferAccepter. Accepts data from a transport. */
     int8_t provideBuffer(StringBuilder*);
 
-    int8_t sendMessage(KeyValuePair*);
-    //int8_t ping();
-    int8_t hangup(bool graceful = true);
+    /* Application glue */
     int8_t poll(StringBuilder* log = nullptr);
+    int8_t hangup(bool graceful = true);
+    bool   isConnected();
+    bool   linkIdle();
+    //int8_t sendMessage(KeyValuePair*);
+    //int8_t ping();
 
+    /* Debugging */
     void printDebug(StringBuilder*);
     void printFSM(StringBuilder*);
 
-    inline void setCallback(ManuvrMsgCallback cb) {     _msg_callback = cb;    };
-    inline void setOutputTarget(BufferAccepter* obj) {  _output_target = obj;  };
-    inline uint32_t linkTag() {              return _session_tag;      };
-    inline ManuvrLinkState getState() {      return _fsm_pos;          };
-    bool isConnected();
-    bool linkIdle();
+    /* Inline accessors. */
+    inline void setCallback(ManuvrMsgCallback cb) {    _msg_callback = cb;   };
+    inline void setOutputTarget(BufferAccepter* o) {   _output_target = o;   };
+    inline uint32_t linkTag() {                        return _session_tag;  };
+    inline ManuvrLinkState getState() {                return _fsm_pos;      };
 
     /* Static support fxns for enums */
-    static const bool  msgCodeValid(const ManuvrMsgCode);
-    static const char* manuvMsgCodeStr(const ManuvrMsgCode);
     static const char* sessionStateStr(const ManuvrLinkState);
+    static const char* manuvMsgCodeStr(const ManuvrMsgCode);
+    static const bool  msgCodeValid(const ManuvrMsgCode);
 
 
   private:
@@ -348,36 +350,20 @@ class ManuvrLink : public BufferAccepter {
     uint8_t           _seq_parse_errs = 0;
     uint8_t           _seq_ack_fails  = 0;
     uint16_t          _sync_losses    = 0;
-
     ManuvrMsg*        _working        = nullptr;  // If we are in the middle of receiving a message,
     BufferAccepter*   _output_target  = nullptr;  // A pointer to the transport for outbound bytes.
     ManuvrMsgCallback _msg_callback   = nullptr;  // The application-provided callback for incoming messages.
     StringBuilder     _inbound_buf;
     StringBuilder     _local_log;
 
-    /* State machine functions */
-    int8_t   _poll_fsm();
-    int8_t   _set_fsm_position(ManuvrLinkState);
-    int8_t   _set_fsm_route(int count, ...);
-    int8_t   _append_fsm_route(int count, ...);
-    int8_t   _prepend_fsm_state(ManuvrLinkState);
-    int8_t   _advance_state_machine();
-    inline ManuvrLinkState _fsm_pos_next() {   return _fsm_waypoints[0];   };
-    inline bool _fsm_is_stable() {   return (ManuvrLinkState::UNINIT == _fsm_waypoints[0]);   };
-    bool     _fsm_is_waiting();
-
-    /* High-level state accessors */
-    bool   _link_syncd();
-    int8_t _fsm_insert_sync_states();
-
     /* Message queue management */
+    //int8_t _send_message(ManuvrMsg*);
     int    _purge_inbound();
     int    _purge_outbound();
     int8_t _churn_inbound();
     int8_t _churn_outbound();
     int8_t _clear_waiting_reply_by_id(uint32_t);
     int8_t _clear_waiting_send_by_id(uint32_t);
-    int8_t _send_message(ManuvrMsg*);
 
     /* Buffers, parsing, and scattered low-level functions */
     void   _reset_class();
@@ -386,6 +372,19 @@ class ManuvrLink : public BufferAccepter {
     int8_t _attempt_header_parse(ManuvrMsgHdr*);
     int8_t _process_for_sync(StringBuilder*);
     int8_t _send_sync_packet(bool need_reply);
+    bool   _link_syncd();
+
+    /* State machine functions */
+    int8_t   _poll_fsm();
+    int8_t   _set_fsm_position(ManuvrLinkState);
+    int8_t   _set_fsm_route(int count, ...);
+    int8_t   _append_fsm_route(int count, ...);
+    int8_t   _prepend_fsm_state(ManuvrLinkState);
+    int8_t   _advance_state_machine();
+    bool     _fsm_is_waiting();
+    int8_t   _fsm_insert_sync_states();
+    inline ManuvrLinkState _fsm_pos_next() {   return _fsm_waypoints[0];   };
+    inline bool _fsm_is_stable() {   return (ManuvrLinkState::UNINIT == _fsm_waypoints[0]);   };
 };
 
 #endif   // __MANUVR_XENOSESSION_H
