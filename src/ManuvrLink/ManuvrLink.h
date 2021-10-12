@@ -18,7 +18,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 
-This class descends from ManuvrOS's Xenosession and XenoMessage classes.
+This class descends from ManuvrOS's XenoSession and XenoMessage classes.
 
 Lessons learned from ManuvrOS:
 --------------------------------------------------------------------------------
@@ -37,7 +37,8 @@ This class originally did two things right, which I will try to preserve:
        the driver for the underlying transport.
 
 The use of this class should be restricted to being a BufferAccepter
-  implementation that faces an unspecified transport on one side,
+  implementation that faces an unspecified transport on one side, and the
+  application on the other.
 
 TODO: Since this class renders large chains of function calls opaque to the
   linker, it would be nice to put bounds on binary size with pre-processor
@@ -57,49 +58,46 @@ TODO: Since this class renders large chains of function calls opaque to the
 #ifndef __MANUVR_XENOSESSION_H
 #define __MANUVR_XENOSESSION_H
 
-// This value is our checksum preload. It helps prevents us from acknowledging
-//   spurious data as a connection attempt.
-#define MANUVRLINK_SERIALIZATION_VERSION   1  // Calculation of new checksums should start with this byte,
-#define MANUVRLINK_INITIAL_SYNC_COUNT     24  // How many sync packets to send before giving up.
+// This value is our checksum preload. Calculation of new checksums should start
+//   with this byte. It helps prevents us from acknowledging spurious data as a
+//   connection attempt.
+#define MANUVRLINK_SERIALIZATION_VERSION   1
+
 #define MANUVRLINK_MAX_PARSE_FAILURES      3  // How many failures-to-parse should we tolerate before SYNCing?
 #define MANUVRLINK_MAX_ACK_FAILURES        3  // How many failures-to-ACK should we tolerate before SYNCing?
-
 #define MANUVRLINK_MAX_QUEUE_PRINT         3  //
 #define MANUVRLINK_FSM_WAYPOINT_DEPTH      8  // How deep is our state planning?
-
 
 /* Class flags for ManuvrLink. */
 #define MANUVRLINK_FLAG_AUTH_REQUIRED   0x00000001  // Set if this session requires authentication.
 #define MANUVRLINK_FLAG_AUTHD           0x00000002  // Set if this session has been authenticated.
-#define MANUVRLINK_FLAG_OVERFLOW_GUARD  0x00000004  // Set to protect the session buffer from overflow.
-#define MANUVRLINK_FLAG_SYNCD           0x00000008  // The link is connected and sync'd.
-#define MANUVRLINK_FLAG_SYNC_INCOMING   0x00000040  // We've seen a sync on this resync cycle.
-#define MANUVRLINK_FLAG_SYNC_CASTING    0x00000080  // We're sending sync on this resync cycle.
+#define MANUVRLINK_FLAG_SYNC_INCOMING   0x00000004  // We've seen a sync on this resync cycle.
+#define MANUVRLINK_FLAG_SYNC_CASTING    0x00000008  // We're sending sync on this resync cycle.
 
 /* These ManuvrLink flags are allowed to be passed in as configuration. */
-#define MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK (MANUVRLINK_FLAG_AUTH_REQUIRED | \
-                                                0)
+#define MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK (MANUVRLINK_FLAG_AUTH_REQUIRED)
 
-/* Class flags for XenoMessage. These will be sent with each message. */
-#define XENOMSG_FLAG_EXPECTING_REPLY       0x01  // This message needs to be ACKd.
-#define XENOMSG_FLAG_IS_REPLY              0x02  // This message IS a reply.
-#define XENOMSG_FLAG_RESERVED_0            0x04  // Must be 0.
-#define XENOMSG_FLAG_RESERVED_1            0x08  // Must be 0.
-#define XENOMSG_FLAG_ENCODES_LENGTH_BYTES  0x30  // Mask for 2-bit field. How many bytes of length are encoded?
-#define XENOMSG_FLAG_ENCODES_ID_BYTES      0xC0  // Mask for 2-bit field. How many bytes of ID are encoded?
+/* Class flags for ManuvrMsg. These will be sent with each message. */
+#define MANUVRMSGHDR_FLAG_EXPECTING_REPLY       0x01  // This message needs to be ACKd.
+#define MANUVRMSGHDR_FLAG_IS_REPLY              0x02  // This message IS a reply.
+#define MANUVRMSGHDR_FLAG_RESERVED_0            0x04  // Must be 0.
+#define MANUVRMSGHDR_FLAG_RESERVED_1            0x08  // Must be 0.
+#define MANUVRMSGHDR_FLAG_ENCODES_LENGTH_BYTES  0x30  // Mask for 2-bit field. How many bytes of length are encoded?
+#define MANUVRMSGHDR_FLAG_ENCODES_ID_BYTES      0xC0  // Mask for 2-bit field. How many bytes of ID are encoded?
 
-#define XENOMSG_FLAG_RESERVED_MASK (XENOMSG_FLAG_RESERVED_0 | XENOMSG_FLAG_RESERVED_1)
+#define MANUVRMSGHDR_FLAG_RESERVED_MASK (MANUVRMSGHDR_FLAG_RESERVED_0 | MANUVRMSGHDR_FLAG_RESERVED_1)
 
 // This value is used to mask-off bytes that are not considered when
 //   testing for a sync packet.
-#define XENOMSG_FLAG_SYNC_MASK  ~(XENOMSG_FLAG_IS_REPLY | XENOMSG_FLAG_EXPECTING_REPLY)
+#define MANUVRMSGHDR_FLAG_SYNC_MASK  ~(MANUVRMSGHDR_FLAG_IS_REPLY | MANUVRMSGHDR_FLAG_EXPECTING_REPLY)
 
 // The minimum header (thus, message) size.
-#define XENOMSG_MINIMUM_HEADER_SIZE  4
+#define MANUVRMSGHDR_MINIMUM_HEADER_SIZE  4
 
 // Which bits are not automatic in the header?
-#define XENOMSG_SETTABLE_FLAG_BITS (XENOMSG_FLAG_RESERVED_MASK | XENOMSG_FLAG_ENCODES_LENGTH_BYTES | XENOMSG_FLAG_ENCODES_ID_BYTES)
-
+#define MANUVRMSGHDR_SETTABLE_FLAG_BITS (MANUVRMSGHDR_FLAG_RESERVED_MASK | \
+                                         MANUVRMSGHDR_FLAG_ENCODES_LENGTH_BYTES | \
+                                         MANUVRMSGHDR_FLAG_ENCODES_ID_BYTES)
 
 /*
 * These are possible states of the link. They confine the space of our
@@ -153,6 +151,12 @@ enum class ManuvrLinkProto : uint8_t {
 };
 
 
+class ManuvrMsg;
+
+/* Callback for application-directed messages from a link. */
+typedef void (*ManuvrMsgCallback)(uint32_t tag, ManuvrMsg*);
+
+
 /*
 * Conf representation for a ManuvrLink.
 *
@@ -194,8 +198,9 @@ class ManuvrLinkOpts {
 
 /*
 * Class representation for a message header.
+* All messages have this data structure in common.
 */
-class XenoMsgHeader {
+class ManuvrMsgHdr {
   public:
     ManuvrMsgCode msg_code;  // The message code.
     uint8_t       flags;     // Flags to be encoded into the message.
@@ -203,23 +208,23 @@ class XenoMsgHeader {
     uint32_t      msg_len;   // Total length of the message (header + payload).
     uint32_t      msg_id;    // A unique ID for this message.
 
-    XenoMsgHeader(const XenoMsgHeader* obj) :
+    ManuvrMsgHdr(const ManuvrMsgHdr* obj) :
       msg_code(obj->msg_code),
       flags(obj->flags),
       chk_byte(obj->chk_byte),
       msg_len(obj->msg_len),
       msg_id(obj->msg_id) {};
 
-    XenoMsgHeader(ManuvrMsgCode, uint8_t pl_len, uint8_t flags, uint32_t i = 0);
-    XenoMsgHeader(ManuvrMsgCode);
-    XenoMsgHeader();
+    ManuvrMsgHdr(ManuvrMsgCode, uint8_t pl_len, uint8_t flags, uint32_t i = 0);
+    ManuvrMsgHdr(ManuvrMsgCode);
+    ManuvrMsgHdr();
 
 
-    inline bool isReply() {        return (flags & XENOMSG_FLAG_IS_REPLY);                     };
-    inline bool expectsReply() {   return (flags & XENOMSG_FLAG_EXPECTING_REPLY);              };
+    inline bool isReply() {        return (flags & MANUVRMSGHDR_FLAG_IS_REPLY);                     };
+    inline bool expectsReply() {   return (flags & MANUVRMSGHDR_FLAG_EXPECTING_REPLY);              };
     inline void expectsReply(bool x) {
-      if (x) flags |= XENOMSG_FLAG_EXPECTING_REPLY;
-      else   flags &= ~XENOMSG_FLAG_EXPECTING_REPLY;
+      if (x) flags |= MANUVRMSGHDR_FLAG_EXPECTING_REPLY;
+      else   flags &= ~MANUVRMSGHDR_FLAG_EXPECTING_REPLY;
     };
 
     void wipe();
@@ -227,35 +232,27 @@ class XenoMsgHeader {
     bool isSync();
     bool serialize(StringBuilder*);
     bool set_payload_length(uint32_t);
-    int header_length();
+    int  header_length();
     inline int payload_length() {  return (msg_len - header_length());    };
     inline int total_length() {    return msg_len;  };
-    inline uint8_t len_length() {  return ((flags & XENOMSG_FLAG_ENCODES_LENGTH_BYTES) >> 4);  };
-    inline uint8_t id_length() {   return ((flags & XENOMSG_FLAG_ENCODES_ID_BYTES) >> 6);      };
+    inline uint8_t len_length() {  return ((flags & MANUVRMSGHDR_FLAG_ENCODES_LENGTH_BYTES) >> 4);  };
+    inline uint8_t id_length() {   return ((flags & MANUVRMSGHDR_FLAG_ENCODES_ID_BYTES) >> 6);      };
     inline uint8_t calc_hdr_chcksm() {
       return (uint8_t) (flags + msg_len + (uint8_t)msg_code + MANUVRLINK_SERIALIZATION_VERSION);
     };
 };
 
 
-
-class XenoMessage;
-
-/* Callback for application-directed messages from a link. */
-typedef void (*ManuvrMsgCallback)(uint32_t tag, XenoMessage*);
-
-
 /**
 * This class represents an singular message between us and a counterparty.
-* TODO: Extend KeyValuePair? Might make things way simpler...
 */
-class XenoMessage {
+class ManuvrMsg {
   public:
-    XenoMessage(KeyValuePair*);   // Construct this way for outbound KVP.
-    XenoMessage(XenoMsgHeader*);  // Construct this way for inbound data.
-    XenoMessage() {};   // Featureless constructor for static allocation.
+    ManuvrMsg(KeyValuePair*);   // Construct this way for outbound KVP.
+    ManuvrMsg(ManuvrMsgHdr*);  // Construct this way for inbound data.
+    ManuvrMsg() {};   // Featureless constructor for static allocation.
 
-    ~XenoMessage();
+    ~ManuvrMsg();
 
     inline bool isReply() {             return _header.isReply();          };
     inline bool expectsReply() {        return _header.expectsReply();     };
@@ -281,8 +278,8 @@ class XenoMessage {
 
 
   private:
-    XenoMsgHeader _header;
-    BusOpcode _op         = BusOpcode::UNDEF;  // TODO: This might be an unwise suggestion.
+    ManuvrMsgHdr _header;
+    BusOpcode _op         = BusOpcode::UNDEF;  // Differentiate between inbound and outbount messages.
     TCode     _encoding   = TCode::BINARY;     // Start out as basic as possible.
     uint8_t   _retries    = 0;    // No retries by default.
     uint8_t   _flags      = 0;    // These are NOT sent with the message.
@@ -315,26 +312,21 @@ class ManuvrLink : public BufferAccepter {
     int8_t provideBuffer(StringBuilder*);
 
     int8_t sendMessage(KeyValuePair*);
+    //int8_t ping();
+    int8_t hangup(bool graceful = true);
+    int8_t poll(StringBuilder* log = nullptr);
 
     void printDebug(StringBuilder*);
     void printFSM(StringBuilder*);
 
-    inline uint32_t linkTag() {      return _session_tag;      };
-    inline ManuvrLinkState getState() {      return _fsm_pos;    };
     inline void setCallback(ManuvrMsgCallback cb) {     _msg_callback = cb;    };
     inline void setOutputTarget(BufferAccepter* obj) {  _output_target = obj;  };
-
-    int8_t hangup(bool graceful = true);
-    int8_t poll(StringBuilder* log = nullptr);
-
-    int8_t scan_buffer_for_sync();
-    void   mark_session_desync(uint8_t desync_source);
-    void   mark_session_sync(bool pending);
-
+    inline uint32_t linkTag() {              return _session_tag;      };
+    inline ManuvrLinkState getState() {      return _fsm_pos;          };
     bool isConnected();
     bool linkIdle();
 
-
+    /* Static support fxns for enums */
     static const bool  msgCodeValid(const ManuvrMsgCode);
     static const char* manuvMsgCodeStr(const ManuvrMsgCode);
     static const char* sessionStateStr(const ManuvrLinkState);
@@ -342,8 +334,8 @@ class ManuvrLink : public BufferAccepter {
 
   private:
     ManuvrLinkOpts    _opts;    // These are the application-provided options for the link.
-    PriorityQueue<XenoMessage*> _outbound_messages;   // Messages that are bound for the counterparty.
-    PriorityQueue<XenoMessage*> _inbound_messages;    // Messages that came from the counterparty.
+    PriorityQueue<ManuvrMsg*> _outbound_messages;   // Messages that are bound for the counterparty.
+    PriorityQueue<ManuvrMsg*> _inbound_messages;    // Messages that came from the counterparty.
     FlagContainer32   _flags;
     ManuvrLinkState   _fsm_waypoints[MANUVRLINK_FSM_WAYPOINT_DEPTH] = {ManuvrLinkState::UNINIT, };
     uint32_t          _fsm_lockout_ms = 0;        // Used to enforce a delay between state transitions.
@@ -357,10 +349,9 @@ class ManuvrLink : public BufferAccepter {
     uint8_t           _seq_ack_fails  = 0;
     uint16_t          _sync_losses    = 0;
 
-    XenoMessage*      _working        = nullptr;  // If we are in the middle of receiving a message,
+    ManuvrMsg*        _working        = nullptr;  // If we are in the middle of receiving a message,
     BufferAccepter*   _output_target  = nullptr;  // A pointer to the transport for outbound bytes.
     ManuvrMsgCallback _msg_callback   = nullptr;  // The application-provided callback for incoming messages.
-    //int8_t            _expected_chk   = 0;
     StringBuilder     _inbound_buf;
     StringBuilder     _local_log;
 
@@ -376,24 +367,24 @@ class ManuvrLink : public BufferAccepter {
     bool     _fsm_is_waiting();
 
     /* High-level state accessors */
-    bool _link_syncd();
+    bool   _link_syncd();
     int8_t _fsm_insert_sync_states();
 
     /* Message queue management */
-    int _purge_inbound();
-    int _purge_outbound();
+    int    _purge_inbound();
+    int    _purge_outbound();
     int8_t _churn_inbound();
     int8_t _churn_outbound();
     int8_t _clear_waiting_reply_by_id(uint32_t);
     int8_t _clear_waiting_send_by_id(uint32_t);
-    int8_t _send_message(XenoMessage*);
+    int8_t _send_message(ManuvrMsg*);
 
     /* Buffers, parsing, and scattered low-level functions */
     void   _reset_class();
     int8_t _relay_to_output_target(StringBuilder*);
-    int8_t _invoke_msg_callback(XenoMessage*);
-    int    _process_for_sync(StringBuilder*);
-    int8_t _attempt_header_parse(XenoMsgHeader*);
+    int8_t _invoke_msg_callback(ManuvrMsg*);
+    int8_t _attempt_header_parse(ManuvrMsgHdr*);
+    int8_t _process_for_sync(StringBuilder*);
     int8_t _send_sync_packet(bool need_reply);
 };
 

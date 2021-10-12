@@ -25,12 +25,12 @@ This program runs tests against the M2M communication class.
 * Basic ManuvrLink functionality
 *******************************************************************************/
 
-void callback_vlad(uint32_t tag, XenoMessage* msg) {
+void callback_vlad(uint32_t tag, ManuvrMsg* msg) {
   printf("callback_vlad(0x%x): \n", tag, msg->uniqueId());
 }
 
 
-void callback_carl(uint32_t tag, XenoMessage* msg) {
+void callback_carl(uint32_t tag, ManuvrMsg* msg) {
   printf("callback_carl(0x%x): \n", tag, msg->uniqueId());
 }
 

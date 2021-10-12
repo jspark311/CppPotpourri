@@ -23,9 +23,6 @@ limitations under the License.
 
 #if defined(CONFIG_MANUVR_M2M_SUPPORT)
 
-// We define the 4th sync byte.
-#define XENOMSG_4TH_SYNC_BYTE (XENOMSG_MINIMUM_HEADER_SIZE + 0x10 + (uint8_t) ManuvrMsgCode::SYNC_KEEPALIVE + MANUVRLINK_SERIALIZATION_VERSION)
-
 /*******************************************************************************
 *      _______.___________.    ___   .___________. __    ______     _______.
 *     /       |           |   /   \  |           ||  |  /      |   /       |
@@ -128,10 +125,15 @@ static int _contains_sync_pattern(StringBuilder* dat_in) {
   uint8_t* buf = dat_in->string();
   int      len = dat_in->length();
   while (i < (len-3)) {
-    if (*(buf + i + 0) == (uint8_t) ManuvrMsgCode::SYNC_KEEPALIVE) {
-      if ((*(buf + i + 1) & XENOMSG_FLAG_SYNC_MASK) == 0x10) {
-        if (*(buf + i + 2) == XENOMSG_MINIMUM_HEADER_SIZE) {
-          if (*(buf + i + 3) == XENOMSG_4TH_SYNC_BYTE) {
+    const uint8_t b0 = *(buf + i + 0);
+    const uint8_t b1 = *(buf + i + 1);
+    const uint8_t b2 = *(buf + i + 2);
+    const uint8_t b3 = *(buf + i + 3);
+    const uint8_t MANUVRMSG_4TH_SYNC_BYTE = (b0 + b1 + b2 + MANUVRLINK_SERIALIZATION_VERSION);
+    if (b0 == (uint8_t) ManuvrMsgCode::SYNC_KEEPALIVE) {
+      if ((b1 & MANUVRMSGHDR_FLAG_SYNC_MASK) == 0x10) {
+        if (b2 == MANUVRMSGHDR_MINIMUM_HEADER_SIZE) {
+          if (b3 == MANUVRMSG_4TH_SYNC_BYTE) {
             return i;
           }
         }
@@ -157,10 +159,16 @@ static void _cull_sync_data(StringBuilder* dat_in) {
   uint8_t* buf = dat_in->string();
   int      len = dat_in->length();
   while (i < (len-3)) {
-    bool bail = (*(buf + i + 0) != (uint8_t) ManuvrMsgCode::SYNC_KEEPALIVE);
-    bail |= ((*(buf + i + 1) & XENOMSG_FLAG_SYNC_MASK) != 0x10);
-    bail |= (*(buf + i + 2) != XENOMSG_MINIMUM_HEADER_SIZE);
-    bail |= (*(buf + i + 3) != XENOMSG_4TH_SYNC_BYTE);
+    const uint8_t b0 = *(buf + i + 0);
+    const uint8_t b1 = *(buf + i + 1);
+    const uint8_t b2 = *(buf + i + 2);
+    const uint8_t b3 = *(buf + i + 3);
+    const uint8_t MANUVRMSG_4TH_SYNC_BYTE = (b0 + b1 + b2 + MANUVRLINK_SERIALIZATION_VERSION);
+
+    bool bail = (b0 != (uint8_t) ManuvrMsgCode::SYNC_KEEPALIVE);
+    bail |= ((b1 & MANUVRMSGHDR_FLAG_SYNC_MASK) != 0x10);
+    bail |= (b2 != MANUVRMSGHDR_MINIMUM_HEADER_SIZE);
+    bail |= (b3 != MANUVRMSG_4TH_SYNC_BYTE);
     if (bail) {
       dat_in->cull(i);
       return;
@@ -264,10 +272,10 @@ int8_t ManuvrLink::poll(StringBuilder* text_return) {
 *          1 for header found, and message complete with no payload.
 *          2 for header found, and message complete with payload.
 */
-int8_t ManuvrLink::_attempt_header_parse(XenoMsgHeader* hdr) {
+int8_t ManuvrLink::_attempt_header_parse(ManuvrMsgHdr* hdr) {
   int8_t ret = -2;
   const int AVAILABLE_LEN = _inbound_buf.length();
-  if (AVAILABLE_LEN >= XENOMSG_MINIMUM_HEADER_SIZE) {
+  if (AVAILABLE_LEN >= MANUVRMSGHDR_MINIMUM_HEADER_SIZE) {
     uint8_t* tmp_buf = _inbound_buf.string();
     hdr->msg_code = (ManuvrMsgCode) *(tmp_buf++);
     hdr->flags    = *(tmp_buf++);
@@ -337,7 +345,7 @@ int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
       _inbound_buf.concatHandoff(buf);
       _inbound_buf.printDebug(&_local_log);
       if (nullptr == _working) {
-        XenoMsgHeader _header;
+        ManuvrMsgHdr _header;
         switch (_attempt_header_parse(&_header)) {
           case -3:  // no header found because the initial bytes are totally wrong. Sync error.
             _fsm_insert_sync_states();
@@ -351,7 +359,7 @@ int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
           case 1:   // header found, and message complete with no payload.
           case 2:   // header found, and message complete with payload.
             _inbound_buf.cull(_header.header_length());
-            _working = new XenoMessage(&_header);
+            _working = new ManuvrMsg(&_header);
             break;
         }
       }
@@ -435,7 +443,7 @@ void ManuvrLink::printDebug(StringBuilder* output) {
   }
 
   if (_working) {
-    output->concat("\n-- XenoMessage in process  ----------------------------\n");
+    output->concat("\n-- ManuvrMsg in process  ----------------------------\n");
     _working->printDebug(output);
   }
   output->concat('\n');
@@ -482,7 +490,7 @@ void ManuvrLink::printFSM(StringBuilder* output) {
 int ManuvrLink::_purge_outbound() {
   int return_value = _outbound_messages.size();
   while (_outbound_messages.hasNext()) {
-    XenoMessage* temp = _outbound_messages.dequeue();
+    ManuvrMsg* temp = _outbound_messages.dequeue();
     delete temp;
   }
   return return_value;
@@ -497,7 +505,7 @@ int ManuvrLink::_purge_outbound() {
 int ManuvrLink::_purge_inbound() {
   int return_value = _inbound_messages.size();
   while (_inbound_messages.hasNext()) {
-    XenoMessage* temp = _inbound_messages.dequeue();
+    ManuvrMsg* temp = _inbound_messages.dequeue();
     delete temp;
   }
   return return_value;
@@ -507,7 +515,7 @@ int ManuvrLink::_purge_inbound() {
 int8_t ManuvrLink::_churn_inbound() {
   int8_t ret = 0;
   while (_inbound_messages.hasNext()) {
-    XenoMessage* temp = _inbound_messages.dequeue();
+    ManuvrMsg* temp = _inbound_messages.dequeue();
     switch (temp->msgCode()) {
       case ManuvrMsgCode::SYNC_KEEPALIVE:
         // We got a sync message. Enter a sync state.
@@ -547,7 +555,7 @@ int8_t ManuvrLink::_churn_inbound() {
 int8_t ManuvrLink::_churn_outbound() {
   int8_t ret = 0;
   for (int i = 0; i < _outbound_messages.size(); i++) {
-    XenoMessage* temp = _outbound_messages.get(i);
+    ManuvrMsg* temp = _outbound_messages.get(i);
     if (nullptr != temp) {
       if (temp->wasSent()) {
         if (_opts.ms_timeout < temp->msSinceSend()) {
@@ -586,7 +594,7 @@ int8_t ManuvrLink::_churn_outbound() {
 int8_t ManuvrLink::_clear_waiting_reply_by_id(uint32_t id) {
   int8_t ret = 0;
   for (int i = 0; i < _inbound_messages.size(); i++) {
-    XenoMessage* temp = _inbound_messages.get(i);
+    ManuvrMsg* temp = _inbound_messages.get(i);
     if (nullptr != temp) {
       if (id == temp->uniqueId()) {
         _inbound_messages.remove(temp);
@@ -607,7 +615,7 @@ int8_t ManuvrLink::_clear_waiting_reply_by_id(uint32_t id) {
 int8_t ManuvrLink::_clear_waiting_send_by_id(uint32_t id) {
   int8_t ret = 0;
   for (int i = 0; i < _outbound_messages.size(); i++) {
-    XenoMessage* temp = _outbound_messages.get(i);
+    ManuvrMsg* temp = _outbound_messages.get(i);
     if (nullptr != temp) {
       if (id == temp->uniqueId()) {
         _outbound_messages.remove(temp);
@@ -656,7 +664,7 @@ int8_t ManuvrLink::_relay_to_output_target(StringBuilder* buf) {
 }
 
 
-int8_t ManuvrLink::_invoke_msg_callback(XenoMessage* msg) {
+int8_t ManuvrLink::_invoke_msg_callback(ManuvrMsg* msg) {
   int8_t ret = 0;
   if (nullptr != _msg_callback) {   // Call the callback, if it is set.
     _msg_callback(_session_tag, msg);
@@ -679,7 +687,7 @@ int8_t ManuvrLink::_invoke_msg_callback(XenoMessage* msg) {
 * @param dat_in  The buffer to search through.
 * @return 0 if no change. -1 on failure. 1 on sync processed and input buffer altered.
 */
-int ManuvrLink::_process_for_sync(StringBuilder* dat_in) {
+int8_t ManuvrLink::_process_for_sync(StringBuilder* dat_in) {
   int ret = 0;
   int i = _contains_sync_pattern(dat_in);
   if (0 <= i) {
@@ -689,7 +697,13 @@ int ManuvrLink::_process_for_sync(StringBuilder* dat_in) {
   }
   else {
     // Without finding a sync packet, we drop the data.
-    dat_in->clear();
+    // Cull to a modulus of 4 bytes.
+    const int AVAILABLE_LEN = dat_in->length();
+    const uint32_t CULL_LEN = ((uint32_t) AVAILABLE_LEN) & 0xFFFFFFFC;
+    if (0 < CULL_LEN) {   // clear() is cheaper than cull().
+      if (AVAILABLE_LEN == CULL_LEN) dat_in->clear();
+      else dat_in->cull(CULL_LEN);
+    }
   }
   return ret;
 }
@@ -698,7 +712,7 @@ int ManuvrLink::_process_for_sync(StringBuilder* dat_in) {
 int8_t ManuvrLink::_send_sync_packet(bool need_reply) {
   int8_t ret = -1;
   StringBuilder sync_packet;
-  XenoMsgHeader sync_header(ManuvrMsgCode::SYNC_KEEPALIVE, 0, (need_reply ? XENOMSG_FLAG_EXPECTING_REPLY : XENOMSG_FLAG_IS_REPLY));
+  ManuvrMsgHdr sync_header(ManuvrMsgCode::SYNC_KEEPALIVE, 0, (need_reply ? MANUVRMSGHDR_FLAG_EXPECTING_REPLY : MANUVRMSGHDR_FLAG_IS_REPLY));
   if (sync_header.serialize(&sync_packet)) {
     ret = (0 < _relay_to_output_target(&sync_packet)) ? 0 : -2;
   }
@@ -1140,161 +1154,6 @@ bool ManuvrLink::_fsm_is_waiting() {
     }
   }
   return ret;
-}
-
-
-
-
-
-
-/*****THE LINE OF FISSION******************************************************/
-
-XenoMsgHeader::XenoMsgHeader() : msg_code(ManuvrMsgCode::UNDEFINED), flags(0), chk_byte(0), msg_len(0), msg_id(0) {}
-
-XenoMsgHeader::XenoMsgHeader(ManuvrMsgCode m) : msg_code(m), flags(0), chk_byte(0), msg_len(0), msg_id(0) {}
-
-XenoMsgHeader::XenoMsgHeader(ManuvrMsgCode m, uint8_t pl_len, uint8_t f, uint32_t i) :
-    msg_code(m), flags(f & ~(XENOMSG_SETTABLE_FLAG_BITS)),
-    chk_byte(0),
-    msg_len(0),
-    msg_id(i & 0x00FFFFFF)
-{
-  uint8_t calcd_id_sz = 0;
-  if (msg_id > 0x00000000) calcd_id_sz++;
-  if (msg_id > 0x000000FF) calcd_id_sz++;
-  if (msg_id > 0x0000FFFF) calcd_id_sz++;
-  flags = ((flags & ~XENOMSG_FLAG_ENCODES_ID_BYTES) | (calcd_id_sz << 6));
-
-  uint8_t calcd_len_sz = 1;
-  uint32_t needed_total_sz = calcd_id_sz + pl_len + XENOMSG_MINIMUM_HEADER_SIZE;
-  if (needed_total_sz > 0x000000FF) calcd_len_sz++;
-  if (needed_total_sz > 0x0000FFFE) calcd_len_sz++;
-  if (needed_total_sz <= 0x00FFFFFD) {  // Anything larger than this is invalid.
-    flags = ((flags & ~XENOMSG_FLAG_ENCODES_LENGTH_BYTES) | (calcd_len_sz << 4));
-    msg_len = needed_total_sz;
-    chk_byte = (uint8_t) (flags + msg_len + (uint8_t)msg_code + MANUVRLINK_SERIALIZATION_VERSION);
-  }
-}
-
-
-void XenoMsgHeader::wipe() {
-    msg_code = ManuvrMsgCode::UNDEFINED;
-    flags    = 0;
-    chk_byte = 0;
-    msg_len  = 0;
-    msg_id   = 0;
-}
-
-
-int XenoMsgHeader::header_length() {
-  int ret = 0;
-  uint8_t len_bytes = (flags & XENOMSG_FLAG_ENCODES_LENGTH_BYTES) >> 4;
-  uint8_t id_bytes  = (flags & XENOMSG_FLAG_ENCODES_ID_BYTES) >> 6;
-  if (len_bytes) {
-    // Byte cost for header:
-    // ManuvrMsgCode  1
-    // Flags          1
-    // Length field   (1, 3)   Length is a required field.
-    // ID field       (0, 3)
-    // Checksum byte  1
-    ret = id_bytes + len_bytes + 3;
-  }
-  return ret;
-}
-
-
-
-bool XenoMsgHeader::serialize(StringBuilder* buf) {
-  bool ret = isValid();
-  if (ret) {
-    const uint8_t len_l = len_length();
-    const uint8_t id_l  = id_length();
-    uint8_t header_bytes[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};  // Maximum size.
-    uint8_t* tmp_buf = &header_bytes[0];
-    *(tmp_buf++) = (uint8_t) msg_code;
-    *(tmp_buf++) = (uint8_t) flags;
-
-    // Write the multibyte value as big-endian.
-    for (uint8_t i = 0; i < len_l; i++) {
-      *(tmp_buf++) = (uint8_t) (msg_len >> (((len_l-1) - i) << 3));
-    }
-
-    // Write the multibyte value as big-endian.
-    for (uint8_t i = 0; i < id_l; i++) {
-      *(tmp_buf++) = (uint8_t) (msg_id >> (((id_l-1) - i) << 3));
-    }
-
-    *(tmp_buf++) = (uint8_t) chk_byte;
-    buf->concat(header_bytes, header_length());
-  }
-  return ret;
-}
-
-
-bool XenoMsgHeader::set_payload_length(uint32_t pl_len) {
-  bool ret = false;
-  uint8_t calcd_len_sz = 1;
-  uint32_t needed_total_sz = id_length() + pl_len + XENOMSG_MINIMUM_HEADER_SIZE;
-  if (needed_total_sz > 0x000000FF) calcd_len_sz++;
-  if (needed_total_sz > 0x0000FFFE) calcd_len_sz++;
-  if (needed_total_sz <= 0x00FFFFFD) {  // Anything larger than this is invalid.
-    flags = ((flags & ~XENOMSG_FLAG_ENCODES_LENGTH_BYTES) | (calcd_len_sz << 4));
-    msg_len = needed_total_sz;
-    chk_byte = calc_hdr_chcksm();
-    ret = true;
-  }
-  return ret;
-}
-
-
-bool XenoMsgHeader::isValid() {
-  bool ret = false;
-  if (flags == (flags & ~XENOMSG_FLAG_RESERVED_MASK)) {   // Reserved flag bits are 0?
-    if (XENOMSG_MINIMUM_HEADER_SIZE >= header_length()) { // 4 bytes is the minimum header length.
-      if (ManuvrLink::msgCodeValid(msg_code)) {           // Valid message code?
-        uint8_t calcd_id_sz  = 0;
-        uint8_t calcd_len_sz = 0;
-        if (msg_id > 0x00000000) calcd_id_sz++;
-        if (msg_id > 0x000000FF) calcd_id_sz++;
-        if (msg_id > 0x0000FFFF) calcd_id_sz++;
-        if (msg_id > 0x00FFFFFF) calcd_id_sz++;
-        if (msg_len > 0x00000000) calcd_len_sz++;
-        if (msg_len > 0x000000FF) calcd_len_sz++;
-        if (msg_len > 0x0000FFFF) calcd_len_sz++;
-        if (msg_len > 0x00FFFFFF) calcd_len_sz++;
-
-        if (calcd_id_sz == id_length()) {                 // Is the ID field properly sized?
-          if (calcd_id_sz == id_length()) {               // Is the len field properly sized?
-            if (msg_len >= XENOMSG_MINIMUM_HEADER_SIZE) {   // If the total length is legal...
-              if (calcd_len_sz == len_length()) {           // Is the length field properly sized?
-                if (chk_byte == calc_hdr_chcksm()) {       // Does the checksum match?
-                }
-                // Reply logic needs an ID if the message isn't a sync frame.
-                if (ManuvrMsgCode::SYNC_KEEPALIVE != msg_code) {
-                  ret = ((isReply() | expectsReply()) == (0 < id_length()));
-                }
-                else {   ret = true;   }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  return ret;
-}
-
-
-bool XenoMsgHeader::isSync() {
-  bool ret = false;
-  if (ManuvrMsgCode::SYNC_KEEPALIVE == msg_code) {
-    if ((flags & XENOMSG_FLAG_SYNC_MASK) == 0x10) {
-      if (msg_len == XENOMSG_MINIMUM_HEADER_SIZE) {
-        ret = (chk_byte == calc_hdr_chcksm());
-      }
-    }
-  }
-  return false;
 }
 
 #endif   // CONFIG_MANUVR_M2M_SUPPORT

@@ -35,20 +35,20 @@ limitations under the License.
 /**
 * Constructor for an outbound message.
 */
-XenoMessage::XenoMessage(KeyValuePair* kvp) : _header(ManuvrMsgCode::APPLICATION), _op(BusOpcode::TX) {
+ManuvrMsg::ManuvrMsg(KeyValuePair* kvp) : _header(ManuvrMsgCode::APPLICATION), _op(BusOpcode::TX) {
   _kvp = kvp;
 }
 
 /**
 * Constructor for an inbound message.
 */
-XenoMessage::XenoMessage(XenoMsgHeader* hdr) : _header(hdr), _op(BusOpcode::RX) {
+ManuvrMsg::ManuvrMsg(ManuvrMsgHdr* hdr) : _header(hdr), _op(BusOpcode::RX) {
 }
 
 /**
 * Destructor.
 */
-XenoMessage::~XenoMessage() {
+ManuvrMsg::~ManuvrMsg() {
 }
 
 
@@ -60,7 +60,7 @@ XenoMessage::~XenoMessage() {
 /**
 * Sometimes we might want to re-use this allocated object rather than free it.
 */
-void XenoMessage::wipe() {
+void ManuvrMsg::wipe() {
   _op          = BusOpcode::UNDEF;
   _encoding    = TCode::BINARY;
   _flags       = 0;
@@ -69,7 +69,7 @@ void XenoMessage::wipe() {
 }
 
 
-bool XenoMessage::isValidMsg() {
+bool ManuvrMsg::isValidMsg() {
   bool ret = false;
   switch (_op) {
     case BusOpcode::RX:
@@ -104,7 +104,7 @@ bool XenoMessage::isValidMsg() {
 *
 * @return  nonzero if there was a problem.
 */
-int XenoMessage::reply(KeyValuePair* kvp) {
+int ManuvrMsg::reply(KeyValuePair* kvp) {
   int ret = -1;
   return ret;
 }
@@ -115,21 +115,21 @@ int XenoMessage::reply(KeyValuePair* kvp) {
 *
 * @param   StringBuilder* The buffer into which this fxn should write its output.
 */
-void XenoMessage::printDebug(StringBuilder* output) {
+void ManuvrMsg::printDebug(StringBuilder* output) {
   output->concatf("\t ManuvrMsg [%s: %s], id: %u\n", BusOp::getOpcodeString(_op), ManuvrLink::manuvMsgCodeStr(_header.msg_code), _header.msg_id);
   output->concatf("\t   %u bytes of %u expected payload with %s encoding.\n", _accumulator.length(), _header.payload_length(), typecodeToStr(_encoding));
 }
 
 
 // Application calls this to gain access to the message payload.
-int XenoMessage::getPayload(KeyValuePair**) {
+int ManuvrMsg::getPayload(KeyValuePair**) {
   int ret = -1;
   return ret;
 }
 
 
 // Application calls this to set the message payload.
-int XenoMessage::setPayload(KeyValuePair*) {
+int ManuvrMsg::setPayload(KeyValuePair*) {
   int ret = -1;
   return ret;
 }
@@ -146,7 +146,7 @@ int XenoMessage::setPayload(KeyValuePair*) {
 *
 * @return 0 on success, nonzero on failure.
 */
-int XenoMessage::serialize(StringBuilder* buf) {
+int ManuvrMsg::serialize(StringBuilder* buf) {
   int ret = -1;
   StringBuilder payload;
   if (nullptr != _kvp) {
@@ -178,7 +178,7 @@ int XenoMessage::serialize(StringBuilder* buf) {
 *         0 on accumulation without completion.
 *        -1 on unserializer error.
 */
-int XenoMessage::accumulate(StringBuilder* buf) {
+int ManuvrMsg::accumulate(StringBuilder* buf) {
   int ret = 1;
   int bytes_remaining = _header.payload_length() - _accumulator.length();
   int bytes_incoming  = buf->length();
