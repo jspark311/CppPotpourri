@@ -214,8 +214,10 @@ template <typename T> class Vector3 {
     {   return (T)acosf((v1*v2) / (v1.length()*v2.length()));  }
 
     // computes the angle between 2 arbitrary normalized vectors
+    // NOTE: The minimum check is to prevent floating point rounding from
+    //   causing a domain error in acosf().
     static inline T angle_normalized(const Vector3<T> &v1, const Vector3<T> &v2)
-    {   return (T)acosf(v1*v2);  }
+    {   return (T)acosf(strict_min(1.0, v1*v2));  }
 
 };
 
