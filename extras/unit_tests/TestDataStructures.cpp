@@ -125,8 +125,10 @@ int vector3_float_test() {
                   if (result_vect_3 != test_vect_3) {
                     result_vect_3.normalize();   // Independently normalized vector.
                     if (result_vect_3 == test_vect_3) {
+                      print0 = &result_vect_3;
+                      print1 = &test_vect_3;
                       float angle_0 = Vector3<float>::angle_normalized(result_vect_3, test_vect_3);
-                      if (0.0 == round(100 * angle_0)) {
+                      if (0.0 == round(1000 * angle_0)) {
                         test_vect_2.reflect(x_axis);
                         float angle_1 = Vector3<float>::angle(test_vect_2, x_axis);
                         float angle_2 = Vector3<float>::angle(test_vect_2, test_vect_4);
@@ -153,7 +155,7 @@ int vector3_float_test() {
                         }
                         else log.concatf("The angle between vector0 and its reflection about vector1 should be twice the angle between vector0 nad vector1, but got %.3f and %.3f, respectively.\n", angle_1, angle_2);
                       }
-                      else log.concatf("The angle between two equal vectors should be 0.0, but got %.3f.\n", angle_0);
+                      else log.concatf("The angle between two equal vectors should be 0.0, but got %.6f.\n", angle_0);
                     }
                     else log.concat("Failed vector equality test.\n");
                   }

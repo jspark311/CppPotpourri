@@ -59,17 +59,34 @@ int8_t random_fill(uint8_t* buf, uint len) {
   return 0;
 }
 
-unsigned long micros() {
-	uint32_t ret = 0;
-	struct timeval current;
-	gettimeofday(&current, nullptr);
-	return (current.tv_usec - start_micros.tv_usec);
-}
-
-unsigned long millis() {
+/*
+* Not provided elsewhere on a linux platform.
+*/
+long unsigned millis() {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return (ts.tv_sec * 1000 + ts.tv_nsec / 1000000L);
+}
+
+/*
+* Not provided elsewhere on a linux platform.
+*/
+long unsigned micros() {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (ts.tv_sec * 1000000L + ts.tv_nsec / 1000L);
+}
+
+
+/* Delay functions */
+void sleep_ms(uint32_t ms) {
+  struct timespec t = {(long) (ms / 1000), (long) ((ms % 1000) * 1000000UL)};
+  nanosleep(&t, &t);
+}
+
+void sleep_us(uint32_t us) {
+  struct timespec t = {(long) (us / 1000000), (long) ((us % 1000000) * 1000000UL)};
+  nanosleep(&t, &t);
 }
 
 

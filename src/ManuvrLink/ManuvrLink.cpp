@@ -220,9 +220,19 @@ ManuvrLink::~ManuvrLink() {
 * This should be called periodically to service events in the link.
 */
 int8_t ManuvrLink::poll(StringBuilder* text_return) {
+  uint32_t now = millis();
   _churn_inbound();
   _churn_outbound();
   _poll_fsm();
+  // If we need to send an obligatory sync packet, do so.
+  if (_flags.value(MANUVRLINK_FLAG_SYNC_CASTING)) {
+    if (wrap_accounted_delta(_ms_last_send, now) > _opts.ms_keepalive) {
+      if (0 == _send_sync_packet(true)) {
+        _ms_last_send = now;
+      }
+    }
+  }
+  // Aggregate or trash any logs...
   if (_local_log.length() > 0) {
     // If the link has generated logs...
     if (nullptr != text_return) {
@@ -234,6 +244,58 @@ int8_t ManuvrLink::poll(StringBuilder* text_return) {
     }
   }
   return 0;
+}
+
+
+
+/**
+* Take the accumulated bytes from the transport and try to put them into their
+*   respective slots in a header object.
+* If we can do that, see if the header makes sense.
+* If it does make sense, check for message completeness.
+*
+* This function will assume good sync, and a packet starting at offset zero.
+*
+* @param hdr A blank header object.
+* @return -3 for no header found because the initial bytes are totally wrong. Sync error.
+*         -2 for no header found because not enough bytes to complete it.
+*         -1 for header found, but total size exceeds MTU.
+*          0 for header found, but message incomplete.
+*          1 for header found, and message complete with no payload.
+*          2 for header found, and message complete with payload.
+*/
+int8_t ManuvrLink::_attempt_header_parse(XenoMsgHeader* hdr) {
+  int8_t ret = -2;
+  const int AVAILABLE_LEN = _inbound_buf.length();
+  if (AVAILABLE_LEN >= XENOMSG_MINIMUM_HEADER_SIZE) {
+    uint8_t* tmp_buf = _inbound_buf.string();
+    hdr->msg_code = (ManuvrMsgCode) *(tmp_buf++);
+    hdr->flags    = *(tmp_buf++);
+
+    const uint8_t len_l = hdr->len_length();
+    const uint8_t id_l  = hdr->id_length();
+    if (hdr->header_length() <= AVAILABLE_LEN) {
+      // Write the multibyte value as big-endian.
+      for (uint8_t i = 0; i < len_l; i++) hdr->msg_len = ((hdr->msg_len << 8) | *(tmp_buf++));
+      for (uint8_t i = 0; i < id_l; i++)  hdr->msg_id  = ((hdr->msg_id << 8)  | *(tmp_buf++));
+      hdr->chk_byte = *(tmp_buf++);
+      ret = -3;
+      if (hdr->chk_byte == hdr->calc_hdr_chcksm()) {       // Does the checksum match?
+        ret = -1;
+        if (hdr->total_length() > _opts.mtu) {
+          ret = 1;
+          if (0 < hdr->payload_length()) {
+            ret = (hdr->total_length() > AVAILABLE_LEN) ? 0 : 2;
+          }
+        }
+      }
+    }
+  }
+
+  if (_verbosity > 6) {
+    _local_log.concatf("ManuvrLink (tag: 0x%x) _attempt_header_parse returned %d.\n", _session_tag, ret);
+  }
+  return ret;
 }
 
 
@@ -253,7 +315,19 @@ int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
     case ManuvrLinkState::SYNC_CASTING:
       _inbound_buf.concatHandoff(buf);
       _inbound_buf.printDebug(&_local_log);
-      _process_for_sync(&_inbound_buf);
+      if (_inbound_buf.length() >= 4) {
+        switch (_process_for_sync(&_inbound_buf)) {
+          case 0:   // No change in the inbound data.
+            _flags.clear(MANUVRLINK_FLAG_SYNC_CASTING);
+            break;
+          case 1:   // Sync processed and input buffer altered.
+            _local_log.concatf("Link 0x%x processed sync.\n", _session_tag);
+            break;
+          default:
+            _local_log.concatf("Link 0x%x returned failure when sync processing.\n", _session_tag);
+            break;
+        }
+      }
       break;
 
     case ManuvrLinkState::SYNC_TENTATIVE:  // We have exchanged sync packets with the counterparty.
@@ -263,14 +337,25 @@ int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
       _inbound_buf.concatHandoff(buf);
       _inbound_buf.printDebug(&_local_log);
       if (nullptr == _working) {
-        if (_inbound_buf.length() >= 4) {
-          XenoMsgHeader _header;
-          _working = new XenoMessage(&_header);
-          _working->accumulate(&_inbound_buf);
+        XenoMsgHeader _header;
+        switch (_attempt_header_parse(&_header)) {
+          case -3:  // no header found because the initial bytes are totally wrong. Sync error.
+            _fsm_insert_sync_states();
+            _sync_losses++;
+            break;
+          case -2:  // no header found because not enough bytes to complete it. Wait for more accumulation.
+            break;
+          case -1:  // header found, but total size exceeds MTU.
+            break;
+          case 0:   // header found, but message incomplete.
+          case 1:   // header found, and message complete with no payload.
+          case 2:   // header found, and message complete with payload.
+            _inbound_buf.cull(_header.header_length());
+            _working = new XenoMessage(&_header);
+            break;
         }
       }
       if (nullptr != _working) {
-        _inbound_buf.concatHandoff(buf);
         _working->accumulate(&_inbound_buf);
         if (_working->rxComplete()) {
           if (_working->isValidMsg()) {
@@ -603,6 +688,7 @@ int ManuvrLink::_process_for_sync(StringBuilder* dat_in) {
     _cull_sync_data(dat_in);
   }
   else {
+    // Without finding a sync packet, we drop the data.
     dat_in->clear();
   }
   return ret;
@@ -659,26 +745,17 @@ int8_t ManuvrLink::_poll_fsm() {
 
     // Exit conditions:
     case ManuvrLinkState::SYNC_CASTING:
-      fsm_advance = true;
+      fsm_advance = !_flags.value(MANUVRLINK_FLAG_SYNC_CASTING);
       break;
 
     // Exit conditions: Incoming data is no longer preceeded by sync packets.
     case ManuvrLinkState::SYNC_TENTATIVE:
-      if (_inbound_buf.length() >= 4) {
-        switch (_process_for_sync(&_inbound_buf)) {
-          case 0:   // No change in the inbound data.
-          case 1:   // Sync processed and input buffer altered.
-            fsm_advance = (_inbound_buf.length() >= 4);
-            break;
-          default:
-            _local_log.concatf("Link 0x%x returned failure when sync processing.\n", _session_tag);
-            break;
-        }
-      }
+      fsm_advance = true;
       break;
 
     // Exit conditions: An acceptable authentication has happened.
     case ManuvrLinkState::PENDING_AUTH:
+      fsm_advance = true;
       break;
 
     // Exit conditions: These states are canonically stable. So we advance when
@@ -742,22 +819,22 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
       //   begin expecting sync packets. Entry always succeeds.
       case ManuvrLinkState::SYNC_BEGIN:
         _inbound_buf.clear();
+        _flags.clear(MANUVRLINK_FLAG_SYNC_CASTING | MANUVRLINK_FLAG_SYNC_INCOMING);
         state_entry_success = true;
         break;
 
       // Entry into SYNC_CASTING means we begin blindly emitting sync on the
       //   default timeout interval.
       case ManuvrLinkState::SYNC_CASTING:
-        if (wrap_accounted_delta(_ms_last_send, now) > _opts.ms_timeout) {
-          state_entry_success = (0 == _send_sync_packet(true));
-        }
+        state_entry_success = (0 == _send_sync_packet(true));
+        _flags.set(MANUVRLINK_FLAG_SYNC_CASTING, state_entry_success);
         break;
 
       // Entry into SYNC_CASTING requires that sync packets have been exchanged,
       //   and non-sync data has not yet been located.
       case ManuvrLinkState::SYNC_TENTATIVE:
-        if (_flags.value(MANUVRLINK_FLAG_SYNC_INCOMING) && _flags.value(MANUVRLINK_FLAG_SYNC_CASTING)) {
-        }
+        _flags.clear(MANUVRLINK_FLAG_SYNC_INCOMING);
+        state_entry_success = true;
         break;
 
       case ManuvrLinkState::PENDING_AUTH:
@@ -1018,6 +1095,28 @@ bool ManuvrLink::isConnected() {
 
 
 /**
+* Is the link idle? Not connected implies not idle.
+* Empty buffers. Empty message queues. In sync.
+*
+* @return true if so. False otherwise.
+*/
+bool ManuvrLink::linkIdle() {
+  if (ManuvrLinkState::ESTABLISHED == _fsm_pos) {
+    if (0 < _outbound_messages.size()) {
+      if (0 < _inbound_messages.size()) {
+        if (nullptr == _working) {
+          if (_inbound_buf.isEmpty()) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
+
+/**
 * Is this object syncd with a remote version of itself?
 *
 * @return true if so. False otherwise.
@@ -1141,7 +1240,7 @@ bool XenoMsgHeader::set_payload_length(uint32_t pl_len) {
   if (needed_total_sz <= 0x00FFFFFD) {  // Anything larger than this is invalid.
     flags = ((flags & ~XENOMSG_FLAG_ENCODES_LENGTH_BYTES) | (calcd_len_sz << 4));
     msg_len = needed_total_sz;
-    chk_byte = (uint8_t) (flags + msg_len + (uint8_t)msg_code + MANUVRLINK_SERIALIZATION_VERSION);
+    chk_byte = calc_hdr_chcksm();
     ret = true;
   }
   return ret;
@@ -1168,6 +1267,8 @@ bool XenoMsgHeader::isValid() {
           if (calcd_id_sz == id_length()) {               // Is the len field properly sized?
             if (msg_len >= XENOMSG_MINIMUM_HEADER_SIZE) {   // If the total length is legal...
               if (calcd_len_sz == len_length()) {           // Is the length field properly sized?
+                if (chk_byte == calc_hdr_chcksm()) {       // Does the checksum match?
+                }
                 // Reply logic needs an ID if the message isn't a sync frame.
                 if (ManuvrMsgCode::SYNC_KEEPALIVE != msg_code) {
                   ret = ((isReply() | expectsReply()) == (0 < id_length()));
@@ -1181,6 +1282,19 @@ bool XenoMsgHeader::isValid() {
     }
   }
   return ret;
+}
+
+
+bool XenoMsgHeader::isSync() {
+  bool ret = false;
+  if (ManuvrMsgCode::SYNC_KEEPALIVE == msg_code) {
+    if ((flags & XENOMSG_FLAG_SYNC_MASK) == 0x10) {
+      if (msg_len == XENOMSG_MINIMUM_HEADER_SIZE) {
+        ret = (chk_byte == calc_hdr_chcksm());
+      }
+    }
+  }
+  return false;
 }
 
 #endif   // CONFIG_MANUVR_M2M_SUPPORT

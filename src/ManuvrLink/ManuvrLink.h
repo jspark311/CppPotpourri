@@ -162,6 +162,7 @@ enum class ManuvrLinkProto : uint8_t {
 class ManuvrLinkOpts {
   public:
     uint32_t ms_timeout;     // How many ms of dead air constitutes a timeout?
+    uint32_t ms_keepalive;   // How often in a connected session ought we ping?
     uint32_t mtu;            // Largest message we will accept.
     uint32_t default_flags;  // Largest message we will accept.
     uint8_t  PADDING;
@@ -171,6 +172,7 @@ class ManuvrLinkOpts {
 
     ManuvrLinkOpts(const ManuvrLinkOpts* obj) :
       ms_timeout(obj->ms_timeout),
+      ms_keepalive(obj->ms_keepalive),
       mtu(obj->mtu),
       default_flags(MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK & obj->default_flags),
       PADDING(0),
@@ -178,8 +180,9 @@ class ManuvrLinkOpts {
       max_ack_fails(obj->max_ack_fails),
       encoding(obj->encoding) {};
 
-    ManuvrLinkOpts(uint32_t msto, uint32_t m, uint32_t def_flgs = 0) :
+    ManuvrLinkOpts(uint32_t msto, uint32_t mska, uint32_t m, uint32_t def_flgs = 0) :
       ms_timeout(msto),
+      ms_keepalive(mska),
       mtu(m),
       default_flags(MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK & def_flgs),
       PADDING(0),
@@ -221,16 +224,17 @@ class XenoMsgHeader {
 
     void wipe();
     bool isValid();
+    bool isSync();
     bool serialize(StringBuilder*);
     bool set_payload_length(uint32_t);
     int header_length();
     inline int payload_length() {  return (msg_len - header_length());    };
     inline int total_length() {    return msg_len;  };
-
-
-  private:
     inline uint8_t len_length() {  return ((flags & XENOMSG_FLAG_ENCODES_LENGTH_BYTES) >> 4);  };
     inline uint8_t id_length() {   return ((flags & XENOMSG_FLAG_ENCODES_ID_BYTES) >> 6);      };
+    inline uint8_t calc_hdr_chcksm() {
+      return (uint8_t) (flags + msg_len + (uint8_t)msg_code + MANUVRLINK_SERIALIZATION_VERSION);
+    };
 };
 
 
@@ -328,6 +332,7 @@ class ManuvrLink : public BufferAccepter {
     void   mark_session_sync(bool pending);
 
     bool isConnected();
+    bool linkIdle();
 
 
     static const bool  msgCodeValid(const ManuvrMsgCode);
@@ -383,12 +388,12 @@ class ManuvrLink : public BufferAccepter {
     int8_t _clear_waiting_send_by_id(uint32_t);
     int8_t _send_message(XenoMessage*);
 
-
     /* Buffers, parsing, and scattered low-level functions */
     void   _reset_class();
     int8_t _relay_to_output_target(StringBuilder*);
     int8_t _invoke_msg_callback(XenoMessage*);
     int    _process_for_sync(StringBuilder*);
+    int8_t _attempt_header_parse(XenoMsgHeader*);
     int8_t _send_sync_packet(bool need_reply);
 };
 

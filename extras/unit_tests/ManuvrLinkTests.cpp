@@ -36,20 +36,25 @@ void callback_carl(uint32_t tag, XenoMessage* msg) {
 
 
 bool poll_until_finished(ManuvrLink* vlad, ManuvrLink* carl) {
-  int maximum_polling_cycles = 1000;
+  int polling_cycles = 0;
   bool idle = false;
-  while ((0 < maximum_polling_cycles) & (!idle)) {
+  uint32_t now = millis();
+  uint32_t timeout_start = now;
+  uint32_t timeout_end   = timeout_start + 5000;
+  while ((now < timeout_end) & (!idle)) {
     StringBuilder log_v;
     StringBuilder log_c;
     vlad->poll(&log_v);
     carl->poll(&log_c);
-    //idle = true;
-    if (0 < log_v.length()) {   printf("Vlad (%04d):   %s", (1000 - maximum_polling_cycles), (const char*) log_v.string());  }
-    if (0 < log_c.length()) {   printf("Carl (%04d):   %s", (1000 - maximum_polling_cycles), (const char*) log_c.string());  }
-    maximum_polling_cycles--;
+    idle = vlad->linkIdle() & carl->linkIdle();
+    if (0 < log_v.length()) {   printf("Vlad (%06d):   %s", polling_cycles, (const char*) log_v.string());  }
+    if (0 < log_c.length()) {   printf("Carl (%06d):   %s", polling_cycles, (const char*) log_c.string());  }
+    polling_cycles++;
+    sleep_ms(1);
+    now = millis();
   }
-  printf("poll_until_finished completed in %d cycles.\n", (1000-maximum_polling_cycles));
-  return (0 < maximum_polling_cycles);
+  printf("poll_until_finished completed in %d cycles.\n", polling_cycles);
+  return (now < timeout_end);
 }
 
 
@@ -73,10 +78,14 @@ int link_tests_build_and_connect(ManuvrLink* vlad, ManuvrLink* carl) {
     // Now connect each of them to their respective application callbacks.
     vlad->setCallback(callback_vlad);
     carl->setCallback(callback_carl);
-    poll_until_finished(vlad, carl);
+    if (poll_until_finished(vlad, carl)) {
+      log.concat("Vlad and Carl are syncd and in an established session.\n");
+      ret = 0;
+    }
+    else log.concat("The polling loop ran to its maximum extent. Link dead-locked.\n");
+    log.concat("\n");
     vlad->printDebug(&log);
     carl->printDebug(&log);
-
   }
   else log.concat("Failed to allocate two ManuvrLinks.\n");
   printf("%s\n\n", (const char*) log.string());
@@ -139,8 +148,18 @@ int link_tests_corrupted_transport(ManuvrLink* vlad, ManuvrLink* carl) {
 * @return 0 on success. Nonzero otherwise.
 */
 int manuvrlink_main() {
-  ManuvrLinkOpts opts_vlad(40, 1024);
-  ManuvrLinkOpts opts_carl(40, 1024);
+  ManuvrLinkOpts opts_vlad(
+    5,     // ACK timeout is 5ms. Vlad is impatient.
+    2000,  // Send a KA every 2s.
+    2048,  // MTU for this link is 2 kibi.
+    0      // No flags.
+  );
+  ManuvrLinkOpts opts_carl(
+    40,    // ACK timeout is 40ms.
+    2000,  // Send a KA every 2s.
+    1024,  // MTU for this link is 1 kibi.
+    0      // No flags.
+  );
   ManuvrLink* vlad = new ManuvrLink(&opts_vlad);  // One half of the link.
   ManuvrLink* carl = new ManuvrLink(&opts_carl);  // One half of the link.
   int ret = link_tests_build_and_connect(vlad, carl);
