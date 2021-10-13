@@ -73,9 +73,13 @@ TODO: Since this class renders large chains of function calls opaque to the
 #define MANUVRLINK_FLAG_AUTHD           0x00000002  // Set if this session has been authenticated.
 #define MANUVRLINK_FLAG_SYNC_INCOMING   0x00000004  // We've seen a sync on this resync cycle.
 #define MANUVRLINK_FLAG_SYNC_CASTING    0x00000008  // We're sending sync on this resync cycle.
+#define MANUVRLINK_FLAG_SYNC_REPLY_RXD  0x00000010  // We've seen a sync on this resync cycle.
+#define MANUVRLINK_FLAG_ESTABLISHED     0x00000020  // We've exchanged CONNECT messages.
 
-/* These ManuvrLink flags are allowed to be passed in as configuration. */
+// These ManuvrLink flags are allowed to be passed in as configuration.
 #define MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK (MANUVRLINK_FLAG_AUTH_REQUIRED)
+// These ManuvrLink flags survive class reset.
+#define MANUVRLINK_FLAG_RESET_PRESERVE_MASK (MANUVRLINK_FLAG_AUTH_REQUIRED)
 
 /* Class flags for ManuvrMsg. These will be sent with each message. */
 #define MANUVRMSGHDR_FLAG_EXPECTING_REPLY       0x01  // This message needs to be ACKd.
@@ -109,7 +113,7 @@ enum class ManuvrLinkState : uint8_t {
   SYNC_RESYNC    = 0x02,  // Casting sync, and awaiting like replies.
   SYNC_TENTATIVE = 0x03,  // Stop casting sync. Churn until non-sync data arrives.
   PENDING_AUTH   = 0x04,  // Waiting on optional authentication.
-  ESTABLISHED    = 0x05,  // Session is in the nominal state.
+  IDLE           = 0x05,  // Session is in the nominal state.
   PENDING_HANGUP = 0x06,  // Session hangup is imminent.
   HUNGUP         = 0x07   // Session is hungup and pending cleanup for re-use.
 };
@@ -218,8 +222,12 @@ class ManuvrMsgHdr {
     ManuvrMsgHdr(ManuvrMsgCode, uint8_t pl_len, uint8_t flags, uint32_t i = 0);
 
 
-    inline bool isReply() {        return (flags & MANUVRMSGHDR_FLAG_IS_REPLY);                     };
-    inline bool expectsReply() {   return (flags & MANUVRMSGHDR_FLAG_EXPECTING_REPLY);              };
+    inline bool isReply() {        return (flags & MANUVRMSGHDR_FLAG_IS_REPLY);         };
+    inline bool expectsReply() {   return (flags & MANUVRMSGHDR_FLAG_EXPECTING_REPLY);  };
+    inline bool isReply(bool x) {
+      if (x) flags |= MANUVRMSGHDR_FLAG_IS_REPLY;
+      else   flags &= ~MANUVRMSGHDR_FLAG_IS_REPLY;
+    };
     inline void expectsReply(bool x) {
       if (x) flags |= MANUVRMSGHDR_FLAG_EXPECTING_REPLY;
       else   flags &= ~MANUVRMSGHDR_FLAG_EXPECTING_REPLY;
@@ -238,6 +246,7 @@ class ManuvrMsgHdr {
     inline uint8_t calc_hdr_chcksm() {
       return (uint8_t) (flags + msg_len + (uint8_t)msg_code + MANUVRLINK_SERIALIZATION_VERSION);
     };
+    inline void rebuild_checksum() {   chk_byte = calc_hdr_chcksm();    };
 };
 
 
@@ -247,25 +256,27 @@ class ManuvrMsgHdr {
 class ManuvrMsg {
   public:
     ManuvrMsg(KeyValuePair*);  // Construct this way for outbound KVP.
-    ManuvrMsg(ManuvrMsgHdr*);  // Construct this way for inbound data.
+    ManuvrMsg(ManuvrMsgHdr*, BusOpcode dir = BusOpcode::RX);
     ManuvrMsg() {};            // Featureless constructor for static allocation.
     ~ManuvrMsg();
 
-    /* Inline accessors for the message header */
-    inline bool isReply() {             return _header.isReply();        };
+    /* Accessors for the message header */
+    inline void expectsReply(bool);
     inline bool expectsReply() {        return _header.expectsReply();   };
-    inline void expectsReply(bool x) {  return _header.expectsReply(x);  };
+    inline bool isReply() {             return _header.isReply();        };
     inline ManuvrMsgCode msgCode() {    return _header.msg_code;         };
     inline uint32_t uniqueId() {        return _header.msg_id;           };
 
     /* Inlines for message status markers. */
-    inline void     markSent() {     _ms_io_mark = millis();                                     };
-    inline bool     wasSent() {      return (_ms_io_mark != 0);                                  };
-    inline uint32_t msSinceSend() {  return wrap_accounted_delta(_ms_io_mark, millis());         };
-    inline bool     rxComplete() {   return (_accumulator.length() == _header.payload_length()); };
+    inline void      markSent() {     _ms_io_mark = millis();                                     };
+    inline BusOpcode direction() {    return _op;                                                 };
+    inline bool      wasSent() {      return (_ms_io_mark != 0);                                  };
+    inline uint32_t  msSinceSend() {  return wrap_accounted_delta(_ms_io_mark, millis());         };
+    inline bool      rxComplete() {   return (_accumulator.length() == _header.payload_length()); };
 
     void  wipe();                      // Put this object into a fresh state for re-use.
     bool  isValidMsg();
+    inline int   ack() {  return reply(nullptr);  };
     int   reply(KeyValuePair*);
     int   getPayload(KeyValuePair**);  // Application calls this to gain access to the message payload.
     int   setPayload(KeyValuePair*);   // Application calls this to set the message payload.
@@ -311,7 +322,7 @@ class ManuvrLink : public BufferAccepter {
     /* Application glue */
     int8_t poll(StringBuilder* log = nullptr);
     int8_t hangup(bool graceful = true);
-    bool   isConnected();
+    inline bool   isConnected() {  return _flags.value(MANUVRLINK_FLAG_ESTABLISHED);   };
     bool   linkIdle();
     //int8_t sendMessage(KeyValuePair*);
     //int8_t ping();
@@ -368,9 +379,13 @@ class ManuvrLink : public BufferAccepter {
     int8_t _relay_to_output_target(StringBuilder*);
     int8_t _invoke_msg_callback(ManuvrMsg*);
     int8_t _attempt_header_parse(ManuvrMsgHdr*);
+    int8_t _process_input_buffer();
     int8_t _process_for_sync(StringBuilder*);
-    int8_t _send_sync_packet(bool need_reply);
     bool   _link_syncd();
+
+    /* Internal macros for sending messages confined to this class. */
+    int8_t _send_sync_packet(bool need_reply);
+    int8_t _send_connect_message();
 
     /* State machine functions */
     int8_t   _poll_fsm();

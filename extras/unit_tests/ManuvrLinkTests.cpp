@@ -59,7 +59,6 @@ bool poll_until_finished(ManuvrLink* vlad, ManuvrLink* carl) {
 
 
 
-
 /*
 * Setup two Link objects, and connect them together.
 * Note that this test is entirely synthetic. The pathway looks like this...
@@ -149,7 +148,7 @@ int link_tests_corrupted_transport(ManuvrLink* vlad, ManuvrLink* carl) {
 */
 int manuvrlink_main() {
   ManuvrLinkOpts opts_vlad(
-    5,     // ACK timeout is 5ms. Vlad is impatient.
+    100,   // ACK timeout is 100ms. Vlad is patient.
     2000,  // Send a KA every 2s.
     2048,  // MTU for this link is 2 kibi.
     0      // No flags.
@@ -164,11 +163,11 @@ int manuvrlink_main() {
   ManuvrLink* carl = new ManuvrLink(&opts_carl);  // One half of the link.
   int ret = link_tests_build_and_connect(vlad, carl);
   if (0 == ret) {
-    ret = link_tests_simple_messages(vlad, carl);
-    if (0 == ret) {
-      ret = 0;
-    }
-    else printTestFailure("link_tests_simple_messages");
+    //ret = link_tests_simple_messages(vlad, carl);
+    //if (0 == ret) {
+    //  ret = 0;
+    //}
+    //else printTestFailure("link_tests_simple_messages");
   }
   else printTestFailure("link_tests_build_and_connect");
 

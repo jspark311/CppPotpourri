@@ -41,7 +41,7 @@ const char* ManuvrLink::sessionStateStr(const ManuvrLinkState CODE) {
     case ManuvrLinkState::SYNC_RESYNC:      return "SYNC_RESYNC";
     case ManuvrLinkState::SYNC_TENTATIVE:   return "SYNC_TENTATIVE";
     case ManuvrLinkState::PENDING_AUTH:     return "PENDING_AUTH";
-    case ManuvrLinkState::ESTABLISHED:      return "ESTABLISHED";
+    case ManuvrLinkState::IDLE:             return "IDLE";
     case ManuvrLinkState::PENDING_HANGUP:   return "PENDING_HANGUP";
     case ManuvrLinkState::HUNGUP:           return "HUNGUP";
     default:                                return "<UNKNOWN>";
@@ -99,7 +99,7 @@ static const bool _link_fsm_code_valid(const ManuvrLinkState CODE) {
     case ManuvrLinkState::SYNC_RESYNC:
     case ManuvrLinkState::SYNC_TENTATIVE:
     case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::ESTABLISHED:
+    case ManuvrLinkState::IDLE:
     case ManuvrLinkState::PENDING_HANGUP:
     case ManuvrLinkState::HUNGUP:
       return true;
@@ -125,11 +125,11 @@ static int _contains_sync_pattern(StringBuilder* dat_in) {
     const uint8_t b1 = *(buf + i + 1);
     const uint8_t b2 = *(buf + i + 2);
     const uint8_t b3 = *(buf + i + 3);
-    const uint8_t MANUVRMSG_4TH_SYNC_BYTE = (b0 + b1 + b2 + MANUVRLINK_SERIALIZATION_VERSION);
+    const uint8_t EXPECTED_4TH_SYNC_BYTE = (b0 + b1 + b2 + MANUVRLINK_SERIALIZATION_VERSION);
     if (b0 == (uint8_t) ManuvrMsgCode::SYNC_KEEPALIVE) {
       if ((b1 & MANUVRMSGHDR_FLAG_SYNC_MASK) == 0x10) {
         if (b2 == MANUVRMSGHDR_MINIMUM_HEADER_SIZE) {
-          if (b3 == MANUVRMSG_4TH_SYNC_BYTE) {
+          if (b3 == EXPECTED_4TH_SYNC_BYTE) {
             return i;
           }
         }
@@ -158,12 +158,12 @@ static void _cull_sync_data(StringBuilder* dat_in) {
     const uint8_t b1 = *(buf + i + 1);
     const uint8_t b2 = *(buf + i + 2);
     const uint8_t b3 = *(buf + i + 3);
-    const uint8_t MANUVRMSG_4TH_SYNC_BYTE = (b0 + b1 + b2 + MANUVRLINK_SERIALIZATION_VERSION);
+    const uint8_t EXPECTED_4TH_SYNC_BYTE = (b0 + b1 + b2 + MANUVRLINK_SERIALIZATION_VERSION);
 
     bool bail = (b0 != (uint8_t) ManuvrMsgCode::SYNC_KEEPALIVE);
     bail |= ((b1 & MANUVRMSGHDR_FLAG_SYNC_MASK) != 0x10);
     bail |= (b2 != MANUVRMSGHDR_MINIMUM_HEADER_SIZE);
-    bail |= (b3 != MANUVRMSG_4TH_SYNC_BYTE);
+    bail |= (b3 != EXPECTED_4TH_SYNC_BYTE);
     if (bail) {
       dat_in->cull(i);
       return;
@@ -190,13 +190,6 @@ static void _cull_sync_data(StringBuilder* dat_in) {
 * Constructor
 */
 ManuvrLink::ManuvrLink(const ManuvrLinkOpts* opts) : _opts(opts) {
-  _set_fsm_route(3, ManuvrLinkState::PENDING_SETUP, ManuvrLinkState::SYNC_RESYNC, ManuvrLinkState::SYNC_TENTATIVE);
-  if (_flags.value(MANUVRLINK_FLAG_AUTH_REQUIRED)) {
-    _append_fsm_route(2, ManuvrLinkState::PENDING_AUTH, ManuvrLinkState::ESTABLISHED);
-  }
-  else {
-    _append_fsm_route(1, ManuvrLinkState::ESTABLISHED);
-  }
 }
 
 
@@ -231,82 +224,14 @@ int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
 
   switch (_fsm_pos) {   // Consider the session state.
     case ManuvrLinkState::SYNC_RESYNC:
-      _inbound_buf.concatHandoff(buf);
-      _inbound_buf.printDebug(&_local_log);
-      if (_inbound_buf.length() >= 4) {
-        switch (_process_for_sync(&_inbound_buf)) {
-          case 0:   // No change in the inbound data.
-            _flags.clear(MANUVRLINK_FLAG_SYNC_CASTING);
-            _local_log.concatf("Link 0x%x processed sync (no change).\n", _session_tag);
-            break;
-          case 1:   // Sync processed and input buffer altered.
-            _local_log.concatf("Link 0x%x processed sync.\n", _session_tag);
-            break;
-          default:
-            _local_log.concatf("Link 0x%x returned failure when sync processing.\n", _session_tag);
-            break;
-        }
-      }
-      break;
-
     case ManuvrLinkState::SYNC_TENTATIVE:  // We have exchanged sync packets with the counterparty.
     case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::ESTABLISHED:    // The nominal case. Session is in-sync. Do nothing.
+    case ManuvrLinkState::IDLE:            // The nominal case. Session is in-sync. Do nothing.
     case ManuvrLinkState::PENDING_HANGUP:
       _inbound_buf.concatHandoff(buf);
-      _inbound_buf.printDebug(&_local_log);
-      if (nullptr == _working) {
-        ManuvrMsgHdr _header;
-        switch (_attempt_header_parse(&_header)) {
-          case -3:  // no header found because the initial bytes are totally wrong. Sync error.
-            _fsm_insert_sync_states();
-            _sync_losses++;
-            break;
-          case -2:  // no header found because not enough bytes to complete it. Wait for more accumulation.
-            break;
-          case -1:  // header found, but total size exceeds MTU.
-            break;
-          case 0:   // header found, but message incomplete.
-          case 1:   // header found, and message complete with no payload.
-          case 2:   // header found, and message complete with payload.
-            _inbound_buf.cull(_header.header_length());
-            _working = new ManuvrMsg(&_header);
-            break;
-        }
-      }
-      if (nullptr != _working) {
-        _working->accumulate(&_inbound_buf);
-        if (_working->rxComplete()) {
-          if (_working->isValidMsg()) {
-            _inbound_messages.insert(_working);
-            _seq_parse_errs = 0;
-          }
-          else {
-            _seq_parse_errs++;
-            if (_seq_parse_errs >= MANUVRLINK_MAX_PARSE_FAILURES) {
-              // If we failed to parse too many times in-a-row, we assume the
-              //   session is desyncd. Delete the bad message, and steer the
-              //   session toward re-sync.
-              if (_verbosity > 5) {
-                _local_log.concatf("ManuvrLink (tag: 0x%x) experienced a parse failure:\n", _session_tag);
-                _working->printDebug(&_local_log);
-              }
-              _fsm_insert_sync_states();
-              _sync_losses++;
-            }
-          }
-          _working = nullptr;
-        }
-      }
       break;
-
-    case ManuvrLinkState::UNINIT:
-    case ManuvrLinkState::PENDING_SETUP: // We're getting data before we are setup to proc it.
-    case ManuvrLinkState::HUNGUP:
-      buf->clear();  // Drop the data.
-      break;
-
     default:
+      buf->clear();  // In any other case, drop the data.
       break;
   }
 
@@ -323,6 +248,7 @@ int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
 */
 int8_t ManuvrLink::poll(StringBuilder* text_return) {
   uint32_t now = millis();
+  _process_input_buffer();
   _churn_inbound();
   _churn_outbound();
   _poll_fsm();
@@ -363,7 +289,7 @@ int8_t ManuvrLink::hangup(bool graceful) {
     case ManuvrLinkState::SYNC_RESYNC:
     case ManuvrLinkState::SYNC_TENTATIVE:
     case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::ESTABLISHED:
+    case ManuvrLinkState::IDLE:
       if (graceful) {
         ret = _append_fsm_route(3, ManuvrLinkState::PENDING_HANGUP, ManuvrLinkState::HUNGUP, ManuvrLinkState::PENDING_SETUP);
       }
@@ -388,32 +314,15 @@ int8_t ManuvrLink::hangup(bool graceful) {
 
 
 /**
-* Is this object out of the setup phase and exchanging data?
-*
-* @return true if so. False otherwise.
-*/
-bool ManuvrLink::isConnected() {
-  switch (_fsm_pos) {
-    case ManuvrLinkState::SYNC_RESYNC:
-    case ManuvrLinkState::SYNC_TENTATIVE:
-    case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::ESTABLISHED:
-    case ManuvrLinkState::PENDING_HANGUP:
-      return true;
-  }
-  return false;
-}
-
-/**
 * Is the link idle? Not connected implies not idle.
 * Empty buffers. Empty message queues. In sync.
 *
 * @return true if so. False otherwise.
 */
 bool ManuvrLink::linkIdle() {
-  if (ManuvrLinkState::ESTABLISHED == _fsm_pos) {
-    if (0 < _outbound_messages.size()) {
-      if (0 < _inbound_messages.size()) {
+  if (ManuvrLinkState::IDLE == _fsm_pos) {
+    if (0 == _outbound_messages.size()) {
+      if (0 == _inbound_messages.size()) {
         if (nullptr == _working) {
           return (_inbound_buf.isEmpty());
         }
@@ -439,6 +348,14 @@ void ManuvrLink::printDebug(StringBuilder* output) {
   StringBuilder temp("ManuvrLink ");
   temp.concatf("(tag: 0x%x)", _session_tag);
   StringBuilder::styleHeader2(output, (const char*) temp.string());
+  output->concatf("\tConnected:     %c\n", _flags.value(MANUVRLINK_FLAG_ESTABLISHED) ? 'y':'n');
+  output->concatf("\tSync incoming: %c\n", _flags.value(MANUVRLINK_FLAG_SYNC_INCOMING) ? 'y':'n');
+  output->concatf("\tSync casting:  %c\n", _flags.value(MANUVRLINK_FLAG_SYNC_CASTING) ? 'y':'n');
+  output->concatf("\tSync replies:  %c\n", _flags.value(MANUVRLINK_FLAG_SYNC_REPLY_RXD) ? 'y':'n');
+
+  if (_flags.value(MANUVRLINK_FLAG_AUTH_REQUIRED)) {
+    output->concatf("\tAuth'd:        %c\n", _flags.value(MANUVRLINK_FLAG_AUTHD) ? 'y':'n');
+  }
   output->concatf("\tMTU:           %u\n", _opts.mtu);
   output->concatf("\tTimeout:       %ums\n", _opts.ms_timeout);
   output->concatf("\tLast outbound: %ums ago\n", (now - _ms_last_send));
@@ -541,13 +458,55 @@ int8_t ManuvrLink::_churn_inbound() {
   int8_t ret = 0;
   while (_inbound_messages.hasNext()) {
     ManuvrMsg* temp = _inbound_messages.dequeue();
+
+    if (_verbosity > 6) {
+      _local_log.concatf("ManuvrLink (tag: 0x%x) responding to...\n", _session_tag);
+      temp->printDebug(&_local_log);
+    }
+
     switch (temp->msgCode()) {
       case ManuvrMsgCode::SYNC_KEEPALIVE:
-        // We got a sync message. Enter a sync state.
-        _fsm_insert_sync_states();
+        // We got a sync message. Is it a reply?
+        if (temp->isReply()) {   // If so, we can stop casting now.
+          _flags.set(MANUVRLINK_FLAG_SYNC_REPLY_RXD);
+          _flags.clear(MANUVRLINK_FLAG_SYNC_CASTING);
+        }
+        else {
+          // If not, we need to reply, since the lower-tier logic has
+          //   stopped doing so.
+          _send_sync_packet(false);
+        }
+        delete temp;  // Clean up the allocation.
         break;
 
       case ManuvrMsgCode::CONNECT:
+        if (temp->isReply()) {
+          if (!_flags.value(MANUVRLINK_FLAG_ESTABLISHED)) {
+            _flags.set(MANUVRLINK_FLAG_ESTABLISHED);
+            if (_fsm_is_stable()) {
+              if (_flags.value(MANUVRLINK_FLAG_AUTH_REQUIRED)) {
+                _append_fsm_route(2, ManuvrLinkState::PENDING_AUTH, ManuvrLinkState::IDLE);
+              }
+              else {
+                _append_fsm_route(1, ManuvrLinkState::IDLE);
+              }
+            }
+          }
+        }
+        else if (temp->expectsReply()) {
+          //_flags.set(MANUVRLINK_FLAG_ESTABLISHED, (0 == temp->ack()));
+          if (0 != temp->ack()) {
+            _local_log.concatf("ManuvrLink (tag: 0x%x) Failed to reply to CONNECT\n", _session_tag);
+          }
+          StringBuilder temp_out;
+          temp->serialize(&temp_out);
+          temp->printDebug(&_local_log);
+          _relay_to_output_target(&temp_out);
+          //_clear_waiting_reply_by_id(temp->uniqueId());
+        }
+        delete temp;  // Clean up the allocation.
+        break;
+
       case ManuvrMsgCode::PROTOCOL:
       case ManuvrMsgCode::AUTH_CHALLENGE:
         break;
@@ -668,6 +627,7 @@ void ManuvrLink::_reset_class() {
     delete _working;
     _working = nullptr;
   }
+  _flags.clear(~MANUVRLINK_FLAG_RESET_PRESERVE_MASK);
   _session_tag    = 0;
   _ms_last_send   = 0;
   _ms_last_rec    = 0;
@@ -744,7 +704,7 @@ int8_t ManuvrLink::_attempt_header_parse(ManuvrMsgHdr* hdr) {
       ret = -3;
       if (hdr->chk_byte == hdr->calc_hdr_chcksm()) {       // Does the checksum match?
         ret = -1;
-        if (hdr->total_length() > _opts.mtu) {
+        if (hdr->total_length() <= _opts.mtu) {
           ret = 1;
           if (0 < hdr->payload_length()) {
             ret = (hdr->total_length() > AVAILABLE_LEN) ? 0 : 2;
@@ -761,40 +721,265 @@ int8_t ManuvrLink::_attempt_header_parse(ManuvrMsgHdr* hdr) {
 }
 
 
+/**
+* Consumes the class's input accumulation buffer, considering state, and driving
+*   state reactions accordingly.
+* For shorter stacks, and greater concurrency safety (including on the wire),
+*   this function should only be called in the poll() function's stack frame.
+*   This eliminates the risk of sending because we received because we
+*   sent because....
+*
+* @return 0 on
+*/
+int8_t ManuvrLink::_process_input_buffer() {
+  const int AVAILABLE_LENGTH = _inbound_buf.length();
+  int8_t ret = 0;
+  bool proc_fallthru = false;
+
+  if (_verbosity > 6) _inbound_buf.printDebug(&_local_log);
+
+  switch (_fsm_pos) {
+    // If the link is actively trying to attain sync...
+    case ManuvrLinkState::SYNC_RESYNC:
+      proc_fallthru = (2 == _process_for_sync(&_inbound_buf));
+      //switch (_process_for_sync(&_inbound_buf)) {
+      //  case -1:   // insufficient length. No change to input data.
+      //    break;
+      //  case 0:    // no sync was found and so the input data was maximally culled.
+      //  case 1:    // sync found and search ended because we ran out of data to cull.
+      //    break;
+      //  case 2:    // sync found and search ended because sync ceased repeating.
+      //    proc_fallthru = true;
+      //    break;
+      //  default:   // Should be impossible.
+      //    break;
+      //}
+      break;
+
+    // The link believes that the input buffer is neatly-justified, but has yet
+    //   to see something other than sync come across. We don't want to react
+    //   to incoming sync, other than to remove it and continue the general
+    //   parse, if possible.
+    case ManuvrLinkState::SYNC_TENTATIVE:
+
+      // if (AVAILABLE_LENGTH >= MANUVRMSGHDR_MINIMUM_HEADER_SIZE) {
+      //   // If there are enough bytes in the buffer to check for sync...
+      //   if (-1 == _contains_sync_pattern(&_inbound_buf)) {
+      //     // ...and there is no remaining sync data, take the link out of its
+      //     //   present condition of uncertainty, and start the general parse.
+      //     _flags.clear(MANUVRLINK_FLAG_SYNC_INCOMING);
+      //     proc_fallthru = true;
+      //   }
+      //   else {
+      //     _cull_sync_data(&_inbound_buf);
+      //     if (_inbound_buf.length() >= 4) {
+      //       _flags.clear(MANUVRLINK_FLAG_SYNC_INCOMING);
+             proc_fallthru = true;
+      //     }
+      //   }
+      //
+      //
+      //   //else if (2 == _process_for_sync(&_inbound_buf)) {
+      //   //  // Otherise, there is still sync data coming across. If there is
+      //   //  // cull it, while reacting to the packets, as usual.
+      //   //  _flags.clear(MANUVRLINK_FLAG_SYNC_INCOMING);
+      //   //  proc_fallthru = true;
+      //   //}
+      // }
+
+
+
+      break;
+
+    case ManuvrLinkState::PENDING_AUTH:
+    case ManuvrLinkState::IDLE:
+    case ManuvrLinkState::PENDING_HANGUP:
+      proc_fallthru = true;
+      break;
+
+    // In any other state, do nothing, and leave the input buffer alone.
+    default:
+      break;
+  }
+
+  if (proc_fallthru) {
+    if (_inbound_buf.length() >= 4) {
+      if (nullptr == _working) {
+        ManuvrMsgHdr _header;
+        switch (_attempt_header_parse(&_header)) {
+          case -3:  // no header found because the initial bytes are totally wrong. Sync error.
+            _fsm_insert_sync_states();
+            _sync_losses++;
+            break;
+          case -2:  // no header found because not enough bytes to complete it. Wait for more accumulation.
+            break;
+          case -1:  // header found, but total size exceeds MTU.
+            break;
+          case 0:   // header found, but message incomplete.
+          case 1:   // header found, and message complete with no payload.
+          case 2:   // header found, and message complete with payload.
+            _inbound_buf.cull(_header.header_length());
+            _working = new ManuvrMsg(&_header);
+            break;
+        }
+      }
+      if (nullptr != _working) {
+        _working->accumulate(&_inbound_buf);
+        if (_working->rxComplete()) {
+          if (_working->isValidMsg()) {
+            _inbound_messages.insert(_working);
+            _seq_parse_errs = 0;
+          }
+          else {
+            _seq_parse_errs++;
+            if (_seq_parse_errs >= MANUVRLINK_MAX_PARSE_FAILURES) {
+              // If we failed to parse too many times in-a-row, we assume the
+              //   session is desyncd. Delete the bad message, and steer the
+              //   session toward re-sync.
+              if (_verbosity > 5) {
+                _local_log.concatf("ManuvrLink (tag: 0x%x) experienced a parse failure:\n", _session_tag);
+                _working->printDebug(&_local_log);
+              }
+              _fsm_insert_sync_states();
+              _sync_losses++;
+            }
+            delete _working;
+          }
+          _working = nullptr;
+        }
+      }
+    }
+  }
+  return ret;
+}
+
 /*******************************************************************************
 * Functions for managing and reacting to sync states.                          *
 *******************************************************************************/
 
 /**
-* Given a StringBuilder full of incoming data, search for and remove sync data.
-* Culls the sync-related leading bytes of the buffer, if found.
-* Initiates a sync reply, if needed.
+* Scan a StringBuilder for the protocol's sync pattern, and remove any data
+*   fitting the pattern, for as long as the pattern holds.
+* Only call this function if sync is required, since it will disregard any
+*   non-sync message boundaries in the data.
+* The only case where this function will NOT cull from the input data is if the
+*   length of the input data was less than MANUVRMSGHDR_MINIMUM_HEADER_SIZE.
+* Sets the SYNC_INCOMING flag if the received sync is a reply.
+* Sends a reply sync if the received sync demands a reply.
 *
 * @param dat_in  The buffer to search through.
-* @return 0 if no change. -1 on failure. 1 on sync processed and input buffer altered.
+* @return -1 on insufficient length. No change to input data.
+*          0 if no sync was found and so the input data was maximally culled.
+*          1 if sync found and search ended because we ran out of data to cull.
+*          2 if sync found and search ended because sync ceased repeating.
 */
 int8_t ManuvrLink::_process_for_sync(StringBuilder* dat_in) {
-  int ret = 0;
+  const int AVAILABLE_LEN = dat_in->length();
+  int ret = -1;
   int i = _contains_sync_pattern(dat_in);
   if (0 <= i) {
-    ret = 1;  // Found sync data, and we are about to change the buffer.
-    if (i != 0) {
-      dat_in->cull(i);  // Left-justify the buffer against the first sync found.
+    // Found sync data, and we are about to change the buffer. But before we
+    //   cull the sync packet, note if it is a reply. We might-should
+    //   take further action.
+    ret = 1;
+    uint8_t* buf          = dat_in->string();
+    int      len          = dat_in->length();
+    int      sync_0_idx   = i;  // Correct for cases where (0 != offset % 4).
+    bool     keep_looping = ((AVAILABLE_LEN-i) >= MANUVRMSGHDR_MINIMUM_HEADER_SIZE);
+    bool     set_sync     = false;
+    bool     send_sync    = false;
+
+    // This loop culls all of the sync data from the buffer, carefully noting
+    //   the reply flags for each sync so discarded.
+    while (keep_looping) {
+      // Grab all the comparison bytes.
+      const uint8_t b0 = *(buf + sync_0_idx + 0);  // msg_code
+      const uint8_t b1 = *(buf + sync_0_idx + 1);  // flags
+      const uint8_t b2 = *(buf + sync_0_idx + 2);  // length
+      const uint8_t b3 = *(buf + sync_0_idx + 3);  // chksum
+      const uint8_t MANUVRMSG_4TH_SYNC_BYTE = (b0 + b1 + b2 + MANUVRLINK_SERIALIZATION_VERSION);
+
+      // In order to search for more data, we need at least the minimum header
+      //   length, beyond what we just looked at.
+      bool enough_4_nxt_loop = ((sync_0_idx + (MANUVRMSGHDR_MINIMUM_HEADER_SIZE << 1)) <= AVAILABLE_LEN);
+
+      // Is the current index the start of a sync packet?
+      bool bail = (b0 != (uint8_t) ManuvrMsgCode::SYNC_KEEPALIVE);
+      bail |= ((b1 & MANUVRMSGHDR_FLAG_SYNC_MASK) != 0x10);
+      bail |= (b2 != MANUVRMSGHDR_MINIMUM_HEADER_SIZE);
+      bail |= (b3 != MANUVRMSG_4TH_SYNC_BYTE);
+
+      if (!bail) {
+        // If this packet was sync, accumulate flags.
+        set_sync  |= (b1 & MANUVRMSGHDR_FLAG_IS_REPLY);
+        send_sync |= (b1 & MANUVRMSGHDR_FLAG_EXPECTING_REPLY);
+      }
+      else {
+        // Otherwise, the search may have ended because we found the last sync.
+        if (enough_4_nxt_loop) {
+          // But we can only know this if there is enough length remaining to
+          //   prove us wrong.
+          ret = 2;
+        }
+      }
+
+      // Keep looping as long as we are still seeing sync, and there is enough
+      //   buffer remaining to test for another one.
+      keep_looping = (enough_4_nxt_loop & !bail);
+      if (keep_looping) {
+        sync_0_idx += MANUVRMSGHDR_MINIMUM_HEADER_SIZE;
+      }
     }
-    _flags.set(MANUVRLINK_FLAG_SYNC_INCOMING);
-    _cull_sync_data(dat_in);
+
+    // Left-justify the buffer against the beginning of the packet that
+    //   breaks the sequence of syncs, if such a pattern was found. If not,
+    //   drop all the data up-to the terminal %4 bytes.
+    // NOTE: It is safe to pass 0 as an argument to cull(). Nothing will happen.
+    dat_in->cull(sync_0_idx);
+
+    // Finally, consider the things we discovered about the syncs we just
+    //   dropped, and act accordingly.
+    if (set_sync) {
+      // If we got a sync reply, mark the class as such and stop casting.
+      _flags.set(MANUVRLINK_FLAG_SYNC_INCOMING);
+      _flags.set(MANUVRLINK_FLAG_SYNC_REPLY_RXD);
+    }
+    if (send_sync) {
+      // If a sync packet demanded a reply, issue it unconditionally.
+      // Issues a single reply to possibly many syncs that demanded one. So
+      //   class logic needs to respect the fact that sync packets will not
+      //   necesarilly get sync replies in a 1:1 ratio.
+      _send_sync_packet(false);
+    }
   }
   else {
     // Without finding a sync packet, we drop the data.
     // Cull to a modulus of 4 bytes so as not to drop data we haven't tested.
-    const int AVAILABLE_LEN = dat_in->length();
     const uint32_t CULL_LEN = ((uint32_t) AVAILABLE_LEN) & 0xFFFFFFFC;
     if (0 < CULL_LEN) {   // clear() is cheaper than cull().
-      if (AVAILABLE_LEN == CULL_LEN) dat_in->clear();
-      else dat_in->cull(CULL_LEN);
+      ret = 0;
+      if (AVAILABLE_LEN == CULL_LEN) {  dat_in->clear();         }
+      else {                            dat_in->cull(CULL_LEN);  }
     }
   }
+  if (_verbosity > 6) _local_log.concatf("Link 0x%x _process_for_sync() returned %d.\n", _session_tag, ret);
   return ret;
+}
+
+
+/**
+* Is this object syncd with a remote version of itself?
+*
+* @return true if so. False otherwise.
+*/
+bool ManuvrLink::_link_syncd() {
+  switch (_fsm_pos) {
+    case ManuvrLinkState::PENDING_AUTH:
+    case ManuvrLinkState::IDLE:
+    case ManuvrLinkState::PENDING_HANGUP:
+      return true;
+  }
+  return false;
 }
 
 
@@ -810,19 +995,19 @@ int8_t ManuvrLink::_send_sync_packet(bool need_reply) {
 }
 
 
-/**
-* Is this object syncd with a remote version of itself?
-*
-* @return true if so. False otherwise.
-*/
-bool ManuvrLink::_link_syncd() {
-  switch (_fsm_pos) {
-    case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::ESTABLISHED:
-    case ManuvrLinkState::PENDING_HANGUP:
-      return true;
+int8_t ManuvrLink::_send_connect_message() {
+  int8_t ret = -1;
+  // TODO: For now, this will just send a connection packet.
+  StringBuilder connect_packet;
+  ManuvrMsgHdr connect_header(ManuvrMsgCode::CONNECT, 0, true);
+  ManuvrMsg connect_msg(&connect_header, BusOpcode::TX);
+  connect_msg.printDebug(&_local_log);
+
+  if (connect_header.serialize(&connect_packet)) {
+    ret = (0 < _relay_to_output_target(&connect_packet)) ? 0 : -2;
   }
-  return false;
+  else if (3 < _verbosity) _local_log.concatf("Link 0x%x failed to serialize a connect header.\n", _session_tag);
+  return ret;
 }
 
 
@@ -849,6 +1034,9 @@ int8_t ManuvrLink::_poll_fsm() {
     //   need.
     case ManuvrLinkState::UNINIT:
       fsm_advance = ((nullptr != _output_target) & (nullptr != _msg_callback));
+      if (fsm_advance) {   // Make sure we have somewhere to advance INTO.
+        _set_fsm_route(3, ManuvrLinkState::PENDING_SETUP, ManuvrLinkState::SYNC_RESYNC, ManuvrLinkState::SYNC_TENTATIVE);
+      }
       break;
 
     // Exit conditions: The class has seen the first data for this session.
@@ -859,14 +1047,16 @@ int8_t ManuvrLink::_poll_fsm() {
 
     // Exit conditions:
     case ManuvrLinkState::SYNC_RESYNC:
-      fsm_advance = !_flags.value(MANUVRLINK_FLAG_SYNC_CASTING);
+      if (_flags.value(MANUVRLINK_FLAG_SYNC_CASTING)) {
+        fsm_advance = _flags.value(MANUVRLINK_FLAG_SYNC_CASTING);
+      }
       break;
 
     // Exit conditions: Incoming data is no longer preceeded by sync packets.
     case ManuvrLinkState::SYNC_TENTATIVE:
-      if (!_inbound_buf.isEmpty(true)) {
+      if (!_flags.value(MANUVRLINK_FLAG_SYNC_CASTING)) {
+        fsm_advance = _flags.value(MANUVRLINK_FLAG_ESTABLISHED);
       }
-      fsm_advance = true;
       break;
 
     // Exit conditions: An acceptable authentication has happened.
@@ -876,7 +1066,7 @@ int8_t ManuvrLink::_poll_fsm() {
 
     // Exit conditions: These states are canonically stable. So we advance when
     //   the state is not stable (the driver has somewhere else it wants to be).
-    case ManuvrLinkState::ESTABLISHED:
+    case ManuvrLinkState::IDLE:
       fsm_advance = !_fsm_is_stable();
       break;
 
@@ -928,37 +1118,59 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
         break;
 
       // Entry into SYNC_CASTING means we trash any unprocessed inbound data, and
-      //   begin emitting and expecting sync packets. Entry always succeeds.
+      //   begin emitting and expecting sync packets. Entry is contingent on a
+      //   successful TX of a sync packet.
       case ManuvrLinkState::SYNC_RESYNC:
         _inbound_buf.clear();
-        _flags.clear(MANUVRLINK_FLAG_SYNC_CASTING | MANUVRLINK_FLAG_SYNC_INCOMING);
+        if (nullptr != _working) {
+          delete _working;
+          _working = nullptr;
+        }
+        _flags.clear(MANUVRLINK_FLAG_SYNC_INCOMING | MANUVRLINK_FLAG_SYNC_REPLY_RXD);
         state_entry_success = (0 == _send_sync_packet(true));
         _flags.set(MANUVRLINK_FLAG_SYNC_CASTING, state_entry_success);
         break;
 
-      // Entry into SYNC_CASTING requires that sync packets have been exchanged,
-      //   and non-sync data has not yet been located.
+
+
+      // Entry into SYNC_TENTATIVE requires that sync packets have been
+      //   exchanged, and the start of non-sync data has yet to be located.
+      //   Entry always succeeds.
       case ManuvrLinkState::SYNC_TENTATIVE:
-        _flags.clear(MANUVRLINK_FLAG_SYNC_INCOMING);
-        state_entry_success = true;
+        state_entry_success = (0 == _send_connect_message());
+        if (state_entry_success) {
+          //_flags.clear(MANUVRLINK_FLAG_SYNC_CASTING);
+        }
+        else {
+          if (3 < _verbosity) _local_log.concatf("Link 0x%x failed to send initial connect.\n", _session_tag);
+        }
         break;
 
+      // Entry into PENDING_AUTH means we have successfully dispatched an
+      //   authentication message.
       case ManuvrLinkState::PENDING_AUTH:
+        state_entry_success = true;   // TODO: This entire feature.
+        break;
+
+      // Entry into IDLE means we reset any sync-related flags.
+      //   Entry always succeeds.
+      case ManuvrLinkState::IDLE:
+        _flags.clear(MANUVRLINK_FLAG_SYNC_INCOMING | MANUVRLINK_FLAG_SYNC_REPLY_RXD);
         state_entry_success = true;
         break;
 
-      case ManuvrLinkState::ESTABLISHED:
-        state_entry_success = true;
-        break;
-
+      // Entry into PENDING_HANGUP means we have successfully dispatched a
+      //   message notifying our counterparty of our desire to hang-up, and are
+      //   now waiting on the handshake to complete.
       case ManuvrLinkState::PENDING_HANGUP:
-        state_entry_success = true;
+        state_entry_success = true;   // TODO: This
         break;
 
       // Entry into HUNGUP involves clearing/releasing any buffers and states
-      //   from the prior session.
+      //   from the prior session. Entry always succeeds.
       case ManuvrLinkState::HUNGUP:
         _reset_class();
+        state_entry_success = true;
         break;
 
       // Entry into any other state is disallowed.

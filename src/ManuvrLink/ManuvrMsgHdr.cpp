@@ -42,6 +42,14 @@ ManuvrMsgHdr::ManuvrMsgHdr(ManuvrMsgCode m, uint8_t pl_len, uint8_t f, uint32_t 
     msg_len(0),
     msg_id(i & 0x00FFFFFF)
 {
+  if ((f & MANUVRMSGHDR_FLAG_EXPECTING_REPLY) & (0 == i)) {
+    // Assign an ID automatically, if needed.
+    if (ManuvrMsgCode::SYNC_KEEPALIVE != m) {
+      // SYNC is allowed to have a reply with no ID.
+      msg_id = (0x00FFFFFF & randomUInt32());
+    }
+  }
+
   uint8_t calcd_id_sz = 0;
   if (msg_id > 0x00000000) calcd_id_sz++;
   if (msg_id > 0x000000FF) calcd_id_sz++;
@@ -140,7 +148,7 @@ bool ManuvrMsgHdr::serialize(StringBuilder* buf) {
 bool ManuvrMsgHdr::isValid() {
   bool ret = false;
   if (flags == (flags & ~MANUVRMSGHDR_FLAG_RESERVED_MASK)) {   // Reserved flag bits are 0?
-    if (MANUVRMSGHDR_MINIMUM_HEADER_SIZE >= header_length()) { // 4 bytes is the minimum header length.
+    if (MANUVRMSGHDR_MINIMUM_HEADER_SIZE <= header_length()) { // 4 bytes is the minimum header length.
       if (ManuvrLink::msgCodeValid(msg_code)) {           // Valid message code?
         uint8_t calcd_id_sz  = 0;
         uint8_t calcd_len_sz = 0;
@@ -154,11 +162,9 @@ bool ManuvrMsgHdr::isValid() {
         if (msg_len > 0x00FFFFFF) calcd_len_sz++;
 
         if (calcd_id_sz == id_length()) {                 // Is the ID field properly sized?
-          if (calcd_id_sz == id_length()) {               // Is the len field properly sized?
+          if (calcd_len_sz == len_length()) {           // Is the length field properly sized?
             if (msg_len >= MANUVRMSGHDR_MINIMUM_HEADER_SIZE) {   // If the total length is legal...
-              if (calcd_len_sz == len_length()) {           // Is the length field properly sized?
-                if (chk_byte == calc_hdr_chcksm()) {       // Does the checksum match?
-                }
+              if (chk_byte == calc_hdr_chcksm()) {       // Does the checksum match?
                 // Reply logic needs an ID if the message isn't a sync frame.
                 if (ManuvrMsgCode::SYNC_KEEPALIVE != msg_code) {
                   ret = ((isReply() | expectsReply()) == (0 < id_length()));
@@ -170,7 +176,7 @@ bool ManuvrMsgHdr::isValid() {
         }
       }
     }
-  }
+  } 
   return ret;
 }
 

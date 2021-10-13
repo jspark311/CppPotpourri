@@ -42,7 +42,7 @@ ManuvrMsg::ManuvrMsg(KeyValuePair* kvp) : _header(ManuvrMsgCode::APPLICATION), _
 /**
 * Constructor for an inbound message.
 */
-ManuvrMsg::ManuvrMsg(ManuvrMsgHdr* hdr) : _header(hdr), _op(BusOpcode::RX) {
+ManuvrMsg::ManuvrMsg(ManuvrMsgHdr* hdr, BusOpcode d) : _header(hdr), _op(d) {
 }
 
 /**
@@ -93,6 +93,20 @@ bool ManuvrMsg::isValidMsg() {
 }
 
 
+void ManuvrMsg::expectsReply(bool x) {
+  if (x) {
+    if (!_header.expectsReply() | (0 == _header.msg_id)) {
+      // Assign IDs idempotently.
+      _header.msg_id = randomUInt32();
+    }
+  }
+  else {
+    _header.msg_id = 0;
+  }
+  _header.expectsReply(x);
+}
+
+
 /*******************************************************************************
 * Exposed member functions for Applications's use.                             *
 *******************************************************************************/
@@ -106,6 +120,17 @@ bool ManuvrMsg::isValidMsg() {
 */
 int ManuvrMsg::reply(KeyValuePair* kvp) {
   int ret = -1;
+  if (BusOpcode::RX == _op) {
+    ret--;
+    if (_header.expectsReply()) {
+      // NOTE: No id check on purpose so that it also applies to SYNC_KA.
+      _op = BusOpcode::TX;
+      _header.expectsReply(false);
+      _header.isReply(true);
+      _header.rebuild_checksum();
+      ret = 0;
+    }
+  }
   return ret;
 }
 
@@ -138,19 +163,23 @@ int ManuvrMsg::setPayload(KeyValuePair*) {
 int ManuvrMsg::serialize(StringBuilder* buf) {
   int ret = -1;
   StringBuilder payload;
+  int payload_len = 0;
   if (nullptr != _kvp) {
     ret--;
     if (0 == _kvp->serialize(&payload, _encoding)) {
       ret--;
-      if (_header.set_payload_length(payload.length())) {
-        ret--;
-        StringBuilder header;
-        if (_header.serialize(&header)) {
-          buf->concatHandoff(&header);
-          buf->concatHandoff(&payload);
-          ret = 0;
-        }
+      payload_len = payload.length();
+    }
+  }
+  if (_header.set_payload_length(payload_len)) {
+    ret--;
+    StringBuilder header;
+    if (_header.serialize(&header)) {
+      buf->concatHandoff(&header);
+      if (!payload.isEmpty()) {
+        buf->concatHandoff(&payload);
       }
+      ret = 0;
     }
   }
   return ret;
@@ -199,7 +228,7 @@ int ManuvrMsg::accumulate(StringBuilder* buf) {
 */
 void ManuvrMsg::printDebug(StringBuilder* output) {
   output->concatf("\t ManuvrMsg [%s: %s], id: %u\n", BusOp::getOpcodeString(_op), ManuvrLink::manuvMsgCodeStr(_header.msg_code), _header.msg_id);
-  output->concatf("\t   %u bytes of %u expected payload with %s encoding.\n", _accumulator.length(), _header.payload_length(), typecodeToStr(_encoding));
+  output->concatf("\t   %u bytes of %u expected payload with %s encoding.\n\t   ", _accumulator.length(), _header.payload_length(), typecodeToStr(_encoding));
 }
 
 #endif   // CONFIG_MANUVR_M2M_SUPPORT
