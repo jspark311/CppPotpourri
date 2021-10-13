@@ -106,14 +106,12 @@ TODO: Since this class renders large chains of function calls opaque to the
 enum class ManuvrLinkState : uint8_t {
   UNINIT         = 0x00,  // Nothing has happened. Freshly-instantiated session.
   PENDING_SETUP  = 0x01,  // Class is clean and ready for a session.
-  SYNC_BEGIN     = 0x02,  // Session has not demonstrated itself to be in sync.
-  SYNC_CASTING   = 0x03,  // Casting sync, and awaiting like replies.
-  SYNC_TENTATIVE = 0x04,  // Stop casting sync. Churn until non-sync data arrives.
-  PENDING_AUTH   = 0x05,  // Waiting on optional authentication.
-  ESTABLISHED    = 0x06,  // Session is in the nominal state.
-  PENDING_HANGUP = 0x07,  // Session hangup is imminent.
-  HUNGUP         = 0x08,  // Session is hungup and pending cleanup for re-use.
-  DISCONNECTED   = 0x09   // Session is broken, but we have hope of recovery.
+  SYNC_RESYNC    = 0x02,  // Casting sync, and awaiting like replies.
+  SYNC_TENTATIVE = 0x03,  // Stop casting sync. Churn until non-sync data arrives.
+  PENDING_AUTH   = 0x04,  // Waiting on optional authentication.
+  ESTABLISHED    = 0x05,  // Session is in the nominal state.
+  PENDING_HANGUP = 0x06,  // Session hangup is imminent.
+  HUNGUP         = 0x07   // Session is hungup and pending cleanup for re-use.
 };
 
 /*

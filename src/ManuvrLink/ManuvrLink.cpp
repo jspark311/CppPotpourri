@@ -38,14 +38,12 @@ const char* ManuvrLink::sessionStateStr(const ManuvrLinkState CODE) {
   switch (CODE) {
     case ManuvrLinkState::UNINIT:           return "UNINIT";
     case ManuvrLinkState::PENDING_SETUP:    return "PENDING_SETUP";
-    case ManuvrLinkState::SYNC_BEGIN:       return "SYNC_BEGIN";
-    case ManuvrLinkState::SYNC_CASTING:     return "SYNC_CASTING";
+    case ManuvrLinkState::SYNC_RESYNC:      return "SYNC_RESYNC";
     case ManuvrLinkState::SYNC_TENTATIVE:   return "SYNC_TENTATIVE";
     case ManuvrLinkState::PENDING_AUTH:     return "PENDING_AUTH";
     case ManuvrLinkState::ESTABLISHED:      return "ESTABLISHED";
     case ManuvrLinkState::PENDING_HANGUP:   return "PENDING_HANGUP";
     case ManuvrLinkState::HUNGUP:           return "HUNGUP";
-    case ManuvrLinkState::DISCONNECTED:     return "DISCONNECTED";
     default:                                return "<UNKNOWN>";
   }
 }
@@ -98,14 +96,12 @@ static const bool _link_fsm_code_valid(const ManuvrLinkState CODE) {
   switch (CODE) {
     case ManuvrLinkState::UNINIT:
     case ManuvrLinkState::PENDING_SETUP:
-    case ManuvrLinkState::SYNC_BEGIN:
-    case ManuvrLinkState::SYNC_CASTING:
+    case ManuvrLinkState::SYNC_RESYNC:
     case ManuvrLinkState::SYNC_TENTATIVE:
     case ManuvrLinkState::PENDING_AUTH:
     case ManuvrLinkState::ESTABLISHED:
     case ManuvrLinkState::PENDING_HANGUP:
     case ManuvrLinkState::HUNGUP:
-    case ManuvrLinkState::DISCONNECTED:
       return true;
   }
   return false;
@@ -152,7 +148,6 @@ static int _contains_sync_pattern(StringBuilder* dat_in) {
 *   message boundaries in the data.
 *
 * @param dat_in  The buffer to search through and modify.
-* @return The offset of the first byte that is NOT sync-stream.
 */
 static void _cull_sync_data(StringBuilder* dat_in) {
   int i = 0;
@@ -195,7 +190,7 @@ static void _cull_sync_data(StringBuilder* dat_in) {
 * Constructor
 */
 ManuvrLink::ManuvrLink(const ManuvrLinkOpts* opts) : _opts(opts) {
-  _set_fsm_route(4, ManuvrLinkState::PENDING_SETUP, ManuvrLinkState::SYNC_BEGIN, ManuvrLinkState::SYNC_CASTING, ManuvrLinkState::SYNC_TENTATIVE);
+  _set_fsm_route(3, ManuvrLinkState::PENDING_SETUP, ManuvrLinkState::SYNC_RESYNC, ManuvrLinkState::SYNC_TENTATIVE);
   if (_flags.value(MANUVRLINK_FLAG_AUTH_REQUIRED)) {
     _append_fsm_route(2, ManuvrLinkState::PENDING_AUTH, ManuvrLinkState::ESTABLISHED);
   }
@@ -235,14 +230,14 @@ int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
   _ms_last_rec = millis();
 
   switch (_fsm_pos) {   // Consider the session state.
-    case ManuvrLinkState::SYNC_BEGIN:
-    case ManuvrLinkState::SYNC_CASTING:
+    case ManuvrLinkState::SYNC_RESYNC:
       _inbound_buf.concatHandoff(buf);
       _inbound_buf.printDebug(&_local_log);
       if (_inbound_buf.length() >= 4) {
         switch (_process_for_sync(&_inbound_buf)) {
           case 0:   // No change in the inbound data.
             _flags.clear(MANUVRLINK_FLAG_SYNC_CASTING);
+            _local_log.concatf("Link 0x%x processed sync (no change).\n", _session_tag);
             break;
           case 1:   // Sync processed and input buffer altered.
             _local_log.concatf("Link 0x%x processed sync.\n", _session_tag);
@@ -308,7 +303,6 @@ int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
     case ManuvrLinkState::UNINIT:
     case ManuvrLinkState::PENDING_SETUP: // We're getting data before we are setup to proc it.
     case ManuvrLinkState::HUNGUP:
-    case ManuvrLinkState::DISCONNECTED:
       buf->clear();  // Drop the data.
       break;
 
@@ -366,8 +360,7 @@ int8_t ManuvrLink::hangup(bool graceful) {
 
   switch (_fsm_pos) {
     case ManuvrLinkState::PENDING_SETUP:
-    case ManuvrLinkState::SYNC_BEGIN:
-    case ManuvrLinkState::SYNC_CASTING:
+    case ManuvrLinkState::SYNC_RESYNC:
     case ManuvrLinkState::SYNC_TENTATIVE:
     case ManuvrLinkState::PENDING_AUTH:
     case ManuvrLinkState::ESTABLISHED:
@@ -401,8 +394,7 @@ int8_t ManuvrLink::hangup(bool graceful) {
 */
 bool ManuvrLink::isConnected() {
   switch (_fsm_pos) {
-    case ManuvrLinkState::SYNC_BEGIN:
-    case ManuvrLinkState::SYNC_CASTING:
+    case ManuvrLinkState::SYNC_RESYNC:
     case ManuvrLinkState::SYNC_TENTATIVE:
     case ManuvrLinkState::PENDING_AUTH:
     case ManuvrLinkState::ESTABLISHED:
@@ -786,12 +778,15 @@ int8_t ManuvrLink::_process_for_sync(StringBuilder* dat_in) {
   int i = _contains_sync_pattern(dat_in);
   if (0 <= i) {
     ret = 1;  // Found sync data, and we are about to change the buffer.
+    if (i != 0) {
+      dat_in->cull(i);  // Left-justify the buffer against the first sync found.
+    }
     _flags.set(MANUVRLINK_FLAG_SYNC_INCOMING);
     _cull_sync_data(dat_in);
   }
   else {
     // Without finding a sync packet, we drop the data.
-    // Cull to a modulus of 4 bytes.
+    // Cull to a modulus of 4 bytes so as not to drop data we haven't tested.
     const int AVAILABLE_LEN = dat_in->length();
     const uint32_t CULL_LEN = ((uint32_t) AVAILABLE_LEN) & 0xFFFFFFFC;
     if (0 < CULL_LEN) {   // clear() is cheaper than cull().
@@ -863,17 +858,14 @@ int8_t ManuvrLink::_poll_fsm() {
       break;
 
     // Exit conditions:
-    case ManuvrLinkState::SYNC_BEGIN:
-      fsm_advance = true;
-      break;
-
-    // Exit conditions:
-    case ManuvrLinkState::SYNC_CASTING:
+    case ManuvrLinkState::SYNC_RESYNC:
       fsm_advance = !_flags.value(MANUVRLINK_FLAG_SYNC_CASTING);
       break;
 
     // Exit conditions: Incoming data is no longer preceeded by sync packets.
     case ManuvrLinkState::SYNC_TENTATIVE:
+      if (!_inbound_buf.isEmpty(true)) {
+      }
       fsm_advance = true;
       break;
 
@@ -890,14 +882,11 @@ int8_t ManuvrLink::_poll_fsm() {
 
     // Exit conditions:
     case ManuvrLinkState::PENDING_HANGUP:
+      fsm_advance = true;
       break;
 
     // Exit conditions:
     case ManuvrLinkState::HUNGUP:
-      break;
-
-    // Exit conditions:
-    case ManuvrLinkState::DISCONNECTED:
       break;
 
     default:   // Can't exit from an unknown state.
@@ -930,7 +919,6 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
   bool state_entry_success = false;   // Fail by default.
   if (!_fsm_is_waiting()) {
     switch (new_state) {
-
       // Entry into PENDING_SETUP means that the class has been wiped, and the
       //   values we depend upon later have been validated.
       case ManuvrLinkState::PENDING_SETUP:
@@ -939,17 +927,11 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
         state_entry_success = (_session_tag != 0);
         break;
 
-      // Entry into SYNC_BEGIN means we trash any unprocessed inbound data, and
-      //   begin expecting sync packets. Entry always succeeds.
-      case ManuvrLinkState::SYNC_BEGIN:
+      // Entry into SYNC_CASTING means we trash any unprocessed inbound data, and
+      //   begin emitting and expecting sync packets. Entry always succeeds.
+      case ManuvrLinkState::SYNC_RESYNC:
         _inbound_buf.clear();
         _flags.clear(MANUVRLINK_FLAG_SYNC_CASTING | MANUVRLINK_FLAG_SYNC_INCOMING);
-        state_entry_success = true;
-        break;
-
-      // Entry into SYNC_CASTING means we begin blindly emitting sync on the
-      //   default timeout interval.
-      case ManuvrLinkState::SYNC_CASTING:
         state_entry_success = (0 == _send_sync_packet(true));
         _flags.set(MANUVRLINK_FLAG_SYNC_CASTING, state_entry_success);
         break;
@@ -977,10 +959,6 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
       //   from the prior session.
       case ManuvrLinkState::HUNGUP:
         _reset_class();
-        break;
-
-      case ManuvrLinkState::DISCONNECTED:
-        state_entry_success = true;
         break;
 
       // Entry into any other state is disallowed.
@@ -1145,10 +1123,8 @@ bool ManuvrLink::_fsm_is_waiting() {
 int8_t ManuvrLink::_fsm_insert_sync_states() {
   int8_t ret = -1;
   if (0 == _prepend_fsm_state(ManuvrLinkState::SYNC_TENTATIVE)) {
-    if (0 == _prepend_fsm_state(ManuvrLinkState::SYNC_CASTING)) {
-      if (0 == _prepend_fsm_state(ManuvrLinkState::SYNC_BEGIN)) {
-        ret = 0;
-      }
+    if (0 == _prepend_fsm_state(ManuvrLinkState::SYNC_RESYNC)) {
+      ret = 0;
     }
   }
   return ret;
