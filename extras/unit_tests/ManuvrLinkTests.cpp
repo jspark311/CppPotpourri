@@ -75,7 +75,7 @@ ManuvrMsgHdr connect_header(ManuvrMsgCode::CONNECT, 0, true);
 /* Header tests */
 int link_tests_message_battery_0() {
   int ret = -1;
-  StringBuilder log("===< ManuvrMsg battery 0 () >====================================\n");
+  StringBuilder log("===< ManuvrMsg battery 0 (Header) >==========================\n");
   ManuvrMsgHdr msg_valid_with_reply(ManuvrMsgCode::SYNC_KEEPALIVE, 0, true);
   ManuvrMsgHdr msg_valid_without_reply(ManuvrMsgCode::SYNC_KEEPALIVE, 0, false);
   ManuvrMsgHdr msg_valid_reply_without_id(ManuvrMsgCode::CONNECT, 0, true);
@@ -157,9 +157,9 @@ int link_tests_message_battery_0() {
   if (0 == ret) {
     ret--;
     ManuvrMsgHdr stupid_simple_sync(ManuvrMsgCode::SYNC_KEEPALIVE);
-    stupid_simple_sync.rebuild_checksum();
     if (stupid_simple_sync.isValid()) {
       msg_valid_with_reply.wipe();
+      stupid_simple_sync.rebuild_checksum();
       if (stupid_simple_sync.isValid()) {
         ret = 0;
       }
@@ -175,8 +175,41 @@ int link_tests_message_battery_0() {
 
 /* Message pack-parse tests */
 int link_tests_message_battery_1() {
-  StringBuilder log("===< ManuvrLink Build and connect >====================================\n");
-  ManuvrMsg msg();
+  int ret = -1;
+  StringBuilder log("===< ManuvrMsg battery 1 (Parse-pack) >=======================\n");
+  ManuvrMsgHdr hdr_parse_pack_0(ManuvrMsgCode::APPLICATION, 0, true);
+  ManuvrMsg* msg_parse_pack_0 = new ManuvrMsg(&hdr_parse_pack_0, BusOpcode::TX);
+  if (msg_parse_pack_0) {
+    uint32_t now     = millis();
+    uint32_t rand    = randomUInt32();
+    float    val_flt = (float) randomUInt32()/1000000.0f;
+    double   val_dbl = (double) randomUInt32() / (double) randomUInt32();
+    Vector3<float> vect(randomUInt32()/1000000.0f, randomUInt32()/1000000.0f, randomUInt32()/1000000.0f);
+
+    KeyValuePair a(now, "time_ms");
+    a.append(rand, "rand");
+    a.append("my_value", "my_key");
+    a.append(val_flt, "val_flt");
+    a.append(val_dbl, "val_dbl");
+    a.append(&vect, "vect");
+    //a.printDebug(&log);
+    msg_parse_pack_0->setPayload(&a);
+    StringBuilder msg_0_serial;
+    if (0 == msg_parse_pack_0->serialize(&msg_0_serial)) {
+      msg_parse_pack_0->printDebug(&log);
+      if (!msg_0_serial.isEmpty()) {
+        msg_0_serial.printDebug(&log);
+        ManuvrMsg* msg_parse_pack_1 = ManuvrMsg::unserialize(&msg_0_serial);
+        ret = 0;
+      }
+      else log.concat("Serializer produced an empty string.\n");
+    }
+    else log.concat("Failed to serialize message.\n");
+  }
+  else log.concat("Failed to allocate message.\n");
+
+  printf("%s\n\n", (const char*) log.string());
+  return ret;
 }
 
 
@@ -184,7 +217,6 @@ int link_tests_message_battery_1() {
 /*******************************************************************************
 * Basic ManuvrLink functionality
 *******************************************************************************/
-
 
 /*
 * Setup two Link objects, and connect them together.
@@ -290,14 +322,17 @@ int manuvrlink_main() {
   ManuvrLink* carl = new ManuvrLink(&opts_carl);  // One half of the link.
   int ret = -1;
   if (0 == link_tests_message_battery_0()) {
-    if (0 == link_tests_build_and_connect(vlad, carl)) {
-      //ret = link_tests_simple_messages(vlad, carl);
-      //if (0 == ret) {
-        ret = 0;
-      //}
-      //else printTestFailure("link_tests_simple_messages");
+    if (0 == link_tests_message_battery_1()) {
+      if (0 == link_tests_build_and_connect(vlad, carl)) {
+        //ret = link_tests_simple_messages(vlad, carl);
+        //if (0 == ret) {
+          ret = 0;
+        //}
+        //else printTestFailure("link_tests_simple_messages");
+      }
+      else printTestFailure("link_tests_build_and_connect");
     }
-    else printTestFailure("link_tests_build_and_connect");
+    else printTestFailure("link_tests_message_battery_1");
   }
   else printTestFailure("link_tests_message_battery_0");
 

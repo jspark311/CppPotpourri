@@ -128,7 +128,7 @@ int vector3_float_test() {
                       print0 = &result_vect_3;
                       print1 = &test_vect_3;
                       float angle_0 = Vector3<float>::angle_normalized(result_vect_3, test_vect_3);
-                      if (0.0 == round(1000 * angle_0)) {
+                      if (0.0 == round(100 * angle_0)) {
                         test_vect_2.reflect(x_axis);
                         float angle_1 = Vector3<float>::angle(test_vect_2, x_axis);
                         float angle_2 = Vector3<float>::angle(test_vect_2, test_vect_4);

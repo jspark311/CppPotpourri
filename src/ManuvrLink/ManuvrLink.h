@@ -210,6 +210,7 @@ class ManuvrMsgHdr {
     uint32_t      msg_len;   // Total length of the message (header + payload).
     uint32_t      msg_id;    // A unique ID for this message.
 
+    /* Copy constructor */
     ManuvrMsgHdr(const ManuvrMsgHdr* obj) :
       msg_code(obj->msg_code),
       flags(obj->flags),
@@ -217,14 +218,19 @@ class ManuvrMsgHdr {
       msg_len(obj->msg_len),
       msg_id(obj->msg_id) {};
 
-    ManuvrMsgHdr();
-    ManuvrMsgHdr(ManuvrMsgCode);
+    /* General constructor */
     ManuvrMsgHdr(ManuvrMsgCode, uint8_t pl_len, uint8_t flags, uint32_t i = 0);
+
+    /* Convenience overloads */
+    ManuvrMsgHdr(ManuvrMsgCode m) : ManuvrMsgHdr(m, 0, 0, 0) {};
+    //ManuvrMsgHdr() : ManuvrMsgHdr(ManuvrMsgCode::UNDEFINED, 0, 0, 0) {};
+    ManuvrMsgHdr() : msg_code(ManuvrMsgCode::UNDEFINED), flags(0), chk_byte(0), msg_len(0), msg_id(0) {};
+
 
 
     inline bool isReply() {        return (flags & MANUVRMSGHDR_FLAG_IS_REPLY);         };
     inline bool expectsReply() {   return (flags & MANUVRMSGHDR_FLAG_EXPECTING_REPLY);  };
-    inline bool isReply(bool x) {
+    inline void isReply(bool x) {
       if (x) flags |= MANUVRMSGHDR_FLAG_IS_REPLY;
       else   flags &= ~MANUVRMSGHDR_FLAG_IS_REPLY;
     };
@@ -283,6 +289,8 @@ class ManuvrMsg {
     int   serialize(StringBuilder*);   // Link calls this to render this message as a buffer for the transport.
     int   accumulate(StringBuilder*);  // Link calls this to feed the message parser.
     void  printDebug(StringBuilder*);
+
+    static ManuvrMsg* unserialize(StringBuilder*);
 
 
   private:

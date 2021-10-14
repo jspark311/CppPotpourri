@@ -32,10 +32,6 @@ limitations under the License.
 * Constructors/destructors, class initialization functions and so-forth...
 *******************************************************************************/
 
-ManuvrMsgHdr::ManuvrMsgHdr() : msg_code(ManuvrMsgCode::UNDEFINED), flags(0), chk_byte(0), msg_len(0), msg_id(0) {}
-
-ManuvrMsgHdr::ManuvrMsgHdr(ManuvrMsgCode m) : ManuvrMsgHdr(m, 0, 0, 0) {}
-
 ManuvrMsgHdr::ManuvrMsgHdr(ManuvrMsgCode m, uint8_t pl_len, uint8_t f, uint32_t i) :
     msg_code(m), flags(f & ~(MANUVRMSGHDR_SETTABLE_FLAG_BITS)),
     chk_byte(0),

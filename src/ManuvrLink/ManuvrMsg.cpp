@@ -23,6 +23,23 @@ limitations under the License.
 
 #if defined(CONFIG_MANUVR_M2M_SUPPORT)
 
+
+/*******************************************************************************
+*      _______.___________.    ___   .___________. __    ______     _______.
+*     /       |           |   /   \  |           ||  |  /      |   /       |
+*    |   (----`---|  |----`  /  ^  \ `---|  |----`|  | |  ,----'  |   (----`
+*     \   \       |  |      /  /_\  \    |  |     |  | |  |        \   \
+* .----)   |      |  |     /  _____  \   |  |     |  | |  `----.----)   |
+* |_______/       |__|    /__/     \__\  |__|     |__|  \______|_______/
+*
+* Static members and initializers should be located here.
+*******************************************************************************/
+
+static ManuvrMsg* ManuvrMsg::unserialize(StringBuilder* dat_in) {
+
+}
+
+
 /*******************************************************************************
 *   ___ _              ___      _ _              _      _
 *  / __| |__ _ ______ | _ ) ___(_) |___ _ _ _ __| |__ _| |_ ___
@@ -143,8 +160,12 @@ int ManuvrMsg::getPayload(KeyValuePair**) {
 
 
 // Application calls this to set the message payload.
-int ManuvrMsg::setPayload(KeyValuePair*) {
-  int ret = -1;
+int ManuvrMsg::setPayload(KeyValuePair* payload) {
+  int ret = 0;
+  if (nullptr == _kvp) {
+    _kvp = payload;
+    ret = 0;
+  }
   return ret;
 }
 
@@ -227,8 +248,12 @@ int ManuvrMsg::accumulate(StringBuilder* buf) {
 * @param   StringBuilder* The buffer into which this fxn should write its output.
 */
 void ManuvrMsg::printDebug(StringBuilder* output) {
-  output->concatf("\t ManuvrMsg [%s: %s], id: %u\n", BusOp::getOpcodeString(_op), ManuvrLink::manuvMsgCodeStr(_header.msg_code), _header.msg_id);
-  output->concatf("\t   %u bytes of %u expected payload with %s encoding.\n", _accumulator.length(), _header.payload_length(), typecodeToStr(_encoding));
+  output->concatf("    --- ManuvrMsg [%s: %s], id: %u\n", BusOp::getOpcodeString(_op), ManuvrLink::manuvMsgCodeStr(_header.msg_code), _header.msg_id);
+  output->concatf("\t  %u bytes of %u expected payload with %s encoding.\n", _accumulator.length(), _header.payload_length(), typecodeToStr(_encoding));
+  if (nullptr != _kvp) {
+    output->concat("\t--- Payload -----------------------\n");
+    _kvp->printDebug(output);
+  }
 }
 
 #endif   // CONFIG_MANUVR_M2M_SUPPORT
