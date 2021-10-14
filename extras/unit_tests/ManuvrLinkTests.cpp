@@ -154,6 +154,20 @@ int link_tests_message_battery_0() {
     else log.concat("msg_invalid_bad_length was construed as valid.\n");
   }
 
+  if (0 == ret) {
+    ret--;
+    ManuvrMsgHdr stupid_simple_sync(ManuvrMsgCode::SYNC_KEEPALIVE);
+    stupid_simple_sync.rebuild_checksum();
+    if (stupid_simple_sync.isValid()) {
+      msg_valid_with_reply.wipe();
+      if (stupid_simple_sync.isValid()) {
+        ret = 0;
+      }
+      else log.concat("stupid_simple_sync was construed as valid following wipe.\n");
+    }
+    else log.concat("stupid_simple_sync was construed as invalid.\n");
+  }
+
   printf("%s\n\n", (const char*) log.string());
   return ret;
 }
