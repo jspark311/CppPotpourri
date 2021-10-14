@@ -291,12 +291,13 @@ class ManuvrMsg {
     void  printDebug(StringBuilder*);
 
     static ManuvrMsg* unserialize(StringBuilder*);
+    static int8_t attempt_header_parse(ManuvrMsgHdr*, StringBuilder*);
 
 
   private:
     ManuvrMsgHdr _header;
     BusOpcode _op         = BusOpcode::UNDEF;  // Differentiate between inbound and outbount messages.
-    TCode     _encoding   = TCode::BINARY;     // Start out as basic as possible.
+    TCode     _encoding   = TCode::CBOR;     // Start out as basic as possible.
     uint8_t   _retries    = 0;    // No retries by default.
     uint8_t   _flags      = 0;    // These are NOT sent with the message.
     uint32_t  _ms_io_mark = 0;    // This is the millis() reading when we sent or received.
@@ -386,7 +387,6 @@ class ManuvrLink : public BufferAccepter {
     void   _reset_class();
     int8_t _relay_to_output_target(StringBuilder*);
     int8_t _invoke_msg_callback(ManuvrMsg*);
-    int8_t _attempt_header_parse(ManuvrMsgHdr*);
     int8_t _process_input_buffer();
     int8_t _process_for_sync(StringBuilder*);
     bool   _link_syncd();

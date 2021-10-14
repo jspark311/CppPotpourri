@@ -35,8 +35,73 @@ limitations under the License.
 * Static members and initializers should be located here.
 *******************************************************************************/
 
-static ManuvrMsg* ManuvrMsg::unserialize(StringBuilder* dat_in) {
+/**
+* Take the giuven StringBuilder and try to put its bytes into their respective
+*   slots in a header object.
+* If we can do that, see if the header makes sense.
+* If it does make sense, check for message completeness.
+*
+* This function will assume good sync, and a packet starting at offset zero.
+*
+* @param hdr A blank header object.
+* @return -3 for no header found because the initial bytes are totally wrong. Sync error.
+*         -2 for no header found because not enough bytes to complete it.
+*         -1 for header found, but total size exceeds MTU.
+*          0 for header found, but message incomplete.
+*          1 for header found, and message complete with no payload.
+*          2 for header found, and message complete with payload.
+*/
+int8_t ManuvrMsg::attempt_header_parse(ManuvrMsgHdr* hdr, StringBuilder* dat_in) {
+  int8_t ret = -2;
+  const int AVAILABLE_LEN = dat_in->length();
+  if (AVAILABLE_LEN >= MANUVRMSGHDR_MINIMUM_HEADER_SIZE) {
+    uint8_t* tmp_buf = dat_in->string();
+    hdr->msg_code = (ManuvrMsgCode) *(tmp_buf++);
+    hdr->flags    = *(tmp_buf++);
 
+    const uint8_t len_l = hdr->len_length();
+    const uint8_t id_l  = hdr->id_length();
+    if (hdr->header_length() <= AVAILABLE_LEN) {
+      // Write the multibyte value as big-endian.
+      for (uint8_t i = 0; i < len_l; i++) hdr->msg_len = ((hdr->msg_len << 8) | *(tmp_buf++));
+      for (uint8_t i = 0; i < id_l; i++)  hdr->msg_id  = ((hdr->msg_id << 8)  | *(tmp_buf++));
+      hdr->chk_byte = *(tmp_buf++);
+      ret = -3;
+      if (hdr->chk_byte == hdr->calc_hdr_chcksm()) {       // Does the checksum match?
+        ret = 1;
+        if (0 < hdr->payload_length()) {
+          ret = (hdr->total_length() > AVAILABLE_LEN) ? 0 : 2;
+        }
+      }
+    }
+  }
+  return ret;
+}
+
+
+ManuvrMsg* ManuvrMsg::unserialize(StringBuilder* dat_in) {
+  ManuvrMsg* ret = nullptr;
+  ManuvrMsgHdr _header;
+  int8_t ret_header = attempt_header_parse(&_header, dat_in);
+  switch (ret_header) {
+    case -3:  // no header found because the initial bytes are totally wrong. Sync error.
+    case -2:  // no header found because not enough bytes to complete it. Wait for more accumulation.
+      break;
+    case -1:  // header found, but total size exceeds MTU.
+    case 0:   // header found, but message incomplete.
+    case 1:   // header found, and message complete with no payload.
+    case 2:   // header found, and message complete with payload.
+      dat_in->cull(_header.header_length());
+      ret = new ManuvrMsg(&_header);
+      if (nullptr != ret) {
+        ret->accumulate(dat_in);
+        //if (ret->rxComplete()) {
+        //  ret->_unpack_payload();
+        //}
+      }
+      break;
+  }
+  return ret;
 }
 
 
@@ -153,8 +218,15 @@ int ManuvrMsg::reply(KeyValuePair* kvp) {
 
 
 // Application calls this to gain access to the message payload.
-int ManuvrMsg::getPayload(KeyValuePair**) {
+int ManuvrMsg::getPayload(KeyValuePair** payload) {
   int ret = -1;
+  if (rxComplete()) {
+    ret--;
+    //if (nullptr == _kvp) {
+      *payload = KeyValuePair::unserialize(_accumulator.string(), _accumulator.length(), _encoding);
+      ret = 0;
+    //}
+  }
   return ret;
 }
 

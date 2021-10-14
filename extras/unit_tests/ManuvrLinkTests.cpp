@@ -200,7 +200,19 @@ int link_tests_message_battery_1() {
       if (!msg_0_serial.isEmpty()) {
         msg_0_serial.printDebug(&log);
         ManuvrMsg* msg_parse_pack_1 = ManuvrMsg::unserialize(&msg_0_serial);
-        ret = 0;
+        if (nullptr != msg_parse_pack_1) {
+          if (msg_parse_pack_1->rxComplete()) {
+            KeyValuePair* pl = nullptr;
+            msg_parse_pack_1->getPayload(&pl);
+            if (nullptr != pl) {
+              pl->printDebug(&log);
+              ret = 0;
+            }
+            else log.concat("Failed to retrieve payload.\n");
+          }
+          else log.concat("ManuvrMsg::unserialize() returned an incomplete message.\n");
+        }
+        else log.concat("ManuvrMsg::unserialize() failed.\n");
       }
       else log.concat("Serializer produced an empty string.\n");
     }

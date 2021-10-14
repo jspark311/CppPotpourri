@@ -636,57 +636,6 @@ int8_t ManuvrLink::_invoke_msg_callback(ManuvrMsg* msg) {
 
 
 /**
-* Take the accumulated bytes from the transport and try to put them into their
-*   respective slots in a header object.
-* If we can do that, see if the header makes sense.
-* If it does make sense, check for message completeness.
-*
-* This function will assume good sync, and a packet starting at offset zero.
-*
-* @param hdr A blank header object.
-* @return -3 for no header found because the initial bytes are totally wrong. Sync error.
-*         -2 for no header found because not enough bytes to complete it.
-*         -1 for header found, but total size exceeds MTU.
-*          0 for header found, but message incomplete.
-*          1 for header found, and message complete with no payload.
-*          2 for header found, and message complete with payload.
-*/
-int8_t ManuvrLink::_attempt_header_parse(ManuvrMsgHdr* hdr) {
-  int8_t ret = -2;
-  const int AVAILABLE_LEN = _inbound_buf.length();
-  if (AVAILABLE_LEN >= MANUVRMSGHDR_MINIMUM_HEADER_SIZE) {
-    uint8_t* tmp_buf = _inbound_buf.string();
-    hdr->msg_code = (ManuvrMsgCode) *(tmp_buf++);
-    hdr->flags    = *(tmp_buf++);
-
-    const uint8_t len_l = hdr->len_length();
-    const uint8_t id_l  = hdr->id_length();
-    if (hdr->header_length() <= AVAILABLE_LEN) {
-      // Write the multibyte value as big-endian.
-      for (uint8_t i = 0; i < len_l; i++) hdr->msg_len = ((hdr->msg_len << 8) | *(tmp_buf++));
-      for (uint8_t i = 0; i < id_l; i++)  hdr->msg_id  = ((hdr->msg_id << 8)  | *(tmp_buf++));
-      hdr->chk_byte = *(tmp_buf++);
-      ret = -3;
-      if (hdr->chk_byte == hdr->calc_hdr_chcksm()) {       // Does the checksum match?
-        ret = -1;
-        if (hdr->total_length() <= _opts.mtu) {
-          ret = 1;
-          if (0 < hdr->payload_length()) {
-            ret = (hdr->total_length() > AVAILABLE_LEN) ? 0 : 2;
-          }
-        }
-      }
-    }
-  }
-
-  if ((_verbosity > 6) | ((ret < 0) & (_verbosity > 3))) {
-    _local_log.concatf("ManuvrLink (tag: 0x%x) _attempt_header_parse returned %d.\n", _session_tag, ret);
-  }
-  return ret;
-}
-
-
-/**
 * Consumes the class's input accumulation buffer, considering state, and driving
 *   state reactions accordingly.
 * For shorter stacks, and greater concurrency safety (including on the wire),
@@ -742,7 +691,8 @@ int8_t ManuvrLink::_process_input_buffer() {
     if (_inbound_buf.length() >= 4) {
       if (nullptr == _working) {
         ManuvrMsgHdr _header;
-        switch (_attempt_header_parse(&_header)) {
+        int8_t ret_header = ManuvrMsg::attempt_header_parse(&_header, &_inbound_buf);
+        switch (ret_header) {
           case -3:  // no header found because the initial bytes are totally wrong. Sync error.
             _fsm_insert_sync_states();
             _sync_losses++;
@@ -755,8 +705,13 @@ int8_t ManuvrLink::_process_input_buffer() {
           case 1:   // header found, and message complete with no payload.
           case 2:   // header found, and message complete with payload.
             _inbound_buf.cull(_header.header_length());
-            _working = new ManuvrMsg(&_header);
+            if (_header.total_length() <= _opts.mtu) {
+              _working = new ManuvrMsg(&_header);
+            }
             break;
+        }
+        if ((_verbosity > 6) | ((ret_header < 0) & (_verbosity > 3))) {
+          _local_log.concatf("ManuvrLink (tag: 0x%x) _attempt_header_parse returned %d.\n", _session_tag, ret_header);
         }
       }
       if (nullptr != _working) {
