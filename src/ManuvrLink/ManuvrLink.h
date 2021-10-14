@@ -352,7 +352,7 @@ class ManuvrLink : public BufferAccepter {
     uint32_t          _fsm_lockout_ms = 0;        // Used to enforce a delay between state transitions.
     ManuvrLinkState   _fsm_pos        = ManuvrLinkState::UNINIT;
     ManuvrLinkState   _fsm_pos_prior  = ManuvrLinkState::UNINIT;
-    uint8_t           _verbosity      = 7;
+    uint8_t           _verbosity      = 6;
     uint32_t          _session_tag    = 0;        // Allows the application to keep track of our callbacks.
     uint32_t          _ms_last_send   = 0;        // At what time did the last message go out?
     uint32_t          _ms_last_rec    = 0;        // At what time did the last message come in?

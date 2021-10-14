@@ -141,41 +141,6 @@ static int _contains_sync_pattern(StringBuilder* dat_in) {
 }
 
 
-/**
-* Scan a StringBuilder for the protocol's sync pattern, and remove any data
-*   fitting the pattern, for as long as the pattern holds.
-* Only call this function if sync is required, since it will disregard any
-*   message boundaries in the data.
-*
-* @param dat_in  The buffer to search through and modify.
-*/
-static void _cull_sync_data(StringBuilder* dat_in) {
-  int i = 0;
-  uint8_t* buf = dat_in->string();
-  int      len = dat_in->length();
-  while (i < (len-3)) {
-    const uint8_t b0 = *(buf + i + 0);
-    const uint8_t b1 = *(buf + i + 1);
-    const uint8_t b2 = *(buf + i + 2);
-    const uint8_t b3 = *(buf + i + 3);
-    const uint8_t EXPECTED_4TH_SYNC_BYTE = (b0 + b1 + b2 + MANUVRLINK_SERIALIZATION_VERSION);
-
-    bool bail = (b0 != (uint8_t) ManuvrMsgCode::SYNC_KEEPALIVE);
-    bail |= ((b1 & MANUVRMSGHDR_FLAG_SYNC_MASK) != 0x10);
-    bail |= (b2 != MANUVRMSGHDR_MINIMUM_HEADER_SIZE);
-    bail |= (b3 != EXPECTED_4TH_SYNC_BYTE);
-    if (bail) {
-      dat_in->cull(i);
-      return;
-    }
-    i += 4;
-  }
-  if (0 < i) {
-    dat_in->cull(i);
-  }
-}
-
-
 
 /*******************************************************************************
 *   ___ _              ___      _ _              _      _
@@ -371,7 +336,7 @@ void ManuvrLink::printDebug(StringBuilder* output) {
     output->concatf("\n-- Outbound Queue %d total, showing top %d ------------\n", x, MANUVRLINK_MAX_QUEUE_PRINT);
     int max_print = (x < MANUVRLINK_MAX_QUEUE_PRINT) ? x : MANUVRLINK_MAX_QUEUE_PRINT;
     for (int i = 0; i < max_print; i++) {
-        _outbound_messages.get(i)->printDebug(output);
+      _outbound_messages.get(i)->printDebug(output);
     }
   }
 
@@ -458,8 +423,7 @@ int8_t ManuvrLink::_churn_inbound() {
   int8_t ret = 0;
   while (_inbound_messages.hasNext()) {
     ManuvrMsg* temp = _inbound_messages.dequeue();
-
-    if (_verbosity > 6) {
+    if (_verbosity > 3) {
       _local_log.concatf("ManuvrLink (tag: 0x%x) responding to...\n", _session_tag);
       temp->printDebug(&_local_log);
     }
@@ -494,13 +458,15 @@ int8_t ManuvrLink::_churn_inbound() {
           }
         }
         else if (temp->expectsReply()) {
-          //_flags.set(MANUVRLINK_FLAG_ESTABLISHED, (0 == temp->ack()));
           if (0 != temp->ack()) {
-            _local_log.concatf("ManuvrLink (tag: 0x%x) Failed to reply to CONNECT\n", _session_tag);
+            if (_verbosity > 2) _local_log.concatf("ManuvrLink (tag: 0x%x) Failed to reply to CONNECT\n", _session_tag);
+          }
+          if (_verbosity > 5) {
+            _local_log.concatf("ManuvrLink (tag: 0x%x) responding with...\n", _session_tag);
+            temp->printDebug(&_local_log);
           }
           StringBuilder temp_out;
           temp->serialize(&temp_out);
-          temp->printDebug(&_local_log);
           _relay_to_output_target(&temp_out);
           //_clear_waiting_reply_by_id(temp->uniqueId());
         }
@@ -654,7 +620,7 @@ int8_t ManuvrLink::_relay_to_output_target(StringBuilder* buf) {
         break;
     }
   }
-  if ((0 > ret) & (3 < _verbosity)) _local_log.concatf("Link 0x%x failed in _relay_to_output_target(): %d\n", _session_tag, ret);
+  if ((0 > ret) & (1 < _verbosity)) _local_log.concatf("Link 0x%x failed in _relay_to_output_target(): %d\n", _session_tag, ret);
   return ret;
 }
 
@@ -667,7 +633,6 @@ int8_t ManuvrLink::_invoke_msg_callback(ManuvrMsg* msg) {
   }
   return ret;
 }
-
 
 
 /**
@@ -714,7 +679,7 @@ int8_t ManuvrLink::_attempt_header_parse(ManuvrMsgHdr* hdr) {
     }
   }
 
-  if (_verbosity > 6) {
+  if ((_verbosity > 6) | ((ret < 0) & (_verbosity > 3))) {
     _local_log.concatf("ManuvrLink (tag: 0x%x) _attempt_header_parse returned %d.\n", _session_tag, ret);
   }
   return ret;
@@ -741,56 +706,27 @@ int8_t ManuvrLink::_process_input_buffer() {
   switch (_fsm_pos) {
     // If the link is actively trying to attain sync...
     case ManuvrLinkState::SYNC_RESYNC:
-      proc_fallthru = (2 == _process_for_sync(&_inbound_buf));
-      //switch (_process_for_sync(&_inbound_buf)) {
-      //  case -1:   // insufficient length. No change to input data.
-      //    break;
-      //  case 0:    // no sync was found and so the input data was maximally culled.
-      //  case 1:    // sync found and search ended because we ran out of data to cull.
-      //    break;
-      //  case 2:    // sync found and search ended because sync ceased repeating.
-      //    proc_fallthru = true;
-      //    break;
-      //  default:   // Should be impossible.
-      //    break;
-      //}
+      switch (_process_for_sync(&_inbound_buf)) {
+        case -1:   // insufficient length. No change to input data.
+        case 0:    // no sync was found and so the input data was maximally culled.
+        default:   // Should be impossible.
+          break;
+        case 1:    // sync found and search ended because we ran out of data to cull.
+        case 2:    // sync found and search ended because sync ceased repeating.
+          proc_fallthru = true;
+          if (_flags.value(MANUVRLINK_FLAG_SYNC_CASTING)) {
+            // Prevents us from having to wait on our own timeout to trigger
+            //   our half of the sync exchange.
+            _send_sync_packet(true);
+          }
+          break;
+      }
       break;
 
     // The link believes that the input buffer is neatly-justified, but has yet
     //   to see something other than sync come across. We don't want to react
-    //   to incoming sync, other than to remove it and continue the general
-    //   parse, if possible.
+    //   to incoming sync. The general parse will catch it, if it exists.
     case ManuvrLinkState::SYNC_TENTATIVE:
-
-      // if (AVAILABLE_LENGTH >= MANUVRMSGHDR_MINIMUM_HEADER_SIZE) {
-      //   // If there are enough bytes in the buffer to check for sync...
-      //   if (-1 == _contains_sync_pattern(&_inbound_buf)) {
-      //     // ...and there is no remaining sync data, take the link out of its
-      //     //   present condition of uncertainty, and start the general parse.
-      //     _flags.clear(MANUVRLINK_FLAG_SYNC_INCOMING);
-      //     proc_fallthru = true;
-      //   }
-      //   else {
-      //     _cull_sync_data(&_inbound_buf);
-      //     if (_inbound_buf.length() >= 4) {
-      //       _flags.clear(MANUVRLINK_FLAG_SYNC_INCOMING);
-             proc_fallthru = true;
-      //     }
-      //   }
-      //
-      //
-      //   //else if (2 == _process_for_sync(&_inbound_buf)) {
-      //   //  // Otherise, there is still sync data coming across. If there is
-      //   //  // cull it, while reacting to the packets, as usual.
-      //   //  _flags.clear(MANUVRLINK_FLAG_SYNC_INCOMING);
-      //   //  proc_fallthru = true;
-      //   //}
-      // }
-
-
-
-      break;
-
     case ManuvrLinkState::PENDING_AUTH:
     case ManuvrLinkState::IDLE:
     case ManuvrLinkState::PENDING_HANGUP:
@@ -962,7 +898,7 @@ int8_t ManuvrLink::_process_for_sync(StringBuilder* dat_in) {
       else {                            dat_in->cull(CULL_LEN);  }
     }
   }
-  if (_verbosity > 6) _local_log.concatf("Link 0x%x _process_for_sync() returned %d.\n", _session_tag, ret);
+  if (_verbosity > 5) _local_log.concatf("Link 0x%x _process_for_sync() returned %d.\n", _session_tag, ret);
   return ret;
 }
 
@@ -990,7 +926,7 @@ int8_t ManuvrLink::_send_sync_packet(bool need_reply) {
   if (sync_header.serialize(&sync_packet)) {
     ret = (0 < _relay_to_output_target(&sync_packet)) ? 0 : -2;
   }
-  else if (3 < _verbosity) _local_log.concatf("Link 0x%x failed to serialize a sync header.\n", _session_tag);
+  else if (2 < _verbosity) _local_log.concatf("Link 0x%x failed to serialize a sync header.\n", _session_tag);
   return ret;
 }
 
@@ -1006,7 +942,7 @@ int8_t ManuvrLink::_send_connect_message() {
   if (connect_header.serialize(&connect_packet)) {
     ret = (0 < _relay_to_output_target(&connect_packet)) ? 0 : -2;
   }
-  else if (3 < _verbosity) _local_log.concatf("Link 0x%x failed to serialize a connect header.\n", _session_tag);
+  else if (2 < _verbosity) _local_log.concatf("Link 0x%x failed to serialize a connect header.\n", _session_tag);
   return ret;
 }
 
@@ -1131,17 +1067,12 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
         _flags.set(MANUVRLINK_FLAG_SYNC_CASTING, state_entry_success);
         break;
 
-
-
       // Entry into SYNC_TENTATIVE requires that sync packets have been
       //   exchanged, and the start of non-sync data has yet to be located.
       //   Entry always succeeds.
       case ManuvrLinkState::SYNC_TENTATIVE:
         state_entry_success = (0 == _send_connect_message());
-        if (state_entry_success) {
-          //_flags.clear(MANUVRLINK_FLAG_SYNC_CASTING);
-        }
-        else {
+        if (!state_entry_success) {
           if (3 < _verbosity) _local_log.concatf("Link 0x%x failed to send initial connect.\n", _session_tag);
         }
         break;
@@ -1179,7 +1110,7 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
     }
 
     if (state_entry_success) {
-      if (3 < _verbosity) _local_log.concatf("Link 0x%x moved %s ---> %s\n", _session_tag, sessionStateStr(_fsm_pos), sessionStateStr(new_state));
+      if (4 < _verbosity) _local_log.concatf("Link 0x%x moved %s ---> %s\n", _session_tag, sessionStateStr(_fsm_pos), sessionStateStr(new_state));
       _fsm_pos_prior = _fsm_pos;
       _fsm_pos       = new_state;
       fxn_ret = 0;

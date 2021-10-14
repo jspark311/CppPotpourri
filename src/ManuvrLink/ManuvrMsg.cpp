@@ -228,7 +228,7 @@ int ManuvrMsg::accumulate(StringBuilder* buf) {
 */
 void ManuvrMsg::printDebug(StringBuilder* output) {
   output->concatf("\t ManuvrMsg [%s: %s], id: %u\n", BusOp::getOpcodeString(_op), ManuvrLink::manuvMsgCodeStr(_header.msg_code), _header.msg_id);
-  output->concatf("\t   %u bytes of %u expected payload with %s encoding.\n\t   ", _accumulator.length(), _header.payload_length(), typecodeToStr(_encoding));
+  output->concatf("\t   %u bytes of %u expected payload with %s encoding.\n", _accumulator.length(), _header.payload_length(), typecodeToStr(_encoding));
 }
 
 #endif   // CONFIG_MANUVR_M2M_SUPPORT

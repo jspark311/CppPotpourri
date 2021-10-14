@@ -22,7 +22,15 @@ This program runs tests against the M2M communication class.
 */
 
 /*******************************************************************************
-* Basic ManuvrLink functionality
+* Globals
+*******************************************************************************/
+
+KeyValuePair* args_sent = nullptr;
+KeyValuePair* args_recd = nullptr;
+
+
+/*******************************************************************************
+* Callbacks and polling functions
 *******************************************************************************/
 
 void callback_vlad(uint32_t tag, ManuvrMsg* msg) {
@@ -47,8 +55,8 @@ bool poll_until_finished(ManuvrLink* vlad, ManuvrLink* carl) {
     vlad->poll(&log_v);
     carl->poll(&log_c);
     idle = vlad->linkIdle() & carl->linkIdle();
-    if (0 < log_v.length()) {   printf("Vlad (%06d):   %s", polling_cycles, (const char*) log_v.string());  }
-    if (0 < log_c.length()) {   printf("Carl (%06d):   %s", polling_cycles, (const char*) log_c.string());  }
+    if (0 < log_v.length()) {   printf("Vlad (%06d):\n%s\n", polling_cycles, (const char*) log_v.string());  }
+    if (0 < log_c.length()) {   printf("Carl (%06d):\n%s\n", polling_cycles, (const char*) log_c.string());  }
     polling_cycles++;
     sleep_ms(1);
     now = millis();
@@ -57,6 +65,111 @@ bool poll_until_finished(ManuvrLink* vlad, ManuvrLink* carl) {
   return (now < timeout_end);
 }
 
+
+/*******************************************************************************
+* ManuvrMsg functionality
+*******************************************************************************/
+
+ManuvrMsgHdr connect_header(ManuvrMsgCode::CONNECT, 0, true);
+
+/* Header tests */
+int link_tests_message_battery_0() {
+  int ret = -1;
+  StringBuilder log("===< ManuvrMsg battery 0 () >====================================\n");
+  ManuvrMsgHdr msg_valid_with_reply(ManuvrMsgCode::SYNC_KEEPALIVE, 0, true);
+  ManuvrMsgHdr msg_valid_without_reply(ManuvrMsgCode::SYNC_KEEPALIVE, 0, false);
+  ManuvrMsgHdr msg_valid_reply_without_id(ManuvrMsgCode::CONNECT, 0, true);
+  ManuvrMsgHdr msg_invalid_bad_code(ManuvrMsgCode::UNDEFINED, 0, false);
+
+  if (msg_valid_with_reply.isValid()) {
+    if (msg_valid_with_reply.expectsReply()) {
+      if (!msg_valid_with_reply.isReply()) {
+        if (msg_valid_with_reply.msg_id == 0) {
+          if (msg_valid_with_reply.isSync()) {
+            log.concat("\t msg_valid_with_reply passes tests.\n");
+            ret = 0;
+          }
+          else log.concat("msg_valid_with_reply does not identify as a SYNC.\n");
+        }
+        else log.concat("With reply: SYNC headers created without IDs should not be assigned one.\n");
+      }
+      else log.concat("With reply: isReply() should have returned false.\n");
+    }
+    else log.concat("With reply: expectsReply() should have returned true.\n");
+  }
+  else log.concat("With reply: A valid header was construed as invalid.\n");
+
+  if (0 == ret) {
+    ret--;
+    if (msg_valid_without_reply.isValid()) {
+      if (!msg_valid_without_reply.expectsReply()) {
+        if (!msg_valid_without_reply.isReply()) {
+          if (msg_valid_without_reply.msg_id == 0) {
+            if (msg_valid_without_reply.isSync()) {
+              log.concat("\t msg_valid_without_reply passes tests.\n");
+              ret = 0;
+            }
+            else log.concat("msg_valid_without_reply does not identify as a SYNC.\n");
+          }
+          else log.concat("Without SYNC headers created without IDs should not be assigned one.\n");
+        }
+        else log.concat("Without isReply() should have returned false.\n");
+      }
+      else log.concat("Without expectsReply() should have returned false.\n");
+    }
+    else log.concat("Without reply: A valid header was construed as invalid.\n");
+  }
+
+  if (0 == ret) {
+    ret--;
+    // Setting the payload length member directly will subvert the class's length
+    //   field checks, and will thus not update the flags.
+    ManuvrMsgHdr msg_invalid_bad_length(ManuvrMsgCode::CONNECT, 6, false);
+    msg_invalid_bad_length.msg_len = 0x1f000;  // Make the length require too many bytes.
+    msg_invalid_bad_length.rebuild_checksum();   // Ensure it isn't a checksum fault.
+    if (!msg_invalid_bad_length.isValid()) {
+      if (!msg_invalid_bad_code.isValid()) {
+        // Here, we'll make a change to the header byte, but we won't update the
+        //   checksum.
+        ManuvrMsgHdr msg_invalid_bad_chksum(ManuvrMsgCode::CONNECT, 0, false);
+        msg_invalid_bad_chksum.expectsReply(true);
+        if (!msg_invalid_bad_chksum.isValid()) {
+          // Replies can't happen without an ID. If the ManuvrMsgHdr constructor
+          //   knows that one will be needed, it will generate one. But in this
+          //   case, we'll construct the header as requiring no reply, but then
+          //   we'll change out mind.
+          ManuvrMsgHdr msg_invalid_reply_without_id(ManuvrMsgCode::CONNECT, 0, false);
+          msg_invalid_reply_without_id.expectsReply(true);  // ManuvrMsg should accomodate this.
+          msg_invalid_reply_without_id.rebuild_checksum();   // Ensure it isn't a checksum fault.
+          if (!msg_invalid_reply_without_id.isValid()) {
+            log.concat("\t msg_invalid_reply_without_id passes tests.\n");
+            ret = 0;
+          }
+          else log.concat("msg_invalid_reply_without_id was construed as valid.\n");
+        }
+        else log.concat("msg_invalid_bad_chksum was construed as valid.\n");
+      }
+      else log.concat("msg_invalid_bad_code was construed as valid.\n");
+    }
+    else log.concat("msg_invalid_bad_length was construed as valid.\n");
+  }
+
+  printf("%s\n\n", (const char*) log.string());
+  return ret;
+}
+
+
+/* Message pack-parse tests */
+int link_tests_message_battery_1() {
+  StringBuilder log("===< ManuvrLink Build and connect >====================================\n");
+  ManuvrMsg msg();
+}
+
+
+
+/*******************************************************************************
+* Basic ManuvrLink functionality
+*******************************************************************************/
 
 
 /*
@@ -161,15 +274,18 @@ int manuvrlink_main() {
   );
   ManuvrLink* vlad = new ManuvrLink(&opts_vlad);  // One half of the link.
   ManuvrLink* carl = new ManuvrLink(&opts_carl);  // One half of the link.
-  int ret = link_tests_build_and_connect(vlad, carl);
-  if (0 == ret) {
-    //ret = link_tests_simple_messages(vlad, carl);
-    //if (0 == ret) {
-    //  ret = 0;
-    //}
-    //else printTestFailure("link_tests_simple_messages");
+  int ret = -1;
+  if (0 == link_tests_message_battery_0()) {
+    if (0 == link_tests_build_and_connect(vlad, carl)) {
+      //ret = link_tests_simple_messages(vlad, carl);
+      //if (0 == ret) {
+        ret = 0;
+      //}
+      //else printTestFailure("link_tests_simple_messages");
+    }
+    else printTestFailure("link_tests_build_and_connect");
   }
-  else printTestFailure("link_tests_build_and_connect");
+  else printTestFailure("link_tests_message_battery_0");
 
   if (0 == ret) {
     printf("**********************************\n");

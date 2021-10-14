@@ -176,7 +176,7 @@ bool ManuvrMsgHdr::isValid() {
         }
       }
     }
-  } 
+  }
   return ret;
 }
 
@@ -190,7 +190,7 @@ bool ManuvrMsgHdr::isSync() {
       }
     }
   }
-  return false;
+  return ret;
 }
 
 #endif   // CONFIG_MANUVR_M2M_SUPPORT

@@ -115,6 +115,11 @@ void printTypeSizes(StringBuilder* output) {
   output->concatf("\tSensorFilter<float>   %u\n", sizeof(SensorFilter<float>));
   output->concatf("\tIdentity              %u\n", sizeof(Identity));
   output->concatf("\tIdentityUUID          %u\n", sizeof(IdentityUUID));
+  output->concat("-- M2M classes:\n");
+  output->concatf("\tManuvrLink            %u\n", sizeof(ManuvrLink));
+  output->concatf("\tManuvrMsg             %u\n", sizeof(ManuvrMsg));
+  output->concatf("\tManuvrMsgHdr          %u\n", sizeof(ManuvrMsgHdr));
+  output->concatf("\tManuvrLinkOpts        %u\n", sizeof(ManuvrLinkOpts));
 }
 
 
