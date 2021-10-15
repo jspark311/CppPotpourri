@@ -430,9 +430,31 @@ int link_tests_interrupted_transport(ManuvrLink* vlad, ManuvrLink* carl) {
 }
 
 
+/*
+* Feed garbage into the stream, and make sure the link resyncs.
+*/
 int link_tests_corrupted_transport(ManuvrLink* vlad, ManuvrLink* carl) {
   StringBuilder log("===< ManuvrLink corrupted transport >====================================\n");
   int ret = -1;
+  if ((nullptr != vlad) & (nullptr != carl)) {
+    uint32_t buf_0[4] = {randomUInt32(), randomUInt32(), randomUInt32(), randomUInt32()};
+    uint32_t buf_1[4] = {randomUInt32(), randomUInt32(), randomUInt32(), randomUInt32()};
+    StringBuilder garbage_for_vlad;
+    StringBuilder garbage_for_carl;
+    garbage_for_vlad.concat((uint8_t*) &buf_0[0], 16);
+    garbage_for_carl.concat((uint8_t*) &buf_1[0], 16);
+    vlad->provideBuffer(&garbage_for_vlad);
+    carl->provideBuffer(&garbage_for_carl);
+    if (poll_until_finished(vlad, carl)) {
+      log.concat("Vlad and Carl resyncd after being fed garbage.\n");
+      ret = 0;
+    }
+    else log.concat("The polling loop ran to its maximum extent. Link dead-locked.\n");
+    log.concat("\n");
+    vlad->printDebug(&log);
+    carl->printDebug(&log);
+  }
+  else log.concat("Failed to allocate two ManuvrLinks.\n");
   printf("%s\n\n", (const char*) log.string());
   return ret;
 }
@@ -463,9 +485,11 @@ int manuvrlink_main() {
   if (0 == link_tests_message_battery_0()) {
     if (0 == link_tests_message_battery_1()) {
       if (0 == link_tests_build_and_connect(vlad, carl)) {
-        ret = link_tests_simple_messages(vlad, carl);
-        if (0 == ret) {
-          ret = 0;
+        if (0 == link_tests_simple_messages(vlad, carl)) {
+          if (0 == link_tests_corrupted_transport(vlad, carl)) {
+            ret = 0;
+          }
+          else printTestFailure("link_tests_corrupted_transport");
         }
         else printTestFailure("link_tests_simple_messages");
       }

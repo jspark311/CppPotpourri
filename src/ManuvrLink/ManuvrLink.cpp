@@ -505,10 +505,10 @@ int8_t ManuvrLink::_churn_inbound() {
   while (_inbound_messages.hasNext()) {
     bool gc_message = true;
     ManuvrMsg* temp = _inbound_messages.dequeue();
-    //if (_verbosity > 5) {
-    //  _local_log.concatf("ManuvrLink (tag: 0x%x) responding to...\n", _session_tag);
-    //  temp->printDebug(&_local_log);
-    //}
+    if (_verbosity > 5) {
+      _local_log.concatf("ManuvrLink (tag: 0x%x) responding to...\n", _session_tag);
+      temp->printDebug(&_local_log);
+    }
 
     switch (temp->msgCode()) {
       case ManuvrMsgCode::SYNC_KEEPALIVE:
@@ -527,8 +527,7 @@ int8_t ManuvrLink::_churn_inbound() {
       case ManuvrMsgCode::CONNECT:
         if (temp->isReply()) {
           if (!_flags.value(MANUVRLINK_FLAG_ESTABLISHED)) {
-            _flags.set(MANUVRLINK_FLAG_ESTABLISHED);
-            if (_fsm_is_stable()) {
+            if (_fsm_is_stable()) {   // Ensures we are in SYNC_TENTATIVE.
               if (_flags.value(MANUVRLINK_FLAG_AUTH_REQUIRED)) {
                 _append_fsm_route(2, ManuvrLinkState::PENDING_AUTH, ManuvrLinkState::IDLE);
               }
@@ -537,6 +536,10 @@ int8_t ManuvrLink::_churn_inbound() {
               }
             }
           }
+          else {
+            _append_fsm_route(1, ManuvrLinkState::IDLE);
+          }
+          _flags.set(MANUVRLINK_FLAG_ESTABLISHED);
         }
         else if (temp->expectsReply()) {
           if (0 != temp->ack()) {
@@ -852,6 +855,7 @@ int8_t ManuvrLink::_process_input_buffer() {
   }
   return ret;
 }
+
 
 /*******************************************************************************
 * Functions for managing and reacting to sync states.                          *
