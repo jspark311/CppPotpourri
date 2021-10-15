@@ -182,13 +182,14 @@ int link_tests_message_battery_1() {
   if (msg_parse_pack_0) {
     uint32_t now     = millis();
     uint32_t rand    = randomUInt32();
+    const char* val_str = "my_value";
     float    val_flt = (float) randomUInt32()/1000000.0f;
     double   val_dbl = (double) randomUInt32() / (double) randomUInt32();
     Vector3<float> vect(randomUInt32()/1000000.0f, randomUInt32()/1000000.0f, randomUInt32()/1000000.0f);
 
     KeyValuePair a(now, "time_ms");
     a.append(rand, "rand");
-    a.append("my_value", "my_key");
+    a.append(val_str, "my_key");
     a.append(val_flt, "val_flt");
     a.append(val_dbl, "val_dbl");
     a.append(&vect, "vect");
@@ -205,8 +206,34 @@ int link_tests_message_battery_1() {
             KeyValuePair* pl = nullptr;
             msg_parse_pack_1->getPayload(&pl);
             if (nullptr != pl) {
+              // Did all of the arguments come across unscathed?
+              uint32_t now_ret     = millis();
+              uint32_t rand_ret    = randomUInt32();
+              char* val_str_ret = nullptr;
+              float    val_flt_ret = (float) randomUInt32()/1000000.0f;
+              double   val_dbl_ret = (double) randomUInt32() / (double) randomUInt32();
+              Vector3<float> vect_ret(randomUInt32()/1000000.0f, randomUInt32()/1000000.0f, randomUInt32()/1000000.0f);
               pl->printDebug(&log);
-              ret = 0;
+              if ((0 == a.valueWithKey("time_ms", &now_ret)) && (now_ret == now)) {
+                if ((0 == a.valueWithKey("rand", &rand_ret)) && (rand_ret == rand)) {
+                  if ((0 == a.valueWithKey("my_key", &val_str_ret)) && (0 == strcasecmp(val_str, val_str_ret))) {
+                    if ((0 == a.valueWithKey("val_flt", &val_flt_ret)) && (val_flt_ret == val_flt)) {
+                      if ((0 == a.valueWithKey("val_dbl", &val_dbl_ret)) && (val_dbl_ret == val_dbl)) {
+                        if ((0 == a.valueWithKey("vect", &vect_ret)) && (vect_ret == vect)) {
+                          log.concat("\tParse-pack tests pass.\n");
+                          ret = 0;
+                        }
+                        else log.concat("Failed to vet vect\n");
+                      }
+                      else log.concat("Failed to vet val_dbl\n");
+                    }
+                    else log.concat("Failed to vet val_flt\n");
+                  }
+                  else log.concat("Failed to vet my_key\n");
+                }
+                else log.concat("Failed to vet rand\n");
+              }
+              else log.concat("Failed to vet time_ms.\n");
             }
             else log.concat("Failed to retrieve payload.\n");
           }
