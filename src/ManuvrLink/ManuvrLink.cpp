@@ -395,24 +395,36 @@ void ManuvrLink::printFSM(StringBuilder* output) {
 * Functions for managing dialogs and message queues.                           *
 *******************************************************************************/
 
+/**
+* Application-facing interface for sending messages.
+*
+* @return  0 on success with no ID
+*         >0 on success with a message ID for application tracking.
+*         -1 if we fail to allocate a ManuvrMsg.
+*         -2 if payload serialization failed.
+*         -3 on queue insertion failure
+*/
 int ManuvrLink::send(KeyValuePair* kvp, bool need_reply) {
-  int8_t ret = -1;
-  int payload_len = 0;
-  StringBuilder msg_serial;
+  int ret = -1;
   ManuvrMsgHdr hdr(ManuvrMsgCode::APPLICATION, 0, need_reply);
   ManuvrMsg* msg = new ManuvrMsg(&hdr, BusOpcode::TX);
   if (nullptr != msg) {
-    ret--;
+    ret = 0;
     if (nullptr != kvp) {
-      ret--;
-      if (0 == msg->setPayload(kvp)) {
-        ret--;
-        if (0 == _send_msg(msg)) {
-          ret = 0;
-        }
+      if (0 != msg->setPayload(kvp)) {
+        ret = -2;
       }
     }
-    if (0 != ret) {  // Clean up after ourselves.
+
+    if (0 == ret) {
+      ret = -3;
+      if (0 == _send_msg(msg)) {
+        ret = msg->uniqueId();
+      }
+    }
+
+    // Clean up after ourselves if we fail.
+    if (0 > ret) {
       delete msg;
     }
   }
@@ -444,7 +456,10 @@ int8_t ManuvrLink::_send_msg(ManuvrMsg* msg) {
       }
     }
   }
-  if ((0 > ret) & (3 < _verbosity)) _local_log.concatf("Link 0x%x failed in _send_msg(): %d\n", _session_tag, ret);
+  if ((0 > ret) & (3 < _verbosity)) {
+    _local_log.concatf("Link 0x%x failed in _send_msg(): %d\n", _session_tag, ret);
+    msg->printDebug(&_local_log);
+  }
   return ret;
 }
 
@@ -483,11 +498,12 @@ int ManuvrLink::_purge_outbound() {
 * Cycle through the inbound message queue and handle anything internal.
 * Callback on anything marked for the application.
 *
-* @return  int The number of outbound messages that were purged.
+* @return  int The number of inbound messages processed.
 */
 int8_t ManuvrLink::_churn_inbound() {
   int8_t ret = 0;
   while (_inbound_messages.hasNext()) {
+    bool gc_message = true;
     ManuvrMsg* temp = _inbound_messages.dequeue();
     //if (_verbosity > 5) {
     //  _local_log.concatf("ManuvrLink (tag: 0x%x) responding to...\n", _session_tag);
@@ -506,7 +522,6 @@ int8_t ManuvrLink::_churn_inbound() {
           //   stopped doing so.
           _send_sync_packet(false);
         }
-        delete temp;  // Clean up the allocation.
         break;
 
       case ManuvrMsgCode::CONNECT:
@@ -534,9 +549,7 @@ int8_t ManuvrLink::_churn_inbound() {
           StringBuilder temp_out;
           temp->serialize(&temp_out);
           _relay_to_output_target(&temp_out);
-          //_clear_waiting_reply_by_id(temp->uniqueId());
         }
-        delete temp;  // Clean up the allocation.
         break;
 
       case ManuvrMsgCode::PROTOCOL:
@@ -553,12 +566,26 @@ int8_t ManuvrLink::_churn_inbound() {
         break;
 
       case ManuvrMsgCode::APPLICATION:
-        _invoke_msg_callback(temp);
-        _clear_waiting_send_by_id(temp->uniqueId());
+        switch (_invoke_msg_callback(temp)) {
+          case 2:   // Requeue the message as a reply. Don't GC it.
+            gc_message = (0 != _send_msg(temp));
+            if (gc_message & (2 < _verbosity)) _local_log.concatf("Link 0x%x failed to insert a reply message into our queue.\n", _session_tag);
+            break;
+          case 1:   // Drop the message.
+          case 0:   // No callback. TODO: Might choose to retain in the queue?
+            break;
+        }
         break;
 
       default:   // This should never happen.
         break;
+    }
+
+    if (gc_message) {
+      if (temp->isReply()) {
+        _clear_waiting_send_by_id(temp->uniqueId());
+      }
+      delete temp;
     }
   }
   return ret;
@@ -573,12 +600,16 @@ int8_t ManuvrLink::_churn_inbound() {
 */
 int8_t ManuvrLink::_churn_outbound() {
   int8_t ret = 0;
-  for (int i = 0; i < _outbound_messages.size(); i++) {
-    ManuvrMsg* temp = _outbound_messages.get(i);
+  if (_outbound_messages.hasNext()) {
+    int current_priority = _outbound_messages.getPriority(0);
+    ManuvrMsg* temp = _outbound_messages.dequeue();
     if (nullptr != temp) {
+      int new_priority = (temp->msgCode() == ManuvrMsgCode::APPLICATION) ? MANUVRLINK_PRIORITY_APP : MANUVRLINK_PRIORITY_INTERNAL;
+      bool gc_msg    = false;
       bool will_send = !temp->wasSent();
-      switch (_outbound_messages.getPriority(i)) {
+      switch (current_priority) {
         case MANUVRLINK_PRIORITY_WAITING_FOR_ACK:
+          new_priority = MANUVRLINK_PRIORITY_WAITING_FOR_ACK;
         case MANUVRLINK_PRIORITY_APP:
         case MANUVRLINK_PRIORITY_INTERNAL:
         default:
@@ -588,10 +619,7 @@ int8_t ManuvrLink::_churn_outbound() {
               //   a reply longer than the session timeout. Resend, or fail it.
               _seq_ack_fails++;
               will_send = temp->attemptRetry();
-              if (!will_send) {
-                _outbound_messages.remove(temp);
-                delete temp;
-              }
+              gc_msg = !will_send;
             }
           }
           break;
@@ -604,37 +632,19 @@ int8_t ManuvrLink::_churn_outbound() {
           if (0 <= _relay_to_output_target(&temp_out)) {
             // If the buffer was moved to the transport driver...
             temp->markSent();
-            if (temp->isReply()) {
-              // If this was a reply, clear it from our inbound queue.
-              _clear_waiting_reply_by_id(temp->uniqueId());
-            }
-            if (!temp->expectsReply()) {
-              _outbound_messages.remove(temp);
-              delete temp;
-            }
+            new_priority = MANUVRLINK_PRIORITY_WAITING_FOR_ACK;
+            gc_msg = !temp->expectsReply();
             ret++;
           }
         }
       }
-    }
-  }
-  return ret;
-}
 
-
-/**
-* Calling this function with the ID of a message we previously received will
-*   cause that message to be released from the inbound queue.
-*/
-int8_t ManuvrLink::_clear_waiting_reply_by_id(uint32_t id) {
-  int8_t ret = 0;
-  for (int i = 0; i < _inbound_messages.size(); i++) {
-    ManuvrMsg* temp = _inbound_messages.get(i);
-    if (nullptr != temp) {
-      if (id == temp->uniqueId()) {
-        _inbound_messages.remove(temp);
+      if (gc_msg) {
+        _outbound_messages.remove(temp);
         delete temp;
-        ret = 1;
+      }
+      else {
+        _outbound_messages.insert(temp, new_priority);
       }
     }
   }
@@ -654,7 +664,6 @@ int8_t ManuvrLink::_clear_waiting_send_by_id(uint32_t id) {
     if (nullptr != temp) {
       if (id == temp->uniqueId()) {
         _outbound_messages.remove(temp);
-        delete temp;
         ret = 1;
       }
     }
@@ -710,11 +719,25 @@ int8_t ManuvrLink::_relay_to_output_target(StringBuilder* buf) {
 }
 
 
+/**
+* Internal function to invoke the application-provided callback for messages
+*   received. During this stack frame, the application will be able to reply
+*   to the message.
+*
+* @return 0 if no callback invoked.
+*         1 if the message is to be dropped.
+*         2 if the message was converted into a reply.
+*/
 int8_t ManuvrLink::_invoke_msg_callback(ManuvrMsg* msg) {
   int8_t ret = 0;
   if (nullptr != _msg_callback) {   // Call the callback, if it is set.
-    _msg_callback(_session_tag, msg);
     ret++;
+    _msg_callback(_session_tag, msg);
+    if (BusOpcode::TX == msg->direction()) {
+      // If the message is now marked as TX, it means the application wants to
+      //   reply.
+      ret++;
+    }
   }
   return ret;
 }

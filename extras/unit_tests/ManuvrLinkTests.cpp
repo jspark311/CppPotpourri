@@ -25,8 +25,19 @@ This program runs tests against the M2M communication class.
 * Globals
 *******************************************************************************/
 
+ManuvrLink* vlad = nullptr;
+ManuvrLink* carl = nullptr;
+
 KeyValuePair* args_sent_vlad = nullptr;
 KeyValuePair* args_sent_carl = nullptr;
+KeyValuePair* args_recd_vlad = nullptr;
+KeyValuePair* args_recd_carl = nullptr;
+
+bool vlad_reply_lockout = false;
+bool carl_reply_lockout = false;
+
+int vlad_replies_rxd = 0;
+int carl_replies_rxd = 0;
 
 
 /*******************************************************************************
@@ -52,6 +63,13 @@ void callback_vlad(uint32_t tag, ManuvrMsg* msg) {
   msg->printDebug(&log);
   msg->getPayload(&kvps_rxd);
   check_that_kvps_match(&log, args_sent_carl, kvps_rxd);
+  args_recd_vlad = kvps_rxd;
+  if (msg->isReply()) {
+    vlad_replies_rxd++;
+  }
+  if ((!vlad_reply_lockout) && msg->expectsReply()) {
+    log.concatf("\ncallback_vlad ACK's %d.\n", msg->ack());
+  }
   printf("%s\n\n", (const char*) log.string());
 }
 
@@ -63,6 +81,13 @@ void callback_carl(uint32_t tag, ManuvrMsg* msg) {
   msg->printDebug(&log);
   msg->getPayload(&kvps_rxd);
   check_that_kvps_match(&log, args_sent_vlad, kvps_rxd);
+  args_recd_carl = kvps_rxd;
+  if (msg->isReply()) {
+    carl_replies_rxd++;
+  }
+  if ((!carl_reply_lockout) && msg->expectsReply()) {
+    log.concatf("\ncallback_carl ACK's %d.\n", msg->ack());
+  }
   printf("%s\n\n", (const char*) log.string());
 }
 
@@ -93,8 +118,6 @@ bool poll_until_finished(ManuvrLink* vlad, ManuvrLink* carl) {
 /*******************************************************************************
 * ManuvrMsg functionality
 *******************************************************************************/
-
-ManuvrMsgHdr connect_header(ManuvrMsgCode::CONNECT, 0, true);
 
 /* Header tests */
 int link_tests_message_battery_0() {
@@ -317,20 +340,39 @@ int link_tests_build_and_connect(ManuvrLink* vlad, ManuvrLink* carl) {
 }
 
 
+/*
+* Uses the previously-setup links to move some messages.
+*/
 int link_tests_simple_messages(ManuvrLink* vlad, ManuvrLink* carl) {
   StringBuilder log("===< ManuvrLink Simple messages >====================================\n");
   int ret = -1;
   int ret_local = -1;
   if ((nullptr != vlad) & (nullptr != carl) && vlad->linkIdle() && carl->linkIdle()) {
-    uint32_t now     = millis();
-    uint32_t rand    = randomUInt32();
-    KeyValuePair a(now, "time_ms");
-    a.append(rand, "rand");
+    KeyValuePair a((uint32_t) millis(), "time_ms");
+    a.append((uint32_t) randomUInt32(), "rand");
     ret_local = vlad->send(&a);
-    if (0 == ret_local) {
+    if (0 <= ret_local) {
       args_sent_vlad = &a;
       if (poll_until_finished(vlad, carl)) {
-        ret = 0;
+        KeyValuePair b((uint32_t) millis(), "time_ms");
+        b.append((uint32_t) randomUInt32(), "reply_test");
+        ret_local = vlad->send(&b, true);
+        if (0 <= ret_local) {
+          args_sent_vlad = &b;
+          if (poll_until_finished(vlad, carl)) {
+            //vlad->printDebug(&log);
+            //carl->printDebug(&log);
+            if (vlad_replies_rxd > 0) {
+              //args_recd_vlad->printDebug(&log);
+              //carl_reply_lockout = true;
+              log.concat("\tSimple messages pass tests.\n");
+              ret = 0;
+            }
+            else log.concat("Vlad should have received a reply, and didn't.\n");
+          }
+          else log.concat("Failed to send. Link dead-locked.\n");
+        }
+        else log.concatf("Vlad failed to send a reply-required message to Carl. send() returned %d.\n", ret_local);
       }
       else log.concat("Failed to send. Link dead-locked.\n");
     }
@@ -405,8 +447,8 @@ int manuvrlink_main() {
     1024,  // MTU for this link is 1 kibi.
     0      // No flags.
   );
-  ManuvrLink* vlad = new ManuvrLink(&opts_vlad);  // One half of the link.
-  ManuvrLink* carl = new ManuvrLink(&opts_carl);  // One half of the link.
+  vlad = new ManuvrLink(&opts_vlad);  // One half of the link.
+  carl = new ManuvrLink(&opts_carl);  // One half of the link.
   int ret = -1;
   if (0 == link_tests_message_battery_0()) {
     if (0 == link_tests_message_battery_1()) {

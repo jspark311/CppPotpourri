@@ -210,19 +210,25 @@ bool ManuvrMsg::attemptRetry() {
 * We need to reply to certain messages. This converts this message to a reply of
 *   the message that it used to be. Then it can be simply fed back into the
 *   outbound queue.
+* Clears the accumulator, and reserializes the provided KVP into it.
 *
-* @return  nonzero if there was a problem.
+* @param kvp is the new payload, if any. Nullptr is a valid value.
+* @return 0 on success
+*        -1 if the message isn't inbound.
+*        -2 if there was a problem serializing the message.
 */
 int ManuvrMsg::reply(KeyValuePair* kvp) {
   int ret = -1;
   if (BusOpcode::RX == _op) {
+    // NOTE: No id check on purpose so that it also applies to SYNC_KA.
     ret--;
-    if (_header.expectsReply()) {
-      // NOTE: No id check on purpose so that it also applies to SYNC_KA.
-      _op = BusOpcode::TX;
-      _header.expectsReply(false);
-      _header.isReply(true);
-      _header.rebuild_checksum();
+    _op = BusOpcode::TX;
+    _header.expectsReply(false);
+    _header.isReply(true);
+    _accumulator.clear();
+    _kvp = kvp;
+    _class_clear_flag(MANUVRMSG_FLAG_ACCUMULATOR_COMPLETE);
+    if (0 == serialize(&_accumulator)) {
       ret = 0;
     }
   }
@@ -262,6 +268,7 @@ int ManuvrMsg::setPayload(KeyValuePair* payload) {
       // NOTE: No break;
     case BusOpcode::TX:
       _accumulator.clear();
+      _class_clear_flag(MANUVRMSG_FLAG_ACCUMULATOR_COMPLETE);
       _kvp = payload;
       ret = (0 == serialize(&_accumulator)) ? 0 : -2;
       break;
@@ -288,11 +295,11 @@ int ManuvrMsg::setPayload(KeyValuePair* payload) {
 */
 int ManuvrMsg::serialize(StringBuilder* buf) {
   int ret = -1;
-  // if (_header.isValid() & (_header.payload_length() == _accumulator.length())) {
-  //   buf->concat(_accumulator.string(), _accumulator.length());
-  //   ret = 0;
-  // }
-  // else {
+  if (_class_flag(MANUVRMSG_FLAG_ACCUMULATOR_COMPLETE)) {
+    buf->concat(_accumulator.string(), _accumulator.length());
+    ret = 0;
+  }
+  else {
     StringBuilder payload;
     int payload_len = 0;
     if (nullptr != _kvp) {
@@ -310,10 +317,11 @@ int ManuvrMsg::serialize(StringBuilder* buf) {
         if (!payload.isEmpty()) {
           buf->concatHandoff(&payload);
         }
+        _class_set_flag(MANUVRMSG_FLAG_ACCUMULATOR_COMPLETE);
         ret = 0;
       }
     }
-  // }
+  }
   return ret;
 }
 
@@ -359,7 +367,14 @@ int ManuvrMsg::accumulate(StringBuilder* buf) {
 * @param   StringBuilder* The buffer into which this fxn should write its output.
 */
 void ManuvrMsg::printDebug(StringBuilder* output) {
-  output->concatf("    --- ManuvrMsg [%s: %s], id: %u\n", BusOp::getOpcodeString(_op), ManuvrLink::manuvMsgCodeStr(_header.msg_code), _header.msg_id);
+  output->concatf(
+    "    --- ManuvrMsg [%s: %s], %sid: %u %s\n",
+    BusOp::getOpcodeString(_op),
+    ManuvrLink::manuvMsgCodeStr(_header.msg_code),
+    (_header.isReply() ? "reply to " : ""),
+    _header.msg_id,
+    (_header.expectsReply() ? "(need reply)" : "")
+  );
   output->concatf("\t  %u bytes of %u expected payload with %s encoding.\n", _accumulator.length(), _header.payload_length(), typecodeToStr(_encoding));
   if (nullptr != _kvp) {
     output->concat("\t--- Payload -----------------------\n");

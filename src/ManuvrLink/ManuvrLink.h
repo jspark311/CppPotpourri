@@ -81,7 +81,12 @@ TODO: Since this class renders large chains of function calls opaque to the
 // These ManuvrLink flags survive class reset.
 #define MANUVRLINK_FLAG_RESET_PRESERVE_MASK (MANUVRLINK_FLAG_AUTH_REQUIRED)
 
-/* Class flags for ManuvrMsg. These will be sent with each message. */
+
+/* Class flags for ManuvrMsg. These are for state tracking, and will NOT be sent with each message. */
+#define MANUVRMSG_FLAG_ACCUMULATOR_COMPLETE     0x01  // The accumulator contains the complete message.
+
+
+/* Class flags for ManuvrMsgHdr. These will be sent with each message. */
 #define MANUVRMSGHDR_FLAG_EXPECTING_REPLY       0x01  // This message needs to be ACKd.
 #define MANUVRMSGHDR_FLAG_IS_REPLY              0x02  // This message IS a reply.
 #define MANUVRMSGHDR_FLAG_RESERVED_0            0x04  // Must be 0.
@@ -387,7 +392,6 @@ class ManuvrLink : public BufferAccepter {
     int    _purge_outbound();
     int8_t _churn_inbound();
     int8_t _churn_outbound();
-    int8_t _clear_waiting_reply_by_id(uint32_t);
     int8_t _clear_waiting_send_by_id(uint32_t);
 
     /* Buffers, parsing, and scattered low-level functions */
