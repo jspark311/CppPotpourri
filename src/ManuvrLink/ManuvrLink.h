@@ -171,9 +171,11 @@ class ManuvrLinkOpts {
     uint32_t ms_keepalive;   // How often in a connected session ought we ping?
     uint32_t mtu;            // Largest message we will accept.
     uint32_t default_flags;  // Largest message we will accept.
-    uint8_t  PADDING;
+    uint8_t  max_outbound;   // Maximum number of messages enqueue before rejection.
+    uint8_t  max_inbound;    // Maximum number of messages enqueue before rejection.
     uint8_t  max_parse_errs; // How many sequential parse failures before resync?
     uint8_t  max_ack_fails;  // How many message retries before abort?
+    uint8_t  prealloc_count; // How many messages should we preallocate?
     TCode    encoding;       // Start out as basic as possible.
 
     ManuvrLinkOpts(const ManuvrLinkOpts* obj) :
@@ -181,9 +183,11 @@ class ManuvrLinkOpts {
       ms_keepalive(obj->ms_keepalive),
       mtu(obj->mtu),
       default_flags(MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK & obj->default_flags),
-      PADDING(0),
+      max_outbound(obj->max_outbound),
+      max_inbound(obj->max_inbound),
       max_parse_errs(obj->max_parse_errs),
       max_ack_fails(obj->max_ack_fails),
+      prealloc_count(obj->prealloc_count),
       encoding(obj->encoding) {};
 
     ManuvrLinkOpts(uint32_t msto, uint32_t mska, uint32_t m, uint32_t def_flgs = 0) :
@@ -191,9 +195,11 @@ class ManuvrLinkOpts {
       ms_keepalive(mska),
       mtu(m),
       default_flags(MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK & def_flgs),
-      PADDING(0),
+      max_outbound(8),
+      max_inbound(8),
       max_parse_errs(3),
       max_ack_fails(3),
+      prealloc_count(4),
       encoding(TCode::BINARY) {};
 };
 
@@ -225,7 +231,6 @@ class ManuvrMsgHdr {
     ManuvrMsgHdr(ManuvrMsgCode m) : ManuvrMsgHdr(m, 0, 0, 0) {};
     //ManuvrMsgHdr() : ManuvrMsgHdr(ManuvrMsgCode::UNDEFINED, 0, 0, 0) {};
     ManuvrMsgHdr() : msg_code(ManuvrMsgCode::UNDEFINED), flags(0), chk_byte(0), msg_len(0), msg_id(0) {};
-
 
 
     inline bool isReply() {        return (flags & MANUVRMSGHDR_FLAG_IS_REPLY);         };
@@ -290,6 +295,8 @@ class ManuvrMsg {
     int   accumulate(StringBuilder*);  // Link calls this to feed the message parser.
     void  printDebug(StringBuilder*);
 
+    bool attemptRetry();
+
     static ManuvrMsg* unserialize(StringBuilder*);
     static int8_t attempt_header_parse(ManuvrMsgHdr*, StringBuilder*);
 
@@ -298,7 +305,7 @@ class ManuvrMsg {
     ManuvrMsgHdr _header;
     BusOpcode _op         = BusOpcode::UNDEF;  // Differentiate between inbound and outbount messages.
     TCode     _encoding   = TCode::CBOR;     // Start out as basic as possible.
-    uint8_t   _retries    = 0;    // No retries by default.
+    uint8_t   _retries    = 3;    // No retries by default.
     uint8_t   _flags      = 0;    // These are NOT sent with the message.
     uint32_t  _ms_io_mark = 0;    // This is the millis() reading when we sent or received.
     KeyValuePair* _kvp    = nullptr;
@@ -333,7 +340,7 @@ class ManuvrLink : public BufferAccepter {
     int8_t hangup(bool graceful = true);
     inline bool   isConnected() {  return _flags.value(MANUVRLINK_FLAG_ESTABLISHED);   };
     bool   linkIdle();
-    //int8_t sendMessage(KeyValuePair*);
+    int    send(KeyValuePair*, bool need_reply = false);
     //int8_t ping();
 
     /* Debugging */
@@ -375,7 +382,7 @@ class ManuvrLink : public BufferAccepter {
     StringBuilder     _local_log;
 
     /* Message queue management */
-    //int8_t _send_message(ManuvrMsg*);
+    int8_t _send_msg(ManuvrMsg*);
     int    _purge_inbound();
     int    _purge_outbound();
     int8_t _churn_inbound();

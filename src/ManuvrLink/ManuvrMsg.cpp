@@ -152,25 +152,23 @@ void ManuvrMsg::wipe() {
 
 
 bool ManuvrMsg::isValidMsg() {
-  bool ret = false;
-  switch (_op) {
-    case BusOpcode::RX:
-      // For RX, we are expected to have a full-and-complete header.
-      if (_header.isValid()) {
-        ret = true;
-      }
-      break;
-    case BusOpcode::TX:
-      // For TX,
-      if (0 == _accumulator.length()) {
-      }
-      if (0 == _accumulator.length()) {
-        ret = true;
-      }
-      break;
-    default:
-      break;
-  }
+  bool ret = _header.isValid();
+  //switch (_op) {
+  //  case BusOpcode::RX:
+  //    // For RX, we are expected to have a full-and-complete header.
+  //    if (_header.isValid()) {
+  //      ret = true;
+  //    }
+  //    break;
+  //  case BusOpcode::TX:
+  //    // For TX,
+  //    if (0 == _accumulator.length()) {
+  //      ret = true;
+  //    }
+  //    break;
+  //  default:
+  //    break;
+  //}
   return ret;
 }
 
@@ -192,6 +190,21 @@ void ManuvrMsg::expectsReply(bool x) {
 /*******************************************************************************
 * Exposed member functions for Applications's use.                             *
 *******************************************************************************/
+
+/**
+* The link calls this function on the assumption that it will resend if it
+*   returns true, since it will decrement the retry count in that case.
+*
+* @return true if a send retry should be attempted.
+*/
+bool ManuvrMsg::attemptRetry() {
+  if (_retries > 0) {
+    _retries--;
+    return true;
+  }
+  return false;
+};
+
 
 /**
 * We need to reply to certain messages. This converts this message to a reply of
@@ -231,12 +244,29 @@ int ManuvrMsg::getPayload(KeyValuePair** payload) {
 }
 
 
-// Application calls this to set the message payload.
+/**
+* Link or application calls this to set the message payload.
+* This will only work if the message is marked as being TX. If it is, it will
+*   obliterate any data that might be in the accumulator, and alter the header
+*   to fit the new situation.
+*
+* @param payload is the desired payload (if any). NULL is a valid input.
+* @return 0 on success.
+*        -1 on wrong type of message.
+*/
 int ManuvrMsg::setPayload(KeyValuePair* payload) {
-  int ret = 0;
-  if (nullptr == _kvp) {
-    _kvp = payload;
-    ret = 0;
+  int ret = -1;
+  switch (_op) {
+    case BusOpcode::UNDEF:   // Might happen on a fresh message object.
+      _op = BusOpcode::TX;   // If it happens, we make the assignment.
+      // NOTE: No break;
+    case BusOpcode::TX:
+      _accumulator.clear();
+      _kvp = payload;
+      ret = (0 == serialize(&_accumulator)) ? 0 : -2;
+      break;
+    default:
+      break;
   }
   return ret;
 }
@@ -250,31 +280,40 @@ int ManuvrMsg::setPayload(KeyValuePair* payload) {
 /**
 * This function should be called by the link object to serialize the KVP into
 *   the provided StringBuilder.
+* If the accumulator length matches the length that the header claims it ought
+*   to be, assume that the accumulator already contains the desired data, and
+*   make a buffer copy, instead of trying to reserialize.
 *
 * @return 0 on success, nonzero on failure.
 */
 int ManuvrMsg::serialize(StringBuilder* buf) {
   int ret = -1;
-  StringBuilder payload;
-  int payload_len = 0;
-  if (nullptr != _kvp) {
-    ret--;
-    if (0 == _kvp->serialize(&payload, _encoding)) {
+  // if (_header.isValid() & (_header.payload_length() == _accumulator.length())) {
+  //   buf->concat(_accumulator.string(), _accumulator.length());
+  //   ret = 0;
+  // }
+  // else {
+    StringBuilder payload;
+    int payload_len = 0;
+    if (nullptr != _kvp) {
       ret--;
-      payload_len = payload.length();
-    }
-  }
-  if (_header.set_payload_length(payload_len)) {
-    ret--;
-    StringBuilder header;
-    if (_header.serialize(&header)) {
-      buf->concatHandoff(&header);
-      if (!payload.isEmpty()) {
-        buf->concatHandoff(&payload);
+      if (0 == _kvp->serialize(&payload, _encoding)) {
+        ret--;
+        payload_len = payload.length();
       }
-      ret = 0;
     }
-  }
+    if (_header.set_payload_length(payload_len)) {
+      ret--;
+      StringBuilder header;
+      if (_header.serialize(&header)) {
+        buf->concatHandoff(&header);
+        if (!payload.isEmpty()) {
+          buf->concatHandoff(&payload);
+        }
+        ret = 0;
+      }
+    }
+  // }
   return ret;
 }
 

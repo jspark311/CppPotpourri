@@ -25,21 +25,45 @@ This program runs tests against the M2M communication class.
 * Globals
 *******************************************************************************/
 
-KeyValuePair* args_sent = nullptr;
-KeyValuePair* args_recd = nullptr;
+KeyValuePair* args_sent_vlad = nullptr;
+KeyValuePair* args_sent_carl = nullptr;
 
 
 /*******************************************************************************
-* Callbacks and polling functions
+* Callbacks, value-checking, and polling functions
 *******************************************************************************/
 
+void check_that_kvps_match(StringBuilder* log, KeyValuePair* k0, KeyValuePair* k1) {
+  if (nullptr != k0) {
+    log->concat("\n\tKVP Sent:\n\t------------------\n");
+    k0->printDebug(log);
+  }
+  //if (nullptr != k1) {
+  //  log->concat("\n\tKVP Received:\n\t--------------\n");
+  //  k1->printDebug(log);
+  //}
+}
+
+
 void callback_vlad(uint32_t tag, ManuvrMsg* msg) {
-  printf("callback_vlad(0x%x): \n", tag, msg->uniqueId());
+  StringBuilder log;
+  KeyValuePair* kvps_rxd = nullptr;
+  log.concatf("callback_vlad(0x%x): \n", tag, msg->uniqueId());
+  msg->printDebug(&log);
+  msg->getPayload(&kvps_rxd);
+  check_that_kvps_match(&log, args_sent_carl, kvps_rxd);
+  printf("%s\n\n", (const char*) log.string());
 }
 
 
 void callback_carl(uint32_t tag, ManuvrMsg* msg) {
-  printf("callback_carl(0x%x): \n", tag, msg->uniqueId());
+  StringBuilder log;
+  KeyValuePair* kvps_rxd = nullptr;
+  log.concatf("callback_carl(0x%x): \n", tag, msg->uniqueId());
+  msg->printDebug(&log);
+  msg->getPayload(&kvps_rxd);
+  check_that_kvps_match(&log, args_sent_vlad, kvps_rxd);
+  printf("%s\n\n", (const char*) log.string());
 }
 
 
@@ -173,6 +197,7 @@ int link_tests_message_battery_0() {
 }
 
 
+
 /* Message pack-parse tests */
 int link_tests_message_battery_1() {
   int ret = -1;
@@ -194,56 +219,58 @@ int link_tests_message_battery_1() {
     a.append(val_dbl, "val_dbl");
     a.append(&vect, "vect");
     //a.printDebug(&log);
-    msg_parse_pack_0->setPayload(&a);
-    StringBuilder msg_0_serial;
-    if (0 == msg_parse_pack_0->serialize(&msg_0_serial)) {
-      msg_parse_pack_0->printDebug(&log);
-      if (!msg_0_serial.isEmpty()) {
-        msg_0_serial.printDebug(&log);
-        ManuvrMsg* msg_parse_pack_1 = ManuvrMsg::unserialize(&msg_0_serial);
-        if (nullptr != msg_parse_pack_1) {
-          if (msg_parse_pack_1->rxComplete()) {
-            KeyValuePair* pl = nullptr;
-            msg_parse_pack_1->getPayload(&pl);
-            if (nullptr != pl) {
-              // Did all of the arguments come across unscathed?
-              uint32_t now_ret     = millis();
-              uint32_t rand_ret    = randomUInt32();
-              char* val_str_ret = nullptr;
-              float    val_flt_ret = (float) randomUInt32()/1000000.0f;
-              double   val_dbl_ret = (double) randomUInt32() / (double) randomUInt32();
-              Vector3<float> vect_ret(randomUInt32()/1000000.0f, randomUInt32()/1000000.0f, randomUInt32()/1000000.0f);
-              pl->printDebug(&log);
-              if ((0 == a.valueWithKey("time_ms", &now_ret)) && (now_ret == now)) {
-                if ((0 == a.valueWithKey("rand", &rand_ret)) && (rand_ret == rand)) {
-                  if ((0 == a.valueWithKey("my_key", &val_str_ret)) && (0 == strcasecmp(val_str, val_str_ret))) {
-                    if ((0 == a.valueWithKey("val_flt", &val_flt_ret)) && (val_flt_ret == val_flt)) {
-                      if ((0 == a.valueWithKey("val_dbl", &val_dbl_ret)) && (val_dbl_ret == val_dbl)) {
-                        if ((0 == a.valueWithKey("vect", &vect_ret)) && (vect_ret == vect)) {
-                          log.concat("\tParse-pack tests pass.\n");
-                          ret = 0;
+    if (0 == msg_parse_pack_0->setPayload(&a)) {
+      StringBuilder msg_0_serial;
+      if (0 == msg_parse_pack_0->serialize(&msg_0_serial)) {
+        msg_parse_pack_0->printDebug(&log);
+        if (!msg_0_serial.isEmpty()) {
+          msg_0_serial.printDebug(&log);
+          ManuvrMsg* msg_parse_pack_1 = ManuvrMsg::unserialize(&msg_0_serial);
+          if (nullptr != msg_parse_pack_1) {
+            if (msg_parse_pack_1->rxComplete()) {
+              KeyValuePair* pl = nullptr;
+              msg_parse_pack_1->getPayload(&pl);
+              if (nullptr != pl) {
+                // Did all of the arguments come across unscathed?
+                uint32_t now_ret     = millis();
+                uint32_t rand_ret    = randomUInt32();
+                char* val_str_ret = nullptr;
+                float    val_flt_ret = (float) randomUInt32()/1000000.0f;
+                double   val_dbl_ret = (double) randomUInt32() / (double) randomUInt32();
+                Vector3<float> vect_ret(randomUInt32()/1000000.0f, randomUInt32()/1000000.0f, randomUInt32()/1000000.0f);
+                pl->printDebug(&log);
+                if ((0 == a.valueWithKey("time_ms", &now_ret)) && (now_ret == now)) {
+                  if ((0 == a.valueWithKey("rand", &rand_ret)) && (rand_ret == rand)) {
+                    if ((0 == a.valueWithKey("my_key", &val_str_ret)) && (0 == strcasecmp(val_str, val_str_ret))) {
+                      if ((0 == a.valueWithKey("val_flt", &val_flt_ret)) && (val_flt_ret == val_flt)) {
+                        if ((0 == a.valueWithKey("val_dbl", &val_dbl_ret)) && (val_dbl_ret == val_dbl)) {
+                          if ((0 == a.valueWithKey("vect", &vect_ret)) && (vect_ret == vect)) {
+                            log.concat("\tParse-pack tests pass.\n");
+                            ret = 0;
+                          }
+                          else log.concat("Failed to vet vect\n");
                         }
-                        else log.concat("Failed to vet vect\n");
+                        else log.concat("Failed to vet val_dbl\n");
                       }
-                      else log.concat("Failed to vet val_dbl\n");
+                      else log.concat("Failed to vet val_flt\n");
                     }
-                    else log.concat("Failed to vet val_flt\n");
+                    else log.concat("Failed to vet my_key\n");
                   }
-                  else log.concat("Failed to vet my_key\n");
+                  else log.concat("Failed to vet rand\n");
                 }
-                else log.concat("Failed to vet rand\n");
+                else log.concat("Failed to vet time_ms.\n");
               }
-              else log.concat("Failed to vet time_ms.\n");
+              else log.concat("Failed to retrieve payload.\n");
             }
-            else log.concat("Failed to retrieve payload.\n");
+            else log.concat("ManuvrMsg::unserialize() returned an incomplete message.\n");
           }
-          else log.concat("ManuvrMsg::unserialize() returned an incomplete message.\n");
+          else log.concat("ManuvrMsg::unserialize() failed.\n");
         }
-        else log.concat("ManuvrMsg::unserialize() failed.\n");
+        else log.concat("Serializer produced an empty string.\n");
       }
-      else log.concat("Serializer produced an empty string.\n");
+      else log.concat("Failed to serialize message.\n");
     }
-    else log.concat("Failed to serialize message.\n");
+    else log.concat("Failed to set payload.\n");
   }
   else log.concat("Failed to allocate message.\n");
 
@@ -293,6 +320,27 @@ int link_tests_build_and_connect(ManuvrLink* vlad, ManuvrLink* carl) {
 int link_tests_simple_messages(ManuvrLink* vlad, ManuvrLink* carl) {
   StringBuilder log("===< ManuvrLink Simple messages >====================================\n");
   int ret = -1;
+  int ret_local = -1;
+  if ((nullptr != vlad) & (nullptr != carl) && vlad->linkIdle() && carl->linkIdle()) {
+    uint32_t now     = millis();
+    uint32_t rand    = randomUInt32();
+    KeyValuePair a(now, "time_ms");
+    a.append(rand, "rand");
+    ret_local = vlad->send(&a);
+    if (0 == ret_local) {
+      args_sent_vlad = &a;
+      if (poll_until_finished(vlad, carl)) {
+        ret = 0;
+      }
+      else log.concat("Failed to send. Link dead-locked.\n");
+    }
+    else log.concatf("Vlad failed to send to Carl. send() returned %d.\n", ret_local);
+  }
+  else log.concat("Either Vlad or Carl is not ready for the test.\n");
+
+  vlad->poll(&log);
+  carl->poll(&log);
+
   printf("%s\n\n", (const char*) log.string());
   return ret;
 }
@@ -363,11 +411,11 @@ int manuvrlink_main() {
   if (0 == link_tests_message_battery_0()) {
     if (0 == link_tests_message_battery_1()) {
       if (0 == link_tests_build_and_connect(vlad, carl)) {
-        //ret = link_tests_simple_messages(vlad, carl);
-        //if (0 == ret) {
+        ret = link_tests_simple_messages(vlad, carl);
+        if (0 == ret) {
           ret = 0;
-        //}
-        //else printTestFailure("link_tests_simple_messages");
+        }
+        else printTestFailure("link_tests_simple_messages");
       }
       else printTestFailure("link_tests_build_and_connect");
     }

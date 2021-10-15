@@ -77,7 +77,7 @@ template <class T> class PriorityQueue {
     T get(int position);          // Returns the data from the element at the given position.
     int getPosition(T);           // Returns the position in the queue for the given element.
     int getPriority(T);           // Returns the priority in the queue for the given element.
-    int getPriority(int position);           // Returns the priority in the queue for the given element.
+    int getPriority(int pos);     // Returns the priority of the element in the queue with the given position.
 
     bool hasNext(void);           // Returns false if this list is empty. True otherwise.
     bool contains(T);             // Returns true if this list contains the given data. False if not.

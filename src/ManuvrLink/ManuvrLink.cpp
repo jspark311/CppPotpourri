@@ -23,6 +23,12 @@ limitations under the License.
 
 #if defined(CONFIG_MANUVR_M2M_SUPPORT)
 
+// Definitions only needed inside this translation unit.
+#define MANUVRLINK_PRIORITY_WAITING_FOR_ACK  5   // These will not resend until and unless they timeout.
+#define MANUVRLINK_PRIORITY_APP              10  // Application messages.
+#define MANUVRLINK_PRIORITY_INTERNAL         20  // Classes own messages have highest priority.
+
+
 /*******************************************************************************
 *      _______.___________.    ___   .___________. __    ______     _______.
 *     /       |           |   /   \  |           ||  |  /      |   /       |
@@ -389,6 +395,60 @@ void ManuvrLink::printFSM(StringBuilder* output) {
 * Functions for managing dialogs and message queues.                           *
 *******************************************************************************/
 
+int ManuvrLink::send(KeyValuePair* kvp, bool need_reply) {
+  int8_t ret = -1;
+  int payload_len = 0;
+  StringBuilder msg_serial;
+  ManuvrMsgHdr hdr(ManuvrMsgCode::APPLICATION, 0, need_reply);
+  ManuvrMsg* msg = new ManuvrMsg(&hdr, BusOpcode::TX);
+  if (nullptr != msg) {
+    ret--;
+    if (nullptr != kvp) {
+      ret--;
+      if (0 == msg->setPayload(kvp)) {
+        ret--;
+        if (0 == _send_msg(msg)) {
+          ret = 0;
+        }
+      }
+    }
+    if (0 != ret) {  // Clean up after ourselves.
+      delete msg;
+    }
+  }
+  return ret;
+}
+
+
+/**
+* Internal choke-point for outbound message logic.
+*
+* @return  0 on success.
+*         -1 on flooded output queue (retry after messages clear out)
+*         -2 on invalid message
+*         -3 on queue insertion failure
+*/
+int8_t ManuvrLink::_send_msg(ManuvrMsg* msg) {
+  int8_t ret = -1;
+  if (_outbound_messages.size() < _opts.max_outbound) {
+    ret--;
+    if ((nullptr != msg) && (msg->isValidMsg())) {
+      ret--;
+      // Our use of the priority queue is to demote them in the queue based on if
+      //   they are waiting for replies or not. Messages wit ha priority of 0 are
+      //   only being held in the queue to verify that a response arrives.
+      // Being as this is, a new message, it gets the default priority.
+      int priority = (msg->msgCode() == ManuvrMsgCode::APPLICATION) ? MANUVRLINK_PRIORITY_APP : MANUVRLINK_PRIORITY_INTERNAL;
+      if (0 <= _outbound_messages.insert(msg, priority)) {
+        ret = 0;
+      }
+    }
+  }
+  if ((0 > ret) & (3 < _verbosity)) _local_log.concatf("Link 0x%x failed in _send_msg(): %d\n", _session_tag, ret);
+  return ret;
+}
+
+
 /**
 * Empties the inbound message queue (those bytes from the transport that we need to proc).
 *
@@ -419,14 +479,20 @@ int ManuvrLink::_purge_outbound() {
 }
 
 
+/**
+* Cycle through the inbound message queue and handle anything internal.
+* Callback on anything marked for the application.
+*
+* @return  int The number of outbound messages that were purged.
+*/
 int8_t ManuvrLink::_churn_inbound() {
   int8_t ret = 0;
   while (_inbound_messages.hasNext()) {
     ManuvrMsg* temp = _inbound_messages.dequeue();
-    if (_verbosity > 3) {
-      _local_log.concatf("ManuvrLink (tag: 0x%x) responding to...\n", _session_tag);
-      temp->printDebug(&_local_log);
-    }
+    //if (_verbosity > 5) {
+    //  _local_log.concatf("ManuvrLink (tag: 0x%x) responding to...\n", _session_tag);
+    //  temp->printDebug(&_local_log);
+    //}
 
     switch (temp->msgCode()) {
       case ManuvrMsgCode::SYNC_KEEPALIVE:
@@ -461,10 +527,10 @@ int8_t ManuvrLink::_churn_inbound() {
           if (0 != temp->ack()) {
             if (_verbosity > 2) _local_log.concatf("ManuvrLink (tag: 0x%x) Failed to reply to CONNECT\n", _session_tag);
           }
-          if (_verbosity > 5) {
-            _local_log.concatf("ManuvrLink (tag: 0x%x) responding with...\n", _session_tag);
-            temp->printDebug(&_local_log);
-          }
+          //if (_verbosity > 5) {
+          //  _local_log.concatf("ManuvrLink (tag: 0x%x) responding with...\n", _session_tag);
+          //  temp->printDebug(&_local_log);
+          //}
           StringBuilder temp_out;
           temp->serialize(&temp_out);
           _relay_to_output_target(&temp_out);
@@ -499,35 +565,54 @@ int8_t ManuvrLink::_churn_inbound() {
 }
 
 
-/*
-* Go through the outbound queue, looking for timeout violations.
+/**
+* Go through the outbound queue, sending as necessary, and looking for
+*   timeout violations.
+*
+* @return the number of messages sent.
 */
 int8_t ManuvrLink::_churn_outbound() {
   int8_t ret = 0;
   for (int i = 0; i < _outbound_messages.size(); i++) {
     ManuvrMsg* temp = _outbound_messages.get(i);
     if (nullptr != temp) {
-      if (temp->wasSent()) {
-        if (_opts.ms_timeout < temp->msSinceSend()) {
-          // There is something in the outbound queue that has been waiting for
-          //   a reply longer than the session timeout. Resend, or fail it.
-          _seq_ack_fails++;
-          //_outbound_messages.remove(temp);
-          //delete temp;
-        }
+      bool will_send = !temp->wasSent();
+      switch (_outbound_messages.getPriority(i)) {
+        case MANUVRLINK_PRIORITY_WAITING_FOR_ACK:
+        case MANUVRLINK_PRIORITY_APP:
+        case MANUVRLINK_PRIORITY_INTERNAL:
+        default:
+          if (!will_send) {
+            if (_opts.ms_timeout < temp->msSinceSend()) {
+              // There is something in the outbound queue that has been waiting for
+              //   a reply longer than the session timeout. Resend, or fail it.
+              _seq_ack_fails++;
+              will_send = temp->attemptRetry();
+              if (!will_send) {
+                _outbound_messages.remove(temp);
+                delete temp;
+              }
+            }
+          }
+          break;
       }
-      else {
+
+      if (will_send) {
         // Send it, and mark it as having been sent.
         StringBuilder temp_out;
         if (0 == temp->serialize(&temp_out)) {
-          _relay_to_output_target(&temp_out);
-          _clear_waiting_reply_by_id(temp->uniqueId());
-          if (!temp->expectsReply()) {
-            _outbound_messages.remove(temp);
-            delete temp;
-          }
-          else {
+          if (0 <= _relay_to_output_target(&temp_out)) {
+            // If the buffer was moved to the transport driver...
             temp->markSent();
+            if (temp->isReply()) {
+              // If this was a reply, clear it from our inbound queue.
+              _clear_waiting_reply_by_id(temp->uniqueId());
+            }
+            if (!temp->expectsReply()) {
+              _outbound_messages.remove(temp);
+              delete temp;
+            }
+            ret++;
           }
         }
       }
