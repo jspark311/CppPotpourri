@@ -620,6 +620,7 @@ int8_t ManuvrLink::_churn_outbound() {
               _seq_ack_fails++;
               will_send = temp->attemptRetry();
               gc_msg = !will_send;
+              if (!will_send) _unackd_sends++;
             }
           }
           break;

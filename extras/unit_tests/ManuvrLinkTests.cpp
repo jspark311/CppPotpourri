@@ -362,11 +362,21 @@ int link_tests_simple_messages(ManuvrLink* vlad, ManuvrLink* carl) {
           if (poll_until_finished(vlad, carl)) {
             //vlad->printDebug(&log);
             //carl->printDebug(&log);
-            if (vlad_replies_rxd > 0) {
+            if (vlad_replies_rxd == 1) {
               //args_recd_vlad->printDebug(&log);
-              //carl_reply_lockout = true;
-              log.concat("\tSimple messages pass tests.\n");
-              ret = 0;
+              carl_reply_lockout = true;
+              ret_local = vlad->send(&b, true);
+              if (0 <= ret_local) {
+                if (poll_until_finished(vlad, carl)) {
+                  if (vlad->replyTimeouts() == 1) {
+                    log.concat("\tSimple messages pass tests.\n");
+                    ret = 0;
+                  }
+                  else log.concat("Vlad should have given up sending a message that got no reply.\n");
+                }
+                else log.concat("Failed to send. Link dead-locked.\n");
+              }
+              else log.concat("Vlad failed to send a second message that needed a reply.\n");
             }
             else log.concat("Vlad should have received a reply, and didn't.\n");
           }

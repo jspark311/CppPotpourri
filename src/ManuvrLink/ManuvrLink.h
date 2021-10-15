@@ -344,6 +344,7 @@ class ManuvrLink : public BufferAccepter {
     int8_t poll(StringBuilder* log = nullptr);
     int8_t hangup(bool graceful = true);
     inline bool   isConnected() {  return _flags.value(MANUVRLINK_FLAG_ESTABLISHED);   };
+    inline uint16_t replyTimeouts() {  return _unackd_sends;   };
     bool   linkIdle();
     int    send(KeyValuePair*, bool need_reply = false);
     //int8_t ping();
@@ -380,6 +381,7 @@ class ManuvrLink : public BufferAccepter {
     uint8_t           _seq_parse_errs = 0;
     uint8_t           _seq_ack_fails  = 0;
     uint16_t          _sync_losses    = 0;
+    uint16_t          _unackd_sends   = 0;        // How many messages that needed an ACK failed to get one?
     ManuvrMsg*        _working        = nullptr;  // If we are in the middle of receiving a message,
     BufferAccepter*   _output_target  = nullptr;  // A pointer to the transport for outbound bytes.
     ManuvrMsgCallback _msg_callback   = nullptr;  // The application-provided callback for incoming messages.
