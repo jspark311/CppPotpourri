@@ -446,8 +446,15 @@ int link_tests_corrupted_transport(ManuvrLink* vlad, ManuvrLink* carl) {
     vlad->provideBuffer(&garbage_for_vlad);
     carl->provideBuffer(&garbage_for_carl);
     if (poll_until_finished(vlad, carl)) {
-      log.concat("Vlad and Carl resyncd after being fed garbage.\n");
-      ret = 0;
+      carl->provideBuffer(&garbage_for_carl);
+      carl->provideBuffer(&garbage_for_carl);
+      carl->provideBuffer(&garbage_for_carl);
+      carl->provideBuffer(&garbage_for_carl);
+      if (poll_until_finished(vlad, carl)) {
+        log.concat("Vlad and Carl resyncd after being fed garbage.\n");
+        ret = 0;
+      }
+      else log.concat("The polling loop ran to its maximum extent. Link dead-locked.\n");
     }
     else log.concat("The polling loop ran to its maximum extent. Link dead-locked.\n");
     log.concat("\n");
