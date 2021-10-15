@@ -499,7 +499,7 @@ int8_t KeyValuePair::getValueAs(void* trg_buf) {
     case TCode::IDENTITY:        // A pointer to an Identity.
     default:
       return_value = 0;
-      *((uintptr_t*) trg_buf) = *((uintptr_t*)&_target_mem);
+      *((uintptr_t*) trg_buf) = ((uintptr_t) _target_mem);
       break;
   }
   return return_value;
@@ -974,10 +974,18 @@ CBORArgListener::~CBORArgListener() {
 * Causes the KVP given as the argument to be added to the existing data.
 */
 void CBORArgListener::_caaa(KeyValuePair* nu) {
-  if (nullptr != _wait) {
-    nu->setKey(_wait);
-    _wait = nullptr;
+  if (0 < _wait_map) {
+    _wait_map--;
+    if (nullptr != _wait) {
+      nu->setKey(_wait);
+      _wait = nullptr;
+    }
   }
+  else {
+    nu->setValue(_wait);
+  }
+
+  if (0 < _wait_array) _wait_array--;
 
   if ((nullptr != built) && (nullptr != *built)) {
     (*built)->link(nu);
@@ -985,25 +993,33 @@ void CBORArgListener::_caaa(KeyValuePair* nu) {
   else {
     *built = nu;
   }
-
-  if (0 < _wait_map)   _wait_map--;
-  if (0 < _wait_array) _wait_array--;
 }
 
 
 void CBORArgListener::on_string(char* val) {
-  if (nullptr == _wait) {
-    // We need to copy the string. It will be the key for the KeyValuePair
-    //   who's value is forthcoming.
-    int len = strlen(val);
-    _wait = (char*) malloc(len+1);
-    if (nullptr != _wait) {
-      memcpy(_wait, val, len+1);
+  int len = strlen(val);
+  char* temp = (char*) malloc(len+1);
+  if (nullptr != temp) {
+    memcpy(temp, val, len+1);
+    KeyValuePair* nu_kvp = nullptr;
+    if (0 < _wait_map) {
+      if (nullptr == _wait) {
+        // We need to copy the string. It will be the key for the KeyValuePair
+        //   who's value is forthcoming.
+        _wait = temp;
+      }
+      else {
+        // There is a key assignment waiting. This must be the value.
+        nu_kvp = new KeyValuePair(temp);
+      }
     }
-  }
-  else {
-    // There is a key assignment waiting. This must be the value.
-    _caaa(new KeyValuePair(val, _wait));
+    else {
+      nu_kvp = new KeyValuePair(temp);
+    }
+    if (nullptr != nu_kvp) {
+      nu_kvp->reapValue(true);
+      _caaa(nu_kvp);
+    }
   }
 };
 
