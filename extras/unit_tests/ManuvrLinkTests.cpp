@@ -92,6 +92,29 @@ void callback_carl(uint32_t tag, ManuvrMsg* msg) {
 }
 
 
+bool poll_until_disconnected(ManuvrLink* vlad, ManuvrLink* carl) {
+  int polling_cycles = 0;
+  bool idle = false;
+  uint32_t now = millis();
+  uint32_t timeout_start = now;
+  uint32_t timeout_end   = timeout_start + 1000;
+  while ((now < timeout_end) & (!idle)) {
+    StringBuilder log_v;
+    StringBuilder log_c;
+    vlad->poll(&log_v);
+    carl->poll(&log_c);
+    idle = !(vlad->isConnected() | carl->isConnected());
+    if (0 < log_v.length()) {   printf("Vlad (%06d):\n%s\n", polling_cycles, (const char*) log_v.string());  }
+    if (0 < log_c.length()) {   printf("Carl (%06d):\n%s\n", polling_cycles, (const char*) log_c.string());  }
+    polling_cycles++;
+    sleep_ms(1);
+    now = millis();
+  }
+  printf("poll_until_disconnected completed in %d cycles.\n", polling_cycles);
+  return (now < timeout_end);
+}
+
+
 bool poll_until_finished(ManuvrLink* vlad, ManuvrLink* carl) {
   int polling_cycles = 0;
   bool idle = false;
@@ -422,9 +445,51 @@ int link_tests_message_flood(ManuvrLink* vlad, ManuvrLink* carl) {
 }
 
 
+int link_tests_reestablish_after_hangup(ManuvrLink* vlad, ManuvrLink* carl) {
+  StringBuilder log("===< ManuvrLink re-establish after hangup >========================\n");
+  int ret = -1;
+  int ret_local = -1;
+  if ((nullptr != vlad) & (nullptr != carl) && !(vlad->isConnected() | carl->isConnected())) {
+    if (0 == carl->reset()) {
+      if (0 == vlad->reset()) {
+        if (poll_until_finished(vlad, carl)) {
+          log.concat("\tGentle hangup passes tests.\n");
+          ret = 0;
+        }
+        else log.concat("Failed to send. Link dead-locked.\n");
+      }
+      else log.concat("Vlad failed to reset()\n");
+    }
+    else log.concat("Carl failed to reset()\n");
+  }
+  else log.concat("Either Vlad or Carl is not ready for the test.\n");
+
+  vlad->poll(&log);
+  carl->poll(&log);
+  printf("%s\n\n", (const char*) log.string());
+  return ret;
+}
+
+
 int link_tests_hangup_gentle(ManuvrLink* vlad, ManuvrLink* carl) {
   StringBuilder log("===< ManuvrLink gentle hangup >====================================\n");
   int ret = -1;
+  int ret_local = -1;
+  if ((nullptr != vlad) & (nullptr != carl) && vlad->linkIdle() && carl->linkIdle()) {
+    ret_local = carl->hangup();
+    if (0 == ret_local) {
+      if (poll_until_disconnected(vlad, carl)) {
+        log.concat("\tGentle hangup passes tests.\n");
+        ret = 0;
+      }
+      else log.concat("Failed to HANGUP. Link dead-locked.\n");
+    }
+    else log.concatf("Carl failed to HANGUP. Returned %d\n", ret_local);
+  }
+  else log.concat("Either Vlad or Carl is not ready for the test.\n");
+
+  vlad->poll(&log);
+  carl->poll(&log);
   printf("%s\n\n", (const char*) log.string());
   return ret;
 }
@@ -510,7 +575,13 @@ int manuvrlink_main() {
       if (0 == link_tests_build_and_connect(vlad, carl)) {
         if (0 == link_tests_simple_messages(vlad, carl)) {
           if (0 == link_tests_corrupted_transport(vlad, carl)) {
-            ret = 0;
+            if (0 == link_tests_hangup_gentle(vlad, carl)) {
+              if (0 == link_tests_reestablish_after_hangup(vlad, carl)) {
+                ret = 0;
+              }
+              else printTestFailure("link_tests_reestablish_after_hangup");
+            }
+            else printTestFailure("link_tests_hangup_gentle");
           }
           else printTestFailure("link_tests_corrupted_transport");
         }
