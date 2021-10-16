@@ -45,7 +45,6 @@ TODO: Since this class renders large chains of function calls opaque to the
   case-offs.
 */
 
-#define CONFIG_MANUVR_M2M_SUPPORT 1   // TODO: Until Rationalizer.h is done.
 
 #include <StringBuilder.h>
 #include <CppPotpourri.h>
@@ -53,10 +52,27 @@ TODO: Since this class renders large chains of function calls opaque to the
 #include <BusQueue.h>
 #include <FlagContainer.h>
 #include <PriorityQueue.h>
+#include <ElementPool.h>
 #include <AbstractPlatform.h>
 
 #ifndef __MANUVR_XENOSESSION_H
 #define __MANUVR_XENOSESSION_H
+
+
+/*******************************************************************************
+* Parameters from the build system                                             *
+*******************************************************************************/
+
+#define CONFIG_MANUVR_M2M_SUPPORT 1   // TODO: Until Rationalizer.h is done.
+
+//#ifndef CONFIG_MANUVRMSG_PREALLOC_COUNT
+//  #define CONFIG_MANUVRMSG_PREALLOC_COUNT   4
+//#endif
+
+
+/*******************************************************************************
+* Fixed definitions for the ManuvrLink subsystem                               *
+*******************************************************************************/
 
 // This value is our checksum preload. Calculation of new checksums should start
 //   with this byte. It helps prevents us from acknowledging spurious data as a
@@ -112,6 +128,10 @@ TODO: Since this class renders large chains of function calls opaque to the
                                          MANUVRMSGHDR_FLAG_ENCODES_LENGTH_BYTES | \
                                          MANUVRMSGHDR_FLAG_ENCODES_ID_BYTES)
 
+
+/*******************************************************************************
+* Types                                                                         *
+*******************************************************************************/
 /*
 * These are possible states of the link. They confine the space of our
 *   possible dialog, and bias the conversation in a given direction.
@@ -161,12 +181,16 @@ enum class ManuvrLinkProto : uint8_t {
   HTTP         = 0x09,   //
 };
 
-
 class ManuvrMsg;
 
 /* Callback for application-directed messages from a link. */
 typedef void (*ManuvrMsgCallback)(uint32_t tag, ManuvrMsg*);
 
+
+
+/*******************************************************************************
+* Class definitions                                                            *
+*******************************************************************************/
 
 /*
 * Conf representation for a ManuvrLink.
@@ -372,6 +396,8 @@ class ManuvrLink : public BufferAccepter {
 
   private:
     ManuvrLinkOpts    _opts;    // These are the application-provided options for the link.
+    //ManuvrMsg                 _msg_pool[4];
+    //ElementPool<ManuvrMsg*>   _preallocd(4, &_msg_pool);
     PriorityQueue<ManuvrMsg*> _outbound_messages;   // Messages that are bound for the counterparty.
     PriorityQueue<ManuvrMsg*> _inbound_messages;    // Messages that came from the counterparty.
     FlagContainer32   _flags;
@@ -385,7 +411,7 @@ class ManuvrLink : public BufferAccepter {
     uint32_t          _session_tag    = 0;        // Allows the application to keep track of our callbacks.
     uint32_t          _ms_last_send   = 0;        // At what time did the last message go out?
     uint32_t          _ms_last_rec    = 0;        // At what time did the last message come in?
-    uint16_t          _sync_losses    = 0;
+    uint16_t          _sync_losses    = 0;        // How many times this session have we lost sync?
     uint16_t          _unackd_sends   = 0;        // How many messages that needed an ACK failed to get one?
     ManuvrMsg*        _working        = nullptr;  // If we are in the middle of receiving a message,
     BufferAccepter*   _output_target  = nullptr;  // A pointer to the transport for outbound bytes.
@@ -425,6 +451,10 @@ class ManuvrLink : public BufferAccepter {
     int8_t   _fsm_insert_sync_states();
     inline ManuvrLinkState _fsm_pos_next() {   return _fsm_waypoints[0];   };
     inline bool _fsm_is_stable() {   return (ManuvrLinkState::UNINIT == _fsm_waypoints[0]);   };
+
+    /* Message lifecycle */
+    ManuvrMsg* _allocate_manuvrmsg(ManuvrMsgHdr*, BusOpcode);
+    void       _reclaim_manuvrmsg(ManuvrMsg*);
 };
 
 #endif   // __MANUVR_XENOSESSION_H

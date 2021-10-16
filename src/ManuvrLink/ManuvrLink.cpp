@@ -171,7 +171,7 @@ ManuvrLink::~ManuvrLink() {
   _purge_inbound();
   _purge_outbound();
   if (nullptr != _working) {
-    delete _working;
+    _reclaim_manuvrmsg(_working);
     _working = nullptr;
   }
 }
@@ -461,7 +461,7 @@ int ManuvrLink::send(KeyValuePair* kvp, bool need_reply) {
   }
 
   ManuvrMsgHdr hdr(ManuvrMsgCode::APPLICATION, 0, need_reply);
-  ManuvrMsg* msg = new ManuvrMsg(&hdr, BusOpcode::TX);
+  ManuvrMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
   if (nullptr != msg) {
     ret = 0;
     if (nullptr != kvp) {
@@ -479,7 +479,7 @@ int ManuvrLink::send(KeyValuePair* kvp, bool need_reply) {
 
     // Clean up after ourselves if we fail.
     if (0 > ret) {
-      delete msg;
+      _reclaim_manuvrmsg(msg);
     }
   }
   return ret;
@@ -539,7 +539,7 @@ int ManuvrLink::_purge_inbound() {
   int return_value = _inbound_messages.size();
   while (_inbound_messages.hasNext()) {
     ManuvrMsg* temp = _inbound_messages.dequeue();
-    delete temp;
+    _reclaim_manuvrmsg(temp);
   }
   return return_value;
 }
@@ -554,7 +554,7 @@ int ManuvrLink::_purge_outbound() {
   int return_value = _outbound_messages.size();
   while (_outbound_messages.hasNext()) {
     ManuvrMsg* temp = _outbound_messages.dequeue();
-    delete temp;
+    _reclaim_manuvrmsg(temp);
   }
   return return_value;
 }
@@ -670,7 +670,7 @@ int8_t ManuvrLink::_churn_inbound() {
       if (temp->isReply()) {
         _clear_waiting_send_by_id(temp->uniqueId());
       }
-      delete temp;
+      _reclaim_manuvrmsg(temp);
     }
   }
   return ret;
@@ -732,7 +732,7 @@ int8_t ManuvrLink::_churn_outbound() {
 
       if (gc_msg) {
         _outbound_messages.remove(temp);
-        delete temp;
+        _reclaim_manuvrmsg(temp);
       }
       else {
         _outbound_messages.insert(temp, new_priority);
@@ -779,7 +779,7 @@ void ManuvrLink::_reset_class() {
   _purge_inbound();
   _purge_outbound();
   if (nullptr != _working) {
-    delete _working;
+    _reclaim_manuvrmsg(_working);
     _working = nullptr;
   }
   _flags.clear(~MANUVRLINK_FLAG_RESET_PRESERVE_MASK);
@@ -789,6 +789,8 @@ void ManuvrLink::_reset_class() {
   _seq_parse_errs = 0;
   _seq_ack_fails  = 0;
   _sync_losses    = 0;
+  _sync_losses    = 0;
+  _unackd_sends   = 0;
 }
 
 
@@ -918,7 +920,7 @@ int8_t ManuvrLink::_process_input_buffer() {
           case 2:   // header found, and message complete with payload.
             _inbound_buf.cull(_header.header_length());
             if (_header.total_length() <= _opts.mtu) {
-              _working = new ManuvrMsg(&_header);
+              _working = _allocate_manuvrmsg(&_header, BusOpcode::RX);
             }
             break;
         }
@@ -946,7 +948,7 @@ int8_t ManuvrLink::_process_input_buffer() {
               _fsm_insert_sync_states();
               _sync_losses++;
             }
-            delete _working;
+            _reclaim_manuvrmsg(_working);
           }
           _working = nullptr;
         }
@@ -1124,14 +1126,14 @@ int8_t ManuvrLink::_send_connect_message() {
   // TODO: Would prefer to use the code below. But SYNC is not well-enough
   //   under control.
   //ManuvrMsgHdr hdr(ManuvrMsgCode::CONNECT, 0, true);
-  //ManuvrMsg* msg = new ManuvrMsg(&hdr, BusOpcode::TX);
+  //ManuvrMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
   //if (nullptr != msg) {
   //  ret--;
   //  if (0 == _send_msg(msg)) {
   //    ret = 0;
   //  }
   //  else {
-  //    delete msg;
+  //    _reclaim_manuvrmsg(msg);
   //  }
   //}
   return ret;
@@ -1147,14 +1149,14 @@ int8_t ManuvrLink::_send_connect_message() {
 int8_t ManuvrLink::_send_hangup_message(bool graceful) {
   int8_t ret = -1;
   ManuvrMsgHdr hdr(ManuvrMsgCode::HANGUP, 0, true);
-  ManuvrMsg* msg = new ManuvrMsg(&hdr, BusOpcode::TX);
+  ManuvrMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
   if (nullptr != msg) {
     ret--;
     if (0 == _send_msg(msg)) {
       ret = 0;
     }
     else {
-      delete msg;
+      _reclaim_manuvrmsg(msg);
     }
   }
   return ret;
@@ -1279,7 +1281,7 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
       case ManuvrLinkState::SYNC_RESYNC:
         _inbound_buf.clear();
         if (nullptr != _working) {
-          delete _working;
+          _reclaim_manuvrmsg(_working);
           _working = nullptr;
         }
         _flags.clear(MANUVRLINK_FLAG_SYNC_INCOMING | MANUVRLINK_FLAG_SYNC_REPLY_RXD);
@@ -1495,6 +1497,35 @@ int8_t ManuvrLink::_fsm_insert_sync_states() {
     }
   }
   return ret;
+}
+
+
+/*******************************************************************************
+* ManuvrMsg memory lifecycle functions                                         *
+*******************************************************************************/
+
+/**
+* Allocate a ManuvrMsg for this class, and imbue it with the given properties.
+*
+* @param hdr is the ManuvrMsg to clean up. Possibly for re-use.
+* @return A ManuvrMsg* ready for use, or nullptr on failure.
+*/
+ManuvrMsg* ManuvrLink::_allocate_manuvrmsg(ManuvrMsgHdr* hdr, BusOpcode op) {
+  ManuvrMsg* ret = new ManuvrMsg(hdr, op);
+  return ret;
+}
+
+
+/**
+* Dispose of ManuvrMsgs for this class.
+*
+* @param msg is the ManuvrMsg to clean up. Possibly for re-use.
+*/
+void ManuvrLink::_reclaim_manuvrmsg(ManuvrMsg* msg) {
+  if (nullptr != msg) {
+    msg->wipe();
+    delete msg;
+  }
 }
 
 #endif   // CONFIG_MANUVR_M2M_SUPPORT

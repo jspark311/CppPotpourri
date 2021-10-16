@@ -28,9 +28,7 @@ This class does no allocation,
 #ifndef __MANUVR_DS_ELEMENT_POOL_H
 #define __MANUVR_DS_ELEMENT_POOL_H
 
-#if defined(MANUVR_DEBUG)
-  #include "StringBuilder.h"
-#endif
+#include "StringBuilder.h"
 
 
 template <class T> class ElementPool : public RingBuffer<T*>  {
@@ -47,14 +45,12 @@ template <class T> class ElementPool : public RingBuffer<T*>  {
     inline unsigned int heapFrees() {      return _heap_frees;     };
     inline unsigned int lowWaterMark() {   return _low_watermark;  };
 
-    #if defined(MANUVR_DEBUG)
     void printDebug(StringBuilder* output) {
       output->concatf("ElementPool (%sReady)\n", ready() ? "" : "Not ");
       output->concatf("\tPool(%p): %u bytes\n", (uintptr_t) _pool, (RingBuffer<T*>::capacity() * sizeof(T)));
       output->concatf("\tCapacity:       %u/%u\n\tLow Watermark:  %u\n", RingBuffer<T*>::count(), RingBuffer<T*>::capacity(), _low_watermark);
       output->concatf("\tStarves/Frees:  %u/%u\n", _starves, _heap_frees);
     };
-    #endif
 
   private:
     const T* _pool;
