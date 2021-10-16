@@ -569,6 +569,8 @@ int manuvrlink_main() {
   );
   vlad = new ManuvrLink(&opts_vlad);  // One half of the link.
   carl = new ManuvrLink(&opts_carl);  // One half of the link.
+  vlad->verbosity(6);
+  carl->verbosity(6);
   int ret = -1;
   if (0 == link_tests_message_battery_0()) {
     if (0 == link_tests_message_battery_1()) {

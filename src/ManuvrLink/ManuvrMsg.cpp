@@ -139,6 +139,15 @@ ManuvrMsg::~ManuvrMsg() {
 *******************************************************************************/
 
 /**
+* Marks this outbound message as having been sent to the output buffer.
+*/
+void ManuvrMsg::markSent() {
+  _ms_io_mark = millis();
+  _class_set_flag(MANUVRMSG_FLAG_TX_COMPLETE);
+}
+
+
+/**
 * Sometimes we might want to re-use this allocated object rather than free it.
 */
 void ManuvrMsg::wipe() {

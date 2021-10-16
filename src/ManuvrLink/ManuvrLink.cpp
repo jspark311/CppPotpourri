@@ -757,6 +757,7 @@ int8_t ManuvrLink::_clear_waiting_send_by_id(uint32_t id) {
     ManuvrMsg* temp = _outbound_messages.get(i);
     if (nullptr != temp) {
       if (id == temp->uniqueId()) {
+        temp->markACKd();
         _outbound_messages.remove(temp);
         ret = 1;
       }

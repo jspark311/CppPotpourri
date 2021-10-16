@@ -104,6 +104,8 @@ TODO: Since this class renders large chains of function calls opaque to the
 
 /* Class flags for ManuvrMsg. These are for state tracking, and will NOT be sent with each message. */
 #define MANUVRMSG_FLAG_ACCUMULATOR_COMPLETE     0x01  // The accumulator contains the complete message.
+#define MANUVRMSG_FLAG_TX_COMPLETE              0x02  // This outbound message went to the transport.
+#define MANUVRMSG_FLAG_WAS_ACKD                 0x04  // This outbound message saw a reply come back.
 
 
 /* Class flags for ManuvrMsgHdr. These will be sent with each message. */
@@ -185,7 +187,6 @@ class ManuvrMsg;
 
 /* Callback for application-directed messages from a link. */
 typedef void (*ManuvrMsgCallback)(uint32_t tag, ManuvrMsg*);
-
 
 
 /*******************************************************************************
@@ -312,13 +313,15 @@ class ManuvrMsg {
     inline uint32_t uniqueId() {        return _header.msg_id;           };
 
     /* Inlines for message options, flags, and status markers. */
-    inline void      markSent() {     _ms_io_mark = millis();                                     };
     inline TCode     encoding() {     return _encoding;                                           };
     inline BusOpcode direction() {    return _op;                                                 };
-    inline bool      wasSent() {      return (_ms_io_mark != 0);                                  };
     inline uint32_t  msSinceSend() {  return wrap_accounted_delta(_ms_io_mark, millis());         };
     inline bool      rxComplete() {   return (_accumulator.length() == _header.payload_length()); };
+    inline bool      wasSent() {      return _class_flag(MANUVRMSG_FLAG_TX_COMPLETE);             };
+    inline bool      wasACKd() {      return _class_flag(MANUVRMSG_FLAG_WAS_ACKD);                };
+    inline void      markACKd() {     _class_set_flag(MANUVRMSG_FLAG_WAS_ACKD);                   };
 
+    void  markSent();
     void  wipe();                      // Put this object into a fresh state for re-use.
     bool  isValidMsg();
     inline int   ack() {  return reply(nullptr);  };
@@ -374,10 +377,11 @@ class ManuvrLink : public BufferAccepter {
     int8_t poll(StringBuilder* log = nullptr);
     int8_t hangup(bool graceful = true);
     int8_t reset();
-    inline bool   isConnected() {  return _flags.value(MANUVRLINK_FLAG_ESTABLISHED);   };
-    inline uint16_t replyTimeouts() {  return _unackd_sends;   };
     bool   linkIdle();
     int    send(KeyValuePair*, bool need_reply = false);
+    inline bool     isConnected() {    return _flags.value(MANUVRLINK_FLAG_ESTABLISHED);   };
+    inline uint16_t replyTimeouts() {  return _unackd_sends;   };
+    inline void     verbosity(uint8_t x) {  _verbosity = x;   };
     //int8_t ping();
 
     /* Debugging */
@@ -407,7 +411,7 @@ class ManuvrLink : public BufferAccepter {
     uint32_t          _fsm_lockout_ms = 0;        // Used to enforce a delay between state transitions.
     ManuvrLinkState   _fsm_pos        = ManuvrLinkState::UNINIT;
     ManuvrLinkState   _fsm_pos_prior  = ManuvrLinkState::UNINIT;
-    uint8_t           _verbosity      = 6;
+    uint8_t           _verbosity      = 0;        // By default, this class won't generate logs.
     uint8_t           _seq_parse_errs = 0;
     uint8_t           _seq_ack_fails  = 0;
     uint32_t          _session_tag    = 0;        // Allows the application to keep track of our callbacks.

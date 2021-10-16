@@ -102,7 +102,6 @@ class UARTAdapter : public BufferAccepter {
     inline int pendingTxBytes() {   return _tx_buffer.length();   };
 
 
-
   private:
     const uint16_t  _BUF_LEN_TX;
     const uint16_t  _BUF_LEN_RX;
