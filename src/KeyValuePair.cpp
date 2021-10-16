@@ -997,6 +997,7 @@ void CBORArgListener::_caaa(KeyValuePair* nu) {
 
 
 void CBORArgListener::on_string(char* val) {
+  // Strings need special handling, because they might be used for map keys.
   int len = strlen(val);
   char* temp = (char*) malloc(len+1);
   if (nullptr != temp) {

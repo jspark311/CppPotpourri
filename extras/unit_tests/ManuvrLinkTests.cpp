@@ -422,6 +422,22 @@ int link_tests_message_flood(ManuvrLink* vlad, ManuvrLink* carl) {
 }
 
 
+int link_tests_hangup_gentle(ManuvrLink* vlad, ManuvrLink* carl) {
+  StringBuilder log("===< ManuvrLink gentle hangup >====================================\n");
+  int ret = -1;
+  printf("%s\n\n", (const char*) log.string());
+  return ret;
+}
+
+
+int link_tests_hangup_abrupt(ManuvrLink* vlad, ManuvrLink* carl) {
+  StringBuilder log("===< ManuvrLink abrupt hangup >====================================\n");
+  int ret = -1;
+  printf("%s\n\n", (const char*) log.string());
+  return ret;
+}
+
+
 int link_tests_interrupted_transport(ManuvrLink* vlad, ManuvrLink* carl) {
   StringBuilder log("===< ManuvrLink interrupted transport >====================================\n");
   int ret = -1;

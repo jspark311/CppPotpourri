@@ -75,11 +75,15 @@ TODO: Since this class renders large chains of function calls opaque to the
 #define MANUVRLINK_FLAG_SYNC_CASTING    0x00000008  // We're sending sync on this resync cycle.
 #define MANUVRLINK_FLAG_SYNC_REPLY_RXD  0x00000010  // We've seen a sync on this resync cycle.
 #define MANUVRLINK_FLAG_ESTABLISHED     0x00000020  // We've exchanged CONNECT messages.
+#define MANUVRLINK_FLAG_HANGUP_RXD      0x00000040  // We received a HANGUP message.
+#define MANUVRLINK_FLAG_HANGUP_TXD      0x00000080  // Sent a HANGUP message on this session.
+#define MANUVRLINK_FLAG_SEND_KA         0x00000100  // We will send a keep-alive on a defined interval.
+#define MANUVRLINK_FLAG_ON_HOOK         0x00000200  // Following HANGUP, the app needs to reset this.
 
 // These ManuvrLink flags are allowed to be passed in as configuration.
-#define MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK (MANUVRLINK_FLAG_AUTH_REQUIRED)
+#define MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK (MANUVRLINK_FLAG_AUTH_REQUIRED | MANUVRLINK_FLAG_SEND_KA)
 // These ManuvrLink flags survive class reset.
-#define MANUVRLINK_FLAG_RESET_PRESERVE_MASK (MANUVRLINK_FLAG_AUTH_REQUIRED)
+#define MANUVRLINK_FLAG_RESET_PRESERVE_MASK (MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK)
 
 
 /* Class flags for ManuvrMsg. These are for state tracking, and will NOT be sent with each message. */
@@ -343,6 +347,7 @@ class ManuvrLink : public BufferAccepter {
     /* Application glue */
     int8_t poll(StringBuilder* log = nullptr);
     int8_t hangup(bool graceful = true);
+    int8_t reset();
     inline bool   isConnected() {  return _flags.value(MANUVRLINK_FLAG_ESTABLISHED);   };
     inline uint16_t replyTimeouts() {  return _unackd_sends;   };
     bool   linkIdle();
@@ -375,11 +380,11 @@ class ManuvrLink : public BufferAccepter {
     ManuvrLinkState   _fsm_pos        = ManuvrLinkState::UNINIT;
     ManuvrLinkState   _fsm_pos_prior  = ManuvrLinkState::UNINIT;
     uint8_t           _verbosity      = 6;
+    uint8_t           _seq_parse_errs = 0;
+    uint8_t           _seq_ack_fails  = 0;
     uint32_t          _session_tag    = 0;        // Allows the application to keep track of our callbacks.
     uint32_t          _ms_last_send   = 0;        // At what time did the last message go out?
     uint32_t          _ms_last_rec    = 0;        // At what time did the last message come in?
-    uint8_t           _seq_parse_errs = 0;
-    uint8_t           _seq_ack_fails  = 0;
     uint16_t          _sync_losses    = 0;
     uint16_t          _unackd_sends   = 0;        // How many messages that needed an ACK failed to get one?
     ManuvrMsg*        _working        = nullptr;  // If we are in the middle of receiving a message,
@@ -407,6 +412,7 @@ class ManuvrLink : public BufferAccepter {
     /* Internal macros for sending messages confined to this class. */
     int8_t _send_sync_packet(bool need_reply);
     int8_t _send_connect_message();
+    int8_t _send_hangup_message(bool graceful);
 
     /* State machine functions */
     int8_t   _poll_fsm();

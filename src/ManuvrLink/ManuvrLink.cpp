@@ -183,8 +183,11 @@ ManuvrLink::~ManuvrLink() {
 *******************************************************************************/
 
 /**
-* When we take bytes from the transport, and can't use them all right away,
-*   we store them to prepend to the next group of bytes that come through.
+* When we take bytes from the transport we store them in our local accumulator,
+*   and process them on a polling cycle. This keeps stack usage lower, and saves
+*   us concurrency concerns with regard to the transport driver's behavior.
+* If the link isn't in such a state to accept the data, it claims it anyway, and
+*   trashes it.
 *
 * @param buf Incoming data from the transport.
 * @return -1 to reject buffer, 0 to accept without claiming, 1 to accept with claim.
@@ -214,35 +217,38 @@ int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
 * Exposed member functions.                                                    *
 *******************************************************************************/
 
-/*
+/**
 * This should be called periodically to service events in the link.
+*
+* @param log_ret is the optional buffer to receive class logs.
+* @return 1 on link state shift
+*         0 on no action
+*        -1 on error
 */
-int8_t ManuvrLink::poll(StringBuilder* text_return) {
-  uint32_t now = millis();
-  _process_input_buffer();
-  _churn_inbound();
-  _churn_outbound();
-  _poll_fsm();
-  // If we need to send an obligatory sync packet, do so.
-  if (_flags.value(MANUVRLINK_FLAG_SYNC_CASTING)) {
-    if (wrap_accounted_delta(_ms_last_send, now) > _opts.ms_keepalive) {
-      if (0 == _send_sync_packet(true)) {
-        _ms_last_send = now;
+int8_t ManuvrLink::poll(StringBuilder* log_ret) {
+  switch (_fsm_pos) {
+    case ManuvrLinkState::PENDING_SETUP:
+    case ManuvrLinkState::HUNGUP:
+      break;
+    default:
+      _process_input_buffer();
+      _churn_inbound();
+      _churn_outbound();
+      // If we need to send an obligatory sync packet, do so.
+      if (_flags.value(MANUVRLINK_FLAG_SYNC_CASTING | MANUVRLINK_FLAG_SEND_KA)) {
+        if (wrap_accounted_delta(_ms_last_send, millis()) > _opts.ms_keepalive) {
+          _send_sync_packet(true);
+        }
       }
-    }
+      break;
   }
-  // Aggregate or trash any logs...
-  if (_local_log.length() > 0) {
-    // If the link has generated logs...
-    if (nullptr != text_return) {
-      // ...and the caller wants them relay them to the caller.
-      text_return->concatHandoff(&_local_log);
-    }
-    else {
-      _local_log.clear();
-    }
+  int8_t ret = _poll_fsm();                // Poll the link's FSM.
+  if (_local_log.length() > 0) {           // If the link generated logs...
+    if (nullptr != log_ret)                // ...and the caller wants them...
+      log_ret->concatHandoff(&_local_log); // ...relay them to the caller.
+    else _local_log.clear();               // Otherwise, trash them.
   }
-  return 0;
+  return ret;
 }
 
 
@@ -250,36 +256,62 @@ int8_t ManuvrLink::poll(StringBuilder* text_return) {
 * Public function to hang up on the counterparty.
 *
 * @param graceful should be true if the application wants to be polite.
-* @return 0 on success, nonzero otherwise.
+* @return 0 on success. The state machine will carry things forward from here.
+*        -1 if the link is not in such a state as to support a HANGUP.
+*        -2 if a hangup is already in progress.
 */
 int8_t ManuvrLink::hangup(bool graceful) {
   int8_t ret = -1;
-
+  bool forced_hangup = false;
   switch (_fsm_pos) {
-    case ManuvrLinkState::PENDING_SETUP:
     case ManuvrLinkState::SYNC_RESYNC:
     case ManuvrLinkState::SYNC_TENTATIVE:
     case ManuvrLinkState::PENDING_AUTH:
     case ManuvrLinkState::IDLE:
+      forced_hangup = !graceful;
       if (graceful) {
-        ret = _append_fsm_route(3, ManuvrLinkState::PENDING_HANGUP, ManuvrLinkState::HUNGUP, ManuvrLinkState::PENDING_SETUP);
-      }
-      else {
-        // If we just want to kill the connection with no delay, we won't bother
-        //   with the PENDING_HANGUP state.
-        ret = _append_fsm_route(2, ManuvrLinkState::HUNGUP, ManuvrLinkState::PENDING_SETUP);
+        ret = _append_fsm_route(2, ManuvrLinkState::PENDING_HANGUP, ManuvrLinkState::HUNGUP);
       }
       break;
 
     // We might be seeing a repeat call from the application.
     case ManuvrLinkState::PENDING_HANGUP:
     case ManuvrLinkState::HUNGUP:
+      forced_hangup = !graceful;
+      if (graceful) {
+        ret = -2;
+      }
       break;
 
     default:
       break;
   }
 
+  if (forced_hangup) {
+    // If we just want to kill the connection with no delay, we won't bother
+    //   with the PENDING_HANGUP state. Obliterate the existing dialogs.
+    _purge_inbound();
+    _purge_outbound();
+    ret = _set_fsm_route(1, ManuvrLinkState::HUNGUP);
+  }
+  return ret;
+}
+
+
+
+/**
+* Reset the link object after a HANGUP.
+*
+* @return 0 on success. Nonzero otherwise.
+*/
+int8_t ManuvrLink::reset() {
+  int8_t ret = -1;
+  if (ManuvrLinkState::HUNGUP == _fsm_pos) {
+    // Clearing this flag will allow the polling loop to start re-using the
+    //   class instance for another connection.
+    _flags.clear(MANUVRLINK_FLAG_ON_HOOK);
+    ret = 0;
+  }
   return ret;
 }
 
@@ -396,16 +428,38 @@ void ManuvrLink::printFSM(StringBuilder* output) {
 *******************************************************************************/
 
 /**
-* Application-facing interface for sending messages.
+* Application-facing interface for sending messages. This function should not be
+*   called by the link class itself.
 *
 * @return  0 on success with no ID
 *         >0 on success with a message ID for application tracking.
-*         -1 if we fail to allocate a ManuvrMsg.
-*         -2 if payload serialization failed.
+*         -1 if we fail to allocate a ManuvrMsg
+*         -2 if payload serialization failed
 *         -3 on queue insertion failure
+*         -4 if the link is unwilling to take the message
 */
 int ManuvrLink::send(KeyValuePair* kvp, bool need_reply) {
   int ret = -1;
+
+  // Early abort tests.
+  switch (_fsm_pos) {
+    case ManuvrLinkState::PENDING_SETUP:
+    case ManuvrLinkState::SYNC_RESYNC:
+    case ManuvrLinkState::SYNC_TENTATIVE:
+    case ManuvrLinkState::PENDING_AUTH:
+    case ManuvrLinkState::IDLE:
+      if (_outbound_messages.size() >= _opts.max_outbound) {
+        return -3;
+      }
+      break;
+
+    case ManuvrLinkState::UNINIT:
+    case ManuvrLinkState::PENDING_HANGUP:  // If we are hanging/hung up, refuse.
+    case ManuvrLinkState::HUNGUP:
+    default:
+      return -4;
+  }
+
   ManuvrMsgHdr hdr(ManuvrMsgCode::APPLICATION, 0, need_reply);
   ManuvrMsg* msg = new ManuvrMsg(&hdr, BusOpcode::TX);
   if (nullptr != msg) {
@@ -450,7 +504,19 @@ int8_t ManuvrLink::_send_msg(ManuvrMsg* msg) {
       //   they are waiting for replies or not. Messages wit ha priority of 0 are
       //   only being held in the queue to verify that a response arrives.
       // Being as this is, a new message, it gets the default priority.
-      int priority = (msg->msgCode() == ManuvrMsgCode::APPLICATION) ? MANUVRLINK_PRIORITY_APP : MANUVRLINK_PRIORITY_INTERNAL;
+      int priority = MANUVRLINK_PRIORITY_INTERNAL;
+      switch (msg->msgCode()) {
+        case ManuvrMsgCode::APPLICATION:
+          priority = MANUVRLINK_PRIORITY_APP;
+          break;
+        case ManuvrMsgCode::HANGUP:
+          priority = 0;   // Hangup ought to be the last thing we deal with.
+          // If we are processing a HANGUP message going outbound, we lock-out
+          //   any additional sends that aren't already in the queue.
+          break;
+        default:
+          break;
+      }
       if (0 <= _outbound_messages.insert(msg, priority)) {
         ret = 0;
       }
@@ -542,9 +608,10 @@ int8_t ManuvrLink::_churn_inbound() {
           _flags.set(MANUVRLINK_FLAG_ESTABLISHED);
         }
         else if (temp->expectsReply()) {
-          if (0 != temp->ack()) {
-            if (_verbosity > 2) _local_log.concatf("ManuvrLink (tag: 0x%x) Failed to reply to CONNECT\n", _session_tag);
+          if (0 == temp->ack()) {
+            gc_message = false;
           }
+          else if (_verbosity > 2) _local_log.concatf("ManuvrLink (tag: 0x%x) Failed to reply to CONNECT\n", _session_tag);
           //if (_verbosity > 5) {
           //  _local_log.concatf("ManuvrLink (tag: 0x%x) responding with...\n", _session_tag);
           //  temp->printDebug(&_local_log);
@@ -560,6 +627,21 @@ int8_t ManuvrLink::_churn_inbound() {
         break;
       case ManuvrMsgCode::HANGUP:
         // The other side wants to hang up. ACK if needed.
+        _flags.set(MANUVRLINK_FLAG_HANGUP_RXD);
+        if (temp->isReply()) {
+          // We are seeing a reply to a HANGUP we previously sent. We take this
+          //   to mean that our counterparty has finished sending, and has
+          //   hung up. We should do the same.
+        }
+        else if (temp->expectsReply()) {
+          if (0 == temp->ack()) {
+            if (0 == _send_msg(temp)) {
+              gc_message = false;
+              _append_fsm_route(2, ManuvrLinkState::PENDING_HANGUP, ManuvrLinkState::HUNGUP);
+            }
+          }
+          if (gc_message & (_verbosity > 2)) _local_log.concatf("ManuvrLink (tag: 0x%x) Failed to reply to HANGUP\n", _session_tag);
+        }
         break;
       case ManuvrMsgCode::DESCRIBE:
       case ManuvrMsgCode::MSG_FORWARD:
@@ -638,6 +720,11 @@ int8_t ManuvrLink::_churn_outbound() {
             temp->markSent();
             new_priority = MANUVRLINK_PRIORITY_WAITING_FOR_ACK;
             gc_msg = !temp->expectsReply();
+            // Some internal message types have implications upon
+            //   being successfully sent.
+            if (ManuvrMsgCode::HANGUP == temp->msgCode()) {
+              _flags.set(MANUVRLINK_FLAG_HANGUP_TXD);
+            }
             ret++;
           }
         }
@@ -660,6 +747,9 @@ int8_t ManuvrLink::_churn_outbound() {
 * Calling this function with the ID of a message we previously sent will cause
 *   that message to be released from the outbound queue, and is tantamount to
 *   satisfying the reply.
+*
+* @param id is the message's uniqueID to search for.
+* @return the number of messages cleared from the outbound queue.
 */
 int8_t ManuvrLink::_clear_waiting_send_by_id(uint32_t id) {
   int8_t ret = 0;
@@ -674,6 +764,7 @@ int8_t ManuvrLink::_clear_waiting_send_by_id(uint32_t id) {
   }
   return ret;
 }
+
 
 
 /*******************************************************************************
@@ -701,17 +792,26 @@ void ManuvrLink::_reset_class() {
 }
 
 
+/**
+* Calling this function with the ID of a message we previously sent will cause
+*   that message to be released from the outbound queue, and is tantamount to
+*   satisfying the reply.
+*
+* @param buf The StringBuilder containing the bytes to send to the transport.
+* @return -2 on error (transport rejected data)
+*         -1 on error (no transport set)
+*          0 on success
+*/
 int8_t ManuvrLink::_relay_to_output_target(StringBuilder* buf) {
   int8_t ret = -1;
   if (nullptr != _output_target) {
-    ret = 0;
     switch (_output_target->provideBuffer(buf)) {
       case 0:
         buf->clear();
         // NOTE: No break;
       case 1:
         _ms_last_send = millis();
-        ret = 1;
+        ret = 0;
         break;
       default:
         ret = -2;
@@ -987,33 +1087,78 @@ bool ManuvrLink::_link_syncd() {
 }
 
 
+/**
+* SYNC packets are so important that they skip the normal flow of message
+*   control, and are sent to the transport immediately when requested.
+*
+* @param need_reply should be set to true if we are still expecting SYNC reply.
+* @return 0 on success. Nonzero on failure (typically rejection by the transport).
+*/
 int8_t ManuvrLink::_send_sync_packet(bool need_reply) {
   int8_t ret = -1;
   StringBuilder sync_packet;
   ManuvrMsgHdr sync_header(ManuvrMsgCode::SYNC_KEEPALIVE, 0, (need_reply ? MANUVRMSGHDR_FLAG_EXPECTING_REPLY : MANUVRMSGHDR_FLAG_IS_REPLY));
   if (sync_header.serialize(&sync_packet)) {
-    ret = (0 < _relay_to_output_target(&sync_packet)) ? 0 : -2;
+    ret = (0 <= _relay_to_output_target(&sync_packet)) ? 0 : -2;
   }
-  else if (2 < _verbosity) _local_log.concatf("Link 0x%x failed to serialize a sync header.\n", _session_tag);
+  //else if (2 < _verbosity) _local_log.concatf("Link 0x%x failed to serialize a sync header.\n", _session_tag);
   return ret;
 }
 
 
+/**
+* Sends a CONNECT message via the normal message pipeline.
+*
+* @return 0 on success. -1 on failure to allocate ManuvrMsg, -2 on send failure.
+*/
 int8_t ManuvrLink::_send_connect_message() {
   int8_t ret = -1;
-  // TODO: For now, this will just send a connection packet.
+  // TODO: For now, this will just send a connection message directly to the transport.
   StringBuilder connect_packet;
   ManuvrMsgHdr connect_header(ManuvrMsgCode::CONNECT, 0, true);
   ManuvrMsg connect_msg(&connect_header, BusOpcode::TX);
-  connect_msg.printDebug(&_local_log);
-
   if (connect_header.serialize(&connect_packet)) {
-    ret = (0 < _relay_to_output_target(&connect_packet)) ? 0 : -2;
+    ret = (0 <= _relay_to_output_target(&connect_packet)) ? 0 : -2;
   }
   else if (2 < _verbosity) _local_log.concatf("Link 0x%x failed to serialize a connect header.\n", _session_tag);
+  // TODO: Would prefer to use the code below. But SYNC is not well-enough
+  //   under control.
+  //ManuvrMsgHdr hdr(ManuvrMsgCode::CONNECT, 0, true);
+  //ManuvrMsg* msg = new ManuvrMsg(&hdr, BusOpcode::TX);
+  //if (nullptr != msg) {
+  //  ret--;
+  //  if (0 == _send_msg(msg)) {
+  //    ret = 0;
+  //  }
+  //  else {
+  //    delete msg;
+  //  }
+  //}
   return ret;
 }
 
+
+/**
+* Sends a HANGUP message via the normal message pipeline.
+*
+* @param graceful should be true if we want orderly termination on both sides.
+* @return 0 on success. -1 on failure to allocate ManuvrMsg, -2 on send failure.
+*/
+int8_t ManuvrLink::_send_hangup_message(bool graceful) {
+  int8_t ret = -1;
+  ManuvrMsgHdr hdr(ManuvrMsgCode::HANGUP, 0, true);
+  ManuvrMsg* msg = new ManuvrMsg(&hdr, BusOpcode::TX);
+  if (nullptr != msg) {
+    ret--;
+    if (0 == _send_msg(msg)) {
+      ret = 0;
+    }
+    else {
+      delete msg;
+    }
+  }
+  return ret;
+}
 
 
 /*******************************************************************************
@@ -1049,14 +1194,13 @@ int8_t ManuvrLink::_poll_fsm() {
       //fsm_advance = (0 < _inbound_buf.length());
       break;
 
-    // Exit conditions:
+    // Exit conditions: We have begun sending sync packets into the transport.
     case ManuvrLinkState::SYNC_RESYNC:
-      if (_flags.value(MANUVRLINK_FLAG_SYNC_CASTING)) {
-        fsm_advance = _flags.value(MANUVRLINK_FLAG_SYNC_CASTING);
-      }
+      fsm_advance = _flags.value(MANUVRLINK_FLAG_SYNC_CASTING);
       break;
 
-    // Exit conditions: Incoming data is no longer preceeded by sync packets.
+    // Exit conditions: We have seen replies to our syncs, and incoming data is
+    //   no longer preceeded by sync packets.
     case ManuvrLinkState::SYNC_TENTATIVE:
       if (!_flags.value(MANUVRLINK_FLAG_SYNC_CASTING)) {
         fsm_advance = _flags.value(MANUVRLINK_FLAG_ESTABLISHED);
@@ -1065,22 +1209,30 @@ int8_t ManuvrLink::_poll_fsm() {
 
     // Exit conditions: An acceptable authentication has happened.
     case ManuvrLinkState::PENDING_AUTH:
-      fsm_advance = true;
+      fsm_advance = _flags.value(MANUVRLINK_FLAG_AUTHD);
       break;
 
     // Exit conditions: These states are canonically stable. So we advance when
-    //   the state is not stable (the driver has somewhere else it wants to be).
+    //   the state is not stable (the link has somewhere else it wants to be).
     case ManuvrLinkState::IDLE:
       fsm_advance = !_fsm_is_stable();
       break;
 
-    // Exit conditions:
+    // Exit conditions: The outbound queue is empty, and at least one HANGUP
+    //   message has been sent and ACK'd.
     case ManuvrLinkState::PENDING_HANGUP:
-      fsm_advance = true;
+      if (!_outbound_messages.hasNext()) {
+        fsm_advance = _flags.value(MANUVRLINK_FLAG_HANGUP_RXD) & _flags.value(MANUVRLINK_FLAG_HANGUP_TXD);
+      }
       break;
 
-    // Exit conditions:
+    // Exit conditions: The application has called reset(), to take this link
+    //   back "off-hook".
     case ManuvrLinkState::HUNGUP:
+      fsm_advance = !_flags.value(MANUVRLINK_FLAG_ON_HOOK);
+      if (fsm_advance) {   // Make sure we have somewhere to advance INTO.
+        _set_fsm_route(3, ManuvrLinkState::PENDING_SETUP, ManuvrLinkState::SYNC_RESYNC, ManuvrLinkState::SYNC_TENTATIVE);
+      }
       break;
 
     default:   // Can't exit from an unknown state.
@@ -1162,13 +1314,17 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
       //   message notifying our counterparty of our desire to hang-up, and are
       //   now waiting on the handshake to complete.
       case ManuvrLinkState::PENDING_HANGUP:
-        state_entry_success = true;   // TODO: This
+        state_entry_success = (0 == _send_hangup_message(true));
+        if (!state_entry_success) {
+          if (3 < _verbosity) _local_log.concatf("Link 0x%x failed to send initial HANGUP.\n", _session_tag);
+        }
         break;
 
       // Entry into HUNGUP involves clearing/releasing any buffers and states
       //   from the prior session. Entry always succeeds.
       case ManuvrLinkState::HUNGUP:
         _reset_class();
+        _flags.set(MANUVRLINK_FLAG_ON_HOOK);
         state_entry_success = true;
         break;
 
