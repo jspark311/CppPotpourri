@@ -1512,6 +1512,9 @@ int8_t ManuvrLink::_fsm_insert_sync_states() {
 */
 ManuvrMsg* ManuvrLink::_allocate_manuvrmsg(ManuvrMsgHdr* hdr, BusOpcode op) {
   ManuvrMsg* ret = new ManuvrMsg(hdr, op);
+  if (nullptr != ret) {
+    ret->encoding(_opts.encoding);
+  }
   return ret;
 }
 

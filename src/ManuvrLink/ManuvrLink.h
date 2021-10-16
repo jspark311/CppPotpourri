@@ -311,8 +311,9 @@ class ManuvrMsg {
     inline ManuvrMsgCode msgCode() {    return _header.msg_code;         };
     inline uint32_t uniqueId() {        return _header.msg_id;           };
 
-    /* Inlines for message status markers. */
+    /* Inlines for message options, flags, and status markers. */
     inline void      markSent() {     _ms_io_mark = millis();                                     };
+    inline TCode     encoding() {     return _encoding;                                           };
     inline BusOpcode direction() {    return _op;                                                 };
     inline bool      wasSent() {      return (_ms_io_mark != 0);                                  };
     inline uint32_t  msSinceSend() {  return wrap_accounted_delta(_ms_io_mark, millis());         };
@@ -324,6 +325,7 @@ class ManuvrMsg {
     int   reply(KeyValuePair*);
     int   getPayload(KeyValuePair**);  // Application calls this to gain access to the message payload.
     int   setPayload(KeyValuePair*);   // Application calls this to set the message payload.
+    int   encoding(TCode);
     int   serialize(StringBuilder*);   // Link calls this to render this message as a buffer for the transport.
     int   accumulate(StringBuilder*);  // Link calls this to feed the message parser.
     void  printDebug(StringBuilder*);

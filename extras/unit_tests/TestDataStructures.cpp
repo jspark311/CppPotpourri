@@ -147,23 +147,23 @@ int vector3_float_test() {
                                 print_vectors = false;
                                 return_value = 0;
                               }
-                              else log.concatf("The cross-product of two vectors was not orthogonal to both. %.3f and %.3f.\n", angle_3, angle_4);
+                              else log.concatf("The cross-product of two vectors was not orthogonal to both. %.3f and %.3f.\n", (double) angle_3, (double) angle_4);
                             }
                             else log.concat("Failed vector Scaling/renormalizing.\n");
                           }
-                          else log.concatf("Scaled vector should be length %.3f, but got %.3f.\n", RENORM_SCALAR, result_vect_3.length());
+                          else log.concatf("Scaled vector should be length %.3f, but got %.3f.\n", (double) RENORM_SCALAR, (double) result_vect_3.length());
                         }
-                        else log.concatf("The angle between vector0 and its reflection about vector1 should be twice the angle between vector0 nad vector1, but got %.3f and %.3f, respectively.\n", angle_1, angle_2);
+                        else log.concatf("The angle between vector0 and its reflection about vector1 should be twice the angle between vector0 nad vector1, but got %.3f and %.3f, respectively.\n", (double) angle_1, (double) angle_2);
                       }
-                      else log.concatf("The angle between two equal vectors should be 0.0, but got %.6f.\n", angle_0);
+                      else log.concatf("The angle between two equal vectors should be 0.0, but got %.6f.\n", (double) angle_0);
                     }
                     else log.concat("Failed vector equality test.\n");
                   }
                   else log.concat("Failed vector inequality test.\n");
                 }
-                else log.concatf("The scalar value returned by normalize (%.3f) doesn't comport with the original length (%.3f).\n", scalar_0, length_r_3);
+                else log.concatf("The scalar value returned by normalize (%.3f) doesn't comport with the original length (%.3f).\n", (double) scalar_0, (double) length_r_3);
               }
-              else log.concatf("Normalized vector should be length 1.0, but got %.3f.\n", test_vect_3.length());
+              else log.concatf("Normalized vector should be length 1.0, but got %.3f.\n", (double) test_vect_3.length());
             }
             else log.concat("Failed test of -= operator.\n");
           }

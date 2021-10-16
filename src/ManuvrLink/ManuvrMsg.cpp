@@ -278,6 +278,23 @@ int ManuvrMsg::setPayload(KeyValuePair* payload) {
 }
 
 
+/**
+* Sets the payload encoding scheme.
+*
+* @param enc is the desired payload encoding.
+* @return 0 on success.
+*        -1 invalid encoding type.
+*/
+int ManuvrMsg::encoding(TCode enc) {
+  switch (enc) {
+    case TCode::BINARY:
+    case TCode::CBOR:
+      _encoding = enc;
+      return 0;
+    default:
+      return -1;
+  }
+}
 
 /*******************************************************************************
 * Exposed member functions for ManuvrLink's use.                               *
