@@ -315,7 +315,7 @@ class ManuvrMsg {
     /* Inlines for message options, flags, and status markers. */
     inline TCode     encoding() {     return _encoding;                                           };
     inline BusOpcode direction() {    return _op;                                                 };
-    inline uint32_t  msSinceSend() {  return wrap_accounted_delta(_ms_io_mark, millis());         };
+    inline uint32_t  msSinceSend() {  return wrap_accounted_delta(_ms_io_mark, (uint32_t)millis()); };
     inline bool      rxComplete() {   return (_accumulator.length() == _header.payload_length()); };
     inline bool      wasSent() {      return _class_flag(MANUVRMSG_FLAG_TX_COMPLETE);             };
     inline bool      wasACKd() {      return _class_flag(MANUVRMSG_FLAG_WAS_ACKD);                };

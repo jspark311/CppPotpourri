@@ -49,10 +49,10 @@ void check_that_kvps_match(StringBuilder* log, KeyValuePair* k0, KeyValuePair* k
     log->concat("\n\tKVP Sent:\n\t------------------\n");
     k0->printDebug(log);
   }
-  //if (nullptr != k1) {
-  //  log->concat("\n\tKVP Received:\n\t--------------\n");
-  //  k1->printDebug(log);
-  //}
+  if (nullptr != k1) {
+   log->concat("\n\tKVP Received:\n\t--------------\n");
+   k1->printDebug(log);
+  }
 }
 
 
