@@ -67,7 +67,7 @@ typedef struct {
 class UARTAdapter : public BufferAccepter {
   public:
     UARTAdapter(const uint8_t adapter, const uint8_t txd_pin, const uint8_t rxd_pin, const uint8_t cts_pin, const uint8_t rts_pin, const uint16_t tx_buf_len, const uint16_t rx_buf_len);
-    ~UARTAdapter();
+    virtual ~UARTAdapter();
 
     /* Implementation of BufferAccepter. */
     int8_t provideBuffer(StringBuilder* buf) {  _tx_buffer.concatHandoff(buf); return 1;   };

@@ -380,7 +380,7 @@ class ManuvrMsg {
 class ManuvrLink : public BufferAccepter {
   public:
     ManuvrLink(const ManuvrLinkOpts* opts);
-    ~ManuvrLink();
+    virtual ~ManuvrLink();
 
     /* Implementation of BufferAccepter. Accepts data from a transport. */
     int8_t provideBuffer(StringBuilder*);
