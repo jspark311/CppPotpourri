@@ -392,8 +392,9 @@ class ManuvrLink : public BufferAccepter {
     bool   linkIdle();
     int    send(KeyValuePair*, bool need_reply = false);
     inline bool     isConnected() {    return _flags.value(MANUVRLINK_FLAG_ESTABLISHED);   };
-    inline uint16_t replyTimeouts() {  return _unackd_sends;   };
-    inline void     verbosity(uint8_t x) {  _verbosity = x;   };
+    inline uint16_t replyTimeouts() {  return _unackd_sends;     };
+    inline void     verbosity(uint8_t x) {  _verbosity = x;      };
+    inline uint8_t  verbosity() {           return _verbosity;   };
     //int8_t ping();
 
     /* Debugging */
@@ -421,8 +422,8 @@ class ManuvrLink : public BufferAccepter {
     FlagContainer32   _flags;
     ManuvrLinkState   _fsm_waypoints[MANUVRLINK_FSM_WAYPOINT_DEPTH] = {ManuvrLinkState::UNINIT, };
     uint32_t          _fsm_lockout_ms = 0;        // Used to enforce a delay between state transitions.
-    ManuvrLinkState   _fsm_pos        = ManuvrLinkState::UNINIT;
-    ManuvrLinkState   _fsm_pos_prior  = ManuvrLinkState::UNINIT;
+    ManuvrLinkState   _fsm_pos        = ManuvrLinkState::UNINIT;  // TODO: Optimize this away.
+    ManuvrLinkState   _fsm_pos_prior  = ManuvrLinkState::UNINIT;  // TODO: Remove? Never used in logic.
     uint8_t           _verbosity      = 0;        // By default, this class won't generate logs.
     uint8_t           _seq_parse_errs = 0;
     uint8_t           _seq_ack_fails  = 0;
@@ -450,7 +451,7 @@ class ManuvrLink : public BufferAccepter {
     int8_t _relay_to_output_target(StringBuilder*);
     int8_t _invoke_msg_callback(ManuvrMsg*);
     int8_t _process_input_buffer();
-    int8_t _process_for_sync(StringBuilder*);
+    int8_t _process_for_sync();
     bool   _link_syncd();
 
     /* Internal macros for sending messages confined to this class. */

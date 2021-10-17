@@ -871,7 +871,7 @@ int8_t ManuvrLink::_process_input_buffer() {
   switch (_fsm_pos) {
     // If the link is actively trying to attain sync...
     case ManuvrLinkState::SYNC_RESYNC:
-      switch (_process_for_sync(&_inbound_buf)) {
+      switch (_process_for_sync()) {
         case -1:   // insufficient length. No change to input data.
         case 0:    // no sync was found and so the input data was maximally culled.
         default:   // Should be impossible.
@@ -981,16 +981,16 @@ int8_t ManuvrLink::_process_input_buffer() {
 *          1 if sync found and search ended because we ran out of data to cull.
 *          2 if sync found and search ended because sync ceased repeating.
 */
-int8_t ManuvrLink::_process_for_sync(StringBuilder* dat_in) {
-  const int AVAILABLE_LEN = dat_in->length();
+int8_t ManuvrLink::_process_for_sync() {
+  const int AVAILABLE_LEN = _inbound_buf.length();
   int ret = -1;
-  int i = _contains_sync_pattern(dat_in);
+  int i = _contains_sync_pattern(&_inbound_buf);
   if (0 <= i) {
     // Found sync data, and we are about to change the buffer. But before we
     //   cull the sync packet, note if it is a reply. We might-should
     //   take further action.
     ret = 1;
-    uint8_t* buf          = dat_in->string();
+    uint8_t* buf          = _inbound_buf.string();
     int      sync_0_idx   = i;  // Correct for cases where (0 != offset % 4).
     bool     keep_looping = ((AVAILABLE_LEN-i) >= MANUVRMSGHDR_MINIMUM_HEADER_SIZE);
     bool     set_sync     = false;
@@ -1042,7 +1042,7 @@ int8_t ManuvrLink::_process_for_sync(StringBuilder* dat_in) {
     //   breaks the sequence of syncs, if such a pattern was found. If not,
     //   drop all the data up-to the terminal %4 bytes.
     // NOTE: It is safe to pass 0 as an argument to cull(). Nothing will happen.
-    dat_in->cull(sync_0_idx);
+    _inbound_buf.cull(sync_0_idx);
 
     // Finally, consider the things we discovered about the syncs we just
     //   dropped, and act accordingly.
@@ -1065,8 +1065,8 @@ int8_t ManuvrLink::_process_for_sync(StringBuilder* dat_in) {
     const uint32_t CULL_LEN = ((uint32_t) AVAILABLE_LEN) & 0xFFFFFFFC;
     if (0 < CULL_LEN) {   // clear() is cheaper than cull().
       ret = 0;
-      if ((uint32_t)AVAILABLE_LEN == CULL_LEN) {  dat_in->clear();  }
-      else {                               dat_in->cull(CULL_LEN);  }
+      if ((uint32_t)AVAILABLE_LEN == CULL_LEN) {  _inbound_buf.clear();  }
+      else {  _inbound_buf.cull(CULL_LEN);  }
     }
   }
   if (_verbosity > 5) _local_log.concatf("Link 0x%x _process_for_sync() returned %d.\n", _session_tag, ret);
