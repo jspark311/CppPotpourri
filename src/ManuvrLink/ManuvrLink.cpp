@@ -326,30 +326,38 @@ int8_t ManuvrLink::reset() {
 *
 * @param outbound_log is the string we want to send.
 * @param need_reply should be true if we want our log insertion ACK'd.
-* @return 0 on success. Nonzero otherwise.
+* @return 0 on successful send.
+*        -1 if the log is empty.
+*        -2 if the link is not established.
+*        -3 on failure to allocate ManuvrMsg.
+*        -4 on failure to append logs to message.
+*        -5 on failure to send completed message.
 */
 int8_t ManuvrLink::writeRemoteLog(StringBuilder* outbound_log, bool need_reply) {
   int8_t ret = -1;
   if (!outbound_log->isEmpty()) {
-    ManuvrMsgHdr hdr(ManuvrMsgCode::LOG, 0, (need_reply ? MANUVRMSGHDR_FLAG_EXPECTING_REPLY : 0));
-    ManuvrMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
-    ret--;
-    if (nullptr != msg) {
-      bool gc_message = true;  // Trash the message if sending doesn't work.
+    if (_flags.value(MANUVRLINK_FLAG_ESTABLISHED)) {
       ret--;
-      KeyValuePair kvp(outbound_log, "b");
-      if (0 == msg->setPayload(&kvp)) {
+      ManuvrMsgHdr hdr(ManuvrMsgCode::LOG, 0, (need_reply ? MANUVRMSGHDR_FLAG_EXPECTING_REPLY : 0));
+      ManuvrMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
+      ret--;
+      if (nullptr != msg) {
+        bool gc_message = true;  // Trash the message if sending doesn't work.
         ret--;
-        // At this point, we are discharged of the responsibility of keeping our
-        //   original copy of kvp, since it has been already serialized into the
-        //   message's accumulator. It will be fed to the transport later.
-        if (0 == _send_msg(msg)) {
-          gc_message = false;
-          ret = 0;
+        KeyValuePair kvp(outbound_log, "b");
+        if (0 == msg->setPayload(&kvp)) {
+          ret--;
+          // At this point, we are discharged of the responsibility of keeping our
+          //   original copy of kvp, since it has been already serialized into the
+          //   message's accumulator. It will be fed to the transport later.
+          if (0 == _send_msg(msg)) {
+            gc_message = false;
+            ret = 0;
+          }
         }
+        outbound_log->clear();  // Free the original buffer.
+        if (gc_message) _reclaim_manuvrmsg(msg);
       }
-      outbound_log->clear();  // Free the original buffer.
-      if (gc_message) _reclaim_manuvrmsg(msg);
     }
   }
   return ret;
