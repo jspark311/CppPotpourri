@@ -53,5 +53,5 @@ Personal note:
   AbstractPlatform, I2CAdapter, et al. At that point, the platform can make
   choices about which modes of output/caching/policy will be available to the
   program.
-                                           ---J. Ian Lindsay 2021.10.16 20:27:54
+                                           ---J. Ian Lindsay 2021.10.16 20:59:15
 */
