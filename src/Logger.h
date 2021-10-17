@@ -53,5 +53,32 @@ Personal note:
   AbstractPlatform, I2CAdapter, et al. At that point, the platform can make
   choices about which modes of output/caching/policy will be available to the
   program.
+
+  The API to the Logger ought to support log severity, source tags, and
+  build-time definitions for which levels of logging should be included in the
+  binary. As before, we adopt the SYSLOG severity conventions. Because those
+  work really well.
                                            ---J. Ian Lindsay 2021.10.16 20:59:15
 */
+
+#ifndef __CPPPOTPOURRI_LOGGER_H__
+#define __CPPPOTPOURRI_LOGGER_H__
+
+#define LOG_LEV_EMERGENCY  0  // Emergency
+#define LOG_LEV_ALERT      1  // Alert
+#define LOG_LEV_CRIT       2  // Critical
+#define LOG_LEV_ERROR      3  // Error
+#define LOG_LEV_WARN       4  // Warning
+#define LOG_LEV_NOTICE     5  // Notice
+#define LOG_LEV_INFO       6  // Informational
+#define LOG_LEV_DEBUG      7  // Debug
+
+#include "StringBuilder.h"
+
+
+/* Let's tentatively start with an interface class... */
+class C3PLogger {
+  int8_t log() =0;
+};
+
+#endif // __CPPPOTPOURRI_LOGGER_H__
