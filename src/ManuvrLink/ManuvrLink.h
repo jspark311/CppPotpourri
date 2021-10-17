@@ -195,10 +195,14 @@ enum class ManuvrLinkProto : uint8_t {
   HTTP         = 0x09,   //
 };
 
+class ManuvrLink;
 class ManuvrMsg;
 
+/* Callback for notifications of link state change. */
+typedef void (*ManuvrLinkCB)(ManuvrLink*);
+
 /* Callback for application-directed messages from a link. */
-typedef void (*ManuvrMsgCallback)(uint32_t tag, ManuvrMsg*);
+typedef void (*ManuvrMsgCB)(uint32_t tag, ManuvrMsg*);
 
 
 /*******************************************************************************
@@ -236,7 +240,7 @@ class ManuvrLinkOpts {
       prealloc_count(obj->prealloc_count),
       encoding(obj->encoding) {};
 
-    ManuvrLinkOpts(uint32_t msto, uint32_t mska, uint32_t m, uint32_t def_flgs = 0) :
+    ManuvrLinkOpts(uint32_t msto, uint32_t mska, uint32_t m, TCode enc = TCode::BINARY, uint32_t def_flgs = 0) :
       ms_timeout(msto),
       ms_keepalive(mska),
       mtu(m),
@@ -246,7 +250,7 @@ class ManuvrLinkOpts {
       max_parse_errs(3),
       max_ack_fails(3),
       prealloc_count(4),
-      encoding(TCode::BINARY) {};
+      encoding(enc) {};
 };
 
 
@@ -402,7 +406,8 @@ class ManuvrLink : public BufferAccepter {
     void printFSM(StringBuilder*);
 
     /* Inline accessors. */
-    inline void setCallback(ManuvrMsgCallback cb) {    _msg_callback = cb;   };
+    inline void setCallback(ManuvrLinkCB cb) {         _lnk_callback = cb;   };
+    inline void setCallback(ManuvrMsgCB cb) {          _msg_callback = cb;   };
     inline void setOutputTarget(BufferAccepter* o) {   _output_target = o;   };
     inline uint32_t linkTag() {                        return _session_tag;  };
     inline ManuvrLinkState getState() {                return _fsm_pos;      };
@@ -434,7 +439,8 @@ class ManuvrLink : public BufferAccepter {
     uint16_t          _unackd_sends   = 0;        // How many messages that needed an ACK failed to get one?
     ManuvrMsg*        _working        = nullptr;  // If we are in the middle of receiving a message,
     BufferAccepter*   _output_target  = nullptr;  // A pointer to the transport for outbound bytes.
-    ManuvrMsgCallback _msg_callback   = nullptr;  // The application-provided callback for incoming messages.
+    ManuvrLinkCB      _lnk_callback   = nullptr;  // The application-provided callback for state changes.
+    ManuvrMsgCB       _msg_callback   = nullptr;  // The application-provided callback for incoming messages.
     StringBuilder     _inbound_buf;
     StringBuilder     _local_log;
 
@@ -450,6 +456,7 @@ class ManuvrLink : public BufferAccepter {
     void   _reset_class();
     int8_t _relay_to_output_target(StringBuilder*);
     int8_t _invoke_msg_callback(ManuvrMsg*);
+    void   _invoke_state_callback();
     int8_t _process_input_buffer();
     int8_t _process_for_sync();
     bool   _link_syncd();

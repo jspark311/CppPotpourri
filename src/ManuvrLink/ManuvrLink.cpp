@@ -829,6 +829,17 @@ int8_t ManuvrLink::_relay_to_output_target(StringBuilder* buf) {
 
 
 /**
+* Internal function to invoke the application-provided callback for noteworthy
+*   state changes.
+*/
+void ManuvrLink::_invoke_state_callback() {
+  if (nullptr != _lnk_callback) {   // Call the callback, if it is set.
+    _lnk_callback(this);
+  }
+}
+
+
+/**
 * Internal function to invoke the application-provided callback for messages
 *   received. During this stack frame, the application will be able to reply
 *   to the message.
@@ -1339,6 +1350,14 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
       if (4 < _verbosity) _local_log.concatf("Link 0x%x moved %s ---> %s\n", _session_tag, sessionStateStr(_fsm_pos), sessionStateStr(new_state));
       _fsm_pos_prior = _fsm_pos;
       _fsm_pos       = new_state;
+      switch (new_state) {
+        case ManuvrLinkState::HUNGUP:        // Entry into these states might
+        case ManuvrLinkState::PENDING_AUTH:  // be an event worth passing to
+        case ManuvrLinkState::IDLE:          // the application.
+          _invoke_state_callback();
+        default:
+          break;
+      }
       fxn_ret = 0;
     }
   }

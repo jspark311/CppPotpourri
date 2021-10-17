@@ -559,12 +559,14 @@ int manuvrlink_main() {
     100,   // ACK timeout is 100ms. Vlad is patient.
     2000,  // Send a KA every 2s.
     2048,  // MTU for this link is 2 kibi.
+    TCode::CBOR,   // Payloads should be CBOR encoded.
     0      // No flags.
   );
   ManuvrLinkOpts opts_carl(
     40,    // ACK timeout is 40ms.
     2000,  // Send a KA every 2s.
     1024,  // MTU for this link is 1 kibi.
+    TCode::CBOR,   // Payloads should be CBOR encoded.
     0      // No flags.
   );
   vlad = new ManuvrLink(&opts_vlad);  // One half of the link.
