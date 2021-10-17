@@ -107,9 +107,12 @@ NOTE: This has been a mad binge to port over all this work from ManuvrOS. Five
 #define MANUVRLINK_FLAG_HANGUP_TXD      0x00000080  // Sent a HANGUP message on this session.
 #define MANUVRLINK_FLAG_SEND_KA         0x00000100  // We will send a keep-alive on a defined interval.
 #define MANUVRLINK_FLAG_ON_HOOK         0x00000200  // Following HANGUP, the app needs to reset this.
+#define MANUVRLINK_FLAG_ALLOW_LOG_WRITE 0x00000400  // Do we allow a counterparty to write to our log?
 
 // These ManuvrLink flags are allowed to be passed in as configuration.
-#define MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK (MANUVRLINK_FLAG_AUTH_REQUIRED | MANUVRLINK_FLAG_SEND_KA)
+#define MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK (MANUVRLINK_FLAG_AUTH_REQUIRED | \
+                                                MANUVRLINK_FLAG_SEND_KA | \
+                                                MANUVRLINK_FLAG_ALLOW_LOG_WRITE)
 // These ManuvrLink flags survive class reset.
 #define MANUVRLINK_FLAG_RESET_PRESERVE_MASK (MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK)
 
@@ -393,6 +396,7 @@ class ManuvrLink : public BufferAccepter {
     int8_t poll(StringBuilder* log = nullptr);
     int8_t hangup(bool graceful = true);
     int8_t reset();
+    int8_t writeRemoteLog(StringBuilder*, bool need_reply = false);
     bool   linkIdle();
     int    send(KeyValuePair*, bool need_reply = false);
     inline bool     isConnected() {    return _flags.value(MANUVRLINK_FLAG_ESTABLISHED);   };
@@ -451,6 +455,9 @@ class ManuvrLink : public BufferAccepter {
     int8_t _churn_inbound();
     int8_t _churn_outbound();
     int8_t _clear_waiting_send_by_id(uint32_t);
+
+    /* Internal handlers for receiving messages confined to this class. */
+    int8_t   _handle_msg_log(ManuvrMsg*);
 
     /* Buffers, parsing, and scattered low-level functions */
     void   _reset_class();

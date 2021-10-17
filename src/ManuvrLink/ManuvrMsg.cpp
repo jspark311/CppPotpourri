@@ -279,6 +279,7 @@ int ManuvrMsg::setPayload(KeyValuePair* payload) {
       _class_clear_flag(MANUVRMSG_FLAG_ACCUMULATOR_COMPLETE);
       _kvp = payload;
       ret = (0 == serialize(&_accumulator)) ? 0 : -2;
+      _kvp = nullptr;   // TODO: Clearly enforce memory contract with client classes.
       break;
     default:
       break;

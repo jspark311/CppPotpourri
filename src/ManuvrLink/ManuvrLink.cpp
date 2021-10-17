@@ -162,7 +162,7 @@ static int _contains_sync_pattern(StringBuilder* dat_in) {
 /**
 * Constructor
 */
-ManuvrLink::ManuvrLink(const ManuvrLinkOpts* opts) : _opts(opts) {
+ManuvrLink::ManuvrLink(const ManuvrLinkOpts* opts) : _opts(opts), _flags(opts->default_flags) {
 }
 
 
@@ -319,6 +319,44 @@ int8_t ManuvrLink::reset() {
 
 
 /**
+* Write a message to the counterparty's system log.
+* This is useful for investigating problems in firmware without
+*   needing to have a console attached.
+* This function always consumes the buffer it is fed as a parameter.
+*
+* @param outbound_log is the string we want to send.
+* @param need_reply should be true if we want our log insertion ACK'd.
+* @return 0 on success. Nonzero otherwise.
+*/
+int8_t ManuvrLink::writeRemoteLog(StringBuilder* outbound_log, bool need_reply) {
+  int8_t ret = -1;
+  if (!outbound_log->isEmpty()) {
+    ManuvrMsgHdr hdr(ManuvrMsgCode::LOG, 0, (need_reply ? MANUVRMSGHDR_FLAG_EXPECTING_REPLY : 0));
+    ManuvrMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
+    ret--;
+    if (nullptr != msg) {
+      bool gc_message = true;  // Trash the message if sending doesn't work.
+      ret--;
+      KeyValuePair kvp(outbound_log, "b");
+      if (0 == msg->setPayload(&kvp)) {
+        ret--;
+        // At this point, we are discharged of the responsibility of keeping our
+        //   original copy of kvp, since it has been already serialized into the
+        //   message's accumulator. It will be fed to the transport later.
+        if (0 == _send_msg(msg)) {
+          gc_message = false;
+          ret = 0;
+        }
+      }
+      outbound_log->clear();  // Free the original buffer.
+      if (gc_message) _reclaim_manuvrmsg(msg);
+    }
+  }
+  return ret;
+}
+
+
+/**
 * Is the link idle? Not connected implies not idle.
 * Empty buffers. Empty message queues. In sync.
 *
@@ -357,6 +395,7 @@ void ManuvrLink::printDebug(StringBuilder* output) {
   output->concatf("\tSync incoming: %c\n", _flags.value(MANUVRLINK_FLAG_SYNC_INCOMING) ? 'y':'n');
   output->concatf("\tSync casting:  %c\n", _flags.value(MANUVRLINK_FLAG_SYNC_CASTING) ? 'y':'n');
   output->concatf("\tSync replies:  %c\n", _flags.value(MANUVRLINK_FLAG_SYNC_REPLY_RXD) ? 'y':'n');
+  output->concatf("\tAllow LOG:     %c\n", _flags.value(MANUVRLINK_FLAG_ALLOW_LOG_WRITE) ? 'y':'n');
 
   if (_flags.value(MANUVRLINK_FLAG_AUTH_REQUIRED)) {
     output->concatf("\tAuth'd:        %c\n", _flags.value(MANUVRLINK_FLAG_AUTHD) ? 'y':'n');
@@ -649,7 +688,17 @@ int8_t ManuvrLink::_churn_inbound() {
       case ManuvrMsgCode::MSG_FORWARD:
         break;
       case ManuvrMsgCode::LOG:
-        // Allow the counterparty to write to our session log.
+        // Allow the counterparty to write to our session log?
+        if (!temp->isReply()) {
+          switch (_handle_msg_log(temp)) {
+            case 2:   // Requeue the message as a reply. Don't GC it.
+              gc_message = (0 != _send_msg(temp));
+              if (gc_message & (2 < _verbosity)) _local_log.concatf("Link 0x%x failed to insert a reply message into our queue.\n", _session_tag);
+              break;
+            default:   // Drop the message.
+              break;
+          }
+        }
         break;
 
       case ManuvrMsgCode::APPLICATION:
@@ -768,6 +817,39 @@ int8_t ManuvrLink::_clear_waiting_send_by_id(uint32_t id) {
   return ret;
 }
 
+
+/**
+* This handler deals with the specifics of receiving a LOG message.
+*
+* @return 0 if no log was written.
+*         1 if the message is to be dropped.
+*         2 if the message was converted into a reply.
+*/
+int8_t ManuvrLink::_handle_msg_log(ManuvrMsg* msg) {
+  int8_t ret = 0;
+  if (_flags.value(MANUVRLINK_FLAG_ALLOW_LOG_WRITE)) {   // Will we allow a write to our log?
+    ret++;
+    KeyValuePair* inbound_kvp = nullptr;
+    if (0 == msg->getPayload(&inbound_kvp)) {
+      char* inbound_log = nullptr;
+      if (0 == inbound_kvp->valueWithKey("b", &inbound_log)) {
+        // TODO: Surround with randomly-generated tags to prevent confusion.
+        _local_log.concatf("ManuvrLink (tag: 0x%x) counterparty says:\n%s", _session_tag, inbound_log);
+      }
+      else if (1 < _verbosity) _local_log.concatf("Link 0x%x failed to decompose LOG message.\n", _session_tag);
+      //delete inbound_kvp;
+    }
+    else if (1 < _verbosity) _local_log.concatf("Link 0x%x failed to find LOG payload.\n", _session_tag);
+  }
+  if (msg->expectsReply()) {
+    // Regardless of if we wrote log or not, ack the message so it won't be
+    //   retransmitted.
+    if (0 == msg->ack()) {
+      ret = 2;  // The queue processor should re-insert this message.
+    }
+  }
+  return ret;
+}
 
 
 /*******************************************************************************
