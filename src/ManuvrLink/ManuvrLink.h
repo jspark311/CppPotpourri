@@ -43,6 +43,18 @@ The use of this class should be restricted to being a BufferAccepter
 TODO: Since this class renders large chains of function calls opaque to the
   linker, it would be nice to put bounds on binary size with pre-processor
   case-offs.
+
+NOTE: This has been a mad binge to port over all this work from ManuvrOS. Five
+  days after having begun it, I think I'm going to leave it alone and try to
+  build something with it. Testing coverage at this date:
+    Filename          Line Coverage       Functions
+    ------------------------------------------------------
+    ManuvrLink.cpp     82.4%  570 / 692    95.0%  38 / 40
+    ManuvrLink.h       98.3%   57 / 58    100.0%  34 / 34
+    ManuvrMsg.cpp      90.4%  132 / 146    93.8%  15 / 16
+    ManuvrMsgHdr.cpp  100.0%   92 / 92    100.0%   7 / 7
+  Taking the mandatory build flag out ahead of release.
+                                           ---J. Ian Lindsay 2021.10.16 20:27:54
 */
 
 
@@ -63,7 +75,7 @@ TODO: Since this class renders large chains of function calls opaque to the
 * Parameters from the build system                                             *
 *******************************************************************************/
 
-#define CONFIG_MANUVR_M2M_SUPPORT 1   // TODO: Until Rationalizer.h is done.
+//#define CONFIG_MANUVR_M2M_SUPPORT 1   // TODO: Until Rationalizer.h is done.
 
 //#ifndef CONFIG_MANUVRMSG_PREALLOC_COUNT
 //  #define CONFIG_MANUVRMSG_PREALLOC_COUNT   4
