@@ -76,7 +76,7 @@ class UARTAdapter : public BufferAccepter {
     int8_t poll();
 
     // Basic management and init,
-    void reset();
+    int8_t reset();
     void printDebug(StringBuilder*);
 
     // On-the-fly conf accessors...

@@ -21,7 +21,7 @@ UARTAdapter::UARTAdapter(
 
 
 /**
-* Destructor. 
+* Destructor.
 */
 UARTAdapter::~UARTAdapter() {
   _pf_deinit();
@@ -46,6 +46,5 @@ void UARTAdapter::printDebug(StringBuilder* output) {
   output->concatf("\tFlushed: \t%c\n", (flushed()?'y':'n'));
   output->concatf("\tRX bytes:\t%u\n", pendingRxBytes());
   output->concatf("\tTX bytes:\t%u\n", pendingTxBytes());
-
   output->concatf("\tbitrate: \t%u\n", _opts.bitrate);
 }
