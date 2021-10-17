@@ -1,5 +1,5 @@
 /**
-File:   Logger.h
+File:   C3PLogger.h
 Author: J. Ian Lindsay
 Date:   2021.10.16
 
