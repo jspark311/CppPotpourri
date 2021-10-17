@@ -21,7 +21,7 @@ UARTAdapter::UARTAdapter(
 
 
 /**
-* Destructor. Should never be called.
+* Destructor. 
 */
 UARTAdapter::~UARTAdapter() {
   _pf_deinit();

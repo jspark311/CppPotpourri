@@ -88,8 +88,9 @@ const bool ManuvrLink::msgCodeValid(const ManuvrMsgCode CODE) {
     case ManuvrMsgCode::LOG:
     case ManuvrMsgCode::APPLICATION:
       return true;
+    default:
+      return false;
   }
-  return false;
 }
 
 /**
@@ -109,8 +110,9 @@ static const bool _link_fsm_code_valid(const ManuvrLinkState CODE) {
     case ManuvrLinkState::PENDING_HANGUP:
     case ManuvrLinkState::HUNGUP:
       return true;
+    default:
+      return false;
   }
-  return false;
 }
 
 
@@ -861,7 +863,6 @@ int8_t ManuvrLink::_invoke_msg_callback(ManuvrMsg* msg) {
 * @return 0 on
 */
 int8_t ManuvrLink::_process_input_buffer() {
-  const int AVAILABLE_LENGTH = _inbound_buf.length();
   int8_t ret = 0;
   bool proc_fallthru = false;
 
@@ -920,7 +921,7 @@ int8_t ManuvrLink::_process_input_buffer() {
           case 1:   // header found, and message complete with no payload.
           case 2:   // header found, and message complete with payload.
             _inbound_buf.cull(_header.header_length());
-            if (_header.total_length() <= _opts.mtu) {
+            if (_header.total_length() <= (int) _opts.mtu) {
               _working = _allocate_manuvrmsg(&_header, BusOpcode::RX);
             }
             break;
@@ -990,7 +991,6 @@ int8_t ManuvrLink::_process_for_sync(StringBuilder* dat_in) {
     //   take further action.
     ret = 1;
     uint8_t* buf          = dat_in->string();
-    int      len          = dat_in->length();
     int      sync_0_idx   = i;  // Correct for cases where (0 != offset % 4).
     bool     keep_looping = ((AVAILABLE_LEN-i) >= MANUVRMSGHDR_MINIMUM_HEADER_SIZE);
     bool     set_sync     = false;
@@ -1065,8 +1065,8 @@ int8_t ManuvrLink::_process_for_sync(StringBuilder* dat_in) {
     const uint32_t CULL_LEN = ((uint32_t) AVAILABLE_LEN) & 0xFFFFFFFC;
     if (0 < CULL_LEN) {   // clear() is cheaper than cull().
       ret = 0;
-      if (AVAILABLE_LEN == CULL_LEN) {  dat_in->clear();         }
-      else {                            dat_in->cull(CULL_LEN);  }
+      if ((uint32_t)AVAILABLE_LEN == CULL_LEN) {  dat_in->clear();  }
+      else {                               dat_in->cull(CULL_LEN);  }
     }
   }
   if (_verbosity > 5) _local_log.concatf("Link 0x%x _process_for_sync() returned %d.\n", _session_tag, ret);
@@ -1085,8 +1085,9 @@ bool ManuvrLink::_link_syncd() {
     case ManuvrLinkState::IDLE:
     case ManuvrLinkState::PENDING_HANGUP:
       return true;
+    default:
+      return false;
   }
-  return false;
 }
 
 
@@ -1263,8 +1264,6 @@ int8_t ManuvrLink::_poll_fsm() {
 */
 int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
   int8_t fxn_ret = -1;
-  int8_t ret = -1;
-  uint32_t now = millis();
   bool state_entry_success = false;   // Fail by default.
   if (!_fsm_is_waiting()) {
     switch (new_state) {
