@@ -56,6 +56,13 @@ void check_that_kvps_match(StringBuilder* log, KeyValuePair* k0, KeyValuePair* k
 }
 
 
+void callback_link_state(ManuvrLink* cb_link) {
+  StringBuilder log;
+  log.concatf("Link (0x%x) entered state %s\n", cb_link->linkTag(), ManuvrLink::sessionStateStr(cb_link->getState()));
+  printf("%s\n\n", (const char*) log.string());
+}
+
+
 void callback_vlad(uint32_t tag, ManuvrMsg* msg) {
   StringBuilder log;
   KeyValuePair* kvps_rxd = nullptr;
@@ -348,6 +355,9 @@ int link_tests_build_and_connect(ManuvrLink* vlad, ManuvrLink* carl) {
     // Now connect each of them to their respective application callbacks.
     vlad->setCallback(callback_vlad);
     carl->setCallback(callback_carl);
+    vlad->setCallback(callback_link_state);  // Both links share the same state callback.
+    carl->setCallback(callback_link_state);  // Both links share the same state callback.
+
     if (poll_until_finished(vlad, carl)) {
       log.concat("Vlad and Carl are syncd and in an established session.\n");
       ret = 0;
@@ -415,6 +425,7 @@ int link_tests_simple_messages(ManuvrLink* vlad, ManuvrLink* carl) {
 
   vlad->poll(&log);
   carl->poll(&log);
+  carl_reply_lockout = false;
 
   printf("%s\n\n", (const char*) log.string());
   return ret;
@@ -445,6 +456,49 @@ int link_tests_message_flood(ManuvrLink* vlad, ManuvrLink* carl) {
 }
 
 
+int link_tests_remote_log_insertion(ManuvrLink* vlad, ManuvrLink* carl) {
+  StringBuilder log("===< ManuvrLink remote log insertion >=============================\n");
+  int ret = -1;
+  if ((nullptr != vlad) & (nullptr != carl) && vlad->isConnected() && carl->isConnected()) {
+    StringBuilder sendlog_vlad("This is a log from Vlad (no reply).");
+    StringBuilder sendlog_carl("This is a log from Carl (no reply).");
+    if (0 == vlad->writeRemoteLog(&sendlog_vlad, false)) {
+      sendlog_vlad.concat("This is a log from Vlad (demands reply this time).");
+      if (poll_until_finished(vlad, carl)) {
+        if (0 == vlad->writeRemoteLog(&sendlog_vlad, true)) {
+          if (poll_until_finished(vlad, carl)) {
+            if (0 == carl->writeRemoteLog(&sendlog_carl, false)) {
+              sendlog_carl.concat("This is a log from Carl (demands reply this time).");
+              if (poll_until_finished(vlad, carl)) {
+                if (0 == carl->writeRemoteLog(&sendlog_carl, true)) {
+                  if (poll_until_finished(vlad, carl)) {
+                    log.concat("\tRemote log insertion passes tests.\n");
+                    ret = 0;
+                  }
+                  else log.concat("Failed to send. Link dead-locked.\n");
+                }
+                else log.concat("Carl failed to send LOG with reply.\n");
+              }
+              else log.concat("Failed to send. Link dead-locked.\n");
+            }
+            else log.concat("Carl failed to send LOG without reply.\n");
+          }
+          else log.concat("Failed to send. Link dead-locked.\n");
+        }
+        else log.concat("Vlad failed to send LOG with reply.\n");
+      }
+      else log.concat("Failed to send. Link dead-locked.\n");
+    }
+    else log.concat("Vlad failed to send LOG without reply.\n");
+  }
+  else log.concat("Either Vlad or Carl is not ready for the test.\n");
+  vlad->poll(&log);
+  carl->poll(&log);
+  printf("%s\n\n", (const char*) log.string());
+  return ret;
+}
+
+
 int link_tests_reestablish_after_hangup(ManuvrLink* vlad, ManuvrLink* carl) {
   StringBuilder log("===< ManuvrLink re-establish after hangup >========================\n");
   int ret = -1;
@@ -453,7 +507,7 @@ int link_tests_reestablish_after_hangup(ManuvrLink* vlad, ManuvrLink* carl) {
     if (0 == carl->reset()) {
       if (0 == vlad->reset()) {
         if (poll_until_finished(vlad, carl)) {
-          log.concat("\tGentle hangup passes tests.\n");
+          log.concat("\tRe-establish after hangup passes tests.\n");
           ret = 0;
         }
         else log.concat("Failed to send. Link dead-locked.\n");
@@ -560,7 +614,7 @@ int manuvrlink_main() {
     2000,  // Send a KA every 2s.
     2048,  // MTU for this link is 2 kibi.
     TCode::CBOR,   // Payloads should be CBOR encoded.
-    0      // No flags.
+    MANUVRLINK_FLAG_ALLOW_LOG_WRITE
   );
   ManuvrLinkOpts opts_carl(
     40,    // ACK timeout is 40ms.
@@ -581,7 +635,10 @@ int manuvrlink_main() {
           if (0 == link_tests_corrupted_transport(vlad, carl)) {
             if (0 == link_tests_hangup_gentle(vlad, carl)) {
               if (0 == link_tests_reestablish_after_hangup(vlad, carl)) {
-                ret = 0;
+                if (0 == link_tests_remote_log_insertion(vlad, carl)) {
+                  ret = 0;
+                }
+                else printTestFailure("link_tests_remote_log_insertion");
               }
               else printTestFailure("link_tests_reestablish_after_hangup");
             }
@@ -602,5 +659,9 @@ int manuvrlink_main() {
     printf("*  ManuvrLink tests all pass     *\n");
     printf("**********************************\n");
   }
+  vlad->setOutputTarget(nullptr);
+  carl->setOutputTarget(nullptr);
+  delete vlad;
+  delete carl;
   return ret;
 }
