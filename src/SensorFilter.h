@@ -60,10 +60,10 @@ template <typename T> class SensorFilter {
     T      value();
     T      minValue();
     T      maxValue();
+    void   invalidateStats();
 
     int8_t windowSize(int);
-    int    windowSize();
-    void   invalidateStats();
+    inline int windowSize() {   return (filter_initd ? window_size : 0);   };
 
     inline FilteringStrategy strategy() {   return _strat;    };
     int8_t setStrategy(FilteringStrategy);
@@ -75,10 +75,9 @@ template <typename T> class SensorFilter {
     inline bool     dirty() {         return filter_dirty;    };
     inline bool     initialized() {   return filter_initd;    };
     inline double   mean() {          return (_stale_mean  ? _calculate_mean()  : _mean);  };
-    inline double   rmsValue() {      return (_stale_rms   ? _calculate_rms()   : rms  );  };
-    inline double   stdevValue() {    return (_stale_stdev ? _calculate_stdev() : stdev);  };
-    inline double   snr() {           return (_calculate_mean() / stdevValue());           };
-
+    inline double   rms() {           return (_stale_rms   ? _calculate_rms()   : _rms  ); };
+    inline double   stdev() {         return (_stale_stdev ? _calculate_stdev() : _stdev); };
+    inline double   snr() {           return (mean() / stdev());                           };
 
 
   private:
@@ -89,8 +88,8 @@ template <typename T> class SensorFilter {
     T        min_value       = T(0);
     T        max_value       = T(0);
     double   _mean           = 0.0;
-    double   rms             = 0.0;
-    double   stdev           = 0.0;
+    double   _rms            = 0.0;
+    double   _stdev          = 0.0;
     FilteringStrategy _strat = FilteringStrategy::RAW;
     bool     window_full     = false;
     bool     filter_dirty    = false;
@@ -246,8 +245,9 @@ template <typename T> int8_t SensorFilter<T>::_reallocate_sample_window(uint16_t
 template <typename T> int8_t SensorFilter<T>::_zero_samples() {
   int8_t ret = -1;
   last_value = T(0);
-  rms        = 0.0;
-  stdev      = 0.0;
+  _mean      = 0.0;
+  _rms       = 0.0;
+  _stdev     = 0.0;
   invalidateStats();
   if (nullptr != samples) {
     if (window_size > 0) {
@@ -286,8 +286,6 @@ template <typename T> void SensorFilter<T>::printFilter(StringBuilder* output) {
       break;
     case FilteringStrategy::MOVING_AVG:
       output->concatf("\tRunning average = %.8f\n", last_value);
-      output->concatf("\tRMS             = %.8f\n", rmsValue());
-      output->concatf("\tSTDEV           = %.8f\n", stdevValue());
       break;
     case FilteringStrategy::MOVING_MED:
       output->concatf("\tRunning median  = %.8f\n", last_value);
@@ -302,6 +300,9 @@ template <typename T> void SensorFilter<T>::printFilter(StringBuilder* output) {
       output->concatf("\tQuantized value = %.8f\n", last_value);
       break;
   }
+  output->concatf("\tRMS             = %.8f\n", rms());
+  output->concatf("\tSTDEV           = %.8f\n", stdev());
+  output->concatf("\tSNR             = %.8f\n", snr());
 }
 
 
@@ -413,12 +414,6 @@ template <typename T> int8_t SensorFilter<T>::windowSize(int x) {
 }
 
 
-template <typename T> int SensorFilter<T>::windowSize() {
-  return (filter_initd ? window_size : 0);
-}
-
-
-
 /**
 * Marks all appropriate flags for marking the derived data as stale.
 */
@@ -462,10 +457,10 @@ template <typename T> double SensorFilter<T>::_calculate_rms() {
       T s_tmp = samples[i] * samples[i];
       squared_samples += (double) s_tmp;
     }
-    rms = sqrt(squared_samples / window_size);
+    _rms = sqrt(squared_samples / window_size);
     _stale_rms = false;
   }
-  return rms;
+  return _rms;
 }
 
 
@@ -483,10 +478,10 @@ template <typename T> double SensorFilter<T>::_calculate_stdev() {
       T tmp = samples[i] - cached_mean;
       deviation_sum += ((double) tmp * (double) tmp);
     }
-    stdev = sqrt(deviation_sum / window_size);
+    _stdev = sqrt(deviation_sum / window_size);
     _stale_stdev = false;
   }
-  return stdev;
+  return _stdev;
 }
 
 
