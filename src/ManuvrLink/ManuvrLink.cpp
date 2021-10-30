@@ -1176,23 +1176,6 @@ int8_t ManuvrLink::_process_for_sync() {
 
 
 /**
-* Is this object syncd with a remote version of itself?
-*
-* @return true if so. False otherwise.
-*/
-bool ManuvrLink::_link_syncd() {
-  switch (_fsm_pos) {
-    case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::IDLE:
-    case ManuvrLinkState::PENDING_HANGUP:
-      return true;
-    default:
-      return false;
-  }
-}
-
-
-/**
 * SYNC packets are so important that they skip the normal flow of message
 *   control, and are sent to the transport immediately when requested.
 *

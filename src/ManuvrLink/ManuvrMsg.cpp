@@ -116,9 +116,9 @@ ManuvrMsg* ManuvrMsg::unserialize(StringBuilder* dat_in) {
 /**
 * Constructor for an outbound message.
 */
-ManuvrMsg::ManuvrMsg(KeyValuePair* kvp) : _header(ManuvrMsgCode::APPLICATION), _op(BusOpcode::TX) {
-  _kvp = kvp;
-}
+//ManuvrMsg::ManuvrMsg(KeyValuePair* kvp) : _header(ManuvrMsgCode::APPLICATION), _op(BusOpcode::TX) {
+//  _kvp = kvp;
+//}
 
 /**
 * Constructor for an inbound message.

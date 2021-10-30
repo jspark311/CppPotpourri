@@ -319,7 +319,7 @@ class ManuvrMsgHdr {
 */
 class ManuvrMsg {
   public:
-    ManuvrMsg(KeyValuePair*);  // Construct this way for outbound KVP.
+    //ManuvrMsg(KeyValuePair*);  // Construct this way for outbound KVP.
     ManuvrMsg(ManuvrMsgHdr*, BusOpcode dir = BusOpcode::RX);
     ManuvrMsg() {};            // Featureless constructor for static allocation.
     ~ManuvrMsg();
@@ -466,7 +466,6 @@ class ManuvrLink : public BufferAccepter {
     void   _invoke_state_callback();
     int8_t _process_input_buffer();
     int8_t _process_for_sync();
-    bool   _link_syncd();
 
     /* Internal macros for sending messages confined to this class. */
     int8_t _send_sync_packet(bool need_reply);

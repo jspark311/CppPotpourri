@@ -121,7 +121,7 @@ KeyValuePair::KeyValuePair(double val, const char* key) : KeyValuePair(malloc(si
 
 
 #if defined(CONFIG_MANUVR_IMG_SUPPORT)
-KeyValuePair::KeyValuePair(Image* val, char* key) : KeyValuePair((void*) val, val->bytesUsed()), TCode::IMAGE, key) {};
+KeyValuePair::KeyValuePair(Image* val, char* key) : KeyValuePair((void*) val, val->bytesUsed(), TCode::IMAGE, key) {};
 #endif  // CONFIG_MANUVR_IMG_SUPPORT
 
 
