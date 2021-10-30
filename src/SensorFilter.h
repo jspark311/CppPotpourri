@@ -61,10 +61,8 @@ template <typename T> class SensorFilter {
     T      minValue();
     T      maxValue();
 
-    int8_t setParam0(int);
-    int8_t setParam1(int);
-    int    getParam0();
-    int    getParam1();
+    int8_t windowSize(int);
+    int    windowSize();
     void   invalidateStats();
 
     inline FilteringStrategy strategy() {   return _strat;    };
@@ -74,7 +72,6 @@ template <typename T> class SensorFilter {
     /* Value accessor inlines */
     inline T*       memPtr() {        return samples;         };
     inline uint16_t lastIndex() {     return sample_idx;      };
-    inline uint16_t windowSize() {    return window_size;     };
     inline bool     dirty() {         return filter_dirty;    };
     inline bool     initialized() {   return filter_initd;    };
     inline double   mean() {          return (_stale_mean  ? _calculate_mean()  : _mean);  };
@@ -88,8 +85,6 @@ template <typename T> class SensorFilter {
     T*       samples         = nullptr;
     uint16_t sample_idx      = 0;
     uint16_t window_size     = 0;
-    int32_t  _param_0        = 0;  // Purpose depends on filter strategy.
-    int32_t  _param_1        = 0;  // Purpose depends on filter strategy.
     T        last_value      = T(0);
     T        min_value       = T(0);
     T        max_value       = T(0);
@@ -154,8 +149,6 @@ template <typename T> class SensorFilter3 {
     Vector3<T>* samples      = nullptr;
     uint16_t    sample_idx   = 0;
     uint16_t    window_size  = 0;
-    int32_t     _param_0     = 0;  // Purpose depends on filter strategy.
-    int32_t     _param_1     = 0;  // Purpose depends on filter strategy.
     Vector3<T>  last_value;
     Vector3<T>  min_value;
     Vector3<T>  max_value;
@@ -412,7 +405,7 @@ template <typename T> int8_t SensorFilter<T>::purge() {
 }
 
 
-template <typename T> int8_t SensorFilter<T>::setParam0(int x) {
+template <typename T> int8_t SensorFilter<T>::windowSize(int x) {
   if (x >= 0) {
     return _reallocate_sample_window((uint16_t) x);
   }
@@ -420,12 +413,10 @@ template <typename T> int8_t SensorFilter<T>::setParam0(int x) {
 }
 
 
-template <typename T> int SensorFilter<T>::getParam0() {  return window_size;  }
+template <typename T> int SensorFilter<T>::windowSize() {
+  return (filter_initd ? window_size : 0);
+}
 
-
-/* Parameter 1 is presently unused. */
-template <typename T> int8_t SensorFilter<T>::setParam1(int x) {  return -1;  }
-template <typename T> int SensorFilter<T>::getParam1() {          return 0;   }
 
 
 /**
