@@ -240,9 +240,9 @@ class TripleAxisSingleFilter : public TripleAxisPipe, public SensorFilter3<float
       const SpatialSense s,    // Only feed these to the filter.
       TripleAxisPipe* nxt,     // The efferent connection.
       FilteringStrategy strat = FilteringStrategy::RAW, // Optional
-      int param0 = 0,  // Optional
+      int ws = 0,  // Optional
       int param1 = 0   // Optional
-    ) : SensorFilter3<float>(strat, param0, param1), _SENSE(s), _NXT(nxt) {};
+    ) : SensorFilter3<float>(ws, strat), _SENSE(s), _NXT(nxt) {};
 
     ~TripleAxisSingleFilter() {};
 
