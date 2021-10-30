@@ -31,10 +31,6 @@ limitations under the License.
 #include "StringBuilder.h"
 #include "Vector3.h"
 
-#define FILTER_MAX_ELEMENTS   8000  // Arbitrary.
-
-class StringBuilder;
-
 
 enum class FilteringStrategy : uint8_t {
   RAW            = 0,  // No filtering
@@ -153,14 +149,16 @@ template <typename T> class SensorFilter3 : public SensorFilterBase {
     Vector3<T>  last_value;
     Vector3<T>  min_value;
     Vector3<T>  max_value;
-    Vector3f64  _rms;
-    Vector3f64  _stdev;
+    Vector3<double>  _mean;
+    Vector3<double>  _rms;
+    Vector3<double>  _stdev;
 
     int8_t  _reallocate_sample_window(uint);
     int8_t  _zero_samples();
-    int8_t  _calculate_median();
+    int8_t  _calculate_mean();
     int8_t  _calculate_rms();
     int8_t  _calculate_stdev();
+    int8_t  _calculate_median();
 };
 
 
@@ -560,6 +558,7 @@ template <typename T> int8_t SensorFilter3<T>::_reallocate_sample_window(uint wi
 template <typename T> int8_t SensorFilter3<T>::_zero_samples() {
   int8_t ret = -1;
   last_value(T(0), T(0), T(0));
+  _mean(T(0), T(0), T(0));
   _rms(T(0), T(0), T(0));
   _stdev(T(0), T(0), T(0));
   if (nullptr != samples) {
@@ -740,23 +739,46 @@ template <typename T> Vector3<T>* SensorFilter3<T>::maxValue() {
 /*
 * Calulates the RMS over the entire sample window.
 */
+template <typename T> int8_t SensorFilter3<T>::_calculate_mean() {
+  int8_t ret = -1;
+  if (windowSize() > 0) {
+    Vector3<T> summed_samples(T(0), T(0), T(0));
+    for (uint i = 0; i < _window_size; i++) {
+      summed_samples += samples[i];
+    }
+    summed_samples /= _window_size;
+    _mean(
+      summed_samples.x,
+      summed_samples.y,
+      summed_samples.z
+    );
+    ret = 0;
+  }
+  return ret;
+}
+
+
+/*
+* Calulates the RMS over the entire sample window.
+*/
 template <typename T> int8_t SensorFilter3<T>::_calculate_rms() {
   int8_t ret = -1;
-  if ((_window_size > 1) && (nullptr != samples)) {
-    double squared_samples[3] = {0.0, 0.0, 0.0};
+  if (windowSize() > 0) {
+    Vector3<double> squared_samples(0.0, 0.0, 0.0);
     for (uint i = 0; i < _window_size; i++) {
-      squared_samples[0] += (double) (samples[i].x * samples[i].x);
-      squared_samples[1] += (double) (samples[i].y * samples[i].y);
-      squared_samples[2] += (double) (samples[i].z * samples[i].z);
+      squared_samples(
+        squared_samples.x + (samples[i].x * samples[i].x),
+        squared_samples.y + (samples[i].y * samples[i].y),
+        squared_samples.z + (samples[i].z * samples[i].z)
+      );
     }
+    squared_samples = (squared_samples / _window_size);
     _rms(
-      sqrt(squared_samples[0] / _window_size),
-      sqrt(squared_samples[1] / _window_size),
-      sqrt(squared_samples[2] / _window_size)
+      sqrt(squared_samples.x),
+      sqrt(squared_samples.y),
+      sqrt(squared_samples.z)
     );
-  }
-  else {
-    _rms(0.0, 0.0, 0.0);
+    ret = 0;
   }
   return ret;
 }
@@ -768,20 +790,27 @@ template <typename T> int8_t SensorFilter3<T>::_calculate_rms() {
 template <typename T> int8_t SensorFilter3<T>::_calculate_stdev() {
   int8_t ret = -1;
   if ((_window_size > 1) && (nullptr != samples)) {
-    double deviation_sum[3] = {0.0, 0.0, 0.0};
+    Vector3<double> deviation_sum(0.0, 0.0, 0.0);
+    _calculate_mean();
     for (uint i = 0; i < _window_size; i++) {
-      deviation_sum[0] += (double) ((samples[i].x * samples[i].x) - last_value.x);
-      deviation_sum[1] += (double) ((samples[i].y * samples[i].y) - last_value.y);
-      deviation_sum[2] += (double) ((samples[i].z * samples[i].z) - last_value.z);
+      Vector3<double> temp{
+        samples[i].x - _mean.x,
+        samples[i].y - _mean.y,
+        samples[i].z - _mean.z
+      };
+      deviation_sum.set(
+        deviation_sum.x + (temp.x * temp.x),
+        deviation_sum.y + (temp.y * temp.y),
+        deviation_sum.z + (temp.z * temp.z)
+      );
     }
+    deviation_sum = (deviation_sum / _window_size);
     _stdev(
-      sqrt(deviation_sum[0] / _window_size),
-      sqrt(deviation_sum[1] / _window_size),
-      sqrt(deviation_sum[2] / _window_size)
+      sqrt(deviation_sum.x),
+      sqrt(deviation_sum.y),
+      sqrt(deviation_sum.z)
     );
-  }
-  else {
-    _stdev(0.0, 0.0, 0.0);
+    ret = 0;
   }
   return ret;
 }
