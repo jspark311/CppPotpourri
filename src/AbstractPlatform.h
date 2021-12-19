@@ -90,8 +90,10 @@ enum class ShutdownCause : uint8_t {
 typedef void* (*ThreadFxnPtr)(void*);
 
 typedef struct __platform_thread_opts {
-  char*     thread_name;
+  char*     thread_name;  // Identifier.
   uint16_t  stack_sz;
+  int8_t    priority;     // Thread priority from baseline.
+  uint8_t   core;         // Core-boundedness, if possible.
 } PlatformThreadOpts;
 
 
