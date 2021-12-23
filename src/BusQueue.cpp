@@ -109,7 +109,7 @@ void BusOp::printBusOp(const char* print_name, BusOp* op, StringBuilder* output)
 
   if (op->bufferLen() > 0) {
     output->concatf("\t buf *(%p): (%u bytes)\n", op->buffer(), op->bufferLen());
-    StringBuilder::printBuffer(output, op->buffer(), op->bufferLen(), "\t ");
+    //StringBuilder::printBuffer(output, op->buffer(), op->bufferLen(), "\t ");
   }
 }
 

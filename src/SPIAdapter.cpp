@@ -149,10 +149,8 @@ int8_t SPIAdapter::advance_work_queue() {
         if (current_job->hasFault()) {
           if (getVerbosity() > 3) _local_log.concatf("SPI%u::advance_work_queue():\t Failed at IO_WAIT.\n", ADAPTER_NUM);
         }
-        else {
-          current_job->markComplete();
-        }
-        // NOTE: No break on purpose.
+        break;
+
       case XferState::COMPLETE:
         callback_queue.insert(current_job);
         current_job = nullptr;
