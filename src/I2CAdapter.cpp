@@ -162,12 +162,19 @@ int8_t I2CAdapter::io_op_callback(BusOp* _op) {
 * @return Zero on success, or appropriate error code.
 */
 int8_t I2CAdapter::queue_io_job(BusOp* op) {
+  int8_t ret = -1;
   I2CBusOp* nu = (I2CBusOp*) op;
   //nu->setVerbosity(getVerbosity());
   nu->setAdapter(this);
   //if (current_job) {
     // Something is already going on with the bus. Queue...
-    work_queue.insert(nu);
+    if (0 <= work_queue.insertIfAbsent(nu, 0)) {
+      op->set_state(XferState::QUEUED);
+      ret = 0;
+    }
+    //else if (getVerbosity() > 2) {
+    //  _local_log.concatf("I2C%u:\t Double-insertion. Dropping transaction with no status change.\n", ADAPTER_NUM);
+    //}
   //}
   //else {
     // Bus is idle. Put this work item in the active slot and start the bus operations...
@@ -183,7 +190,7 @@ int8_t I2CAdapter::queue_io_job(BusOp* op) {
     //  //Kernel::staticRaiseEvent(&_queue_ready);   // Raise an event
     //}
   //}
-  return 0;
+  return ret;
 }
 
 
@@ -220,12 +227,13 @@ int8_t I2CAdapter::advance_work_queue() {
           }
           break;
         case XferState::INITIATE:  // Waiting for initiation phase.
-          //break;
+          //current_job->advance();
+          break;
         case XferState::ADDR:      // Addressing phase. Sending the address.
         case XferState::TX_WAIT:   // I/O operation in-progress.
         case XferState::RX_WAIT:   // I/O operation in-progress.
         case XferState::STOP:      // I/O operation in cleanup phase.
-          current_job->advance();
+          //current_job->advance();
           break;
 
         case XferState::UNDEF:     // Freshly instanced (or wiped, if preallocated).
