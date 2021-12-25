@@ -365,7 +365,12 @@ template <class T> class BusAdapter : public BusOpCallback {
       if (_local_log.length() > 0) {
         output->concatHandoff(&_local_log);
       }
-    }
+    };
+
+
+    inline bool busIdle() {
+      return !((nullptr != current_job) || work_queue.hasNext());
+    };
 
 
     /**

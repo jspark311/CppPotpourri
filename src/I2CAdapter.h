@@ -278,6 +278,8 @@ class I2CAdapter;
       bool assignBusInstance(I2CAdapter*);   // Needs to be called by the i2c class during insertion.
       bool disassignBusInstance();           // This is to be called from the adapter's unassignment function.
 
+      inline I2CAdapter* getAdapter() {  return _bus;   };
+
       /* Debug aides */
       virtual void printDebug(StringBuilder*);
 
