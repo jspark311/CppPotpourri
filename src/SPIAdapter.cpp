@@ -199,12 +199,8 @@ int8_t SPIAdapter::advance_work_queue() {
       }
       return_value++;
     }
-    else {
-      // No Queue! Relax...
-    }
   }
 
-  //flushLocalLog();
   return return_value;
 }
 

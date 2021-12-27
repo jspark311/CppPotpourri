@@ -70,7 +70,7 @@ A library for a configurable serial console.
 
 #### [Identity](extras/doc/Identity.md)
 
-A library for a configurable serial console.
+An interface for representing and handling identities.
 
 #### [BusQueue](extras/doc/BusQueue.md)
 

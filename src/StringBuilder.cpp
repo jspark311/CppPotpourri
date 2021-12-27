@@ -496,7 +496,7 @@ void StringBuilder::concatHandoff(StringBuilder *nu) {
     //xSemaphoreTakeRecursive(&_mutex, 0);
     //xSemaphoreTakeRecursive(&nu->_mutex, 0);
   #endif
-  if ((nullptr != nu) && (nu->length() > 0)) {
+  if ((nullptr != nu) && (!nu->isEmpty(true))) {
     nu->_promote_collapsed_into_ll();   // Promote the previously-collapsed string.
 
     if (nullptr != nu->root) {

@@ -25,9 +25,6 @@ limitations under the License.
 #include <inttypes.h>
 #include <stdint.h>
 
-#if defined (ARDUINO)
-  #include <Arduino.h>
-#endif
 #include "StringBuilder.h"
 #include "Vector3.h"
 
@@ -50,6 +47,7 @@ class SensorFilterBase {
     inline int  purge() {            return _zero_samples();                    };
     inline int  windowSize(uint x) { return _reallocate_sample_window(x);       };
     inline uint windowSize() {       return (_filter_initd ? _window_size : 0); };
+    inline uint windowFull() {       return _window_full;                       };
     inline uint lastIndex() {        return _sample_idx;                        };
     inline bool dirty() {            return _filter_dirty;                      };
     inline bool initialized() {      return _filter_initd;                      };
@@ -63,6 +61,7 @@ class SensorFilterBase {
     bool     _window_full    = false;
     bool     _filter_dirty   = false;
     bool     _filter_initd   = false;
+    bool     _stale_minmax   = false;  // Statistical measurement is stale.
     bool     _stale_mean     = false;  // Statistical measurement is stale.
     bool     _stale_rms      = false;  // Statistical measurement is stale.
     bool     _stale_stdev    = false;  // Statistical measurement is stale.
@@ -82,21 +81,22 @@ template <typename T> class SensorFilter : public SensorFilterBase {
     ~SensorFilter();
 
     int8_t feedFilter(T);
+    int8_t feedFilter();
     int8_t init();
     T      value();
-    T      minValue();
-    T      maxValue();
     void   invalidateStats();
 
     int8_t setStrategy(FilteringStrategy);
     void printFilter(StringBuilder*);
 
     /* Value accessor inlines */
+    inline T        minValue() {      if (_stale_minmax) _calculate_minmax(); return min_value; };
+    inline T        maxValue() {      if (_stale_minmax) _calculate_minmax(); return max_value; };
     inline T*       memPtr() {        return samples;         };
-    inline double   mean() {          return (_stale_mean  ? _calculate_mean()  : _mean);  };
-    inline double   rms() {           return (_stale_rms   ? _calculate_rms()   : _rms  ); };
-    inline double   stdev() {         return (_stale_stdev ? _calculate_stdev() : _stdev); };
-    inline double   snr() {           return (mean() / stdev());                           };
+    inline double   mean() {          return (_stale_mean   ? _calculate_mean()   : _mean);  };
+    inline double   rms() {           return (_stale_rms    ? _calculate_rms()    : _rms  ); };
+    inline double   stdev() {         return (_stale_stdev  ? _calculate_stdev()  : _stdev); };
+    inline double   snr() {           return (mean() / stdev());                             };
     inline uint32_t memUsed() {       return (windowSize() * sizeof(T));  };
 
 
@@ -112,6 +112,7 @@ template <typename T> class SensorFilter : public SensorFilterBase {
     int8_t  _reallocate_sample_window(uint);
     int8_t  _zero_samples();
 
+    void    _calculate_minmax();
     double  _calculate_mean();
     double  _calculate_rms();
     double  _calculate_stdev();
@@ -185,6 +186,22 @@ template <typename T> SensorFilter<T>::~SensorFilter() {
   }
 }
 
+
+/*
+* Mark the filter as having been filled and ready to process. Useful for when
+*   the filter data is populated from the outside via pointer.
+*/
+template <typename T> int8_t SensorFilter<T>::feedFilter() {
+  int8_t ret = -1;
+  if (initialized()) {
+    _window_full = true;
+    _sample_idx = 0;
+    invalidateStats();
+    ret = 0;
+  }
+  return ret;
+}
+
 /*
 * This must be called ahead of usage to allocate the needed memory.
 */
@@ -236,6 +253,7 @@ template <typename T> int8_t SensorFilter<T>::_zero_samples() {
   _rms       = 0.0;
   _stdev     = 0.0;
   invalidateStats();
+  _window_full = false;
   if (nullptr != samples) {
     if (_window_size > 0) {
       ret = 0;
@@ -264,8 +282,8 @@ template <typename T> void SensorFilter<T>::printFilter(StringBuilder* output) {
   output->concatf("\tInitialized:  %c\n",   initialized() ? 'y':'n');
   output->concatf("\tDirty:        %c\n",   _filter_dirty ? 'y':'n');
   output->concatf("\tWindow full:  %c\n",   _window_full  ? 'y':'n');
-  output->concatf("\tMin             = %.8f\n", min_value);
-  output->concatf("\tMax             = %.8f\n", max_value);
+  output->concatf("\tMin             = %.8f\n", minValue());
+  output->concatf("\tMax             = %.8f\n", maxValue());
   output->concatf("\tSample window   = %u\n",   _window_size);
   switch (_strat) {
     case FilteringStrategy::RAW:
@@ -361,40 +379,28 @@ template <typename T> T SensorFilter<T>::value() {
 
 
 /**
-* Returns the smallest value in the current dataset.
-*
-* @return The minimum value from the data we currently have.
-*/
-template <typename T> T SensorFilter<T>::minValue() {
-  T ret = last_value;
-  for (uint i = 0; i < _window_size; i++) {
-    ret = (samples[i] < ret) ? samples[i] : ret;
-  }
-  return ret;
-};
-
-
-/**
-* Returns the largest value in the current dataset.
-*
-* @return The maximum value from the data we currently have.
-*/
-template <typename T> T SensorFilter<T>::maxValue() {
-  T ret = last_value;
-  for (uint i = 0; i < _window_size; i++) {
-    ret = (samples[i] > ret) ? samples[i] : ret;
-  }
-  return ret;
-};
-
-
-/**
 * Marks all appropriate flags for marking the derived data as stale.
 */
 template <typename T> void SensorFilter<T>::invalidateStats() {
-  _stale_mean  = true;
-  _stale_rms   = true;
-  _stale_stdev = true;
+  _stale_minmax = true;
+  _stale_mean   = true;
+  _stale_rms    = true;
+  _stale_stdev  = true;
+}
+
+
+/**
+* Calulates the min/max over the entire sample window.
+* Updates the private cache variable.
+*/
+template <typename T> void SensorFilter<T>::_calculate_minmax() {
+  if (_filter_initd && _window_full) {
+    for (uint i = 0; i < _window_size; i++) {
+      if (samples[i] > max_value) max_value = samples[i];
+      else if (samples[i] < min_value) min_value = samples[i];
+    }
+    _stale_minmax = false;
+  }
 }
 
 

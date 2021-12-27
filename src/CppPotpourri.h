@@ -181,7 +181,7 @@ class ScalarAccepter {
     * A class would implement this class to provide an interface for accepting a
     *   value from outside tagged with a real-world unit and error bars.
     *
-    * @return -1 to reject buffer, 0 to accept without claiming, 1 to accept with claim.
+    * @return -1 to reject value, 0 to accept.
     */
     virtual int8_t provideScalar(SIUnit, double value, double error) =0;
 };
