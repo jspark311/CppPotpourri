@@ -228,7 +228,8 @@ class I2CAdapter;
       inline void busError(bool nu) {   _adapter_set_flag(I2C_BUS_FLAG_BUS_ERROR, nu);   };
       inline void busOnline(bool nu) {  _adapter_set_flag(I2C_BUS_FLAG_BUS_ONLINE, nu);  };
 
-      //inline void raiseQueueReady() {  Kernel::isrRaiseEvent(&_queue_ready);  };
+      /* Built-in per-instance console handler. */
+      int8_t console_handler(StringBuilder* text_return, StringBuilder* args);
 
 
     protected:

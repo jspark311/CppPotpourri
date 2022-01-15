@@ -245,3 +245,48 @@ int8_t SPIAdapter::service_callback_queue() {
   //flushLocalLog();
   return return_value;
 }
+
+
+
+/*******************************************************************************
+* Console callback
+* These are built-in handlers for using this instance via a console.
+*******************************************************************************/
+
+int8_t SPIAdapter::console_handler(StringBuilder* text_return, StringBuilder* args) {
+  int ret = 0;
+  if (0 < args->count()) {
+    char* cmd = args->position_trimmed(0);
+    if (0 == StringBuilder::strcasecmp(cmd, "poll")) {
+      text_return->concatf("SP%u advance_work_queue() returns: %d\n", adapterNumber(), advance_work_queue());
+      text_return->concatf("SP%u service_callback_queue() returns: %d\n", adapterNumber(), service_callback_queue());
+    }
+    else if (0 == StringBuilder::strcasecmp(cmd, "queue")) {
+      uint8_t arg1 = (uint8_t) args->position_as_int(1);
+      printWorkQueue(text_return, strict_max((uint8_t) 3, arg1));
+    }
+    else if (0 == StringBuilder::strcasecmp(cmd, "purge")) {
+      text_return->concatf("SPI%u purge_current_job()\n", adapterNumber());
+      purge_current_job();
+    }
+    else if (0 == StringBuilder::strcasecmp(cmd, "ragepurge")) {
+      text_return->concatf("SPI%u purge_queued_work()\n", adapterNumber());
+      text_return->concatf("SPI%u purge_current_job()\n", adapterNumber());
+      purge_queued_work();
+      purge_current_job();
+    }
+    else if (0 == StringBuilder::strcasecmp(cmd, "verbosity")) {
+      if (1 < args->count()) {
+        uint8_t arg1 = (uint8_t) args->position_as_int(1);
+        setVerbosity(arg1);
+      }
+      text_return->concatf("Verbosity for SPI%u is %d\n", adapterNumber(), getVerbosity());
+    }
+    else {
+      ret = -1;
+    }
+  }
+  else printAdapter(text_return);
+
+  return ret;
+}

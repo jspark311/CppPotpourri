@@ -172,6 +172,9 @@ class SPIAdapter : public BusAdapter<SPIBusOp> {
     void printDebug(StringBuilder*);
     void printHardwareState(StringBuilder*);
 
+    /* Built-in per-instance console handler. */
+    int8_t console_handler(StringBuilder* text_return, StringBuilder* args);
+
 
   private:
     const uint8_t _CLK_PIN;      // Pin assignments for SPI.

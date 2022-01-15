@@ -335,3 +335,37 @@ void I2CAdapter::printDebug(StringBuilder* output) {
   output->concatf("-- bus_error           %s\n", (busError()  ? "yes" : "no"));
   printWorkQueue(output, I2CADAPTER_MAX_QUEUE_PRINT);
 }
+
+
+
+/*******************************************************************************
+* Console callback
+* These are built-in handlers for using this instance via a console.
+*******************************************************************************/
+
+int8_t I2CAdapter::console_handler(StringBuilder* text_return, StringBuilder* args) {
+  int ret = 0;
+  char* cmd    = args->position_trimmed(0);
+  int   arg1   = args->position_as_int(1);
+
+  if (0 == StringBuilder::strcasecmp(cmd, "purge")) {
+    text_return->concatf("I2C%u purge_current_job()\n", _bus_opts.adapter);
+    purge_current_job();
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "ragepurge")) {
+    text_return->concatf("I2C%u purge_queued_work()\n", _bus_opts.adapter);
+    text_return->concatf("I2C%u purge_current_job()\n", _bus_opts.adapter);
+    purge_queued_work();
+    purge_current_job();
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "ping")) {
+    ping_slave_addr((args->count() > 1) ? arg1 : 1);
+    text_return->concatf("i2c%d.ping_slave_addr(0x%02x) started.\n", _bus_opts.adapter, arg1);
+  }
+  else {
+    printDebug(text_return);
+    printPingMap(text_return);
+  }
+
+  return ret;
+}

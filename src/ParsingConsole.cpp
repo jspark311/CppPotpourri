@@ -549,6 +549,10 @@ int8_t ParsingConsole::console_handler_help(StringBuilder* text_return, StringBu
 *   itself.
 */
 int8_t ParsingConsole::console_handler_conf(StringBuilder* text_return, StringBuilder* args) {
+  // TODO: Unimplemented breakouts:
+  //inline void setPromptString(const char* str);
+  //inline bool hasColor();
+  //inline void hasColor(bool x);
   int ret = 0;
   char* cmd    = args->position_trimmed(0);
   int   arg1   = args->position_as_int(1);

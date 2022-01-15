@@ -148,7 +148,6 @@ bool I2CDevice::ping_device() {
 }
 
 
-
 /**
 * Debug support method. This fxn is only present in debug builds.
 *
