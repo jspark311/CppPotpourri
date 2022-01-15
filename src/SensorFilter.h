@@ -249,6 +249,8 @@ template <typename T> int8_t SensorFilter<T>::_reallocate_sample_window(uint win
 template <typename T> int8_t SensorFilter<T>::_zero_samples() {
   int8_t ret = -1;
   last_value = T(0);
+  min_value  = T(0);
+  max_value  = T(0);
   _mean      = 0.0;
   _rms       = 0.0;
   _stdev     = 0.0;
@@ -395,7 +397,9 @@ template <typename T> void SensorFilter<T>::invalidateStats() {
 */
 template <typename T> void SensorFilter<T>::_calculate_minmax() {
   if (_filter_initd && _window_full) {
-    for (uint i = 0; i < _window_size; i++) {
+    min_value = samples[0];   // Start with a baseline.
+    max_value = samples[0];   // Start with a baseline.
+    for (uint i = 1; i < _window_size; i++) {
       if (samples[i] > max_value) max_value = samples[i];
       else if (samples[i] < min_value) min_value = samples[i];
     }
@@ -433,8 +437,7 @@ template <typename T> double SensorFilter<T>::_calculate_rms() {
   if ((_window_size > 1) && _filter_initd && _window_full) {
     double squared_samples = 0.0;
     for (uint i = 0; i < _window_size; i++) {
-      T s_tmp = samples[i] * samples[i];
-      squared_samples += (double) s_tmp;
+      squared_samples += ((double) samples[i] * (double) samples[i]);
     }
     _rms = sqrt(squared_samples / _window_size);
     _stale_rms = false;
@@ -454,7 +457,7 @@ template <typename T> double SensorFilter<T>::_calculate_stdev() {
     double deviation_sum = 0.0;
     double cached_mean = mean();
     for (uint i = 0; i < _window_size; i++) {
-      T tmp = samples[i] - cached_mean;
+      double tmp = samples[i] - cached_mean;
       deviation_sum += ((double) tmp * (double) tmp);
     }
     _stdev = sqrt(deviation_sum / _window_size);

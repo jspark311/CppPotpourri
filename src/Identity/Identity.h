@@ -22,9 +22,9 @@ This might be better-viewed as a data structure. Notions of identity should
   be encapsulated here.
 */
 
-#include <CppPotpourri.h>
-#include <StringBuilder.h>
-#include <LightLinkedList.h>
+#include "../CppPotpourri.h"
+#include "../StringBuilder.h"
+#include "../LightLinkedList.h"
 
 // TODO: This was a really good idea. But it implies too much knowledge
 //   of build system. There might be a better way.

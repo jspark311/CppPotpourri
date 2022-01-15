@@ -200,8 +200,8 @@ class LocationFrame {
     double   dop_vert    = 0.0;  // GPS vertical DOP
     uint64_t timestamp   = 0;
     float    mag_bearing = 0.0;  // In degrees
-    uint32_t speed       = 0;    // In millimeters/s.
     uint32_t altitude    = 0;    // In millimeters.
+    uint32_t speed       = 0;    // In millimeters/s.
     uint8_t  sat_count   = 0;    // GPS number of satellites
 
     LocationFrame() {};

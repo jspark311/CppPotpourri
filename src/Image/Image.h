@@ -50,9 +50,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "EnumeratedTypeCodes.h"
-#include "CppPotpourri.h"
-#include "StringBuilder.h"
+#include "../EnumeratedTypeCodes.h"
+#include "../CppPotpourri.h"
+#include "../StringBuilder.h"
 
 
 #define MANUVR_IMG_FLAG_BUFFER_OURS     0x01  // We are responsible for freeing the buffer.

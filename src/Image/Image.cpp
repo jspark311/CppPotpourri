@@ -1554,7 +1554,7 @@ void Image::drawEllipse(uint32_t x0, uint32_t y0, uint32_t v_axis, uint32_t h_ax
   }
   else {
     float radians = (PI/180.0) * rotation;
-    int32_t vertical_extent   = abs(sin(radians)) * v_axis;
+    //int32_t vertical_extent   = abs(sin(radians)) * v_axis;
     int32_t horizontal_extent = abs(cos(radians)) * h_axis;
     int32_t starting_x = strict_max(0,   (int32_t) (x0 - horizontal_extent));
     int32_t ending_x   = strict_min(x(), x0 + horizontal_extent);

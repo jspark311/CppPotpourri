@@ -58,14 +58,14 @@ NOTE: This has been a mad binge to port over all this work from ManuvrOS. Five
 */
 
 
-#include <StringBuilder.h>
-#include <CppPotpourri.h>
-#include <KeyValuePair.h>
-#include <BusQueue.h>
-#include <FlagContainer.h>
-#include <PriorityQueue.h>
-#include <ElementPool.h>
-#include <AbstractPlatform.h>
+#include "../StringBuilder.h"
+#include "../CppPotpourri.h"
+#include "../KeyValuePair.h"
+#include "../BusQueue.h"
+#include "../FlagContainer.h"
+#include "../PriorityQueue.h"
+#include "../ElementPool.h"
+#include "../AbstractPlatform.h"
 
 #ifndef __MANUVR_XENOSESSION_H
 #define __MANUVR_XENOSESSION_H

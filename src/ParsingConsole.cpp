@@ -159,7 +159,7 @@ int8_t ParsingConsole::_process_buffer() {
     while (0 < _buffer.count()) {
       StringBuilder tmp_str_bldr(_buffer.position_trimmed(0));
       _buffer.drop_position(0);
-      if (tmp_str_bldr.length() > 0) {
+      if (!tmp_str_bldr.isEmpty()) {
         ret = (0 != ret) ? ret : 0;
         _history_idx = _max_history;
         if (0 == _exec_line(&tmp_str_bldr)) {
@@ -192,7 +192,7 @@ int8_t ParsingConsole::_process_buffer() {
 
 int8_t ParsingConsole::_relay_to_output_target() {
   int8_t ret = -1;
-  if ((_log.length() > 0) && (nullptr != _output_target)) {
+  if ((!_log.isEmpty()) && (nullptr != _output_target)) {
     if (LineTerm::LF != _tx_terminator) {
       _log.replace("\n", _get_terminator(_tx_terminator));
     }

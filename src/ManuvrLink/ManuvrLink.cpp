@@ -19,7 +19,7 @@ limitations under the License.
 */
 
 #include "ManuvrLink.h"
-#include "BusQueue.h"
+#include "../BusQueue.h"
 
 #if defined(CONFIG_MANUVR_M2M_SUPPORT)
 
