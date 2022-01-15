@@ -21,6 +21,17 @@ limitations under the License.
 #include "ParsingConsole.h"
 #include "CppPotpourri.h"
 
+/*******************************************************************************
+*      _______.___________.    ___   .___________. __    ______     _______.
+*     /       |           |   /   \  |           ||  |  /      |   /       |
+*    |   (----`---|  |----`  /  ^  \ `---|  |----`|  | |  ,----'  |   (----`
+*     \   \       |  |      /  /_\  \    |  |     |  | |  |        \   \
+* .----)   |      |  |     /  _____  \   |  |     |  | |  `----.----)   |
+* |_______/       |__|    /__/     \__\  |__|     |__|  \______|_______/
+*
+* Static members and initializers should be located here.
+*******************************************************************************/
+
 static const uint8_t DPAD_ESCAPE_SEQUENCE_U[4] = {27, 91, 65, 0};
 static const uint8_t DPAD_ESCAPE_SEQUENCE_D[4] = {27, 91, 66, 0};
 static const uint8_t DPAD_ESCAPE_SEQUENCE_R[4] = {27, 91, 67, 0};
@@ -72,6 +83,7 @@ const char* const ParsingConsole::_get_terminator(LineTerm lt) {
   }
   return "";
 }
+
 
 
 /*******************************************************************************
@@ -513,6 +525,120 @@ int ConsoleCommand::maxArgumentCount() {
   int ret = 0;
   while (TCode::NONE != *(fmt + ret)) {
     ret++;
+  }
+  return ret;
+}
+
+
+/*******************************************************************************
+* Console callback
+* These are built-in handlers for using this instance via a console.
+*******************************************************************************/
+
+int8_t ParsingConsole::console_handler_help(StringBuilder* text_return, StringBuilder* args) {
+  if (0 < args->count()) {
+    printHelp(text_return, args->position_trimmed(0));
+  }
+  else printHelp(text_return);
+  return 0;
+}
+
+
+/*
+* This is an optional console handler for the configuration of the console
+*   itself.
+*/
+int8_t ParsingConsole::console_handler_conf(StringBuilder* text_return, StringBuilder* args) {
+  int ret = 0;
+  char* cmd    = args->position_trimmed(0);
+  int   arg1   = args->position_as_int(1);
+  bool  print_term_enum = false;
+  if (0 == StringBuilder::strcasecmp(cmd, "echo")) {
+    if (1 < args->count()) {
+      localEcho(0 != arg1);
+    }
+    text_return->concatf("Console RX echo %sabled.\n", localEcho()?"en":"dis");
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "history")) {
+    if (1 < args->count()) {
+      emitPrompt(0 != arg1);
+      char* subcmd = args->position_trimmed(1);
+      if (0 == StringBuilder::strcasecmp(subcmd, "clear")) {
+        clearHistory();
+        text_return->concat("History cleared.\n");
+      }
+      else if (0 == StringBuilder::strcasecmp(subcmd, "depth")) {
+        if (2 < args->count()) {
+          arg1 = args->position_as_int(2);
+          maxHistoryDepth(arg1);
+        }
+        text_return->concatf("History depth: %u\n", maxHistoryDepth());
+      }
+      else if (0 == StringBuilder::strcasecmp(subcmd, "logerrors")) {
+        if (2 < args->count()) {
+          arg1 = args->position_as_int(2);
+          historyFail(0 != arg1);
+        }
+        text_return->concatf("History %scludes failed commands.\n", historyFail()?"in":"ex");
+      }
+      else text_return->concat("Valid options are [clear|depth|logerrors]\n");
+    }
+    else printHistory(text_return);
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "help-on-fail")) {
+    if (1 < args->count()) {
+      printHelpOnFail(0 != arg1);
+    }
+    text_return->concatf("Console prints command help on failure: %s.\n", printHelpOnFail()?"yes":"no");
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "prompt")) {
+    if (1 < args->count()) {
+      emitPrompt(0 != arg1);
+    }
+    text_return->concatf("Console autoprompt %sabled.\n", emitPrompt()?"en":"dis");
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "force")) {
+    if (1 < args->count()) {
+      forceReturn(0 != arg1);
+    }
+    text_return->concatf("Console force-return %sabled.\n", forceReturn()?"en":"dis");
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "rxterm")) {
+    if (1 < args->count()) {
+      switch (arg1) {
+        case 0:  case 1:  case 2:  case 3:
+          setRXTerminator((LineTerm) arg1);
+          break;
+        default:
+          print_term_enum = true;
+          break;
+      }
+    }
+    text_return->concatf("Console RX terminator: %s\n", ParsingConsole::terminatorStr(getRXTerminator()));
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "txterm")) {
+    if (1 < args->count()) {
+      switch (arg1) {
+        case 0:  case 1:  case 2:  case 3:
+          setTXTerminator((LineTerm) arg1);
+          break;
+        default:
+          print_term_enum = true;
+          break;
+      }
+    }
+    text_return->concatf("Console TX terminator: %s\n", ParsingConsole::terminatorStr(getTXTerminator()));
+  }
+  else {
+    ret = -1;
+  }
+
+  if (print_term_enum) {
+    text_return->concat("Terminator options:\n");
+    text_return->concat("\t0: ZEROBYTE\n");
+    text_return->concat("\t1: CR\n");
+    text_return->concat("\t2: LF\n");
+    text_return->concat("\t3: CRLF\n");
   }
   return ret;
 }

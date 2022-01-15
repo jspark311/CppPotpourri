@@ -416,6 +416,9 @@ class ManuvrLink : public BufferAccepter {
     inline uint32_t linkTag() {                        return _session_tag;  };
     inline ManuvrLinkState getState() {                return _fsm_pos;      };
 
+    /* Built-in per-instance console handlers. */
+    int8_t console_handler(StringBuilder* text_return, StringBuilder* args);
+
     /* Static support fxns for enums */
     static const char* sessionStateStr(const ManuvrLinkState);
     static const char* manuvMsgCodeStr(const ManuvrMsgCode);

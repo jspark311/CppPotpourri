@@ -142,6 +142,7 @@ class ParsingConsole : public BufferAccepter {
     void   printHelp(StringBuilder*, char*);
     void   printHistory(StringBuilder*);
     void   printPrompt();
+
     inline void setTXTerminator(LineTerm x) {  _tx_terminator = x; };
     inline void setRXTerminator(LineTerm x) {  _rx_terminator = x; };
     inline LineTerm getTXTerminator() {   return _tx_terminator;   };
@@ -179,6 +180,10 @@ class ParsingConsole : public BufferAccepter {
 
     static const char* const errToStr(ConsoleErr);
     static const char* const terminatorStr(LineTerm);
+
+    /* Built-in per-instance console handlers. */
+    int8_t console_handler_help(StringBuilder* text_return, StringBuilder* args);
+    int8_t console_handler_conf(StringBuilder* text_return, StringBuilder* args);
 
     /* Common static TCode strings. */
     static const TCode tcodes_0[];

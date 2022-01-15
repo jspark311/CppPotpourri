@@ -1623,4 +1623,47 @@ void ManuvrLink::_reclaim_manuvrmsg(ManuvrMsg* msg) {
   }
 }
 
+
+/*******************************************************************************
+* Console callback
+* These are built-in handlers for using this instance via a console.
+*******************************************************************************/
+
+int8_t ManuvrLink::console_handler(StringBuilder* text_return, StringBuilder* args) {
+  int ret = 0;
+  char* cmd = args->position_trimmed(0);
+  if (0 == StringBuilder::strcasecmp(cmd, "info")) {
+    printDebug(text_return);
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "reset")) {
+    text_return->concatf("Link reset() returns %d\n", reset());
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "hangup")) {
+    text_return->concatf("Link hangup() returns %d\n", hangup());
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "verbosity")) {
+    switch (args->count()) {
+      case 2:
+        verbosity(0x07 & args->position_as_int(1));
+      default:
+        text_return->concatf("Link verbosity is %u\n", verbosity());
+        break;
+    }
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "log")) {
+    //if (1 < args->count()) {
+      StringBuilder tmp_log("This is a remote log test.\n");
+      int8_t ret_local = writeRemoteLog(&tmp_log, false);
+      text_return->concatf("Remote log write returns %d\n", ret_local);
+    //}
+    //else text_return->concat("Usage: link log <logText>\n");
+  }
+  else {
+    text_return->concat("Usage: [info|reset|hangup|verbosity]\n");
+    ret = -1;
+  }
+
+  return ret;
+}
+
 #endif   // CONFIG_MANUVR_M2M_SUPPORT
