@@ -215,20 +215,22 @@ typedef struct __platform_thread_opts {
 * /_____/\____/\__, /\__, /_/_/ /_/\__, /
 *             /____//____/        /____/
 *
-* Probably the best way to deal with logging is with a collection of functions
-*   in global namespace, at least one of which will have to be provided by the
-*   platform, or the user's code.
-*   See Motherflux0r for a case where logging support is provided by user code.
-*   See ManuvrPlatform/ESP32 for a case where existing support is being wrapped.
 * Logging is fundamentally a platform choice, since platform support is
 *   ultimately required to print a character to a screen, file, socket, etc.
-*   CppPotpourri implements these as weak references. So if they are not
-*   provided, nothing will happen when they are called.
+*
+* CppPotpourri implements c3p_log(StringBuilder*) as a weak reference stub.
+*   So if it is not provided by ManuvrPlatform (or the user's code), nothing
+*   will happen when c3p_log() is called.
+*
 * Final implementation will supplant this behavior, if given. Good support
 *   should ultimately migrate into ManuvrPlatform with the rest of the
 *   platform-specific implementations of AbstractPlatform, I2CAdapter, et al.
 *   From that point, the platform can make choices about which modes of
 *   output/caching/policy will be available to the program.
+*
+* See Motherflux0r for a case where logging support is provided by user code.
+* See ManuvrPlatform/ESP32 and ManuvrPlatform/Linux for cases where existing
+*   support is being wrapped.
 *******************************************************************************/
   void c3p_log(uint8_t log_level, const char* tag, const char* format, ...);
   void c3p_log(uint8_t log_level, const char* tag, StringBuilder*);

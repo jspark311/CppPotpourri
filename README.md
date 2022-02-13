@@ -218,7 +218,7 @@ An instrumented build of the unit tests will be created and executed. If the uni
 
 #### Contributing
 
-I will gladly examine all merge/pull requests. But you have to be ok with your contributed code being under this repo's license. You will be listed in the CONTRIB.md file.
+I will gladly examine all merge/pull requests. But you have to be ok with your contributed code being under this repo's license. You will be listed in the [extras/doc/CONTRIB.md](CONTRIB.md) file.
 
 ----------------------
 

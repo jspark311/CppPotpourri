@@ -379,6 +379,13 @@ int8_t C3PLogger::print(uint8_t severity, const char* tag, StringBuilder* msg) {
 
 /**
 * Append formatted text to the log, buffering if necessary.
+* If the BufferAccepter API is being used, this function will forward the buffer
+*   onward to the sink, along with any accumulated log ahead of it, ensuring
+*   order.
+* If no BufferAccepter sink is available, or the sink rejects the buffer, the
+*   log will be buffered internally until it is either retrieved by an external
+*   call to fetchLog(), or accepted by the sink on a subsequent call to this
+*   function.
 *
 * @param log_line is the new item to append to the log.
 */
