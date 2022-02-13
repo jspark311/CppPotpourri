@@ -721,20 +721,38 @@ void StringBuilder::concat(StringBuilder* nu) {
 
 /**
 * Variadic. No mutex required because all working memory is confined to stack.
+*
+* @param format is the printf-style formatting string.
+* @param ... are the optional variadics.
+* @return the byte count written to this StringBuilder, or negative on failure.
 */
-int StringBuilder::concatf(const char *format, ...) {
+int StringBuilder::concatf(const char* format, ...) {
+  va_list args;
+  int ret = 0;
+  va_start(args, format);
+  ret = this->concatf(format, args);
+  va_end(args);
+  return ret;
+}
+
+
+/**
+* Variadic. No mutex required because all working memory is confined to stack.
+*
+* @param format is the printf-style formatting string.
+* @param args is a discrete parameter that contains the optional variadics.
+* @return the byte count written to this StringBuilder, or negative on failure.
+*/
+int StringBuilder::concatf(const char* format, va_list args) {
   int len = strlen(format);
   unsigned short f_codes = 0;  // Count how many format codes are in use...
   for (unsigned short i = 0; i < len; i++) {  if (*(format+i) == '%') f_codes++; }
-  va_list args;
   // Allocate (hopefully) more space than we will need....
   int est_len = len + 512 + (f_codes * 15);   // TODO: Iterate on failure of vsprintf().
   char *temp = (char *) alloca(est_len);
   memset(temp, 0, est_len);
   int ret = 0;
-  va_start(args, format);
   ret = vsprintf(temp, format, args);
-  va_end(args);
   if (ret > 0) this->concat((char *) temp);
   return ret;
 }

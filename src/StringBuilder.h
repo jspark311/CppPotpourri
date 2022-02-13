@@ -107,7 +107,8 @@ class StringBuilder {
     void concat(const char* nu);
 
     /* Variadic concat. Semantics are the same as printf. */
-    int concatf(const char *nu, ...);
+    int concatf(const char* format, ...);
+    int concatf(const char* format, va_list);
 
     void concat(StringBuilder *nu);
     void concat(unsigned char *nu, int len);
