@@ -216,6 +216,20 @@ An instrumented build of the unit tests will be created and executed. If the uni
 
 ----------------------
 
+#### Contributing
+
+I will gladly examine all merge/pull requests. But you have to be ok with your contributed code being under this repo's license. You will be listed in the CONTRIB.md file.
+
+----------------------
+
+#### Code formatting notes
+
+  * Hard-tabs are exterminated upon discovery, and replaced with two spaces. Inline commentary is unreadable otherwise.
+  * I have tried to remain within an 80-character horizontal ruling, but this sometimes hurts legibility.
+  * The ASCII-art banners in this repo was generated with [this tool](https://www.developmenttools.com/ascii-art-generator/#p=display&f=Slant) and is font "Slant" with all defaults. Uniformity of font face is optional, but the entire banner must be within `/**/` commentary delimiters to avoid confusing the compiler's parser/lexer with stray `\`, or other unintentional escape sequences.
+
+----------------------
+
 #### License
 
 Original code is Apache 2.0.

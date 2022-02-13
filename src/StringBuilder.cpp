@@ -728,7 +728,7 @@ int StringBuilder::concatf(const char *format, ...) {
   for (unsigned short i = 0; i < len; i++) {  if (*(format+i) == '%') f_codes++; }
   va_list args;
   // Allocate (hopefully) more space than we will need....
-  int est_len = len + 640 + (f_codes * 15);
+  int est_len = len + 512 + (f_codes * 15);   // TODO: Iterate on failure of vsprintf().
   char *temp = (char *) alloca(est_len);
   memset(temp, 0, est_len);
   int ret = 0;

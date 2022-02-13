@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <stdint.h>
 #include "AbstractPlatform.h"
+#include "C3PLogger.h"
 #include "ParsingConsole.h"
 
 /**
@@ -68,7 +69,10 @@ const char* getIRQConditionString(const IRQCondition con_code) {
 * Do the boilerplate setup of the MCU that all applications will require.
 */
 int8_t platform_init() {
-  return platformObj()->init();
+  if (platformObj()) {
+    return platformObj()->init();
+  }
+  return -127;
 }
 
 
@@ -164,10 +168,17 @@ void AbstractPlatform::printCryptoOverview(StringBuilder* out) {
 
 /*******************************************************************************
 * Weak-references to placate builds that don't use AbstractPlatform.
+* See notes associated with each function in AbstractPlatform.h.
 *******************************************************************************/
+void   __attribute__((weak)) unsetPinFxn(uint8_t pin) {}
+int8_t __attribute__((weak)) setPinFxn(uint8_t pin, IRQCondition condition, FxnPointer fxn) {   return -1;  }
 int8_t __attribute__((weak)) pinMode(uint8_t, GPIOMode) {   return -1;       }
 int8_t __attribute__((weak)) setPin(uint8_t, bool) {        return -1;       }
 int8_t __attribute__((weak)) readPin(uint8_t) {             return -1;       }
+int8_t __attribute__((weak)) analogWrite(uint8_t pin, float val) {               return -1;  }
+int8_t __attribute__((weak)) analogWriteFrequency(uint8_t pin, uint32_t freq) {  return -1;  }
+void __attribute__((weak)) c3p_log(uint8_t, const char*, const char*, ...) { }
+void __attribute__((weak)) c3p_log(uint8_t, const char*, StringBuilder*) {   }
 AbstractPlatform* __attribute__((weak)) platformObj() {     return nullptr;  }
 
 
@@ -277,4 +288,113 @@ int8_t AbstractPlatform::configureConsole(ParsingConsole* console) {
   console->defineCommand(&cmd01);
   console->defineCommand(&cmd02);
   return 0;
+}
+
+
+
+/*******************************************************************************
+* Basic logger support
+*******************************************************************************/
+const char* severityStr(const uint8_t severity) {
+  switch (severity) {
+    case LOG_LEV_EMERGENCY:   return "EMERGENCY ";
+    case LOG_LEV_ALERT:       return "ALERT     ";
+    case LOG_LEV_CRIT:        return "CRITICAL  ";
+    case LOG_LEV_ERROR:       return "ERROR     ";
+    case LOG_LEV_WARN:        return "WARNING   ";
+    case LOG_LEV_NOTICE:      return "NOTICE    ";
+    case LOG_LEV_INFO:        return "INFO      ";
+    default: break;
+  }
+  return "DEBUG     ";  // All severity greater than INFO is DEBUG.
+}
+
+
+/*
+* Relinquish any log buffer we've built up to the caller. Use-cases that employ
+*   the BufferAccepter interface should not call this function.
+*/
+void C3PLogger::fetchLog(StringBuilder* b) {
+  if ((nullptr != b) && (!_log.isEmpty())) b->concatHandoff(&_log);
+}
+
+
+/**
+* @return 0 on log acceptance.
+*/
+int8_t C3PLogger::print(uint8_t severity, const char* tag, const char* fmt, ...) {
+  int8_t ret = -1;
+  if (severity <= _verb_limit) {
+    const int FMT_LEN = strlen(fmt);
+    uint8_t f_codes = 0;
+    StringBuilder msg;
+    // Count how many format codes are in use...
+    for (unsigned short i = 0; i < FMT_LEN; i++) {  if (*(fmt+i) == '%') f_codes++; }
+    // Allocate (hopefully) more space than we will need....
+    int est_len = FMT_LEN + 300 + (f_codes * 15);   // TODO: Iterate on failure of vsprintf().
+    va_list args;
+    char* temp = (char *) alloca(est_len);  // Allocate (hopefully) more space than we will need....
+    memset(temp, 0, est_len);
+    va_start(args, fmt);
+    if (0 <= vsprintf(temp, fmt, args)) {
+      msg.concat(temp);
+      ret = 0;
+    }
+    va_end(args);
+
+    if (0 == ret) {
+      ret = this->print(severity, tag, &msg);
+    }
+  }
+  return ret;
+}
+
+
+/**
+* This is the ultimate destination for log taken by the variadic function.
+*
+* @return 0 on log acceptance.
+*/
+int8_t C3PLogger::print(uint8_t severity, const char* tag, StringBuilder* msg) {
+  int8_t ret = -1;
+  if (severity <= _verb_limit) {
+    StringBuilder line;
+    if (printTime()) {          line.concatf("%10u ", millis());       }
+    if (printSeverity()) {      line.concat(severityStr(severity));    }
+    if (printTag()) {
+      const uint8_t TAG_LEN = (uint8_t) strlen(tag);
+      if (_tag_ident > LOG_TAG_MAX_LEN) {
+        _tag_ident = strict_min(_tag_ident, strict_min((uint8_t) LOG_TAG_MAX_LEN, TAG_LEN));
+      }
+      char* ufmt_str = (char *) alloca(12);
+      ufmt_str[0] = '%';
+      memset(ufmt_str+1, 0, 12);
+      sprintf(ufmt_str+1, "%ds ", _tag_ident);
+      line.concatf(ufmt_str, tag);
+    }
+    line.concatHandoff(msg);
+    line.concat("\n");
+    line.string();   // Condense string.
+    _store_or_forward(&line);
+    ret = 0;
+  }
+  return ret;
+}
+
+
+void C3PLogger::_store_or_forward(StringBuilder* log_line) {
+  bool store_to_buffer = true;
+  if (nullptr != _sink) {
+    bool backlog_remaining = !_log.isEmpty();
+    if (backlog_remaining) {
+      backlog_remaining = (0 != _sink->provideBuffer(&_log));
+    }
+    if (!backlog_remaining && (0 == _sink->provideBuffer(log_line))) {
+      // NOTE: Short-circuit evaluation above is important for ordering.
+      store_to_buffer = false;
+    }
+  }
+  if (store_to_buffer) {
+    _log.concatHandoff(log_line);
+  }
 }

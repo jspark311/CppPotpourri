@@ -31,7 +31,6 @@ void timestampToString(StringBuilder* output, uint64_t ts) {
 }
 
 
-
 /**
 * Takes an ISO-8601 datatime string in Zulu time, and returns the corresponding epoch time.
 * Does no bounds checking on the input string. Assumes it is at least 20 bytes.
@@ -48,7 +47,7 @@ void timestampToString(StringBuilder* output, uint64_t ts) {
 * Format: 2016-11-16T21:44:07Z
 *
 * TODO: Time is a *really* complicated idea. Validate this function's correctness.
-* TODO: Add offset support? OneID doesn't require it, AFAIK.
+* This code will never support timezone offsets.
 *
 * @param str The string containing the string to convert. Not bounds-checked.
 * @return 0 on failure, or epoch timestamp otherwise.
@@ -127,7 +126,6 @@ uint64_t stringToTimestamp(const char* str) {
 * Techniques and E-Commerce (CrypTEC '99)
 * sparrow.ece.cmu.edu/~adrian/projects/validation/validation.pdf
 */
-
 #define XLIM 17
 #define YLIM 9
 #define ARSZ (XLIM * YLIM)

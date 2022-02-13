@@ -33,6 +33,21 @@ class ParsingConsole;
 #define ABSTRACT_PF_FLAG_STACK_GROWS_UP   0x00008000  // Stack grows upward.
 #define ABSTRACT_PF_FLAG_HAS_IDENTITY     0x80000000  // Do we know who we are?
 
+/**
+* The API to the Logger supports log severity and source tags (as strings).
+* We adopt the SYSLOG severity conventions. Because those work really well. All
+*   code written against the logging functions should use one of these defines
+*   as their severity argument.
+*/
+#define LOG_LEV_EMERGENCY  0  // Emergency
+#define LOG_LEV_ALERT      1  // Alert
+#define LOG_LEV_CRIT       2  // Critical
+#define LOG_LEV_ERROR      3  // Error
+#define LOG_LEV_WARN       4  // Warning
+#define LOG_LEV_NOTICE     5  // Notice
+#define LOG_LEV_INFO       6  // Informational
+#define LOG_LEV_DEBUG      7  // Debug
+
 
 #if defined(ARDUINO)
   #include <Arduino.h>
@@ -97,24 +112,14 @@ typedef struct __platform_thread_opts {
 } PlatformThreadOpts;
 
 
-/*
-* These are callbacks for ParsingConsole that the application
-*   might rather use in isolation.
-*/
-int callback_gpio_value(StringBuilder* text_return, StringBuilder* args);
-int callback_platform_info(StringBuilder* text_return, StringBuilder* args);
-int callback_reboot(StringBuilder* text_return, StringBuilder* args);
 
-
-  int8_t platform_init();
-
-  /* Delays and marking time. */
-  void sleep_ms(uint32_t);
-  void sleep_us(uint32_t);
-  long unsigned millis();
-  long unsigned micros();
-
-  /* GPIO */
+/*******************************************************************************
+*     ____  _          ______            __             __
+*    / __ \(_)___     / ____/___  ____  / /__________  / /
+*   / /_/ / / __ \   / /   / __ \/ __ \/ __/ ___/ __ \/ /
+*  / ____/ / / / /  / /___/ /_/ / / / / /_/ /  / /_/ / /
+* /_/   /_/_/ /_/   \____/\____/_/ /_/\__/_/   \____/_/
+*******************************************************************************/
   int8_t pinMode(uint8_t pin, GPIOMode);
   int8_t analogWrite(uint8_t pin, float percentage);
   int8_t analogWriteFrequency(uint8_t pin, uint32_t freq);
@@ -123,16 +128,51 @@ int callback_reboot(StringBuilder* text_return, StringBuilder* args);
   void   unsetPinFxn(uint8_t pin);
   int8_t setPinFxn(uint8_t pin, IRQCondition condition, FxnPointer fxn);
 
-  /* Randomness */
-  uint32_t randomUInt32();   // Blocks until one is available.
+
+
+/*******************************************************************************
+*     ______      __
+*    / ____/___  / /__________  ____  __  __
+*   / __/ / __ \/ __/ ___/ __ \/ __ \/ / / /
+*  / /___/ / / / /_/ /  / /_/ / /_/ / /_/ /
+* /_____/_/ /_/\__/_/   \____/ .___/\__, /
+*                           /_/    /____/
+*******************************************************************************/
+  /**
+  * This function may block until a random number is availible.
+  *
+  * @return A 32-bit unsigned random number. This can be cast as needed.
+  */
+  uint32_t randomUInt32();
+
+  /**
+  * This function may block until enough random numbers are availible.
+  *
+  * @param buf is the buffer to which random bytes should be written.
+  * @param len is the number of bytes to write.
+  */
   int8_t random_fill(uint8_t* buf, size_t len);
 
-  /* Time, date, and RTC abstraction */
-  // TODO: This might be migrated into a separate abstraction.
-  int8_t rtcInit();
+
+
+/*******************************************************************************
+*   _______                                   __   ____        __
+*  /_  __(_)___ ___  ___     ____ _____  ____/ /  / __ \____ _/ /____
+*   / / / / __ `__ \/ _ \   / __ `/ __ \/ __  /  / / / / __ `/ __/ _ \
+*  / / / / / / / / /  __/  / /_/ / / / / /_/ /  / /_/ / /_/ / /_/  __/
+* /_/ /_/_/ /_/ /_/\___/   \__,_/_/ /_/\__,_/  /_____/\__,_/\__/\___/
+*******************************************************************************/
+  /* System Time functions. These do not rely on an RTC. */
+  void sleep_ms(uint32_t);
+  void sleep_us(uint32_t);
+  long unsigned millis();
+  long unsigned micros();
+
+  /* Real Time functions. These rely on an RTC. */
+  int8_t rtcInit();  // TODO: This might be migrated into a separate abstraction.
   bool setTimeAndDateStr(char*);   // Takes a string of the form given by RFC-2822: "Mon, 15 Aug 2005 15:52:01 +0000"   https://www.ietf.org/rfc/rfc2822.txt
 
-  /*
+  /**
   * RTC get/set with discrete value breakouts.
   *
   * @param y   Year
@@ -149,19 +189,61 @@ int callback_reboot(StringBuilder* text_return, StringBuilder* args);
   uint64_t epochTime();            // Returns an integer representing the current datetime.
   void currentDateTime(StringBuilder*);    // Writes a human-readable datetime to the argument.
 
-  uint8_t last_restart_reason();
 
 
-  /* Functions that convert platform-general enums to strings. */
+/*******************************************************************************
+*     ______                         _____                              __
+*    / ____/___  __  ______ ___     / ___/__  ______  ____  ____  _____/ /_
+*   / __/ / __ \/ / / / __ `__ \    \__ \/ / / / __ \/ __ \/ __ \/ ___/ __/
+*  / /___/ / / / /_/ / / / / / /   ___/ / /_/ / /_/ / /_/ / /_/ / /  / /_
+* /_____/_/ /_/\__,_/_/ /_/ /_/   /____/\__,_/ .___/ .___/\____/_/   \__/
+*                                           /_/   /_/
+*
+* Functions that convert platform-general enums to strings.
+*******************************************************************************/
   const char* getPinModeStr(const GPIOMode);
   const char* shutdownCauseStr(const ShutdownCause);
   const char* getIRQConditionString(const IRQCondition);
 
 
 
-/**
+/*******************************************************************************
+*     __                      _
+*    / /   ____  ____ _____ _(_)___  ____ _
+*   / /   / __ \/ __ `/ __ `/ / __ \/ __ `/
+*  / /___/ /_/ / /_/ / /_/ / / / / / /_/ /
+* /_____/\____/\__, /\__, /_/_/ /_/\__, /
+*             /____//____/        /____/
+*
+* Probably the best way to deal with logging is with a collection of functions
+*   in global namespace, at least one of which will have to be provided by the
+*   platform, or the user's code.
+*   See Motherflux0r for a case where logging support is provided by user code.
+*   See ManuvrPlatform/ESP32 for a case where existing support is being wrapped.
+* Logging is fundamentally a platform choice, since platform support is
+*   ultimately required to print a character to a screen, file, socket, etc.
+*   CppPotpourri implements these as weak references. So if they are not
+*   provided, nothing will happen when they are called.
+* Final implementation will supplant this behavior, if given. Good support
+*   should ultimately migrate into ManuvrPlatform with the rest of the
+*   platform-specific implementations of AbstractPlatform, I2CAdapter, et al.
+*   From that point, the platform can make choices about which modes of
+*   output/caching/policy will be available to the program.
+*******************************************************************************/
+  void c3p_log(uint8_t log_level, const char* tag, const char* format, ...);
+  void c3p_log(uint8_t log_level, const char* tag, StringBuilder*);
+
+
+
+/*******************************************************************************
+*     ____  __      __  ____                        ____  ____      __
+*    / __ \/ /___ _/ /_/ __/___  _________ ___     / __ \/ __ )    / /
+*   / /_/ / / __ `/ __/ /_/ __ \/ ___/ __ `__ \   / / / / __  |_  / /
+*  / ____/ / /_/ / /_/ __/ /_/ / /  / / / / / /  / /_/ / /_/ / /_/ /
+* /_/   /_/\__,_/\__/_/  \____/_/  /_/ /_/ /_/   \____/_____/\____/
+*
 * This is base platform support. It is a pure virtual.
-*/
+*******************************************************************************/
 class AbstractPlatform {
   public:
     #if defined(__HAS_CRYPT_WRAPPER)
@@ -207,7 +289,7 @@ class AbstractPlatform {
 
   protected:
     const char* _board_name;
-    StringBuilder _syslog;
+    uint32_t    _pflags = 0;
 
     AbstractPlatform(const char* n) : _board_name(n) {};
 
@@ -224,14 +306,44 @@ class AbstractPlatform {
     inline void _set_init_state(uint8_t s) {
       _pflags = ((_pflags & ~ABSTRACT_PF_FLAG_P_STATE_MASK) | s);
     };
-
-
-  private:
-    uint32_t   _pflags    = 0;
 };
 
 
-AbstractPlatform* platformObj();   // TODO: Until something smarter is done.
 
+/*******************************************************************************
+*     __  ____
+*    /  |/  (_)_________
+*   / /|_/ / / ___/ ___/
+*  / /  / / (__  ) /__
+* /_/  /_/_/____/\___/
+*******************************************************************************/
+  /*
+  * These are callbacks for ParsingConsole that the application
+  *   might rather use in isolation.
+  */
+  int callback_gpio_value(StringBuilder* text_return, StringBuilder* args);
+  int callback_platform_info(StringBuilder* text_return, StringBuilder* args);
+  int callback_reboot(StringBuilder* text_return, StringBuilder* args);
+
+  /**
+  * A convenience function for doing platform init from the application.
+  * NOTE: It might not be called by the application.
+  *
+  * @return 0 on success. Non-zero otherwise.
+  */
+  int8_t platform_init();
+
+  /**
+  * Platform is always a singleton, and only that body of support code should be
+  *   forced to care about the detail of "which platform". So this function must
+  *   be implemented with a cast by the specific support code in ManuvrPlatform.
+  * See the notes in ManuvrPlatform for details.
+  */
+  AbstractPlatform* platformObj();
+
+  /**
+  * @return the integer-code associated with the reason for the last restart.
+  */
+  uint8_t last_restart_reason();
 
 #endif  // __ABSTRACT_PLATFORM_TEMPLATE_H__

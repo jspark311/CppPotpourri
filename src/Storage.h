@@ -266,10 +266,7 @@ class Storage {
     inline bool     isMounted() {     return _pl_flag(PL_FLAG_MEDIUM_MOUNTED);   };
     inline bool     isReadable() {    return _pl_flag(PL_FLAG_MEDIUM_READABLE);  };
     inline bool     isWritable() {    return _pl_flag(PL_FLAG_MEDIUM_WRITABLE);  };
-
-    inline bool isBusy() {
-      return (_pl_flags & (PL_FLAG_BUSY_WRITE | PL_FLAG_BUSY_READ));
-    };
+    inline bool     isBusy() {        return (_pl_flags & (PL_FLAG_BUSY_WRITE | PL_FLAG_BUSY_READ));  };
 
     inline void setReadCallback(StorageReadCallback cb) {    _cb = cb;    };
 
