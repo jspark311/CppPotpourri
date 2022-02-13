@@ -96,9 +96,7 @@ class C3PLogger {
     C3PLogger(const uint8_t F = 0) : _flags(F) {};
     ~C3PLogger() {};
 
-    // On builds that use this class, these two functions will be called by
-    //   their c3p_log() counterparts.
-    int8_t print(uint8_t severity, const char* tag, const char* fmt, ...);
+    // On builds that use this class, this function will be called by c3p_log().
     int8_t print(uint8_t severity, const char* tag, StringBuilder*);
 
     void fetchLog(StringBuilder*);

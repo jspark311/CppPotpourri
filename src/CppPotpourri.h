@@ -77,7 +77,7 @@ inline int16_t  wrap_accounted_delta(int16_t  a, int16_t  b) {   return (a > b) 
 inline int8_t   wrap_accounted_delta(int8_t   a, int8_t   b) {   return (a > b) ? (a - b) : (b - a);   };
 
 /**
-* Endian conversion fxns
+* Endian conversion wrappers.
 */
 inline uint16_t endianSwap16(uint16_t x) {   return __builtin_bswap16(x);    };
 inline uint32_t endianSwap32(uint32_t x) {   return __builtin_bswap32(x);    };

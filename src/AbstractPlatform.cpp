@@ -177,7 +177,6 @@ int8_t __attribute__((weak)) setPin(uint8_t, bool) {        return -1;       }
 int8_t __attribute__((weak)) readPin(uint8_t) {             return -1;       }
 int8_t __attribute__((weak)) analogWrite(uint8_t pin, float val) {               return -1;  }
 int8_t __attribute__((weak)) analogWriteFrequency(uint8_t pin, uint32_t freq) {  return -1;  }
-void __attribute__((weak)) c3p_log(uint8_t, const char*, const char*, ...) { }
 void __attribute__((weak)) c3p_log(uint8_t, const char*, StringBuilder*) {   }
 AbstractPlatform* __attribute__((weak)) platformObj() {     return nullptr;  }
 
@@ -295,7 +294,14 @@ int8_t AbstractPlatform::configureConsole(ParsingConsole* console) {
 /*******************************************************************************
 * Basic logger support
 *******************************************************************************/
-const char* severityStr(const uint8_t severity) {
+/**
+* String conversion function to render syslog-style severity codes for humans.
+* This is a concealed implementation detail.
+*
+* @param severity is the syslog-style importance of a message.
+* @return a constant string representing the severity code.
+*/
+const char* c3p_log_severity_string(const uint8_t severity) {
   switch (severity) {
     case LOG_LEV_EMERGENCY:   return "EMERGENCY ";
     case LOG_LEV_ALERT:       return "ALERT     ";
@@ -310,57 +316,46 @@ const char* severityStr(const uint8_t severity) {
 }
 
 
-/*
-* Relinquish any log buffer we've built up to the caller. Use-cases that employ
-*   the BufferAccepter interface should not call this function.
-*/
-void C3PLogger::fetchLog(StringBuilder* b) {
-  if ((nullptr != b) && (!_log.isEmpty())) b->concatHandoff(&_log);
-}
-
-
 /**
+* This function is a convenience wrapper around the StringBuilder variant of
+*   c3p_log(), which is the root implementation given by platform.
+* It convert variadic form into a discrete parameter list, uses the
+*   StringBuilder API to render it, and (if successfully rendered) shunts it to
+*   the root implementaion of c3p_log() that is optionally provided by the
+*   application or platform.
+*
+* @param severity is the syslog-style importance of the message.
+* @param tag is the free-form source of the message.
+* @param fmt is the printf-style formatting string.
+* @param ... are the optional variadics.
 * @return 0 on log acceptance.
 */
-int8_t C3PLogger::print(uint8_t severity, const char* tag, const char* fmt, ...) {
-  int8_t ret = -1;
-  if (severity <= _verb_limit) {
-    const int FMT_LEN = strlen(fmt);
-    uint8_t f_codes = 0;
-    StringBuilder msg;
-    // Count how many format codes are in use...
-    for (unsigned short i = 0; i < FMT_LEN; i++) {  if (*(fmt+i) == '%') f_codes++; }
-    // Allocate (hopefully) more space than we will need....
-    int est_len = FMT_LEN + 300 + (f_codes * 15);   // TODO: Iterate on failure of vsprintf().
-    va_list args;
-    char* temp = (char *) alloca(est_len);  // Allocate (hopefully) more space than we will need....
-    memset(temp, 0, est_len);
-    va_start(args, fmt);
-    if (0 <= vsprintf(temp, fmt, args)) {
-      msg.concat(temp);
-      ret = 0;
-    }
-    va_end(args);
-
-    if (0 == ret) {
-      ret = this->print(severity, tag, &msg);
-    }
+void c3p_log(uint8_t severity, const char* tag, const char* fmt, ...) {
+  StringBuilder msg;
+  va_list args;
+  va_start(args, fmt);
+  int8_t ret = (0 <= msg.concatf(fmt, args)) ? 0:-1;
+  va_end(args);
+  if (0 == ret) {
+    c3p_log(severity, tag, &msg);
   }
-  return ret;
 }
 
 
 /**
-* This is the ultimate destination for log taken by the variadic function.
+* For systems that don't have logging faculties, this function will provide it.
 *
+* @param severity is the syslog-style importance of the message.
+* @param tag is the free-form source of the message.
+* @param msg contains the log content.
 * @return 0 on log acceptance.
 */
 int8_t C3PLogger::print(uint8_t severity, const char* tag, StringBuilder* msg) {
   int8_t ret = -1;
   if (severity <= _verb_limit) {
     StringBuilder line;
-    if (printTime()) {          line.concatf("%10u ", millis());       }
-    if (printSeverity()) {      line.concat(severityStr(severity));    }
+    if (printTime()) {       line.concatf("%10u ", millis());                 }
+    if (printSeverity()) {   line.concat(c3p_log_severity_string(severity));  }
     if (printTag()) {
       const uint8_t TAG_LEN = (uint8_t) strlen(tag);
       if (_tag_ident > LOG_TAG_MAX_LEN) {
@@ -382,6 +377,11 @@ int8_t C3PLogger::print(uint8_t severity, const char* tag, StringBuilder* msg) {
 }
 
 
+/**
+* Append formatted text to the log, buffering if necessary.
+*
+* @param log_line is the new item to append to the log.
+*/
 void C3PLogger::_store_or_forward(StringBuilder* log_line) {
   bool store_to_buffer = true;
   if (nullptr != _sink) {
@@ -397,4 +397,15 @@ void C3PLogger::_store_or_forward(StringBuilder* log_line) {
   if (store_to_buffer) {
     _log.concatHandoff(log_line);
   }
+}
+
+
+/**
+* Relinquish to the caller any log buffer we've accumulated. Use-cases that
+*   employ the BufferAccepter interface should not call this function.
+*
+* @param b is the container to receive any accumulated log text.
+*/
+void C3PLogger::fetchLog(StringBuilder* b) {
+  if ((nullptr != b) && (!_log.isEmpty())) b->concatHandoff(&_log);
 }
