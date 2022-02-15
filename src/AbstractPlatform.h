@@ -245,6 +245,8 @@ typedef struct __platform_thread_opts {
 * /_/   /_/\__,_/\__/_/  \____/_/  /_/ /_/ /_/   \____/_____/\____/
 *
 * This is base platform support. It is a pure virtual.
+* ManuvrPlatform provides examples of extending this class to support specific
+*   concrete platforms.
 *******************************************************************************/
 class AbstractPlatform {
   public:

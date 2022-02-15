@@ -282,6 +282,14 @@ const ConsoleCommand cmd01 = ConsoleCommand("pfinfo", '\0', ParsingConsole::tcod
 const ConsoleCommand cmd02 = ConsoleCommand("reboot", '\0', ParsingConsole::tcodes_uint_1, "Reboot firmware", "[subgroup]", 0, callback_reboot);
 
 
+/**
+* The application would optionally call this function with a console handler to
+*   add the platform functions above. This overhead should be removed from the
+*   binary if the application never adds these (occasionally) helpful commands.
+*
+* @param console is the application-created object for handling consoles.
+* @return 0 always.
+*/
 int8_t AbstractPlatform::configureConsole(ParsingConsole* console) {
   console->defineCommand(&cmd00);
   console->defineCommand(&cmd01);
@@ -358,7 +366,7 @@ int8_t C3PLogger::print(uint8_t severity, const char* tag, StringBuilder* msg) {
     if (printSeverity()) {   line.concat(c3p_log_severity_string(severity));  }
     if (printTag()) {
       const uint8_t TAG_LEN = (uint8_t) strlen(tag);
-      if (_tag_ident > LOG_TAG_MAX_LEN) {
+      if (_tag_ident < LOG_TAG_MAX_LEN) {
         _tag_ident = strict_min(_tag_ident, strict_min((uint8_t) LOG_TAG_MAX_LEN, TAG_LEN));
       }
       char* ufmt_str = (char *) alloca(12);
@@ -369,7 +377,7 @@ int8_t C3PLogger::print(uint8_t severity, const char* tag, StringBuilder* msg) {
     }
     line.concatHandoff(msg);
     line.concat("\n");
-    line.string();   // Condense string.
+    line.string();   // Condense string to a single contiguous allocation.
     _store_or_forward(&line);
     ret = 0;
   }
@@ -386,6 +394,7 @@ int8_t C3PLogger::print(uint8_t severity, const char* tag, StringBuilder* msg) {
 *   log will be buffered internally until it is either retrieved by an external
 *   call to fetchLog(), or accepted by the sink on a subsequent call to this
 *   function.
+* TODO: This would be an appropriate place to put constraints on log growth.
 *
 * @param log_line is the new item to append to the log.
 */

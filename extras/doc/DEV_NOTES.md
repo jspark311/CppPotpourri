@@ -1,6 +1,6 @@
 # Dev notes
 
-This is a journal associated with the development and maintenance of this library. It is being kept public in the repo to help track thoughts associated with changes to the code, where such commentary would be a distraction (or even burden) in the commentary of the source files themselves. This document is not for release notes, is not required reading to understand the library, and is mostly for the use of the author(s) and anyone who wants to understand how it came to be the way that it is without digging through commit.
+This is a journal associated with the development and maintenance of this library. It is being kept public in the repo to help track thoughts associated with changes to the code, where such commentary would be a distraction (or even burden) if it were in the source files themselves. This document is not for release notes, is not required reading to understand the library, and is mostly for the use of the author(s) and anyone who wants to understand how it came to be the way that it is without digging through commit.
 
 ---------------
 
