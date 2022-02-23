@@ -25,11 +25,10 @@ TODO: Finish conversion to RingBuffer, and put constraints on BusAdapter's init
 #ifndef __ABSTRACT_BUS_QUEUE_H__
 #define __ABSTRACT_BUS_QUEUE_H__
 
-#include <inttypes.h>
-#include <stdint.h>
 #include "CppPotpourri.h"
 #include "PriorityQueue.h"
-#include "StringBuilder.h"
+#include "AbstractPlatform.h"
+#include "C3PLogger.h"
 
 // TODO: I suppose it is too late to enum this....
 #define BUSOP_CALLBACK_ERROR    -1
@@ -357,17 +356,6 @@ template <class T> class BusAdapter : public BusOpCallback {
     };
 
 
-    /**
-    * If the local_log is not empty, forward the logs to the Kernel.
-    * This alieviates us of the responsibility of freeing the log.
-    */
-    void flushLocalLog(StringBuilder* output) {
-      if (_local_log.length() > 0) {
-        output->concatHandoff(&_local_log);
-      }
-    };
-
-
     inline bool busIdle() {
       return !((nullptr != current_job) || work_queue.hasNext());
     };
@@ -387,7 +375,7 @@ template <class T> class BusAdapter : public BusOpCallback {
       }
     };
 
-    /*
+    /**
     * Purges only the work_queue. Leaves the currently-executing job.
     */
     void purge_queued_work() {
@@ -400,7 +388,6 @@ template <class T> class BusAdapter : public BusOpCallback {
         reclaim_queue_item(current);
         current = work_queue.dequeue();
       }
-      //purge_current_job();
     };
 
 
@@ -439,9 +426,6 @@ template <class T> class BusAdapter : public BusOpCallback {
       _total_xfers++;
       if (op->hasFault()) {
         _failed_xfers++;
-        if (getVerbosity() > 1) {    // Print failures.
-          op->printDebug(&_local_log);
-        }
       }
 
       uintptr_t obj_addr = ((uintptr_t) op);
@@ -461,7 +445,7 @@ template <class T> class BusAdapter : public BusOpCallback {
       }
       else if (op->shouldReap()) {
         // We were created because our prealloc was starved. we are therefore a transient heap object.
-        if (getVerbosity() > 6) _local_log.concatf("BusAdapter::reclaim_queue_item(): \t About to reap.\n");
+        if (getVerbosity() >= LOG_LEV_DEBUG) c3p_log(LOG_LEV_DEBUG, __PRETTY_FUNCTION__, "About to reap.");
         delete op;
         _heap_frees++;
       }
@@ -469,7 +453,7 @@ template <class T> class BusAdapter : public BusOpCallback {
         /* If we are here, it must mean that some other class fed us a const BusOp
         and wants us to ignore the memory cleanup. But we should at least set it
         back to IDLE.*/
-        if (getVerbosity() > 6) _local_log.concatf("BusAdapter::reclaim_queue_item(): \t Dropping....\n");
+        if (getVerbosity() >= LOG_LEV_DEBUG) c3p_log(LOG_LEV_DEBUG, __PRETTY_FUNCTION__, "Dropping...");
         op->set_state(XferState::IDLE);
       }
     }
@@ -524,7 +508,6 @@ template <class T> class BusAdapter : public BusOpCallback {
     PriorityQueue<T*> work_queue;   // A work queue to keep transactions in order.
     PriorityQueue<T*> preallocated; // TODO: Convert to ring buffer. This is the whole reason you embarked on this madness.
     T preallocated_bus_jobs[8];
-    StringBuilder _local_log;
 
 
     BusAdapter(uint8_t anum, uint8_t maxq) : ADAPTER_NUM(anum), MAX_Q_DEPTH(maxq) {};

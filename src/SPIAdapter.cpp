@@ -92,16 +92,13 @@ int8_t SPIAdapter::queue_io_job(BusOp* _op, int priority) {
       //else {    // If there is something already in progress, queue up.
         if (_adapter_flag(SPI_FLAG_QUEUE_GUARD) && !roomInQueue()) {
           ret = -1;
-          _local_log.concatf("SPI%u:\t Bus queue at max size. Dropping transaction.\n", ADAPTER_NUM);
+          if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "SPI%u:\t Bus queue at max size. Dropping transaction.", ADAPTER_NUM);
           op->abort(XferFault::QUEUE_FLUSH);
           callback_queue.insertIfAbsent(op, priority);
         }
         else if (0 > work_queue.insertIfAbsent(op, priority)) {
           ret = -3;
-          //if (getVerbosity() > 2) {
-          //  _local_log.concatf("SPI%u:\t Double-insertion. Dropping transaction with no status change.\n", ADAPTER_NUM);
-          //  op->printDebug(&_local_log);
-          //}
+          if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "SPI%u:\t Double-insertion. Dropping transaction with no status change.\n", ADAPTER_NUM);
         }
         else {
           op->set_state(XferState::QUEUED);
@@ -109,7 +106,7 @@ int8_t SPIAdapter::queue_io_job(BusOp* _op, int priority) {
       //}
     }
     else {
-      if (getVerbosity() > 3) _local_log.concat("Tried to fire a bus op that is not in IDLE state.\n");
+      if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "SPI%u:\t Tried to fire a bus op that is not in IDLE state.", ADAPTER_NUM);
     }
   }
   return ret;
@@ -147,7 +144,7 @@ int8_t SPIAdapter::advance_work_queue() {
       case XferState::TX_WAIT:
       case XferState::RX_WAIT:
         if (current_job->hasFault()) {
-          if (getVerbosity() > 3) _local_log.concatf("SPI%u::advance_work_queue():\t Failed at IO_WAIT.\n", ADAPTER_NUM);
+          if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "SPI%u\t Failed at IO_WAIT.\n", ADAPTER_NUM);
         }
         break;
 
@@ -164,11 +161,11 @@ int8_t SPIAdapter::advance_work_queue() {
             break;
           case XferFault::BUS_BUSY:    // Bus appears to be in-use. State did not change.
             // Re-throw queue_ready event and try again later.
-            if (getVerbosity() > 2) _local_log.concat("advance_work_queue() tried to clobber an existing transfer on chain.\n");
+            if (getVerbosity() >= LOG_LEV_WARN) c3p_log(LOG_LEV_WARN, __PRETTY_FUNCTION__, "SPI%u:\t tried to clobber an existing transfer on chain.\n", ADAPTER_NUM);
             current_job->set_state(XferState::INITIATE);
             break;
           default:    // Began the transfer, and it barffed... was aborted.
-            if (getVerbosity() > 3) _local_log.concatf("advance_work_queue():\t Failed to begin transfer after starting. %s\n", BusOp::getErrorString(current_job->getFault()));
+            if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "SPI%u:\t Failed to begin transfer after starting. %s\n", ADAPTER_NUM, BusOp::getErrorString(current_job->getFault()));
             callback_queue.insert(current_job);
             current_job = nullptr;
             // TODO: Raise an event for service_callback_queue() if polling becomes burdensome.
@@ -180,10 +177,10 @@ int8_t SPIAdapter::advance_work_queue() {
       case XferState::ADDR:
         //current_job->advance_operation(0, 0);
       case XferState::STOP:
-        if (getVerbosity() > 5) _local_log.concat("State might be corrupted if we tried to advance_queue(). \n");
+        if (getVerbosity() >= LOG_LEV_WARN) c3p_log(LOG_LEV_WARN, __PRETTY_FUNCTION__, "SPI%u\t State might be corrupted if we tried to advance_queue().", ADAPTER_NUM);
         break;
       default:
-        if (getVerbosity() > 6) _local_log.concat("advance_work_queue() default state \n");
+        if (getVerbosity() >= LOG_LEV_DEBUG) c3p_log(LOG_LEV_DEBUG, __PRETTY_FUNCTION__, "SPI%u\t default state", ADAPTER_NUM);
         break;
     }
   }
@@ -194,7 +191,7 @@ int8_t SPIAdapter::advance_work_queue() {
     if (current_job) {
       XferFault f = current_job->begin();
       if (XferFault::NONE != f) {
-        if (getVerbosity() > 2) _local_log.concatf("advance_work_queue() tried to clobber an existing transfer on the pick-up. %s\n", BusOp::getErrorString(f));
+        if (getVerbosity() >= LOG_LEV_WARN) c3p_log(LOG_LEV_WARN, __PRETTY_FUNCTION__, "SPI%u\t tried to clobber an existing transfer on the pick-up. %s", ADAPTER_NUM, BusOp::getErrorString(f));
         // TODO: Raise an event for advance_work_queue() if polling becomes burdensome.
       }
       return_value++;
@@ -216,7 +213,6 @@ int8_t SPIAdapter::service_callback_queue() {
 
   while ((return_value < _cb_per_event) && (0 < callback_queue.size())) {
     SPIBusOp* temp_op = callback_queue.dequeue();
-    if (getVerbosity() > 6) temp_op->printDebug(&_local_log);
     if (nullptr != temp_op->callback) {
       int8_t cb_code = temp_op->callback->io_op_callback(temp_op);
       switch (cb_code) {
@@ -226,11 +222,15 @@ int8_t SPIAdapter::service_callback_queue() {
           break;
 
         case BUSOP_CALLBACK_ERROR:
+          if (current_job->hasFault()) {
+            if (getVerbosity() >= LOG_LEV_ERROR) {    // Print failures.
+              StringBuilder tmp_str;
+              temp_op->printDebug(&tmp_str);
+              c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, &tmp_str);
+            }
+          }
         case BUSOP_CALLBACK_NOMINAL:
-          reclaim_queue_item(temp_op);
-          break;
         default:
-          if (getVerbosity() > 1) _local_log.concatf("Unsure about BUSOP_CALLBACK_CODE %d.\n", cb_code);
           reclaim_queue_item(temp_op);
           break;
       }
@@ -242,7 +242,6 @@ int8_t SPIAdapter::service_callback_queue() {
     return_value++;
   }
 
-  //flushLocalLog();
   return return_value;
 }
 

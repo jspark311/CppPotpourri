@@ -143,8 +143,8 @@ int8_t I2CAdapter::io_op_callback(BusOp* _op) {
       else {
         _adapter_clear_flag(I2C_BUS_FLAG_PINGING);
         _adapter_set_flag(I2C_BUS_FLAG_PING_RUN);
-        #if defined(MANUVR_DEBUG)
-        //if (getVerbosity() > 4) local_log.concat("Concluded i2c ping sweep.");
+        #if defined(CONFIG_I2C_DEBUG)
+          if (getVerbosity() >= LOG_LEV_INFO) c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "Concluded i2c ping sweep.");
         #endif
       }
     }
@@ -172,9 +172,7 @@ int8_t I2CAdapter::queue_io_job(BusOp* op) {
       op->set_state(XferState::QUEUED);
       ret = 0;
     }
-    //else if (getVerbosity() > 2) {
-    //  _local_log.concatf("I2C%u:\t Double-insertion. Dropping transaction with no status change.\n", ADAPTER_NUM);
-    //}
+    else if (getVerbosity() >= LOG_LEV_WARN) c3p_log(LOG_LEV_WARN, __PRETTY_FUNCTION__, "I2C%u:\t Double-insertion. Dropping transaction with no status change.\n", ADAPTER_NUM);
   //}
   //else {
     // Bus is idle. Put this work item in the active slot and start the bus operations...
@@ -242,12 +240,13 @@ int8_t I2CAdapter::advance_work_queue() {
         /* These are finish states. */
         case XferState::FAULT:     // Fault condition.
         case XferState::COMPLETE:  // I/O op complete with no problems.
-          //if (current_job->hasFault()) {
-          //  if (getVerbosity() > 3) {
-          //    local_log.concat("Destroying failed job.\n");
-          //    current_job->printDebug(&local_log);
-          //  }
-          //}
+          if (current_job->hasFault()) {
+            if (getVerbosity() >= LOG_LEV_ERROR) {    // Print failures.
+              StringBuilder tmp_str;
+              current_job->printDebug(&tmp_str);
+              c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, &tmp_str);
+            }
+          }
           switch (current_job->execCB()) {
             case BUSOP_CALLBACK_RECYCLE:
               current_job->markForRequeue();
