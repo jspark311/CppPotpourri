@@ -63,10 +63,8 @@ I2CAdapter::I2CAdapter(const I2CAdapterOptions* o) : BusAdapter(o->adapter, I2CA
 
 
 I2CAdapter::~I2CAdapter() {
-  busOnline(false);
-
-  /* TODO: The work_queue destructor will take care of its own cleanup, but
-     We should abort any open transfers prior to deleting this list. */
+  // TODO: The work_queue destructor will take care of its own cleanup, but
+  //   we should abort any open transfers prior to deleting this list.
   _adapter_clear_flag(I2C_BUS_FLAG_BUS_ERROR | I2C_BUS_FLAG_BUS_ONLINE);
   _adapter_clear_flag(I2C_BUS_FLAG_PING_RUN  | I2C_BUS_FLAG_PINGING);
   bus_deinit();
@@ -225,13 +223,14 @@ int8_t I2CAdapter::advance_work_queue() {
           }
           break;
         case XferState::INITIATE:  // Waiting for initiation phase.
-          //current_job->advance();
-          break;
         case XferState::ADDR:      // Addressing phase. Sending the address.
         case XferState::TX_WAIT:   // I/O operation in-progress.
         case XferState::RX_WAIT:   // I/O operation in-progress.
         case XferState::STOP:      // I/O operation in cleanup phase.
-          //current_job->advance();
+          if (_pf_needs_op_advance()) {
+            // Platforms that need explicit advancement of BusOps should do so.
+            current_job->advance();
+          }
           break;
 
         case XferState::UNDEF:     // Freshly instanced (or wiped, if preallocated).

@@ -49,7 +49,8 @@ Platforms that have built-in faculties for logging should not use this class,
 */
 class C3PLogger {
   public:
-    C3PLogger(const uint8_t F = 0) : _flags(F) {};
+    C3PLogger(const uint8_t F = 0, BufferAccepter* SINK = nullptr)
+      : _sink(SINK), _tag_ident(1), _flags(F), _verb_limit(LOG_LEV_DEBUG) {};
     ~C3PLogger() {};
 
     // On builds that use this class, this function will be called by c3p_log().
@@ -70,11 +71,11 @@ class C3PLogger {
 
 
   private:
-    StringBuilder  _log;
-    uint8_t        _tag_ident  = 0;
-    BufferAccepter* _sink      = nullptr;
-    uint8_t        _flags      = 0;
-    uint8_t        _verb_limit = LOG_LEV_DEBUG;   // Used as a global limit.
+    StringBuilder   _log;          // Local buffer.
+    BufferAccepter* _sink;         // Optional sink for formatted text.
+    uint8_t         _tag_ident;    // Padding scalar to keep output aligned.
+    uint8_t         _flags;        // Options that control output.
+    uint8_t         _verb_limit;   // Used as a global limit.
 
     void _store_or_forward(StringBuilder*);
 

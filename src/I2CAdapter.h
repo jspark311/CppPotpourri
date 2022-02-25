@@ -66,17 +66,12 @@ class I2CAdapter;
   #define I2C_BUS_FLAG_BUS_ONLINE     0x0002    // Set when the module is verified to be in command mode.
   #define I2C_BUS_FLAG_PING_RUN       0x0004    // Have we run a full bus discovery?
   #define I2C_BUS_FLAG_PINGING        0x0008    // Are we running a full ping?
+  #define I2C_BUS_FLAG_PF_ADVANCE_OPS 0x0010    // Optionally set by the platform.
 
   // Flags passed in at construction that become BUS_FLAGS.
   #define I2C_ADAPT_OPT_FLAG_SCL_PU   0x0400    // SCL pullup.
   #define I2C_ADAPT_OPT_FLAG_SDA_PU   0x0800    // SDA pullup.
 
-  /*
-  * These flags are hosted by the member in the BusOp class.
-  * Be careful when scrubing the field between re-use.
-  */
-  #define I2C_BUSOP_FLAG_VERBOSITY_MASK  0x0007    // Low three bits store verbosity.
-  #define I2C_BUSOP_FLAG_SUBADDR         0x0008    // Send a sub-address?
 
   enum class I2CPingState : uint8_t {
     NONE = 0,
@@ -218,15 +213,8 @@ class I2CAdapter;
       // Builds a special bus transaction that does nothing but test for the presence or absence of a slave device.
       void ping_slave_addr(uint8_t);
 
-      // These are meant to be called from the bus jobs. They deal with specific bus functions
-      //   that may or may not be present on a given platform.
-      int8_t generateStart();    // Generate a start condition on the bus.
-      int8_t generateStop();     // Generate a stahp condition on the bus.
-
       inline bool busError() {          return (_adapter_flag(I2C_BUS_FLAG_BUS_ERROR));  };
       inline bool busOnline() {         return (_adapter_flag(I2C_BUS_FLAG_BUS_ONLINE)); };
-      inline void busError(bool nu) {   _adapter_set_flag(I2C_BUS_FLAG_BUS_ERROR, nu);   };
-      inline void busOnline(bool nu) {  _adapter_set_flag(I2C_BUS_FLAG_BUS_ONLINE, nu);  };
 
       /* Built-in per-instance console handler. */
       int8_t console_handler(StringBuilder* text_return, StringBuilder* args);
@@ -237,6 +225,11 @@ class I2CAdapter;
       int8_t advance_work_queue();
       int8_t bus_init();      // This must be provided on a per-platform basis.
       int8_t bus_deinit();    // This must be provided on a per-platform basis.
+
+      inline bool _pf_needs_op_advance() {        return _adapter_flag(I2C_BUS_FLAG_PF_ADVANCE_OPS);  };
+      inline void _pf_needs_op_advance(bool x) {  _adapter_set_flag(I2C_BUS_FLAG_PF_ADVANCE_OPS, x);  };
+      inline void _bus_error(bool nu) {           _adapter_set_flag(I2C_BUS_FLAG_BUS_ERROR, nu);      };
+      inline void _bus_online(bool nu) {          _adapter_set_flag(I2C_BUS_FLAG_BUS_ONLINE, nu);     };
 
 
     private:
