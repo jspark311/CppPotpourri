@@ -222,6 +222,7 @@ int8_t I2CAdapter::advance_work_queue() {
             return_value++;
           }
           break;
+          
         case XferState::INITIATE:  // Waiting for initiation phase.
         case XferState::ADDR:      // Addressing phase. Sending the address.
         case XferState::TX_WAIT:   // I/O operation in-progress.

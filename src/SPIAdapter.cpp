@@ -83,27 +83,20 @@ int8_t SPIAdapter::queue_io_job(BusOp* _op, int priority) {
     }
 
     if (op->get_state() == XferState::IDLE) {
-      ret = 0;
-      //if ((nullptr == current_job) && (work_queue.size() == 0)){
-      //  // If the queue is empty, fire the operation now.
-      //  current_job = op;
-      //  advance_work_queue();
-      //}
-      //else {    // If there is something already in progress, queue up.
-        if (_adapter_flag(SPI_FLAG_QUEUE_GUARD) && !roomInQueue()) {
-          ret = -1;
-          if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "SPI%u:\t Bus queue at max size. Dropping transaction.", ADAPTER_NUM);
-          op->abort(XferFault::QUEUE_FLUSH);
-          callback_queue.insertIfAbsent(op, priority);
-        }
-        else if (0 > work_queue.insertIfAbsent(op, priority)) {
-          ret = -3;
-          if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "SPI%u:\t Double-insertion. Dropping transaction with no status change.\n", ADAPTER_NUM);
-        }
-        else {
-          op->set_state(XferState::QUEUED);
-        }
-      //}
+      if (_adapter_flag(SPI_FLAG_QUEUE_GUARD) && !roomInQueue()) {
+        ret = -1;
+        if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "SPI%u:\t Bus queue at max size. Dropping transaction.", ADAPTER_NUM);
+        op->abort(XferFault::QUEUE_FLUSH);
+        callback_queue.insertIfAbsent(op, priority);
+      }
+      else if (0 > work_queue.insertIfAbsent(op, priority)) {
+        ret = -3;
+        if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "SPI%u:\t Double-insertion. Dropping transaction with no status change.\n", ADAPTER_NUM);
+      }
+      else {
+        ret = 0;
+        op->set_state(XferState::QUEUED);
+      }
     }
     else {
       if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "SPI%u:\t Tried to fire a bus op that is not in IDLE state.", ADAPTER_NUM);
@@ -154,15 +147,14 @@ int8_t SPIAdapter::advance_work_queue() {
         // TODO: Raise an event for service_callback_queue() if polling becomes burdensome.
         break;
 
+      case XferState::QUEUED:
       case XferState::IDLE:
-      case XferState::INITIATE:
         switch (current_job->begin()) {
           case XferFault::NONE:     // Nominal outcome. Transfer started with no problens...
             break;
           case XferFault::BUS_BUSY:    // Bus appears to be in-use. State did not change.
             // Re-throw queue_ready event and try again later.
-            if (getVerbosity() >= LOG_LEV_WARN) c3p_log(LOG_LEV_WARN, __PRETTY_FUNCTION__, "SPI%u:\t tried to clobber an existing transfer on chain.\n", ADAPTER_NUM);
-            current_job->set_state(XferState::INITIATE);
+            current_job->set_state(XferState::IDLE);
             break;
           default:    // Began the transfer, and it barffed... was aborted.
             if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "SPI%u:\t Failed to begin transfer after starting. %s\n", ADAPTER_NUM, BusOp::getErrorString(current_job->getFault()));
@@ -174,13 +166,11 @@ int8_t SPIAdapter::advance_work_queue() {
         break;
 
       /* Cases below ought to be handled by ISR flow... */
+      case XferState::INITIATE:
       case XferState::ADDR:
-        //current_job->advance_operation(0, 0);
       case XferState::STOP:
-        if (getVerbosity() >= LOG_LEV_WARN) c3p_log(LOG_LEV_WARN, __PRETTY_FUNCTION__, "SPI%u\t State might be corrupted if we tried to advance_queue().", ADAPTER_NUM);
-        break;
       default:
-        if (getVerbosity() >= LOG_LEV_DEBUG) c3p_log(LOG_LEV_DEBUG, __PRETTY_FUNCTION__, "SPI%u\t default state", ADAPTER_NUM);
+        if (getVerbosity() >= LOG_LEV_INFO) c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "SPI%u: BusOp state at poll(): %s", ADAPTER_NUM, BusOp::getStateString(current_job->get_state()));
         break;
     }
   }
@@ -189,6 +179,7 @@ int8_t SPIAdapter::advance_work_queue() {
     current_job = work_queue.dequeue();
     // Begin the bus operation.
     if (current_job) {
+      current_job->set_state(XferState::IDLE);
       XferFault f = current_job->begin();
       if (XferFault::NONE != f) {
         if (getVerbosity() >= LOG_LEV_WARN) c3p_log(LOG_LEV_WARN, __PRETTY_FUNCTION__, "SPI%u\t tried to clobber an existing transfer on the pick-up. %s", ADAPTER_NUM, BusOp::getErrorString(f));
@@ -215,6 +206,7 @@ int8_t SPIAdapter::service_callback_queue() {
     SPIBusOp* temp_op = callback_queue.dequeue();
     if (nullptr != temp_op->callback) {
       int8_t cb_code = temp_op->callback->io_op_callback(temp_op);
+      markForRequeue();
       switch (cb_code) {
         case BUSOP_CALLBACK_RECYCLE:
           temp_op->markForRequeue();
@@ -222,7 +214,7 @@ int8_t SPIAdapter::service_callback_queue() {
           break;
 
         case BUSOP_CALLBACK_ERROR:
-          if (current_job->hasFault()) {
+          if (temp_op->hasFault()) {
             if (getVerbosity() >= LOG_LEV_ERROR) {    // Print failures.
               StringBuilder tmp_str;
               temp_op->printDebug(&tmp_str);
@@ -257,8 +249,8 @@ int8_t SPIAdapter::console_handler(StringBuilder* text_return, StringBuilder* ar
   if (0 < args->count()) {
     char* cmd = args->position_trimmed(0);
     if (0 == StringBuilder::strcasecmp(cmd, "poll")) {
-      text_return->concatf("SP%u advance_work_queue() returns: %d\n", adapterNumber(), advance_work_queue());
-      text_return->concatf("SP%u service_callback_queue() returns: %d\n", adapterNumber(), service_callback_queue());
+      text_return->concatf("SP%u advance_work_queue()\treturns: %d\n", adapterNumber(), advance_work_queue());
+      text_return->concatf("SP%u service_callback_queue()\treturns: %d\n", adapterNumber(), service_callback_queue());
     }
     else if (0 == StringBuilder::strcasecmp(cmd, "queue")) {
       uint8_t arg1 = (uint8_t) args->position_as_int(1);
