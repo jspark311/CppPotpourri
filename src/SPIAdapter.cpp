@@ -206,7 +206,6 @@ int8_t SPIAdapter::service_callback_queue() {
     SPIBusOp* temp_op = callback_queue.dequeue();
     if (nullptr != temp_op->callback) {
       int8_t cb_code = temp_op->callback->io_op_callback(temp_op);
-      markForRequeue();
       switch (cb_code) {
         case BUSOP_CALLBACK_RECYCLE:
           temp_op->markForRequeue();
