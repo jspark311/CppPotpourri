@@ -69,7 +69,6 @@ int8_t I2CBusOp::abort(XferFault er) {
 */
 void I2CBusOp::markComplete() {
   set_state(XferState::COMPLETE);
-  //device->raiseQueueReady();
 }
 
 
@@ -101,7 +100,6 @@ void I2CBusOp::wipe() {
 void I2CBusOp::printDebug(StringBuilder* output) {
   BusOp::printBusOp("I2COp", this, output);
   output->concatf("\t device          0x%02x\n", dev_addr);
-
   if (sub_addr != -1) {
     output->concatf("\t subaddress      0x%02x\n", sub_addr);
   }

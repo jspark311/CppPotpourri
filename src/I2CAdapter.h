@@ -67,6 +67,7 @@ class I2CAdapter;
   #define I2C_BUS_FLAG_PING_RUN       0x0004    // Have we run a full bus discovery?
   #define I2C_BUS_FLAG_PINGING        0x0008    // Are we running a full ping?
   #define I2C_BUS_FLAG_PF_ADVANCE_OPS 0x0010    // Optionally set by the platform.
+  #define I2C_BUS_FLAG_PF_BEGIN_ASAP  0x0020    // Optionally set by the platform.
 
   // Flags passed in at construction that become BUS_FLAGS.
   #define I2C_ADAPT_OPT_FLAG_SCL_PU   0x0400    // SCL pullup.

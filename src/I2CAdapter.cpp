@@ -164,28 +164,24 @@ int8_t I2CAdapter::queue_io_job(BusOp* op) {
   I2CBusOp* nu = (I2CBusOp*) op;
   //nu->setVerbosity(getVerbosity());
   nu->setAdapter(this);
-  //if (current_job) {
-    // Something is already going on with the bus. Queue...
+
+  if ((nullptr == current_job) && _adapter_flag(I2C_BUS_FLAG_PF_BEGIN_ASAP) && busOnline()) {
+    // Bus is idle, and the platform has decided that we ought to start I/O
+    //   immediately under this condition.
+    // Put this work item in the active slot and start the bus operations.
+    current_job = nu;
+    if (XferFault::NONE != nu->begin()) {
+      c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "I2C%u:\tFailed to begin transfer while short-circuiting the queue.\n", ADAPTER_NUM);
+    }
+  }
+  else {
+    // Queue...
     if (0 <= work_queue.insertIfAbsent(nu, 0)) {
       op->set_state(XferState::QUEUED);
       ret = 0;
     }
     else if (getVerbosity() >= LOG_LEV_WARN) c3p_log(LOG_LEV_WARN, __PRETTY_FUNCTION__, "I2C%u:\t Double-insertion. Dropping transaction with no status change.\n", ADAPTER_NUM);
-  //}
-  //else {
-    // Bus is idle. Put this work item in the active slot and start the bus operations...
-    //current_job = nu;
-    //if ((adapterNumber() >= 0) && busOnline()) {
-    //  if (XferFault::NONE == nu->begin()) {
-    //    #if defined(__BUILD_HAS_THREADS)
-    //    if (_thread_id) wakeThread(_thread_id);
-    //    #endif
-    //  }
-    //}
-    //else {
-    //  //Kernel::staticRaiseEvent(&_queue_ready);   // Raise an event
-    //}
-  //}
+  }
   return ret;
 }
 
@@ -222,7 +218,7 @@ int8_t I2CAdapter::advance_work_queue() {
             return_value++;
           }
           break;
-          
+
         case XferState::INITIATE:  // Waiting for initiation phase.
         case XferState::ADDR:      // Addressing phase. Sending the address.
         case XferState::TX_WAIT:   // I/O operation in-progress.
