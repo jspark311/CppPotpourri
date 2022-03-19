@@ -243,13 +243,35 @@ int8_t SPIAdapter::service_callback_queue() {
 * These are built-in handlers for using this instance via a console.
 *******************************************************************************/
 
+/**
+* @page console-handlers
+* @section spi-tools SPI tools
+*
+* This is the console handler for debugging the operation of `SPIAdapter`'s.
+*
+* @subsection arguments Arguments
+* Argument | Purpose | Required
+* -------- | ------- | --------
+* 1        | BusID   | Yes
+* 2        | Action  | No (Prints debugging info if omitted).
+* 3        | Action-Specific | No
+*
+* @subsection cmd-actions Actions
+* Action      | Description | Additional arguments
+* ----------- | ----------- | --------------------
+* `purge`     | Flush the current job. | None
+* `ragepurge` | Flush the current job, as well as anything in the queue. | None
+* `poll`      | Manually invoke the driver's `poll()` function. | None
+* `queue`     | Render the current job queue to the console. | None
+* `verbosity` | Print or limit how chatty the driver is. | [log-level]
+*/
 int8_t SPIAdapter::console_handler(StringBuilder* text_return, StringBuilder* args) {
   int ret = 0;
   if (0 < args->count()) {
     char* cmd = args->position_trimmed(0);
     if (0 == StringBuilder::strcasecmp(cmd, "poll")) {
-      text_return->concatf("SP%u advance_work_queue()\treturns: %d\n", adapterNumber(), advance_work_queue());
-      text_return->concatf("SP%u service_callback_queue()\treturns: %d\n", adapterNumber(), service_callback_queue());
+      text_return->concatf("SP%u advance_work_queue() returns: %d\n", adapterNumber(), advance_work_queue());
+      text_return->concatf("SP%u service_callback_queue() returns: %d\n", adapterNumber(), service_callback_queue());
     }
     else if (0 == StringBuilder::strcasecmp(cmd, "queue")) {
       uint8_t arg1 = (uint8_t) args->position_as_int(1);

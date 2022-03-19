@@ -338,6 +338,27 @@ void I2CAdapter::printDebug(StringBuilder* output) {
 * These are built-in handlers for using this instance via a console.
 *******************************************************************************/
 
+/**
+* @page console-handlers
+* @section i2c-tools I2C tools
+*
+* This is the console handler for debugging the operation of `I2CAdapter`'s.
+*
+* @subsection arguments Arguments
+* Argument | Purpose | Required
+* -------- | ------- | --------
+* 1        | BusID   | Yes
+* 2        | Action  | No (Prints debugging info if omitted).
+* 3        | Action-Specific | No
+*
+* @subsection cmd-actions Actions
+* Action      | Description | Additional arguments
+* ----------- | ----------- | --------------------
+* `purge`     | Flush the current job. | None
+* `ragepurge` | Flush the current job, as well as anything in the queue. | None
+* `ping`      | Ping all possible addresses to discover hardware. | None
+* `info`      | Prints debugging information for specified `I2CAdapter`. | None
+*/
 int8_t I2CAdapter::console_handler(StringBuilder* text_return, StringBuilder* args) {
   int ret = 0;
   char* cmd    = args->position_trimmed(0);

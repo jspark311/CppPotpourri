@@ -23,24 +23,41 @@ limitations under the License.
 #include "Vector3.h"
 #include "StringBuilder.h"
 #include "SensorFilter.h"
+#include "FlagContainer.h"
 
 #ifndef __TRIPLE_AXIS_PIPE_H__
 #define __TRIPLE_AXIS_PIPE_H__
+
+/**
+* @page tripleaxispipe
+* @section overview Overview
+*
+*
+*/
 
 
 /*******************************************************************************
 * Types and interface
 *******************************************************************************/
-
-/* Different 3-axis sensors this interface supports. */
+/**
+* @page tripleaxispipe
+*
+* Different 3-axis sensors this interface supports.
+* Interfaces passing this enum must either pass their vectors in SI units, or
+*   pass the UNITLESS enum.
+* TODO: Tie into SIUnit enum. It is presently an assumed value.
+* NOTE: The enum values have been chosen to correspond to shift-sizes in various
+*   flag and index implementations. They must be contiguous and begin at 0.
+*/
 enum class SpatialSense : uint8_t {
-  UNITLESS = 0, // Unitless scalar
-  ACC,          // Accelerometer. Data/error is given in m/s^2.
-  GYR,          // Gyroscope. Data/error is given in rad/s.
-  MAG,          // Magnetometer. Data/error is given in Teslas.
-  EULER_ANG,    // Orientation (Roll, Pitch, Yaw). Data/error is given in radians.
-  BEARING       // Orientation on Earth (Mag-North, Mag-Dip, True-North). Data/error is given in radians.
+  UNITLESS     = 0,  // Unitless scalar
+  ACC          = 1,  // Accelerometer. Data/error is given in m/s^2.
+  GYR          = 2,  // Gyroscope. Data/error is given in rad/s.
+  MAG          = 3,  // Magnetometer. Data/error is given in Teslas.
+  EULER_ANG    = 4,  // Orientation (Roll, Pitch, Yaw). Data/error is given in radians.
+  BEARING      = 5,  // Orientation on Earth (Mag-North, Mag-Dip, True-North). Data/error is given in radians.
   // TODO: Consider adding statistical and arithmetic intermediary results? EG, STDEV/RMS/MEAN/Etc...
+  ENUM_SIZE    = 12  // Top of enum
 };
 
 
@@ -51,6 +68,7 @@ typedef int8_t (*TripleAxisTerminalCB)(SpatialSense, Vector3f* dat, Vector3f* er
 /*
 * Pure virtual class to define a uniform interface between sensors that produce
 *   and process 3-axis data.
+* TODO: Need to define semantics of return value.
 */
 class TripleAxisPipe {
   public:
@@ -60,9 +78,39 @@ class TripleAxisPipe {
     * @return 0 on success. Less-than zero otherwise.
     */
     virtual int8_t pushVector(SpatialSense, Vector3f* data, Vector3f* error = nullptr) =0;
+    // TODO: Make alternate calling conventions to support double[3]. Might need flag support.
     virtual void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity) =0;
 
     static const char* spatialSenseStr(SpatialSense);
+};
+
+
+/*
+* Some TAPs will want flag space and some inline accessors to support common
+*   behaviors.
+*/
+#define TRIPAX_FLAG_RELAY_MASK              0x00000FFF  // Relay map. See notes.
+#define TRIPAX_FLAG_ASYNC_BREAK_UNTIL_POLL  0x40000000  // Don't send efferent data synchronously.
+
+class TripleAxisPipeWithFlags : public TripleAxisPipe {
+  public:
+    /* TripleAxisPipe interface */
+    //virtual int8_t pushVector(SpatialSense, Vector3f* data, Vector3f* error = nullptr) =0;
+    //virtual void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity) =0;
+
+    inline bool relaySense(const SpatialSense E) {
+      return _flags.value((1 << (uint8_t) E) & TRIPAX_FLAG_RELAY_MASK);
+    };
+    inline void relaySense(const SpatialSense E, bool relay) {
+      _flags.set((1 << (uint8_t) E) & TRIPAX_FLAG_RELAY_MASK, relay);
+    };
+
+
+  protected:
+    FlagContainer32 _flags;
+    TripleAxisPipeWithFlags(uint32_t f = 0) : _flags(f) {};
+
+    //int8_t _base_vector_relay();
 };
 
 
@@ -90,7 +138,7 @@ class TripleAxisFork : public TripleAxisPipe {
     *
     * @return 0 on sucess on both sides of the fork, -1 on one failure, or -2 on two failures.
     */
-    int8_t pushVector(SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
+    int8_t pushVector(SpatialSense, Vector3f* data, Vector3f* error = nullptr);
     void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
 
@@ -115,11 +163,14 @@ class TripleAxisFork : public TripleAxisPipe {
 class TripleAxisConvention : public TripleAxisPipe {
   public:
     TripleAxisConvention() {};
-    TripleAxisConvention(TripleAxisPipe* nxt, GnomonType g) : _NXT(nxt), _SRC_FMT(g) {};
+    TripleAxisConvention(TripleAxisPipe* nxt, GnomonType ag, GnomonType eg) : _NXT(nxt), _SRC_FMT(ag), _NXT_FMT(eg) {};
     ~TripleAxisConvention() {};
 
-    inline void setNext(TripleAxisPipe* n) {        _NXT  = n;      };
-    inline void setAfferentGnomon(GnomonType n) {   _SRC_FMT  = n;  };
+    inline void setNext(TripleAxisPipe* n) {          _NXT  = n;        };
+    inline GnomonType afferentGnomon() {              return _SRC_FMT;  };
+    inline void       afferentGnomon(GnomonType n) {  _SRC_FMT  = n;    };
+    inline GnomonType efferentGnomon() {              return _NXT_FMT;  };
+    inline void       efferentGnomon(GnomonType n) {  _NXT_FMT  = n;    };
 
     /**
     * Behavior: Refreshes this instance's state and calls callback, if defined.
@@ -127,13 +178,14 @@ class TripleAxisConvention : public TripleAxisPipe {
     *
     * @return -2 on null NXT, or return code from downstream pushVector() fxn.
     */
-    int8_t pushVector(SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
+    int8_t pushVector(SpatialSense, Vector3f* data, Vector3f* error = nullptr);
     void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
 
   private:
     TripleAxisPipe* _NXT = nullptr;
     GnomonType      _SRC_FMT = GnomonType::RH_POS_Z;  // Defaults to no operation.
+    GnomonType      _NXT_FMT = GnomonType::RH_POS_Z;  // Defaults to no operation.
 };
 
 
@@ -174,7 +226,7 @@ class TripleAxisTerminus : public TripleAxisPipe {
     *
     * @return 0 on success, or -1 on sense mis-match.
     */
-    int8_t pushVector(SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
+    int8_t pushVector(SpatialSense, Vector3f* data, Vector3f* error = nullptr);
     void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
     /**
@@ -220,20 +272,6 @@ class TripleAxisTerminus : public TripleAxisPipe {
 *   with a novel SpatialSense, as an orientation filter would.
 * The filtering functionality is provided by SensorFilter3.
 */
-
-//#define TRIP_AX_FLAG_CLASS_RELAY_CONFD_SENSE 0x01  // Relay data matching our configured sense.
-//#define TRIP_AX_FLAG_ASYNC_BREAK_UNTIL_POLL  0x02  // Don't send efferent data synchronously.
-//    uint8_t _flags       = 0;
-//    /* Flag manipulation inlines */
-//    inline uint8_t _class_flags() {                return _flags;           };
-//    inline bool _class_flag(uint8_t _flag) {       return (_flags & _flag); };
-//    inline void _class_clear_flag(uint8_t _flag) { _flags &= ~_flag;        };
-//    inline void _class_set_flag(uint8_t _flag) {   _flags |= _flag;         };
-//    inline void _class_set_flag(uint8_t _flag, bool nu) {
-//      if (nu) _flags |= _flag;
-//      else    _flags &= ~_flag;
-//    };
-
 class TripleAxisSingleFilter : public TripleAxisPipe, public SensorFilter3<float> {
   public:
     TripleAxisSingleFilter(
@@ -267,7 +305,7 @@ class TripleAxisSingleFilter : public TripleAxisPipe, public SensorFilter3<float
     *
     * @return -2 on push failure, -4 never, -3 on memory error, -1 on null NXT, or return code from downstream pushVector() fxn.
     */
-    int8_t pushVector(SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
+    int8_t pushVector(SpatialSense, Vector3f* data, Vector3f* error = nullptr);
     void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
 
@@ -277,10 +315,6 @@ class TripleAxisSingleFilter : public TripleAxisPipe, public SensorFilter3<float
     TripleAxisPipe* _NXT = nullptr;
     Vector3f _ERR;
 };
-
-
-//class TripleAxisSingleFilter : public TripleAxisPipe {
-//};
 
 
 /**

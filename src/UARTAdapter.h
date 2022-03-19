@@ -74,6 +74,7 @@ class UARTAdapter : public BufferAccepter {
 
     int8_t init(const UARTOpts*);
     int8_t poll();
+    inline int8_t deinit() {  return _pf_deinit();  };
 
     // Basic management and init,
     int8_t reset();
@@ -100,6 +101,8 @@ class UARTAdapter : public BufferAccepter {
 
     inline int pendingRxBytes() {   return _rx_buffer.length();   };
     inline int pendingTxBytes() {   return _tx_buffer.length();   };
+    inline uint32_t rxTimeout() {   return bus_timeout_millis;    };
+    inline uint32_t lastRXTime() {  return last_byte_rx_time;     };
 
 
   protected:

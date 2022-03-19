@@ -40,11 +40,62 @@ int8_t UARTAdapter::init(const UARTOpts* o) {
 
 void UARTAdapter::printDebug(StringBuilder* output) {
   StringBuilder temp("UART");
-  temp.concatf("%u (%sinitialized)", ADAPTER_NUM, (initialized() ? "":"un"));
+  temp.concatf("%u (%sinitialized", ADAPTER_NUM, (initialized() ? "":"un"));
+  if (initialized()) {
+    temp.concatf(", %u bps)", _opts.bitrate);
+  }
+  else {
+    temp.concat(")");
+  }
   StringBuilder::styleHeader1(output, (char*) temp.string());
-  output->concatf("\tLast RX: \t%u\n", last_byte_rx_time);
-  output->concatf("\tFlushed: \t%c\n", (flushed()?'y':'n'));
-  output->concatf("\tRX bytes:\t%u\n", pendingRxBytes());
-  output->concatf("\tTX bytes:\t%u\n", pendingTxBytes());
-  output->concatf("\tbitrate: \t%u\n", _opts.bitrate);
+
+  if (initialized()) {
+    output->concatf("\tPending reset:\t%c\n", _adapter_flag(UART_FLAG_PENDING_RESET) ? 'y':'n');
+    output->concatf("\tPending conf:\t%c\n", _adapter_flag(UART_FLAG_PENDING_CONF) ? 'y':'n');
+  }
+
+  char* str_par = (char*) "<INVALID>";
+  char* str_flw = str_par;
+  char* str_stp = str_par;
+  switch (_opts.parity) {
+    case UARTParityBit::NONE:       str_par = (char*) "NONE";     break;
+    case UARTParityBit::EVEN:       str_par = (char*) "EVEN";     break;
+    case UARTParityBit::ODD:        str_par = (char*) "ODD";      break;
+    case UARTParityBit::FORCE_0:    str_par = (char*) "FORCE_0";  break;
+    case UARTParityBit::FORCE_1:    str_par = (char*) "FORCE_1";  break;
+    default: break;
+  }
+  switch (_opts.flow_control) {
+    case UARTFlowControl::NONE:     str_flw = (char*) "NONE";     break;
+    case UARTFlowControl::RTS:      str_flw = (char*) "RTS";      break;
+    case UARTFlowControl::CTS:      str_flw = (char*) "CTS";      break;
+    case UARTFlowControl::RTS_CTS:  str_flw = (char*) "RTS_CTS";  break;
+    default: break;
+  }
+  switch (_opts.stop_bits) {
+    case UARTStopBit::STOP_1:       str_stp = (char*) "1";        break;
+    case UARTStopBit::STOP_1_5:     str_stp = (char*) "1.5";      break;
+    case UARTStopBit::STOP_2:       str_stp = (char*) "2";        break;
+    default: break;
+  }
+  output->concat("\tOpts:\n\t------------------------\n");
+  output->concatf("\tChar size:\t%u bits\n", _opts.bit_per_word);
+  output->concatf("\tStart bits:\t%u\n",     _opts.start_bits);
+  output->concatf("\tStop bits:\t%s\n",      str_stp);
+  output->concatf("\tParity:\t\t%s\n",       str_par);
+  output->concatf("\tFlow CTRL:\t%s\n\n",    str_flw);
+
+  if (initialized()) {
+    if (rxCapable()) {
+      output->concatf("\tRX: (%u bytes waiting)\n\t------------------------\n", pendingRxBytes());
+      output->concatf("\tRing len:\t%u\n", _BUF_LEN_RX);
+      output->concatf("\tLast RX: \t%u ms\n", last_byte_rx_time);
+      output->concatf("\tTimeout: \t%u ms\n\n", rxTimeout());
+    }
+    if (txCapable()) {
+      output->concatf("\tTX: (%u bytes waiting)\n\t------------------------\n", pendingTxBytes());
+      output->concatf("\tRing len:\t%u\n", _BUF_LEN_TX);
+      output->concatf("\tFlushed: \t%c\n", (flushed()?'y':'n'));
+    }
+  }
 }

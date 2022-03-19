@@ -90,9 +90,10 @@ template <typename T> class SensorFilter : public SensorFilterBase {
     void printFilter(StringBuilder*);
 
     /* Value accessor inlines */
+    inline T*       memPtr() {        return samples;         };
     inline T        minValue() {      if (_stale_minmax) _calculate_minmax(); return min_value; };
     inline T        maxValue() {      if (_stale_minmax) _calculate_minmax(); return max_value; };
-    inline T*       memPtr() {        return samples;         };
+    inline T        median() {        return _calculate_median();                               };
     inline double   mean() {          return (_stale_mean   ? _calculate_mean()   : _mean);  };
     inline double   rms() {           return (_stale_rms    ? _calculate_rms()    : _rms  ); };
     inline double   stdev() {         return (_stale_stdev  ? _calculate_stdev()  : _stdev); };
@@ -494,7 +495,7 @@ template <typename T> T SensorFilter<T>::_calculate_median() {
   }
 
   if (_window_size & 0x01) {
-    // If there are an off number of samples...
+    // If there are an odd number of samples...
     ret = sorted[(_window_size-1) >> 1];
   }
   else {
