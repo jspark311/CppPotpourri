@@ -79,12 +79,10 @@ class SPIBusOp : public BusOp {
 
     /**
     * This will mark the bus operation complete with a given error code.
-    * Overriden for simplicity. Marks the operation with failure code NO_REASON.
     *
     * @return 0 on success. Non-zero on failure.
     */
-    inline int8_t abort() {    return abort(XferFault::NO_REASON); }
-    int8_t abort(XferFault);
+    int8_t abort(XferFault fault = XferFault::NO_REASON);
 
     int8_t  bitsPerFrame(SPIFrameSize);
     uint8_t bitsPerFrame();

@@ -212,9 +212,6 @@ int8_t SPIBusOp::_assert_cs(bool asrt) {
 */
 int8_t SPIBusOp::abort(XferFault cause) {
   set_fault(cause);
-  //StringBuilder debug_log;
-  //debug_log.concatf("SPI job aborted at state %s. Cause: %s.\n", getStateString(), getErrorString());
-  //Kernel::log(&debug_log);
   return markComplete();
 }
 
@@ -229,14 +226,12 @@ int8_t SPIBusOp::abort(XferFault cause) {
 * @return 0 on success. Non-zero on failure.
 */
 int8_t SPIBusOp::markComplete() {
-  if (csAsserted()) {
-    // If this job has bus control, we need to release the bus and tidy up IRQs.
+  //if (csAsserted()) {
+    // If this job has bus control, we need to release the bus.
     _assert_cs(false);
-  }
-
+  //}
   //time_ended = micros();
-  set_state(XferState::COMPLETE);
-  //step_queues();
+  set_state(hasFault() ? XferState::COMPLETE : XferState::FAULT);
   return 0;
 }
 

@@ -132,6 +132,14 @@ int8_t SPIAdapter::queue_io_job(BusOp* _op, int priority) {
 int8_t SPIAdapter::advance_work_queue() {
   int8_t return_value = 0;
 
+  if (nullptr == current_job) {
+    current_job = work_queue.dequeue();
+    // Begin the bus operation.
+    if (current_job) {
+      return_value++;
+    }
+  }
+
   if (current_job) {
     switch (current_job->get_state()) {
       case XferState::TX_WAIT:
@@ -142,50 +150,38 @@ int8_t SPIAdapter::advance_work_queue() {
         break;
 
       case XferState::COMPLETE:
+      case XferState::FAULT:
         callback_queue.insert(current_job);
         current_job = nullptr;
-        // TODO: Raise an event for service_callback_queue() if polling becomes burdensome.
         break;
 
-      case XferState::QUEUED:
       case XferState::IDLE:
+        current_job->set_state(XferState::QUEUED);
+      case XferState::QUEUED:
         switch (current_job->begin()) {
           case XferFault::NONE:     // Nominal outcome. Transfer started with no problens...
             break;
           case XferFault::BUS_BUSY:    // Bus appears to be in-use. State did not change.
             // Re-throw queue_ready event and try again later.
-            current_job->set_state(XferState::IDLE);
+            current_job->set_state(XferState::QUEUED);
             break;
           default:    // Began the transfer, and it barffed... was aborted.
             if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "SPI%u:\t Failed to begin transfer after starting. %s\n", ADAPTER_NUM, BusOp::getErrorString(current_job->getFault()));
             callback_queue.insert(current_job);
             current_job = nullptr;
-            // TODO: Raise an event for service_callback_queue() if polling becomes burdensome.
             break;
         }
         break;
 
       /* Cases below ought to be handled by ISR flow... */
       case XferState::INITIATE:
+        break;
       case XferState::ADDR:
+        break;
       case XferState::STOP:
       default:
         if (getVerbosity() >= LOG_LEV_INFO) c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "SPI%u: BusOp state at poll(): %s", ADAPTER_NUM, BusOp::getStateString(current_job->get_state()));
         break;
-    }
-  }
-
-  if (nullptr == current_job) {
-    current_job = work_queue.dequeue();
-    // Begin the bus operation.
-    if (current_job) {
-      current_job->set_state(XferState::IDLE);
-      XferFault f = current_job->begin();
-      if (XferFault::NONE != f) {
-        if (getVerbosity() >= LOG_LEV_WARN) c3p_log(LOG_LEV_WARN, __PRETTY_FUNCTION__, "SPI%u\t tried to clobber an existing transfer on the pick-up. %s", ADAPTER_NUM, BusOp::getErrorString(f));
-        // TODO: Raise an event for advance_work_queue() if polling becomes burdensome.
-      }
-      return_value++;
     }
   }
 
