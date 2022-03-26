@@ -22,12 +22,12 @@ limitations under the License.
 #include <stdint.h>
 #include "AbstractPlatform.h"
 
-
 #ifndef __STOP_WATCH_H__
   #define __STOP_WATCH_H__
 
   class StringBuilder;
 
+  /* A class to benchmark periodic events. */
   class StopWatch {
     public:
       StopWatch(uint32_t tag = 0);   // Constructor. Assigns tag value. Calls reset().
@@ -58,5 +58,28 @@ limitations under the License.
       uint32_t _run_time_total;
       uint32_t _executions;
   };
+
+
+
+  /* A class to rate-limit periodic events. */
+  class PeriodicTimeout {
+    public:
+      PeriodicTimeout(uint32_t p = 0) : _period(p), _mark(0) {};
+      ~PeriodicTimeout() {};      // Featureless destructor.
+
+      inline void     reset() {             _mark = millis();               };
+      inline void     reset(uint32_t p) {   _mark = millis(); _period = p;  };
+      inline void     period(uint32_t p) {  _period = p;     };
+      inline uint32_t period() {            return _period;  };
+      inline bool     expired() {
+        return ((0 != _period) && (_period <= wrap_accounted_delta(_mark, millis())));
+      };
+
+
+    private:
+      uint32_t _period;
+      uint32_t _mark;
+  };
+
 
 #endif // __STOP_WATCH_H__
