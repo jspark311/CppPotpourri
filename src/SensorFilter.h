@@ -53,6 +53,16 @@ class SensorFilterBase {
     inline bool initialized() {      return _filter_initd;                      };
     inline FilteringStrategy strategy() {   return _strat;    };
 
+    /**
+    * Marks all appropriate flags for marking the derived data as stale.
+    */
+    inline void invalidateStats() {
+      _stale_minmax = true;
+      _stale_mean   = true;
+      _stale_rms    = true;
+      _stale_stdev  = true;
+    };
+
 
   protected:
     uint32_t _sample_idx     = 0;
@@ -84,7 +94,6 @@ template <typename T> class SensorFilter : public SensorFilterBase {
     int8_t feedFilter();
     int8_t init();
     T      value();
-    void   invalidateStats();
 
     int8_t setStrategy(FilteringStrategy);
     void printFilter(StringBuilder*);
@@ -132,18 +141,22 @@ template <typename T> class SensorFilter3 : public SensorFilterBase {
 
     int8_t feedFilter(Vector3<T>*);
     int8_t feedFilter(T x, T y, T z);  // Alternate API for discrete values.
+    int8_t feedFilter();
     int8_t init();
     Vector3<T>* value();
-    Vector3<T>* minValue();
-    Vector3<T>* maxValue();
+
+    /* Value accessor inlines */
+    inline Vector3<T>* memPtr() {     return samples;         };
+    inline Vector3<T>* minValue() {   if (_stale_minmax) _calculate_minmax(); return &min_value; };
+    inline Vector3<T>* maxValue() {   if (_stale_minmax) _calculate_minmax(); return &max_value; };
+    inline Vector3f64* mean() {       if (_stale_mean)   _calculate_mean();   return &_mean;     };
+    inline Vector3f64* rms() {        if (_stale_rms)    _calculate_rms();    return &_rms;      };  
+    inline Vector3f64* stdev() {      if (_stale_stdev)  _calculate_stdev();  return &_stdev;    };
+    //inline Vector3f64* snr() {        return (mean() / stdev());                               };
+    inline uint32_t    memUsed() {    return (windowSize() * sizeof(Vector3<T>));  };
 
     int8_t setStrategy(FilteringStrategy);
     void printFilter(StringBuilder*);
-
-    inline Vector3<T>* memPtr() {        return samples;         };
-    inline Vector3f64* rms() {           return &_rms;           };
-    inline Vector3f64* stdev() {         return &_stdev;         };
-    inline uint32_t    memUsed() {       return (windowSize() * sizeof(T));  };
 
 
   private:
@@ -151,12 +164,14 @@ template <typename T> class SensorFilter3 : public SensorFilterBase {
     Vector3<T>  last_value;
     Vector3<T>  min_value;
     Vector3<T>  max_value;
-    Vector3<double>  _mean;
-    Vector3<double>  _rms;
-    Vector3<double>  _stdev;
+    Vector3f64  _mean;
+    Vector3f64  _rms;
+    Vector3f64  _stdev;
+    //Vector3<double>  _snr;
 
     int8_t  _reallocate_sample_window(uint);
     int8_t  _zero_samples();
+    int8_t  _calculate_minmax();
     int8_t  _calculate_mean();
     int8_t  _calculate_rms();
     int8_t  _calculate_stdev();
@@ -382,17 +397,6 @@ template <typename T> T SensorFilter<T>::value() {
 
 
 /**
-* Marks all appropriate flags for marking the derived data as stale.
-*/
-template <typename T> void SensorFilter<T>::invalidateStats() {
-  _stale_minmax = true;
-  _stale_mean   = true;
-  _stale_rms    = true;
-  _stale_stdev  = true;
-}
-
-
-/**
 * Calulates the min/max over the entire sample window.
 * Updates the private cache variable.
 */
@@ -533,6 +537,24 @@ template <typename T> int8_t SensorFilter3<T>::init() {
   return ret;
 }
 
+
+/*
+* Mark the filter as having been filled and ready to process. Useful for when
+*   the filter data is populated from the outside via pointer.
+*/
+template <typename T> int8_t SensorFilter3<T>::feedFilter() {
+  int8_t ret = -1;
+  if (initialized()) {
+    _window_full = true;
+    _sample_idx = 0;
+    invalidateStats();
+    ret = 0;
+  }
+  return ret;
+}
+
+
+
 /*
 * Reallocates the sample memory, freeing the prior allocation if necessary.
 * Returns 0 on success, -1 otherwise.
@@ -595,18 +617,22 @@ template <typename T> int8_t SensorFilter3<T>::setStrategy(FilteringStrategy s) 
 
 
 template <typename T> void SensorFilter3<T>::printFilter(StringBuilder* output) {
-  const char* lv_label;
   output->concatf(FILTER_HEADER_STRING, getFilterStr(strategy()));
   output->concatf("\tInitialized:  %c\n",   initialized() ? 'y':'n');
   output->concatf("\tDirty:        %c\n",   _filter_dirty ? 'y':'n');
   output->concatf("\tWindow full:  %c\n",   _window_full  ? 'y':'n');
-  output->concatf("\tMin             = %.8f\n", min_value);
-  output->concatf("\tMax             = %.8f\n", max_value);
+
+  if (_stale_minmax) _calculate_minmax();
+  if (_stale_mean)   _calculate_mean();
+  if (_stale_rms)    _calculate_rms();
+  if (_stale_stdev)  _calculate_stdev();
+
+  output->concatf("\tMin             = (%.4f, %.4f, %.4f)\n", min_value.x, min_value.y, min_value.z);
+  output->concatf("\tMax             = (%.4f, %.4f, %.4f)\n", max_value.x, max_value.y, max_value.z);
   output->concatf("\tSample window   = %u\n",   _window_size);
+  const char* lv_label;
   switch (_strat) {
     case FilteringStrategy::MOVING_AVG:
-      output->concatf("\tRMS             = (%.4f, %.4f, %.4f)\n", _rms.x, _rms.y, _rms.z);
-      output->concatf("\tSTDEV           = (%.4f, %.4f, %.4f)\n", _stdev.x, _stdev.y, _stdev.z);
       lv_label = "Arithmetic mean";
       break;
     case FilteringStrategy::MOVING_MED:
@@ -626,6 +652,9 @@ template <typename T> void SensorFilter3<T>::printFilter(StringBuilder* output) 
       break;
   }
   output->concatf("\t%15s = (%.4f, %.4f, %.4f)\n", lv_label, (double) last_value.x, (double) last_value.y, (double) last_value.z);
+  output->concatf("\tRMS             = (%.4f, %.4f, %.4f)\n", _rms.x, _rms.y, _rms.z);
+  output->concatf("\tSTDEV           = (%.4f, %.4f, %.4f)\n", _stdev.x, _stdev.y, _stdev.z);
+  //output->concatf("\tSNR             = %.8f\n", snr());
 }
 
 
@@ -655,8 +684,8 @@ template <typename T> int8_t SensorFilter3<T>::feedFilter(T x, T y, T z) {
       if (_sample_idx >= _window_size) {
         _window_full = true;
         _sample_idx = 0;
-        ret = 1;
       }
+      ret = (_window_full ? 1 : 0);
       switch (_strat) {
         case FilteringStrategy::HARMONIC_MEAN:   // TODO: This.
         case FilteringStrategy::GEOMETRIC_MEAN:  // TODO: This.
@@ -673,10 +702,6 @@ template <typename T> int8_t SensorFilter3<T>::feedFilter(T x, T y, T z) {
             temp_avg += input_vect;
             temp_avg /= (double) _window_size;
             last_value((T) temp_avg.x, (T) temp_avg.y, (T) temp_avg.z);
-            if (_window_full) {
-              _calculate_rms();    // These are expensive, and are calculated once per-window.
-              _calculate_stdev();  // These are expensive, and are calculated once per-window.
-            }
           }
           break;
         case FilteringStrategy::MOVING_MED:   // Calculate the moving median...
@@ -691,7 +716,14 @@ template <typename T> int8_t SensorFilter3<T>::feedFilter(T x, T y, T z) {
       last_value(x, y, z);
       ret = 1;
     }
-    _filter_dirty = (1 == ret);
+
+    if (1 == ret) {
+      _filter_dirty = true;
+      // Calculating the stats is an expensive process, and most of the
+      //   time, there will be no demand for the result. So we mark our
+      //   flags to recalculate fresh in the accessor's stack frame.
+      invalidateStats();
+    }
   }
   return ret;
 }
@@ -710,51 +742,40 @@ template <typename T> Vector3<T>* SensorFilter3<T>::value() {
 
 
 /**
-* Returns the vector with the smallest magnitude in the current dataset.
-*
-* @return The minimum value from the data we currently have.
+* Calulates the min/max vector (by magnitude) over the entire sample window.
+* Updates the private cache variable.
 */
-template <typename T> Vector3<T>* SensorFilter3<T>::minValue() {
-  T ret = last_value.length();
-  uint ret_idx = _sample_idx;
-  for (uint i = 0; i < _window_size; i++) {
-    if (samples[i].length() < ret) {
-      ret = samples[i].length();
-      ret_idx = i;
+template <typename T> int8_t SensorFilter3<T>::_calculate_minmax() {
+  int8_t ret = -1;
+  if (_filter_initd && _window_full) {
+    Vector3<T> tmp_min(&samples[0]);   // Start with a baseline.
+    Vector3<T> tmp_max(&samples[0]);   // Start with a baseline.
+    for (uint i = 1; i < _window_size; i++) {
+      if (samples[i].length() > tmp_max.length()) tmp_max.set(&samples[i]);
+      else if (samples[i].length() < tmp_min.length()) tmp_min.set(&samples[i]);
     }
+    min_value.set(&tmp_min);
+    max_value.set(&tmp_max);
+    _stale_minmax = false;
+    ret = 0;
   }
-  return (_sample_idx == ret_idx) ? &last_value : &samples[ret_idx];
-};
+  return ret;
+}
 
 
 /**
-* Returns the vector with the largest magnitude in the current dataset.
+* Calulates the statistical mean over the entire sample window.
+* Updates the private cache variable.
 *
-* @return The maximum value from the data we currently have.
-*/
-template <typename T> Vector3<T>* SensorFilter3<T>::maxValue() {
-  T ret = last_value.length();
-  uint ret_idx = _sample_idx;
-  for (uint i = 0; i < _window_size; i++) {
-    if (samples[i].length() > ret) {
-      ret = samples[i].length();
-      ret_idx = i;
-    }
-  }
-  return (_sample_idx == ret_idx) ? &last_value : &samples[ret_idx];
-};
-
-
-
-/*
-* Calulates the RMS over the entire sample window.
+* @return 0 on success, -1 on failure
 */
 template <typename T> int8_t SensorFilter3<T>::_calculate_mean() {
   int8_t ret = -1;
-  if (windowSize() > 0) {
-    Vector3<T> summed_samples(T(0), T(0), T(0));
+  if (_filter_initd && _window_full) {
+    Vector3f64 summed_samples;
     for (uint i = 0; i < _window_size; i++) {
-      summed_samples += samples[i];
+      Vector3f64 tmp((double) samples[i].x, (double) samples[i].y, (double) samples[i].z);
+      summed_samples += tmp;
     }
     summed_samples /= _window_size;
     _mean(
@@ -762,64 +783,71 @@ template <typename T> int8_t SensorFilter3<T>::_calculate_mean() {
       summed_samples.y,
       summed_samples.z
     );
+    _stale_mean  = false;
     ret = 0;
   }
   return ret;
 }
 
 
-/*
+/**
 * Calulates the RMS over the entire sample window.
+* Updates the private cache variable.
+*
+* @return 0 on success, -1 on failure
 */
 template <typename T> int8_t SensorFilter3<T>::_calculate_rms() {
   int8_t ret = -1;
   if (windowSize() > 0) {
-    Vector3<double> squared_samples(0.0, 0.0, 0.0);
+    Vector3f64 squared_samples;
     for (uint i = 0; i < _window_size; i++) {
+      Vector3f64 tmp((double) samples[i].x, (double) samples[i].y, (double) samples[i].z);
       squared_samples(
-        squared_samples.x + (samples[i].x * samples[i].x),
-        squared_samples.y + (samples[i].y * samples[i].y),
-        squared_samples.z + (samples[i].z * samples[i].z)
+        squared_samples.x + (tmp.x * tmp.x),
+        squared_samples.y + (tmp.y * tmp.y),
+        squared_samples.z + (tmp.z * tmp.z)
       );
     }
-    squared_samples = (squared_samples / _window_size);
+    squared_samples /= _window_size;
     _rms(
       sqrt(squared_samples.x),
       sqrt(squared_samples.y),
       sqrt(squared_samples.z)
     );
+    _stale_rms = false;
     ret = 0;
   }
   return ret;
 }
 
 
-/*
+/**
 * Calulates the standard deviation of the samples.
+* Updates the private cache variable.
+*
+* @return 0 on success, -1 on failure
 */
 template <typename T> int8_t SensorFilter3<T>::_calculate_stdev() {
   int8_t ret = -1;
   if ((_window_size > 1) && (nullptr != samples)) {
-    Vector3<double> deviation_sum(0.0, 0.0, 0.0);
-    _calculate_mean();
+    Vector3f64 deviation_sum;
+    if (_stale_mean) _calculate_mean();
     for (uint i = 0; i < _window_size; i++) {
-      Vector3<double> temp{
-        samples[i].x - _mean.x,
-        samples[i].y - _mean.y,
-        samples[i].z - _mean.z
-      };
+      Vector3f64 temp{(double) samples[i].x, (double) samples[i].y, (double) samples[i].z};
+      temp -= _mean;
       deviation_sum.set(
         deviation_sum.x + (temp.x * temp.x),
         deviation_sum.y + (temp.y * temp.y),
         deviation_sum.z + (temp.z * temp.z)
       );
     }
-    deviation_sum = (deviation_sum / _window_size);
+    deviation_sum /= _window_size;
     _stdev(
       sqrt(deviation_sum.x),
       sqrt(deviation_sum.y),
       sqrt(deviation_sum.z)
     );
+    _stale_stdev = false;
     ret = 0;
   }
   return ret;

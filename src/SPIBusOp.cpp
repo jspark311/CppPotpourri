@@ -231,7 +231,7 @@ int8_t SPIBusOp::markComplete() {
     _assert_cs(false);
   //}
   //time_ended = micros();
-  set_state(hasFault() ? XferState::COMPLETE : XferState::FAULT);
+  set_state(!hasFault() ? XferState::COMPLETE : XferState::FAULT);
   return 0;
 }
 

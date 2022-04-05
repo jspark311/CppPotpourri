@@ -259,43 +259,59 @@ int8_t TripleAxisSingleFilter::getDataWithErr(Vector3f* d, Vector3f* e) {
 *   this instance's state and calls callback, if defined. Marks the data
 *   as fresh if the callback is either absent, or returns nonzero.
 *
-* @return 0 on refresh, or -1 on sense mis-match.
+* @return 0 on refresh, or -1 on sense mis-match, -3 on uninitialized.
 */
 int8_t TripleAxisSingleFilter::pushVector(SpatialSense s, Vector3f* data, Vector3f* error) {
-  int8_t ret = -1;
-  if (nullptr != _NXT) {
+  int8_t ret = -3;
+
+  if (!initialized()) {
+    init();  // Init memory on first-use. See class notes.
+  }
+  if (initialized()) {
+    ret = -1;
     if (_SENSE == s) {
-      ret = -3;
-      if (!initialized()) {
-        init();  // Init memory on first-use. See class notes.
-      }
-      if (initialized()) {
-        ret = 0;
-        switch (feedFilter(data)) {
-          case 0:    // Value accepted into filter. No new result.
-            break;
-          case 1:    // Value accepted into filter. New result ready.
-            if (nullptr != error) {
-              switch (strategy()) {
-                case FilteringStrategy::RAW:
-                  _ERR.set(error);
-                  _has_error = true;
-                  break;
-                default:
-                  // TODO: How to account for the other cases? Do something obviously wrong for now.
-                  _ERR.set(error);   // Wrong.
-                  _has_error = true; // Wrong.
-                  break;
-              }
+      Vector3f tmp_err(error);
+      ret = 0;
+      switch (feedFilter(data)) {
+        case 0:    // Value accepted into filter. No new result.
+          break;
+        case 1:    // Value accepted into filter. New result ready.
+          if (nullptr != error) {
+            _has_error = true;
+            switch (strategy()) {
+              case FilteringStrategy::RAW:
+                _ERR.set(&tmp_err);
+                break;
+              case FilteringStrategy::MOVING_AVG:
+              case FilteringStrategy::HARMONIC_MEAN:    // TODO: Still epistemologically correct?
+              case FilteringStrategy::GEOMETRIC_MEAN:   // TODO: Still epistemologically correct?
+                // Arithmetic mean applies the inverse square of the variance to the given error figure.
+                // TODO: Assumes error is constant between samples. If it isn't,
+                //   the true error figure of the data will converge to the value
+                //   reported to the filter. If the error figure changes from
+                //   upstream, it might be best to clear the filter, rather than
+                //   allow epistemologically unsound data to pass.
+                // NOTE: Assumes error represents an even distribution with no
+                //   correlation between samples. I believe that this would make
+                //   the reported error figure more conservative than may be
+                //   warranted from a given source.
+                tmp_err /= (float) (windowSize() * windowSize());
+                _ERR.set(&tmp_err);
+                break;
+              default:    // TODO: How to account for the other cases? Do something obviously wrong for now.
+                _ERR.set(error);   // Wrong.
+                break;
             }
-            if (0 == _NXT->pushVector(s, value(), &_ERR)) {
-              ret = -5;
-            }
-            break;
-          default:   // Catch-all error case. Should never happen with the earlier init().
-            ret = -4;
-            break;
-        }
+          }
+          if (nullptr != _NXT) {
+            // If the vector was pushed downstream, we consider it noted. If it
+            //   was rejected, we leave the class marked dirty.
+            _filter_dirty = (0 > _NXT->pushVector(s, value(), &_ERR));
+          }
+          break;
+        default:   // Catch-all error case. Should never happen with the earlier init().
+          ret = -4;
+          break;
       }
     }
     else {
