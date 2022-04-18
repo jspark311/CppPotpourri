@@ -34,6 +34,8 @@ class SPIAdapter;
 #define SPI_FLAG_CPOL         0x0020    // Bus configuration details.
 #define SPI_FLAG_CPHA         0x0040    // Bus configuration details.
 #define SPI_FLAG_MASTER       0x0080    // Bus configuration details.
+#define SPI_BUS_FLAG_PF_ADVANCE_OPS 0x4000    // Optionally set by the platform.
+#define SPI_BUS_FLAG_PF_BEGIN_ASAP  0x8000    // Optionally set by the platform.
 
 /*
 * These flags are hosted by the member in the BusOp class.
@@ -185,6 +187,9 @@ class SPIAdapter : public BusAdapter<SPIBusOp> {
     /* Overrides from the BusAdapter interface */
     int8_t bus_init();
     int8_t bus_deinit();
+
+    inline bool _pf_needs_op_advance() {        return _adapter_flag(SPI_BUS_FLAG_PF_ADVANCE_OPS);  };
+    inline void _pf_needs_op_advance(bool x) {  _adapter_set_flag(SPI_BUS_FLAG_PF_ADVANCE_OPS, x);  };
 };
 
 #endif  // __SPI_QUEUE_TEMPLATE_H__

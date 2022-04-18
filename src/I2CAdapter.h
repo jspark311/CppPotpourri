@@ -62,8 +62,8 @@ class I2CAdapter;
   * These state flags are hosted by the superclass. This may change in the future.
   * Might be too much convention surrounding their assignment across inherritence.
   */
-  #define I2C_BUS_FLAG_BUS_ERROR      0x0001    // While this is true, don't interact with the RN.
-  #define I2C_BUS_FLAG_BUS_ONLINE     0x0002    // Set when the module is verified to be in command mode.
+  #define I2C_BUS_FLAG_BUS_ERROR      0x0001    // The adapter has an unrecoverable fault.
+  #define I2C_BUS_FLAG_BUS_ONLINE     0x0002    // The adapter is online.
   #define I2C_BUS_FLAG_PING_RUN       0x0004    // Have we run a full bus discovery?
   #define I2C_BUS_FLAG_PINGING        0x0008    // Are we running a full ping?
   #define I2C_BUS_FLAG_PF_ADVANCE_OPS 0x0010    // Optionally set by the platform.

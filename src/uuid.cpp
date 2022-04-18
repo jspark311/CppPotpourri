@@ -91,22 +91,24 @@ void uuid_from_str(const char *str, UUID *uuid) {
 }
 
 
-void uuid_to_str(const UUID* uuid, char *buffer, int buflen) {
+void uuid_to_str(const UUID* uuid, char* buffer, int buflen) {
   if (buflen < 37) return;
   int j = 0;
   for (int i = 0; i < 16; i++) {
-    switch(i) {
+    switch (i) {
       case 4:
       case 6:
       case 8:
       case 10:
-        snprintf(&buffer[j], 2, "-");
-        j++;
+        *(buffer + j++) = '-';
         break;
     }
-    snprintf(&buffer[j], 3, "%02x", uuid->id[i]);
-    j += 2;
+    const uint8_t HI_NIB = ((uuid->id[i] >> 4) & 0x0F);
+    const uint8_t LO_NIB = (uuid->id[i] & 0x0F);
+    *(buffer + j++) = HI_NIB + ((HI_NIB < 10) ? 48 : 87);
+    *(buffer + j++) = LO_NIB + ((LO_NIB < 10) ? 48 : 87);
   }
+  *(buffer + j) = '\0';
 }
 
 

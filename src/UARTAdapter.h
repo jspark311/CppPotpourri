@@ -104,6 +104,11 @@ class UARTAdapter : public BufferAccepter {
     inline uint32_t rxTimeout() {   return bus_timeout_millis;    };
     inline uint32_t lastRXTime() {  return last_byte_rx_time;     };
 
+    inline const uint8_t txdPin() {   return _TXD_PIN;   };
+    inline const uint8_t rxdPin() {   return _RXD_PIN;   };
+    inline const uint8_t ctsPin() {   return _CTS_PIN;   };
+    inline const uint8_t rtsPin() {   return _RTS_PIN;   };
+
 
   protected:
     const uint16_t  _BUF_LEN_TX;

@@ -78,6 +78,13 @@ void UARTAdapter::printDebug(StringBuilder* output) {
     case UARTStopBit::STOP_2:       str_stp = (char*) "2";        break;
     default: break;
   }
+
+  output->concat("\tPins:\n\t------------------------\n");
+  if (255 != _TXD_PIN) output->concatf("\tTXD:  %d (%s)\n", _TXD_PIN, (readPin(_TXD_PIN) ? "high" : "low"));
+  if (255 != _RXD_PIN) output->concatf("\tRXD:  %d (%s)\n", _RXD_PIN, (readPin(_RXD_PIN) ? "high" : "low"));
+  if (255 != _CTS_PIN) output->concatf("\tCTS:  %d (%s)\n", _CTS_PIN, (readPin(_CTS_PIN) ? "high" : "low"));
+  if (255 != _RTS_PIN) output->concatf("\tRTS:  %d (%s)\n", _RTS_PIN, (readPin(_RTS_PIN) ? "high" : "low"));   
+
   output->concat("\tOpts:\n\t------------------------\n");
   output->concatf("\tChar size:\t%u bits\n", _opts.bit_per_word);
   output->concatf("\tStart bits:\t%u\n",     _opts.start_bits);

@@ -144,6 +144,10 @@ int8_t SPIAdapter::advance_work_queue() {
     switch (current_job->get_state()) {
       case XferState::TX_WAIT:
       case XferState::RX_WAIT:
+        if (_pf_needs_op_advance()) {
+          // Platforms that need explicit advancement of BusOps should do so.
+          current_job->advance_operation(0, 0);
+        }
         if (current_job->hasFault()) {
           if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "SPI%u\t Failed at IO_WAIT.\n", ADAPTER_NUM);
         }
