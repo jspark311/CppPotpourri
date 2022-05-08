@@ -13,7 +13,7 @@ class ParsingConsole;
 #define __ABSTRACT_PLATFORM_TEMPLATE_H__
 
 #if defined(__HAS_CRYPT_WRAPPER)
-  #include <CryptoBurrito.h>
+  #include "CryptoBurrito/CryptoBurrito.h"
 #endif
 
 /**

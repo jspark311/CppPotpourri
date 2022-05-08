@@ -51,3 +51,17 @@ The Logger abstraction strategy is running on ESP-IDF (platform wrapper case).
   The design values above were taken as canon. It looks like it will work for
   all cases. Time will tell. Considering this task complete.
                                          `---J. Ian Lindsay 2022.02.13 02:58:37`
+---------------
+
+I am moving CryptoBurrito into C3P. Keeping it as a separate repository is too
+  much of a headache for basically zero benefit, considering it is API-dependent
+  on C3P, and all of the hardware and platform abstraction has since been
+  handled in a more general manner.
+
+The high-level abstraction is still nascent, and shouldn't be used yet. Even
+  though the last version of mbedTLS it was tested against is ancient, at least
+  it compiles. I'm committing it now and bumping the MINOR version of C3P.
+
+Going forward, hardware cryptographic drivers should reside in either
+  ManuvrDrivers, or ManuvrPlatform, as appropriate.
+                                         `---J. Ian Lindsay 2022.05.08 00:51:49`

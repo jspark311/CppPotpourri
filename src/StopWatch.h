@@ -72,7 +72,7 @@ limitations under the License.
       inline void     period(uint32_t p) {  _period = p;     };
       inline uint32_t period() {            return _period;  };
       inline bool     expired() {
-        return ((0 != _period) && (_period <= wrap_accounted_delta(_mark, millis())));
+        return ((0 != _period) && (_period <= wrap_accounted_delta(_mark, (uint32_t) millis())));
       };
 
 
