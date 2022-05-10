@@ -19,7 +19,7 @@ limitations under the License.
 */
 
 #include "TripleAxisPipe.h"
-#include "AbstractPlatform.h"
+#include "../AbstractPlatform.h"
 
 
 /*******************************************************************************

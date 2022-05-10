@@ -1,15 +1,7 @@
-#include "CppPotpourri.h"
+#include "../CppPotpourri.h"
+#include "../Vector3.h"
 #include "TripleAxisCompass.h"
-#include "Vector3.h"
 #include "TripleAxisPipe.h"
-
-#if defined (ARDUINO)
-  #include <Arduino.h>
-#else
-  // The platform needs to supply this function.
-  extern uint32_t millis();
-#endif
-
 
 /*******************************************************************************
 *      _______.___________.    ___   .___________. __    ______     _______.

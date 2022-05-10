@@ -285,7 +285,7 @@ enum class Cipher {
   #if defined(WRAPPED_SYM_NONE)
     SYM_NONE                =  WRAPPED_SYM_NONE,
   #endif
-  NONE                    =  WRAPPED_NONE
+  NONE = WRAPPED_NONE
 };
 
 // If we have Cipher support at all, we need these...

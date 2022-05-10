@@ -251,7 +251,7 @@ typedef struct __platform_thread_opts {
 class AbstractPlatform {
   public:
     #if defined(__HAS_CRYPT_WRAPPER)
-    BurritoPlate crypto;
+      BurritoPlate crypto;
     #endif
 
     /* Accessors for platform capability discovery. */
