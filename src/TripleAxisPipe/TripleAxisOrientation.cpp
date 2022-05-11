@@ -1,7 +1,12 @@
 #include "../CppPotpourri.h"
 #include "../Vector3.h"
-#include "TripleAxisOrientation.h"
+#include "../AbstractPlatform.h"
 #include "TripleAxisPipe.h"
+
+
+#define TRIPAX_ORIENT_FLAG_PENDING_ZERO         0x00000001  // Pending re-zero from upstream.
+#define TRIPAX_ORIENT_FLAG_VALUE_DIRTY          0x00000002  // Unread data is available.
+
 
 /*******************************************************************************
 * Overrides from TripleAxisPipe
@@ -17,27 +22,44 @@
 */
 int8_t TripleAxisOrientation::pushVector(SpatialSense s, Vector3f* data, Vector3f* error) {
   uint32_t tmp_millis = millis();
-  bool compass_updated = false;
+  int8_t ret = 0;
   switch (s) {
     case SpatialSense::ACC:        // A gravity vector.
       {
         if (nullptr != error) {
           _ERR_ACC.set(error);
         }
-        Vector3<float> plane_xz(0.0, 1.0, 0.0);  // Sagittal plane.
-        Vector3<float> plane_yz(1.0, 0.0, 0.0);  // Coronal plane.
-        Vector3<float> proj_up_xz   = _up.projected(&plane_xz);    // Project the up vector onto sagittal plane.
-        Vector3<float> proj_up_yz   = _up.projected(&plane_yz);    // Project the up vector onto coronal plane.
-        Vector3<float> proj_vect_xz = data->projected(&plane_xz);  // Project the vector onto sagittal plane.
-        Vector3<float> proj_vect_yz = data->projected(&plane_yz);  // Project the vector onto coronal plane.
+        if (_flags.value(TRIPAX_ORIENT_FLAG_PENDING_ZERO)) {
+          _up.set(data);
+          _flags.clear(TRIPAX_ORIENT_FLAG_PENDING_ZERO);
+        }
+        Vector3f plane_xz(0.0, 1.0, 0.0);  // Sagittal plane.
+        Vector3f plane_yz(1.0, 0.0, 0.0);  // Coronal plane.
+        Vector3f proj_up_xz   = _up - _up.projected(plane_xz);      // Project the up vector onto sagittal plane.
+        Vector3f proj_up_yz   = _up - _up.projected(plane_yz);      // Project the up vector onto coronal plane.
+        Vector3f proj_vect_xz = *data - data->projected(plane_xz);  // Project the vector onto sagittal plane.
+        Vector3f proj_vect_yz = *data - data->projected(plane_yz);  // Project the vector onto coronal plane.
         _gravity.set(
-          Vector3<float>::angle(proj_up_xz, proj_vect_xz),
-          Vector3<float>::angle(proj_up_yz, proj_vect_yz),
+          //Vector3<float>::angle(proj_up_yz, proj_vect_yz),  // Roll
+          //Vector3<float>::angle(proj_up_xz, proj_vect_xz),  // Pitch
+          atanf((proj_up_yz % proj_vect_yz).length() / (proj_up_yz * proj_vect_yz)),  // Roll
+          atanf((proj_up_xz % proj_vect_xz).length() / (proj_up_xz * proj_vect_xz)),  // Pitch
+          Vector3<float>::angle(proj_up_yz, proj_vect_yz),  // Roll
+          Vector3<float>::angle(proj_up_xz, proj_vect_xz),  // Pitch
           0   // Unless we have a magnetometer or bearing, we can't track yaw.
         );
         _data_period = wrap_accounted_delta(tmp_millis, _last_update);
         _last_update = tmp_millis;
         _update_count++;
+        if (nullptr != _NXT) {
+          // If the vector was pushed downstream, we consider it noted. If it
+          //   was rejected, we leave the class marked dirty.
+          //_filter_dirty = (0 > _NXT->pushVector(SpatialSense::EULER_ANG, &_gravity, &_ERR));
+          ret = _NXT->pushVector(SpatialSense::EULER_ANG, &_gravity, &_ERR_ACC);
+        }
+        if (!_flags.value(TRIPAX_ORIENT_FLAG_VALUE_DIRTY)) {
+          _flags.set(TRIPAX_ORIENT_FLAG_VALUE_DIRTY, (0 > ret));
+        }
       }
       break;
 
@@ -53,11 +75,15 @@ int8_t TripleAxisOrientation::pushVector(SpatialSense s, Vector3f* data, Vector3
     case SpatialSense::GYR:        // Ignored by this class.
     case SpatialSense::UNITLESS:   // wat.
     default:
-      return -1;
+      ret = -1;
   }
-  return 0;
+  return ret;
 }
 
+
+/*******************************************************************************
+* Functions to output things to the console
+*******************************************************************************/
 
 void TripleAxisOrientation::printPipe(StringBuilder* output, uint8_t stage, uint8_t verbosity) {
   StringBuilder indent;
@@ -76,10 +102,12 @@ void TripleAxisOrientation::printPipe(StringBuilder* output, uint8_t stage, uint
 
 
 /*******************************************************************************
-* Functions to output things to the console
-*******************************************************************************/
-
-
-/*******************************************************************************
 * Core class functions
 *******************************************************************************/
+
+void TripleAxisOrientation::markLevel() {  _flags.set(TRIPAX_ORIENT_FLAG_PENDING_ZERO);   };
+bool TripleAxisOrientation::dirty() {      _flags.value(TRIPAX_ORIENT_FLAG_VALUE_DIRTY);  };
+Vector3f* TripleAxisOrientation::value() {
+  _flags.clear(TRIPAX_ORIENT_FLAG_VALUE_DIRTY);
+  return &_gravity;
+};

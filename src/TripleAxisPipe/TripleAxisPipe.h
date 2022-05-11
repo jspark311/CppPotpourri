@@ -344,19 +344,26 @@ class TripleAxisSingleFilter : public TripleAxisPipe, public SensorFilter3<float
 class TripleAxisOrientation : public TripleAxisPipe {
   public:
     TripleAxisOrientation() : _NXT(nullptr) {};
-    TripleAxisOrientation(const TripleAxisPipe* nxt) : _NXT(nxt) {};
+    TripleAxisOrientation(TripleAxisPipe* nxt) : _NXT(nxt) {};
     ~TripleAxisOrientation() {};
 
     int8_t pushVector(SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
     void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
+
+    // Accessors for calibrating this 3AP node.
+    inline Vector3f* getUp() {         return &_up;         };
+    inline void setUp(Vector3f* v) {  _up.set(v);           };
+    void markLevel();
+    bool dirty();
+    Vector3f* value();
 
 
   private:
     TripleAxisPipe* _NXT = nullptr;
     uint32_t _update_count = 0;
     uint32_t _last_update  = 0;  // millis() when the field was last updated.
-    uint32_t _flags        = 0;
     uint32_t _data_period  = 0;  // How many ms between vector updates?
+    FlagContainer32 _flags;
 
     Vector3f _up;               // Which direction is "up" when the unit is level?
     Vector3f _gravity;          // Which direction is "up" at this moment?
@@ -365,15 +372,6 @@ class TripleAxisOrientation : public TripleAxisPipe {
     Vector3f _ERR_GYRO;         // Last recorded error from the GYRO.
 
     /* Flag manipulation inlines */
-    inline uint32_t _class_flags() {                return _flags;           };
-    inline bool _class_flag(uint32_t _flag) {       return (_flags & _flag); };
-    inline void _class_flip_flag(uint32_t _flag) {  _flags ^= _flag;         };
-    inline void _class_clear_flag(uint32_t _flag) { _flags &= ~_flag;        };
-    inline void _class_set_flag(uint32_t _flag) {   _flags |= _flag;         };
-    inline void _class_set_flag(uint32_t _flag, bool nu) {
-      if (nu) _flags |= _flag;
-      else    _flags &= ~_flag;
-    };
 };
 
 #endif // __TRIPLE_AXIS_PIPE_H__
