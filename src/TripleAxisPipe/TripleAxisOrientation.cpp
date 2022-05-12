@@ -39,13 +39,18 @@ int8_t TripleAxisOrientation::pushVector(SpatialSense s, Vector3f* data, Vector3
         Vector3f proj_up_yz   = _up - _up.projected(plane_yz);      // Project the up vector onto coronal plane.
         Vector3f proj_vect_xz = *data - data->projected(plane_xz);  // Project the vector onto sagittal plane.
         Vector3f proj_vect_yz = *data - data->projected(plane_yz);  // Project the vector onto coronal plane.
+        //proj_up_xz.normalize(PI);
+        //proj_up_yz.normalize(PI);
+        //proj_vect_xz.normalize(PI);
+        //proj_vect_yz.normalize(PI);
+
         _gravity.set(
           //Vector3<float>::angle(proj_up_yz, proj_vect_yz),  // Roll
           //Vector3<float>::angle(proj_up_xz, proj_vect_xz),  // Pitch
-          atanf((proj_up_yz % proj_vect_yz).length() / (proj_up_yz * proj_vect_yz)),  // Roll
-          atanf((proj_up_xz % proj_vect_xz).length() / (proj_up_xz * proj_vect_xz)),  // Pitch
-          Vector3<float>::angle(proj_up_yz, proj_vect_yz),  // Roll
-          Vector3<float>::angle(proj_up_xz, proj_vect_xz),  // Pitch
+          //atanf((proj_up_yz % proj_vect_yz).length() / (proj_up_yz * proj_vect_yz)),  // Roll
+          //atanf((proj_up_xz % proj_vect_xz).length() / (proj_up_xz * proj_vect_xz)),  // Pitch
+          atan2(proj_vect_yz.y, proj_vect_yz.z) - atan2(proj_up_yz.y, proj_up_yz.z),  // Roll
+          atan2(proj_vect_xz.x, proj_vect_xz.z) - atan2(proj_up_xz.x, proj_up_xz.z),  // Pitch
           0   // Unless we have a magnetometer or bearing, we can't track yaw.
         );
         _data_period = wrap_accounted_delta(tmp_millis, _last_update);

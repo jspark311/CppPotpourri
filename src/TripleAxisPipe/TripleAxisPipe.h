@@ -356,6 +356,8 @@ class TripleAxisOrientation : public TripleAxisPipe {
     void markLevel();
     bool dirty();
     Vector3f* value();
+    inline float pitch() {        return _gravity.x;        };
+    inline float roll() {         return _gravity.y;        };
 
 
   private:
