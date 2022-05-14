@@ -292,7 +292,7 @@ class BusOp {
 
     inline void set_fault(XferFault nu) {   _xfer_fault = nu;    };
 
-    /* These inlines are for convenience of extending classes. */
+    /* Flag accessor inlines */
     inline uint16_t _busop_flags() {                 return _extnd_flags;            };
     inline bool _busop_flag(uint16_t _flag) {        return (_extnd_flags & _flag);  };
     inline void _busop_clear_flag(uint16_t _flag) {  _extnd_flags &= ~_flag;         };

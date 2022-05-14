@@ -37,7 +37,7 @@ limitations under the License.
 /**
 * Debug and logging support.
 *
-* @return a const char* containing a human-readable representation of an opcode.
+* @return a const char* containing a human-readable representation of a state.
 */
 const char* BusOp::getStateString(XferState state) {
   switch (state) {
