@@ -77,17 +77,17 @@ const char* CryptOp::opcodeString(CryptOpcode code) {
 *
 * @return a const char* containing a human-readable representation of a fault code.
 */
-const char* CryptOp::errorString(XferFault code) {
+const char* CryptOp::errorString(CryptoFault code) {
   switch (code) {
-    case XferFault::NONE:            return "NONE";
-    case XferFault::NO_REASON:       return "NO_REASON";
-    case XferFault::UNHANDLED_ALGO:  return "UNHANDLED_ALGO";
-    case XferFault::BAD_PARAM:       return "BAD_PARAM";
-    case XferFault::ILLEGAL_STATE:   return "ILLEGAL_STATE";
-    case XferFault::TIMEOUT:         return "TIMEOUT";
-    case XferFault::HW_FAULT:        return "HW_FAULT";
-    case XferFault::RECALLED:        return "RECALLED";
-    case XferFault::QUEUE_FLUSH:     return "QUEUE_FLUSH";
+    case CryptoFault::NONE:            return "NONE";
+    case CryptoFault::NO_REASON:       return "NO_REASON";
+    case CryptoFault::UNHANDLED_ALGO:  return "UNHANDLED_ALGO";
+    case CryptoFault::BAD_PARAM:       return "BAD_PARAM";
+    case CryptoFault::ILLEGAL_STATE:   return "ILLEGAL_STATE";
+    case CryptoFault::TIMEOUT:         return "TIMEOUT";
+    case CryptoFault::HW_FAULT:        return "HW_FAULT";
+    case CryptoFault::RECALLED:        return "RECALLED";
+    case CryptoFault::QUEUE_FLUSH:     return "QUEUE_FLUSH";
     default:                         return "<UNDEF>";
   }
 }
@@ -98,7 +98,7 @@ const char* CryptOp::errorString(XferFault code) {
 *******************************************************************************/
 
 CryptOp::~CryptOp() {
-  if (freeBuffer() && (nullptr != _buf)) {
+  if (shouldFreeBuffer() && (nullptr != _buf)) {
     free(_buf);  // TODO: Use BurritoPlate's free().
     _buf      = nullptr;
     _buf_len  = 0;
@@ -112,14 +112,14 @@ CryptoFault CryptOp::advance() {
 
 
 void CryptOp::printOp(StringBuilder* output) {
-  output->concatf("\t---[ %s %p %s ]---\n", print_name, op, op->opcodeString());
-  output->concatf("\t xfer_state        %s\n", CryptOp::stateString(op->op->state()));
-  if (XferFault::NONE != op->getFault()) {
-    output->concatf("\t xfer_fault        %s\n", CryptOp::errorString(op->getFault()));
+  output->concatf("\t---[ CryptOp::%s %p ]---\n", CryptOp::opcodeString(_opcode));
+  output->concatf("\t job_state        %s\n", CryptOp::stateString(_op_state));
+  if (CryptoFault::NONE != _op_fault) {
+    output->concatf("\t job_fault        %s\n", CryptOp::errorString(_op_fault));
   }
-  if (op->bufferLen() > 0) {
-    output->concatf("\t buf *(%p): (%u bytes)\n", op->buffer(), op->bufferLen());
-    //StringBuilder::printBuffer(output, op->buffer(), op->bufferLen(), "\t ");
+  if (_buf_len > 0) {
+    output->concatf("\t buf *(%p): (%u bytes)\n", _buf, _buf_len);
+    //StringBuilder::printBuffer(output, _buf, _buf_len, "\t ");
   }
   _print(output);
 }
@@ -129,13 +129,13 @@ void CryptOp::wipe() {
   // NOTE: Does not change _flags.
   // Wipe the implementation first in case it depends on the base state.
   _wipe();
-  obj->_cb           = nullptr;
-  obj->_opcode       = CryptOpcode::UNDEF;
-  obj->_op_state     = CryptOpState::IDLE;
-  obj->_op_fault     = CryptoFault::NONE;
-  obj->_nxt_step     = nullptr;
-  obj->_buf          = nullptr;
-  obj->_buf_len      = 0;
+  _cb           = nullptr;
+  _opcode       = CryptOpcode::UNDEF;
+  _op_state     = CryptOpState::IDLE;
+  _op_fault     = CryptoFault::NONE;
+  _nxt_step     = nullptr;
+  _buf          = nullptr;
+  _buf_len      = 0;
 }
 
 
@@ -149,7 +149,7 @@ void CryptoProcessor::printDebug(StringBuilder* output) {
   prod_str.concat("initialized)\n");
   StringBuilder::styleHeader2(output, (const char*) prod_str.string());
 
-  output->concatf("-- Xfers (fail/total)  %u/%u\n", _failed_xfers, _total_xfers);
+  output->concatf("-- Xfers (fail/total)  %u/%u\n", _failed_jobs, _total_jobs);
   output->concat("-- Work queue:\n");
   output->concatf("\t\t depth/max        %u/%u\n", work_queue.size(), MAX_Q_DEPTH);
   output->concatf("\t\t frees            %u\n", _heap_frees);
@@ -158,16 +158,16 @@ void CryptoProcessor::printDebug(StringBuilder* output) {
 
 
 void CryptoProcessor::printQueues(StringBuilder* output, uint8_t max_print) {
-  if (current_job) {
+  if (_current_job) {
     output->concat("--\n- Current active job:\n");
-    current_job->printOp(output);
+    _current_job->printOp(output);
   }
   else {
     output->concat("--\n-- No active job.\n--\n");
   }
-  int wqs = work_queue.size();
+  uint8_t wqs = work_queue.size();
   if (wqs > 0) {
-    int print_depth = strict_min((int8_t) wqs, max_print);
+    int print_depth = strict_min(wqs, max_print);
     output->concatf("-- Queue Listing (top %d of %d total)\n", print_depth, wqs);
     for (int i = 0; i < print_depth; i++) {
       work_queue.get(i)->printOp(output);
@@ -182,23 +182,23 @@ void CryptoProcessor::printQueues(StringBuilder* output, uint8_t max_print) {
 
 int8_t CryptoProcessor::queue_job(CryptOp* op, int priority) {
   int8_t ret = -1;
-  if (op->state() == XferState::IDLE) {
+  if (op->state() == CryptOpState::IDLE) {
     ret--;
-    if (_adapter_flag(SPI_FLAG_QUEUE_GUARD) && !roomInQueue()) {
-      if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Queue at max size. Dropping transaction.");
-      op->abort(XferFault::QUEUE_FLUSH);
+    if (!roomInQueue()) {
+      if (verbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Queue at max size. Dropping transaction.");
+      op->abort(CryptoFault::QUEUE_FLUSH);
       callback_queue.insertIfAbsent(op, priority);
     }
     else if (0 > work_queue.insertIfAbsent(op, priority)) {
-      if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Double-insertion. Dropping transaction with no status change.\n");
+      if (verbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Double-insertion. Dropping transaction with no status change.\n");
     }
     else {
       ret = 0;
-      op->_op_state = XferState::QUEUED;
+      op->_op_state = CryptOpState::QUEUED;
     }
   }
   else {
-    if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Tried to fire a bus op that is not in IDLE state.");
+    if (verbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Tried to run a CryptOp that is not in IDLE state.");
   }
   return ret;
 }
@@ -211,7 +211,7 @@ int8_t CryptoProcessor::purge_current_job() {
   int8_t ret = 0;
   if (_current_job) {
     _current_job->abort(CryptoFault::QUEUE_FLUSH);
-    current->_exec_call_back();
+    _current_job->_exec_call_back();
     _reclaim_queue_item(_current_job);
     _current_job = nullptr;
     ret++;
@@ -249,7 +249,7 @@ int8_t CryptoProcessor::purge_queued_work_by_dev(CryptOpCallback* cb_obj) {
     CryptOp* current = work_queue.get(i);
     if ((nullptr != current) && (current->_cb == cb_obj)) {
       work_queue.remove(current);
-      current->abort(XferFault::QUEUE_FLUSH);
+      current->abort(CryptoFault::QUEUE_FLUSH);
       current->_exec_call_back();
       _reclaim_queue_item(current);
       ret++;
@@ -266,14 +266,14 @@ int8_t CryptoProcessor::purge_queued_work_by_dev(CryptOpCallback* cb_obj) {
 * @param item The CryptOp to be reclaimed.
 */
 void CryptoProcessor::_reclaim_queue_item(CryptOp* op) {
-  _total_xfers++;
+  _total_jobs++;
   if (op->hasFault()) {
-    _failed_xfers++;
+    _failed_jobs++;
   }
   if (op->shouldReap()) {
     // This job is a transient heap object. Destructor will handle buffer
     //   memory, if required.
-    if (getVerbosity() >= LOG_LEV_DEBUG) c3p_log(LOG_LEV_DEBUG, __PRETTY_FUNCTION__, "About to reap.");
+    if (verbosity() >= LOG_LEV_DEBUG) c3p_log(LOG_LEV_DEBUG, __PRETTY_FUNCTION__, "About to reap.");
     delete op;
     _heap_frees++;
   }
@@ -281,13 +281,13 @@ void CryptoProcessor::_reclaim_queue_item(CryptOp* op) {
     // If we are here, it must mean that some other class fed us a job that
     //   it doesn't want us cleanup. But we should at least set it
     //   back to IDLE, and check the buffer free policy.
-    if (op->freeBuffer() && (nullptr != op->buffer())) {
-      if (getVerbosity() >= LOG_LEV_DEBUG) c3p_log(LOG_LEV_DEBUG, __PRETTY_FUNCTION__, "Freeing buffer...");
-      op->freeBuffer(false);
-      free(op->buffer());  // TODO: Use BurritoPlate's free().
+    if (op->shouldFreeBuffer() && (nullptr != op->_buf)) {
+      if (verbosity() >= LOG_LEV_DEBUG) c3p_log(LOG_LEV_DEBUG, __PRETTY_FUNCTION__, "Freeing buffer...");
+      op->shouldFreeBuffer(false);
+      free(op->_buf);  // TODO: Use BurritoPlate's free().
       op->setBuffer(nullptr, 0);
     }
-    op->set_state(XferState::IDLE);
+    op->_op_state = CryptOpState::IDLE;
   }
 }
 
@@ -306,14 +306,14 @@ int8_t CryptoProcessor::_advance_work_queue() {
   if (_current_job) {
     switch (_current_job->_op_state) {
       case CryptOpState::IDLE:
-        _current_job->_op_state = XferState::QUEUED;
+        _current_job->_op_state = CryptOpState::QUEUED;
       case CryptOpState::QUEUED:
       case CryptOpState::INITIATE:
       case CryptOpState::WAIT:
       case CryptOpState::CLEANUP:
-        if (XferFault::NONE != _current_job->advance()) {
+        if (CryptoFault::NONE != _current_job->advance()) {
           // All faults are terminal.
-          if (getVerbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Failed to advance job: %s\n", CryptOp::errorString(_current_job->fault()));
+          if (verbosity() >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Failed to advance job: %s\n", CryptOp::errorString(_current_job->fault()));
           callback_queue.insert(_current_job);
           _current_job = nullptr;
         }
@@ -325,7 +325,7 @@ int8_t CryptoProcessor::_advance_work_queue() {
         break;
 
       default:
-        if (getVerbosity() >= LOG_LEV_INFO) c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "CryptOp state at poll(): %s", CryptOp::stateString(_current_job->state()));
+        if (verbosity() >= LOG_LEV_INFO) c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "CryptOp state at poll(): %s", CryptOp::stateString(_current_job->state()));
         break;
     }
   }
@@ -340,20 +340,20 @@ int8_t CryptoProcessor::_advance_callback_queue() {
     if (nullptr != temp_op->_cb) {
       int8_t cb_code = temp_op->_exec_call_back();
       switch (cb_code) {
-        case BUSOP_CALLBACK_RECYCLE:
+        case JOB_Q_CALLBACK_RECYCLE:
           temp_op->markForRequeue();
           queue_job(temp_op);
           break;
 
-        case BUSOP_CALLBACK_ERROR:
+        case JOB_Q_CALLBACK_ERROR:
           if (temp_op->hasFault()) {
-            if (getVerbosity() >= LOG_LEV_ERROR) {    // Print failures.
+            if (verbosity() >= LOG_LEV_ERROR) {    // Print failures.
               StringBuilder tmp_str;
               temp_op->printOp(&tmp_str);
               c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, &tmp_str);
             }
           }
-        case BUSOP_CALLBACK_NOMINAL:
+        case JOB_Q_CALLBACK_NOMINAL:
         default:
           _reclaim_queue_item(temp_op);
           break;

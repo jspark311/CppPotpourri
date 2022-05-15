@@ -21,7 +21,10 @@ limitations under the License.
 This is the application-facing API.
 */
 
-#include "CryptOptUnifier.h"
+#include "Cryptographic.h"
+#include "../StringBuilder.h"
+#include "../PriorityQueue.h"
+#include "../AbstractPlatform.h"
 
 #ifndef __CRYPTOBURRITO_H__
 #define __CRYPTOBURRITO_H__
@@ -31,6 +34,10 @@ This is the application-facing API.
 */
 #define CRYPTOP_FLAG_FREE_BUFFER   0x40    // If set in a job's flags field, the buffer will be free()'d, if present.
 #define CRYPTOP_FLAG_NO_FREE       0x80    // If set in a job's flags field, it will not be free()'d.
+
+#define JOB_Q_CALLBACK_ERROR         -1    // If set in a job's flags field, it will not be free()'d.
+#define JOB_Q_CALLBACK_NOMINAL        0    // If set in a job's flags field, it will not be free()'d.
+#define JOB_Q_CALLBACK_RECYCLE        1    // If set in a job's flags field, it will not be free()'d.
 
 
 /*
@@ -117,19 +124,17 @@ class CryptOp {
     /**
     * @return true if this operation is idle.
     */
-    inline bool isIdle() {     return (CryptOpState::IDLE == op_state);  };
+    inline bool isIdle() {     return (CryptOpState::IDLE == _op_state);  };
 
     /**
-    * @return true if this operation completed without problems.
+    * @return true if this operation completed.
     */
-    inline bool isComplete() {
-      return ((CryptOpState::COMPLETE == _op_state) || (CryptOpState::FAULT == _op_state));
-    };
+    inline bool isComplete() {  return (CryptOpState::COMPLETE == _op_state);  };
 
     /**
     * @return true if this operation is enqueued and inert.
     */
-    inline bool isQueued() {     return (CryptOpState::QUEUED == _op_state);    };
+    inline bool isQueued() {    return (CryptOpState::QUEUED == _op_state);    };
 
     /**
     * @return true if this operation experienced any abnormal condition.
@@ -145,7 +150,20 @@ class CryptOp {
     inline void setBuffer(uint8_t* b, unsigned int bl) {   _buf = b; _buf_len = bl;   };
 
     /**
-    * The CryptoProcessor calls this fxn to decide if it ought to free this object
+    * Set the state-bearing members in preparation for re-queue.
+    */
+    inline void markForRequeue() {
+      _op_fault = CryptoFault::NONE;
+      _op_state = CryptOpState::IDLE;
+    };
+
+    inline void abort(CryptoFault flt) {
+      _op_fault = flt;
+      _op_state = CryptOpState::COMPLETE;
+    }
+
+    /**
+    * CryptoProcessor calls this fxn to decide if it ought to free this object
     *   after completion.
     *
     * @return true if the CryptoProcessor should free() this object. False otherwise.
@@ -165,7 +183,7 @@ class CryptOp {
     };
 
     /**
-    * The bus manager calls this fxn to decide if it ought to free this object's
+    * CryptoProcessor calls this fxn to decide if it ought to free this object's
     *   buffer after callback completion.
     *
     * @return true if the CryptoProcessor should free() this object's buffer. False otherwise.
@@ -181,7 +199,7 @@ class CryptOp {
     *
     * @param x Pass true to cause the CryptoProcessor to free the buffer.
     */
-    inline void freeBuffer(bool x) {
+    inline void shouldFreeBuffer(bool x) {
       _flags = x ? (_flags | CRYPTOP_FLAG_FREE_BUFFER) : (_flags & (uint8_t) ~CRYPTOP_FLAG_FREE_BUFFER);
     };
 
@@ -193,6 +211,8 @@ class CryptOp {
 
 
   protected:
+    friend class CryptoProcessor;   // We allow CryptoProcessor to access CryptOps.
+
     CryptOpCallback* _cb       = nullptr;    // Which class gets pinged when we've finished?
     CryptOpcode      _opcode   = CryptOpcode::UNDEF;   // What is the particular operation being done?
     CryptOpState     _op_state = CryptOpState::UNDEF;  // What state is this operation in?
@@ -210,8 +230,8 @@ class CryptOp {
 
     virtual ~CryptOp();
 
-    inline int8_t _exec_call_ahead() {   return ((callback) ? callback->op_callahead(this) : 0);  };
-    inline int8_t _exec_call_back() {    return ((callback) ? callback->op_callback(this) : 0);   };
+    inline int8_t _exec_call_ahead() {   return ((_cb) ? _cb->op_callahead(this) : 0);  };
+    inline int8_t _exec_call_back() {    return ((_cb) ? _cb->op_callback(this) : 0);   };
 
     /* Mandatory overrides... */
     /* Mandatory overrides from the CryptOp interface... */
@@ -231,6 +251,9 @@ class CryptOp {
 *******************************************************************************/
 class CryptoProcessor {
   public:
+    CryptoProcessor(uint16_t max) : MAX_Q_DEPTH(max) {};
+    ~CryptoProcessor() {};
+
     inline uint8_t  verbosity() {              return _verbosity;    };
     inline void     verbosity(uint8_t v) {     _verbosity = v;       };
 
@@ -241,6 +264,7 @@ class CryptoProcessor {
 
     void printDebug(StringBuilder*);
     void printQueues(StringBuilder*, uint8_t max_print = 3);
+    inline bool initialized() {  return true;  };
 
     int8_t queue_job(CryptOp*, int priority = 0);
     int8_t purge_current_job();
@@ -252,8 +276,6 @@ class CryptoProcessor {
 
 
   protected:
-    friend class CryptOp;   // We allow CryptoProcessor to access CryptOps.
-
     CryptOp* _current_job     = nullptr;
     uint16_t _queue_floods    = 0;  // How many times has the queue rejected work?
     const uint16_t MAX_Q_DEPTH;     // Maximum tolerable queue depth.
@@ -263,8 +285,6 @@ class CryptoProcessor {
     uint8_t  _verbosity       = 0;  // How much log noise do we make?
     PriorityQueue<CryptOp*> work_queue;      // A work queue to keep transactions in order.
     PriorityQueue<CryptOp*> callback_queue;  // A work queue to keep transactions in order.
-
-    CryptoProvider(uint16_t max) : MAX_Q_DEPTH(max) {};
 
     int8_t _advance_work_queue();
     int8_t _advance_callback_queue();
