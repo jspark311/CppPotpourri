@@ -143,13 +143,33 @@ void CryptOp::wipe() {
 /*******************************************************************************
 * CryptoProcessor base class support that isn't inlined.
 *******************************************************************************/
+int8_t CryptoProcessor::poll() {
+  int8_t ret = 0;
+  _advance_work_queue();
+  _advance_callback_queue();
+  return ret;
+}
+
+int8_t CryptoProcessor::init() {
+  int8_t ret = 0;
+  _flags |= CRYPTPROC_FLAG_INITIALIZED;
+  return ret;
+}
+
+int8_t CryptoProcessor::deinit() {
+  int8_t ret = 0;
+  _flags &= (~CRYPTPROC_FLAG_INITIALIZED);
+  return ret;
+}
+
+
 void CryptoProcessor::printDebug(StringBuilder* output) {
   StringBuilder prod_str("CryptoProcessor (");
-  if (initialized()) prod_str.concat("un");
+  if (!initialized()) prod_str.concat("un");
   prod_str.concat("initialized)\n");
   StringBuilder::styleHeader2(output, (const char*) prod_str.string());
 
-  output->concatf("-- Xfers (fail/total)  %u/%u\n", _failed_jobs, _total_jobs);
+  output->concatf("-- Jobs (fail/total)  %u/%u\n", _failed_jobs, _total_jobs);
   output->concat("-- Work queue:\n");
   output->concatf("\t\t depth/max        %u/%u\n", work_queue.size(), MAX_Q_DEPTH);
   output->concatf("\t\t frees            %u\n", _heap_frees);
@@ -234,7 +254,6 @@ int8_t CryptoProcessor::purge_queued_work() {
   }
   return ret;
 }
-
 
 /**
 * Purges only those jobs from the work_queue that are owned by the specified

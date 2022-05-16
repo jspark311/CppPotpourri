@@ -35,6 +35,8 @@ This is the application-facing API.
 #define CRYPTOP_FLAG_FREE_BUFFER   0x40    // If set in a job's flags field, the buffer will be free()'d, if present.
 #define CRYPTOP_FLAG_NO_FREE       0x80    // If set in a job's flags field, it will not be free()'d.
 
+#define CRYPTPROC_FLAG_INITIALIZED 0x01    // The CryptoProcessor is initialized and ready to take jobs.
+
 #define JOB_Q_CALLBACK_ERROR         -1    // If set in a job's flags field, it will not be free()'d.
 #define JOB_Q_CALLBACK_NOMINAL        0    // If set in a job's flags field, it will not be free()'d.
 #define JOB_Q_CALLBACK_RECYCLE        1    // If set in a job's flags field, it will not be free()'d.
@@ -234,7 +236,6 @@ class CryptOp {
     inline int8_t _exec_call_back() {    return ((_cb) ? _cb->op_callback(this) : 0);   };
 
     /* Mandatory overrides... */
-    /* Mandatory overrides from the CryptOp interface... */
     virtual CryptoFault _advance() =0;
     virtual void _print(StringBuilder*) =0;
     virtual void _wipe() =0;  // Implementation-specific.
@@ -244,6 +245,47 @@ class CryptOp {
     uint8_t _flags = 0;        // Encapsulated flags for all instances.
 };
 
+
+/** CryptOp for calculating digests. */
+class CryptOpHash : public CryptOp {
+  public:
+    CryptOpHash(CryptOpCallback* cb_obj) : CryptOp(cb_obj, CryptOpcode::DIGEST) {};
+    ~CryptOpHash() {};
+
+  protected:
+    /* Mandatory overrides from the CryptOp interface... */
+    CryptoFault _advance();
+    void _print(StringBuilder*);
+    void _wipe();
+};
+
+
+/** CryptOp for generating random numbers. */
+class CryptOpRNG : public CryptOp {
+  public:
+    CryptOpRNG(CryptOpCallback* cb_obj) : CryptOp(cb_obj, CryptOpcode::RNG_FILL) {};
+    ~CryptOpRNG() {};
+
+  protected:
+    /* Mandatory overrides from the CryptOp interface... */
+    CryptoFault _advance();
+    void _print(StringBuilder*);
+    void _wipe();
+};
+
+
+/** CryptOp for generating keys. */
+class CryptOpKeygen : public CryptOp {
+  public:
+    CryptOpKeygen(CryptOpCallback* cb_obj) : CryptOp(cb_obj, CryptOpcode::KEYGEN) {};
+    ~CryptOpKeygen() {};
+
+  protected:
+    /* Mandatory overrides from the CryptOp interface... */
+    CryptoFault _advance();
+    void _print(StringBuilder*);
+    void _wipe();
+};
 
 
 /*******************************************************************************
@@ -264,7 +306,7 @@ class CryptoProcessor {
 
     void printDebug(StringBuilder*);
     void printQueues(StringBuilder*, uint8_t max_print = 3);
-    inline bool initialized() {  return true;  };
+    inline bool initialized() {  return (CRYPTPROC_FLAG_INITIALIZED == (_flags & CRYPTPROC_FLAG_INITIALIZED));  };
 
     int8_t queue_job(CryptOp*, int priority = 0);
     int8_t purge_current_job();
@@ -282,7 +324,9 @@ class CryptoProcessor {
     uint32_t _total_jobs      = 0;
     uint32_t _failed_jobs     = 0;
     uint32_t _heap_frees      = 0;
+    uint8_t  _flags           = 0;  //
     uint8_t  _verbosity       = 0;  // How much log noise do we make?
+
     PriorityQueue<CryptOp*> work_queue;      // A work queue to keep transactions in order.
     PriorityQueue<CryptOp*> callback_queue;  // A work queue to keep transactions in order.
 

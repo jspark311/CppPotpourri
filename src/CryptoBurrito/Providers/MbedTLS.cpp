@@ -25,16 +25,14 @@ MbedTLS support assumes that we have a local copy of the mbedTLS source tree
 */
 
 #include "../Cryptographic.h"
+#include <AbstractPlatform.h>
+
 
 #if defined(WITH_MBEDTLS)
-
-#include <AbstractPlatform.h>
-#include <string.h>  // TODO: Only used for memory manipulation. Re-code locally.
 
 /*******************************************************************************
 * These things are privately-scoped, and are intended for internal use only.   *
 *******************************************************************************/
-
 
 int _cipher_opcode(Cipher ci, uint32_t opts) {
   switch (ci) {
@@ -272,13 +270,11 @@ extern "C" {
 #endif
 mbedtls_entropy_context entropy;
 
-
 int mbedtls_hardware_poll(void* data, unsigned char* buf, size_t len, size_t *olen) {
   random_fill((uint8_t*) buf, len);
   *olen = len;
   return 0;
 }
-
 
 #ifdef __cplusplus
 }
