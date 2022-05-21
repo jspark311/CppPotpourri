@@ -238,7 +238,7 @@ int8_t ManuvrLink::poll(StringBuilder* log_ret) {
       _churn_outbound();
       // If we need to send an obligatory sync packet, do so.
       if (_flags.value(MANUVRLINK_FLAG_SYNC_CASTING | MANUVRLINK_FLAG_SEND_KA)) {
-        if (wrap_accounted_delta(_ms_last_send, millis()) > _opts.ms_keepalive) {
+        if (wrap_accounted_delta(_ms_last_send, (uint32_t) millis()) > _opts.ms_keepalive) {
           _send_sync_packet(true);
         }
       }

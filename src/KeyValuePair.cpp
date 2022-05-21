@@ -802,7 +802,7 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
         break;
       case TCode::INT64:
         {
-          long long x = 0;
+          int64_t x = 0;
           if (0 == src->getValueAs(&x)) {
             encoder.write_int(x);
           }
@@ -834,7 +834,7 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
         break;
       case TCode::UINT64:
         {
-          unsigned long long x = 0;
+          uint64_t x = 0;
           if (0 == src->getValueAs(&x)) {
             encoder.write_int(x);
           }

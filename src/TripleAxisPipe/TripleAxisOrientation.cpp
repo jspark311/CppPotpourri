@@ -97,11 +97,11 @@ void TripleAxisOrientation::printPipe(StringBuilder* output, uint8_t stage, uint
   output->concatf("%s| Seq number:     %u\n", (char*) indent.string(), _update_count);
   output->concatf("%s| Last update:    %u\n", (char*) indent.string(), _last_update);
   if (_data_period) {
-    output->concatf("%s| Data rate:      %.2f vectors/sec\n", indent.string(), (1000.0 / _data_period));
+    output->concatf("%s| Data rate:      %.2f vectors/sec\n", indent.string(), (double) (1000.0 / _data_period));
   }
-  output->concatf("%s| Up:    (%.4f, %.4f, %.4f)\n", (char*) indent.string(), _up.x, _up.y, _up.z);
-  output->concatf("%s| Pitch: %.4f\n", (char*) indent.string(), _gravity.x);
-  output->concatf("%s| Roll:  %.4f\n", (char*) indent.string(), _gravity.y);
+  output->concatf("%s| Up:    (%.4f, %.4f, %.4f)\n", (char*) indent.string(), (double) _up.x, (double) _up.y, (double) _up.z);
+  output->concatf("%s| Pitch: %.4f\n", (char*) indent.string(), (double) _gravity.x);
+  output->concatf("%s| Roll:  %.4f\n", (char*) indent.string(), (double) _gravity.y);
 }
 
 
@@ -111,7 +111,7 @@ void TripleAxisOrientation::printPipe(StringBuilder* output, uint8_t stage, uint
 *******************************************************************************/
 
 void TripleAxisOrientation::markLevel() {  _flags.set(TRIPAX_ORIENT_FLAG_PENDING_ZERO);   };
-bool TripleAxisOrientation::dirty() {      _flags.value(TRIPAX_ORIENT_FLAG_VALUE_DIRTY);  };
+bool TripleAxisOrientation::dirty() {      return _flags.value(TRIPAX_ORIENT_FLAG_VALUE_DIRTY);  };
 Vector3f* TripleAxisOrientation::value() {
   _flags.clear(TRIPAX_ORIENT_FLAG_VALUE_DIRTY);
   return &_gravity;
