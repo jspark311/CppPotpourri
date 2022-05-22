@@ -7,6 +7,7 @@
 #include "AbstractPlatform.h"
 #include "C3PLogger.h"
 #include "ParsingConsole.h"
+#include "CryptoBurrito/CryptoBurrito.h"
 
 /**
 * Issue a human-readable string representing the platform state.
@@ -65,14 +66,17 @@ const char* getIRQConditionString(const IRQCondition con_code) {
 }
 
 
-/*
+/**
 * Do the boilerplate setup of the MCU that all applications will require.
+*
+* @return 0 on success. Negative on failure.
 */
 int8_t platform_init() {
+  int8_t ret = -127;
   if (platformObj()) {
-    return platformObj()->init();
+    ret = platformObj()->init();
   }
-  return -127;
+  return ret;
 }
 
 
@@ -128,14 +132,14 @@ void AbstractPlatform::printCryptoOverview(StringBuilder* out) {
   #if defined(__HAS_CRYPT_WRAPPER)
     out->concatf("-- Cryptographic support via %s.\n", __CRYPTO_BACKEND);
     int idx = 0;
-    #if defined(WITH_MBEDTLS) && defined(MBEDTLS_SSL_TLS_C)
+    #if defined(CONFIG_MANUVR_MBEDTLS) && defined(MBEDTLS_SSL_TLS_C)
       out->concat("-- Supported TLS ciphersuites:");
       const int* cs_list = mbedtls_ssl_list_ciphersuites();
       while (0 != *(cs_list)) {
         if (0 == idx++ % 2) out->concat("\n--\t");
         out->concatf("\t%-40s", mbedtls_ssl_get_ciphersuite_name(*(cs_list++)));
       }
-    #endif
+    #endif  // CONFIG_MANUVR_MBEDTLS
 
     out->concat("\n-- Supported ciphers:");
     idx = 0;
@@ -162,7 +166,7 @@ void AbstractPlatform::printCryptoOverview(StringBuilder* out) {
     }
   #else
     out->concat("No cryptographic support.\n");
-  #endif  // WITH_MBEDTLS
+  #endif  // __HAS_CRYPT_WRAPPER
 }
 
 
@@ -252,16 +256,15 @@ int callback_platform_info(StringBuilder* text_return, StringBuilder* args) {
   char* group = args->position_trimmed(0);
   switch (args->count()) {
     case 1:
-      if (0 == StringBuilder::strcasecmp(group, "types")) {
+      if (0 == StringBuilder::strcasecmp(group, "crypto")) {
+        platformObj()->printCryptoOverview(text_return);
+      }
+      else if (0 == StringBuilder::strcasecmp(group, "types")) {
         text_return->concatf("ParsingConsole   %u\t%u\n", sizeof(ParsingConsole), alignof(ParsingConsole));
         text_return->concatf("ConsoleCommand   %u\t%u\n", sizeof(ConsoleCommand), alignof(ConsoleCommand));
         text_return->concatf("StringBuilder    %u\t%u\n", sizeof(StringBuilder), alignof(StringBuilder));
+        text_return->concatf("AbstractPlatform %u\t%u\n", sizeof(AbstractPlatform), alignof(AbstractPlatform));
       }
-      #if defined(__HAS_CRYPT_WRAPPER)
-      else if (0 == StringBuilder::strcasecmp(group, "crypto")) {
-        platformObj()->crypto.printDebug(text_return);
-      }
-      #endif
       break;
     default:
       platformObj()->printDebug(text_return);
@@ -278,8 +281,8 @@ int callback_reboot(StringBuilder* text_return, StringBuilder* args) {
 
 
 const ConsoleCommand cmd00 = ConsoleCommand("gpio",   '\0', ParsingConsole::tcodes_str_3,  "GPIO values", "[val|mode] [pin] [value]", 2, callback_gpio_value);
-const ConsoleCommand cmd01 = ConsoleCommand("pfinfo", '\0', ParsingConsole::tcodes_str_1,  "Platform information", "[subgroup]", 0, callback_platform_info);
-const ConsoleCommand cmd02 = ConsoleCommand("reboot", '\0', ParsingConsole::tcodes_uint_1, "Reboot firmware", "[subgroup]", 0, callback_reboot);
+const ConsoleCommand cmd01 = ConsoleCommand("pfinfo", '\0', ParsingConsole::tcodes_str_1,  "Platform information", "[types | crypto]", 0, callback_platform_info);
+const ConsoleCommand cmd02 = ConsoleCommand("reboot", '\0', ParsingConsole::tcodes_uint_1, "Reboot firmware", "[reason code]", 0, callback_reboot);
 
 
 /**

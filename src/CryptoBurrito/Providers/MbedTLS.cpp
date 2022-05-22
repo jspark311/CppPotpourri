@@ -28,7 +28,7 @@ MbedTLS support assumes that we have a local copy of the mbedTLS source tree
 #include <AbstractPlatform.h>
 
 
-#if defined(WITH_MBEDTLS)
+#if defined(CONFIG_MANUVR_MBEDTLS)
 
 /*******************************************************************************
 * These things are privately-scoped, and are intended for internal use only.   *

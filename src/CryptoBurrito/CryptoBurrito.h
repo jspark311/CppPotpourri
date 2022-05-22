@@ -32,8 +32,9 @@ This is the application-facing API.
 /*
 * Flags for CryptOp.
 */
-#define CRYPTOP_FLAG_FREE_BUFFER   0x40    // If set in a job's flags field, the buffer will be free()'d, if present.
-#define CRYPTOP_FLAG_NO_FREE       0x80    // If set in a job's flags field, it will not be free()'d.
+#define CRYPTOP_FLAG_ALLOCATE_RESULT 0x20   // If set, the result buffer will be malloc()'d, if absent.
+#define CRYPTOP_FLAG_FREE_RESULT     0x40   // If set, the result buffer will be free()'d, if present.
+#define CRYPTOP_FLAG_NO_FREE         0x80   // If set, it will not be free()'d.
 
 #define CRYPTPROC_FLAG_INITIALIZED 0x01    // The CryptoProcessor is initialized and ready to take jobs.
 
@@ -90,6 +91,7 @@ enum class CryptoFault {
   NO_REASON,       // No reason provided, but still errored.
   UNHANDLED_ALGO,  // A cryptographic process was given a job that it didn't know how to do.
   BAD_PARAM,       // Invalid operation parameters to a known algo.
+  MEM,             // Memory that needed to be allocated could not be.
   ILLEGAL_STATE,   // The operation is in an illegal state.
   TIMEOUT,         // We ran out of patience.
   HW_FAULT,        // Hardware had a meltdown and failed this operation.
@@ -149,7 +151,9 @@ class CryptOp {
     inline CryptoFault  fault() {                    return _op_fault;       };
     inline CryptOp*     nextStep() {                 return _nxt_step;       };
     inline void nextStep(CryptOp* n_op) {            _nxt_step = n_op;       };
-    inline void setBuffer(uint8_t* b, unsigned int bl) {   _buf = b; _buf_len = bl;   };
+    inline void setResBuffer(uint8_t* b, unsigned int bl) {
+      _result = b; _result_len = bl;
+    };
 
     /**
     * Set the state-bearing members in preparation for re-queue.
@@ -164,46 +168,12 @@ class CryptOp {
       _op_state = CryptOpState::COMPLETE;
     }
 
-    /**
-    * CryptoProcessor calls this fxn to decide if it ought to free this object
-    *   after completion.
-    *
-    * @return true if the CryptoProcessor should free() this object. False otherwise.
-    */
-    inline bool shouldReap() {  return ((_flags & CRYPTOP_FLAG_NO_FREE) == 0);  };
-
-    /**
-    * The client class calls this fxn to set this object's post-callback behavior.
-    * If this fxn is never called, the default behavior of the class is to allow itself to be free()'d.
-    *
-    * This flag is preserved by wipe().
-    *
-    * @param  nu_reap_state Pass false to cause the CryptoProcessor to leave this object alone.
-    */
-    inline void shouldReap(bool x) {
-      _flags = x ? (_flags & (uint8_t) ~CRYPTOP_FLAG_NO_FREE) : (_flags | CRYPTOP_FLAG_NO_FREE);
-    };
-
-    /**
-    * CryptoProcessor calls this fxn to decide if it ought to free this object's
-    *   buffer after callback completion.
-    *
-    * @return true if the CryptoProcessor should free() this object's buffer. False otherwise.
-    */
-    inline bool shouldFreeBuffer() {  return ((_flags & CRYPTOP_FLAG_FREE_BUFFER) != 0);  };
-
-    /**
-    * The client class calls this fxn to set this object's post-callback behavior.
-    * If this fxn is never called, the default behavior of the class is to not
-    *   free() the buffer.
-    *
-    * This flag is preserved by wipe().
-    *
-    * @param x Pass true to cause the CryptoProcessor to free the buffer.
-    */
-    inline void shouldFreeBuffer(bool x) {
-      _flags = x ? (_flags | CRYPTOP_FLAG_FREE_BUFFER) : (_flags & (uint8_t) ~CRYPTOP_FLAG_FREE_BUFFER);
-    };
+    inline bool reapJob() {               return !_class_flag(CRYPTOP_FLAG_NO_FREE);         };
+    inline void reapJob(bool x) {         _class_set_flag(CRYPTOP_FLAG_NO_FREE, !x);         };
+    inline bool allocResBuffer() {        return _class_flag(CRYPTOP_FLAG_ALLOCATE_RESULT);  };
+    inline void allocResBuffer(bool x) {  _class_set_flag(CRYPTOP_FLAG_ALLOCATE_RESULT, x);  };
+    inline bool freeResBuffer() {         return _class_flag(CRYPTOP_FLAG_FREE_RESULT);      };
+    inline void freeResBuffer(bool x) {   _class_set_flag(CRYPTOP_FLAG_FREE_RESULT, x);      };
 
     /* Statics */
     static const char* opcodeString(CryptOpcode);
@@ -215,13 +185,13 @@ class CryptOp {
   protected:
     friend class CryptoProcessor;   // We allow CryptoProcessor to access CryptOps.
 
-    CryptOpCallback* _cb       = nullptr;    // Which class gets pinged when we've finished?
-    CryptOpcode      _opcode   = CryptOpcode::UNDEF;   // What is the particular operation being done?
-    CryptOpState     _op_state = CryptOpState::UNDEF;  // What state is this operation in?
-    CryptoFault      _op_fault = CryptoFault::NONE;    // Fault code.
-    CryptOp*         _nxt_step = nullptr;    // Additional jobs following this one.
-    uint8_t*         _buf      = nullptr;    // Pointer to the data buffer for the transaction.
-    uint32_t         _buf_len  = 0;          // How large is the above buffer?
+    CryptOpCallback* _cb         = nullptr;    // Which class gets pinged when we've finished?
+    CryptOpcode      _opcode     = CryptOpcode::UNDEF;   // What is the particular operation being done?
+    CryptOpState     _op_state   = CryptOpState::UNDEF;  // What state is this operation in?
+    CryptoFault      _op_fault   = CryptoFault::NONE;    // Fault code.
+    CryptOp*         _nxt_step   = nullptr;    // Additional jobs following this one.
+    uint8_t*         _result     = nullptr;    // Pointer to the data buffer for the operation results.
+    uint32_t         _result_len = 0;          // How large is the above buffer?
 
     /* Protected constructor */
     CryptOp(CryptOpCallback* cb_obj, CryptOpcode o) :
@@ -229,16 +199,26 @@ class CryptOp {
       _opcode(o),
       _op_state(CryptOpState::IDLE),
       _op_fault(CryptoFault::NONE) {};
-
-    virtual ~CryptOp();
-
-    inline int8_t _exec_call_ahead() {   return ((_cb) ? _cb->op_callahead(this) : 0);  };
-    inline int8_t _exec_call_back() {    return ((_cb) ? _cb->op_callback(this) : 0);   };
+    virtual ~CryptOp() {};
 
     /* Mandatory overrides... */
     virtual CryptoFault _advance() =0;
     virtual void _print(StringBuilder*) =0;
-    virtual void _wipe() =0;  // Implementation-specific.
+    virtual void _wipe() =0;
+
+    /* Callback convenience inlines */
+    inline int8_t _exec_call_ahead() {   return ((_cb) ? _cb->op_callahead(this) : 0);  };
+    inline int8_t _exec_call_back() {    return ((_cb) ? _cb->op_callback(this) : 0);   };
+
+    /* Flag manipulation inlines */
+    inline uint8_t _class_flags() {                return _flags;           };
+    inline bool _class_flag(uint8_t _flag) {       return (_flags & _flag); };
+    inline void _class_clear_flag(uint8_t _flag) { _flags &= ~_flag;        };
+    inline void _class_set_flag(uint8_t _flag) {   _flags |= _flag;         };
+    inline void _class_set_flag(uint8_t _flag, bool nu) {
+      if (nu) _flags |= _flag;
+      else    _flags &= ~_flag;
+    };
 
 
   private:
@@ -250,7 +230,7 @@ class CryptOp {
 class CryptOpHash : public CryptOp {
   public:
     CryptOpHash(CryptOpCallback* cb_obj) : CryptOp(cb_obj, CryptOpcode::DIGEST) {};
-    ~CryptOpHash() {};
+    ~CryptOpHash() {  wipe();  };
 
   protected:
     /* Mandatory overrides from the CryptOp interface... */
@@ -264,7 +244,7 @@ class CryptOpHash : public CryptOp {
 class CryptOpRNG : public CryptOp {
   public:
     CryptOpRNG(CryptOpCallback* cb_obj) : CryptOp(cb_obj, CryptOpcode::RNG_FILL) {};
-    ~CryptOpRNG() {};
+    ~CryptOpRNG() {  wipe();  };
 
   protected:
     /* Mandatory overrides from the CryptOp interface... */
@@ -278,7 +258,7 @@ class CryptOpRNG : public CryptOp {
 class CryptOpKeygen : public CryptOp {
   public:
     CryptOpKeygen(CryptOpCallback* cb_obj) : CryptOp(cb_obj, CryptOpcode::KEYGEN) {};
-    ~CryptOpKeygen() {};
+    ~CryptOpKeygen() {  wipe();  };
 
   protected:
     /* Mandatory overrides from the CryptOp interface... */
@@ -314,18 +294,18 @@ class CryptoProcessor {
     int8_t purge_queued_work_by_dev(CryptOpCallback* cb_obj);
 
     /* Convenience function for guarding against queue floods. */
-    inline bool roomInQueue() {    return !(work_queue.size() < MAX_Q_DEPTH);  }
+    inline bool roomInQueue() {    return (work_queue.size() < MAX_Q_DEPTH);  }
 
 
   protected:
-    CryptOp* _current_job     = nullptr;
-    uint16_t _queue_floods    = 0;  // How many times has the queue rejected work?
     const uint16_t MAX_Q_DEPTH;     // Maximum tolerable queue depth.
+    uint16_t _queue_floods    = 0;  // How many times has the queue rejected work?
+    CryptOp* _current_job     = nullptr;
     uint32_t _total_jobs      = 0;
     uint32_t _failed_jobs     = 0;
     uint32_t _heap_frees      = 0;
     uint8_t  _flags           = 0;  //
-    uint8_t  _verbosity       = 0;  // How much log noise do we make?
+    uint8_t  _verbosity       = LOG_LEV_ERROR;  // How much log noise do we make?
 
     PriorityQueue<CryptOp*> work_queue;      // A work queue to keep transactions in order.
     PriorityQueue<CryptOp*> callback_queue;  // A work queue to keep transactions in order.

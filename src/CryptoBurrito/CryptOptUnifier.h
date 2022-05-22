@@ -35,7 +35,7 @@ TODO: Current software support is confined to mbedTLS. Should
 /*******************************************************************************
 * Library support: mbedtls
 *******************************************************************************/
-#if defined(WITH_MBEDTLS)
+#if defined(CONFIG_MANUVR_MBEDTLS)
 /* MbedTLS support assumes that we have a local copy of the mbedTLS source tree
      at <build-root>/lib/mbedtls. See the downloadDeps.sh script. */
   #define __HAS_CRYPT_WRAPPER   1

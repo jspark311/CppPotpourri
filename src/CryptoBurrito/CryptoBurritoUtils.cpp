@@ -83,6 +83,7 @@ const char* CryptOp::errorString(CryptoFault code) {
     case CryptoFault::NO_REASON:       return "NO_REASON";
     case CryptoFault::UNHANDLED_ALGO:  return "UNHANDLED_ALGO";
     case CryptoFault::BAD_PARAM:       return "BAD_PARAM";
+    case CryptoFault::MEM:             return "MEM";
     case CryptoFault::ILLEGAL_STATE:   return "ILLEGAL_STATE";
     case CryptoFault::TIMEOUT:         return "TIMEOUT";
     case CryptoFault::HW_FAULT:        return "HW_FAULT";
@@ -97,29 +98,40 @@ const char* CryptOp::errorString(CryptoFault code) {
 * CryptOp base class support that isn't inlined.
 *******************************************************************************/
 
-CryptOp::~CryptOp() {
-  if (shouldFreeBuffer() && (nullptr != _buf)) {
-    free(_buf);  // TODO: Use BurritoPlate's free().
-    _buf      = nullptr;
-    _buf_len  = 0;
-  }
-};
-
-
 CryptoFault CryptOp::advance() {
-  return _advance();
+  CryptoFault ret = CryptoFault::NONE;
+  switch (_op_state) {
+    case CryptOpState::IDLE:
+    case CryptOpState::QUEUED:
+      break;
+    case CryptOpState::INITIATE:
+    case CryptOpState::WAIT:
+    case CryptOpState::CLEANUP:
+      ret = _advance();
+      break;
+    case CryptOpState::COMPLETE:
+    default:
+      break;
+  }
+  if (CryptoFault::NONE != ret) {
+    _op_state = CryptOpState::COMPLETE;
+  }
+  return ret;
 }
 
 
 void CryptOp::printOp(StringBuilder* output) {
-  output->concatf("\t---[ CryptOp::%s %p ]---\n", CryptOp::opcodeString(_opcode));
+  output->concatf("\t---[ CryptOp::%s ]---\n", CryptOp::opcodeString(_opcode));
   output->concatf("\t job_state        %s\n", CryptOp::stateString(_op_state));
+  output->concatf("\t Free job         %c\n", reapJob() ? 'y':'n');
+  output->concatf("\t Allocate result  %c\n", _class_flag(CRYPTOP_FLAG_ALLOCATE_RESULT) ? 'y':'n');
+  output->concatf("\t Free result      %c\n", freeResBuffer() ? 'y':'n');
   if (CryptoFault::NONE != _op_fault) {
     output->concatf("\t job_fault        %s\n", CryptOp::errorString(_op_fault));
   }
-  if (_buf_len > 0) {
-    output->concatf("\t buf *(%p): (%u bytes)\n", _buf, _buf_len);
-    //StringBuilder::printBuffer(output, _buf, _buf_len, "\t ");
+  if (_result_len > 0) {
+    output->concatf("\t buf *(%p): (%u bytes)\n", _result, _result_len);
+    StringBuilder::printBuffer(output, _result, _result_len, "\t ");
   }
   _print(output);
 }
@@ -129,14 +141,88 @@ void CryptOp::wipe() {
   // NOTE: Does not change _flags.
   // Wipe the implementation first in case it depends on the base state.
   _wipe();
-  _cb           = nullptr;
-  _opcode       = CryptOpcode::UNDEF;
-  _op_state     = CryptOpState::IDLE;
-  _op_fault     = CryptoFault::NONE;
-  _nxt_step     = nullptr;
-  _buf          = nullptr;
-  _buf_len      = 0;
+  if (freeResBuffer() && (nullptr != _result)) {
+    free(_result);  // TODO: Use BurritoPlate's free().
+    _result      = nullptr;
+    _result_len  = 0;
+  }
+  if (_nxt_step) {
+    _nxt_step->wipe();
+  }
 }
+
+
+
+/*******************************************************************************
+*
+*******************************************************************************/
+
+CryptoFault CryptOpHash::_advance() {
+  CryptoFault ret = CryptoFault::NONE;
+  switch (_op_state) {
+    case CryptOpState::INITIATE:
+    case CryptOpState::WAIT:
+    case CryptOpState::CLEANUP:
+    default:
+      break;
+  }
+  return ret;
+}
+
+void CryptOpHash::_print(StringBuilder* output) {}
+
+void CryptOpHash::_wipe() {}
+
+
+CryptoFault CryptOpRNG::_advance() {
+  CryptoFault ret = CryptoFault::NONE;
+  switch (_op_state) {
+    case CryptOpState::INITIATE:
+      if (nullptr == _result) {
+        if ((0 < _result_len) && _class_flag(CRYPTOP_FLAG_ALLOCATE_RESULT)) {
+          _result = (uint8_t*) malloc(_result_len);
+          _class_set_flag(CRYPTOP_FLAG_FREE_RESULT);
+        }
+        if (nullptr == _result) {
+          return CryptoFault::MEM;
+        }
+      }
+      else {
+        _op_state = CryptOpState::WAIT;
+      }
+    case CryptOpState::WAIT:
+      random_fill(_result, _result_len);
+      _op_state = CryptOpState::CLEANUP;
+    case CryptOpState::CLEANUP:
+      _op_state = CryptOpState::COMPLETE;
+      break;
+    default:
+      break;
+  }
+  return ret;
+}
+
+void CryptOpRNG::_print(StringBuilder* output) {}
+
+void CryptOpRNG::_wipe() {}
+
+
+CryptoFault CryptOpKeygen::_advance() {
+  CryptoFault ret = CryptoFault::NONE;
+  switch (_op_state) {
+    case CryptOpState::INITIATE:
+    case CryptOpState::WAIT:
+    case CryptOpState::CLEANUP:
+    default:
+      break;
+  }
+  return ret;
+}
+
+void CryptOpKeygen::_print(StringBuilder* output) {}
+
+void CryptOpKeygen::_wipe() {}
+
 
 
 
@@ -159,6 +245,8 @@ int8_t CryptoProcessor::init() {
 int8_t CryptoProcessor::deinit() {
   int8_t ret = 0;
   _flags &= (~CRYPTPROC_FLAG_INITIALIZED);
+  purge_current_job();
+  purge_queued_work();
   return ret;
 }
 
@@ -178,12 +266,17 @@ void CryptoProcessor::printDebug(StringBuilder* output) {
 
 
 void CryptoProcessor::printQueues(StringBuilder* output, uint8_t max_print) {
+  StringBuilder prod_str("CryptoProcessor (");
+  if (!initialized()) prod_str.concat("un");
+  prod_str.concat("initialized)\n");
+  StringBuilder::styleHeader2(output, (const char*) prod_str.string());
+
   if (_current_job) {
-    output->concat("--\n- Current active job:\n");
+    output->concat("-- Current active job:\n");
     _current_job->printOp(output);
   }
   else {
-    output->concat("--\n-- No active job.\n--\n");
+    output->concat("-- No active job.\n");
   }
   uint8_t wqs = work_queue.size();
   if (wqs > 0) {
@@ -289,7 +382,7 @@ void CryptoProcessor::_reclaim_queue_item(CryptOp* op) {
   if (op->hasFault()) {
     _failed_jobs++;
   }
-  if (op->shouldReap()) {
+  if (op->reapJob()) {
     // This job is a transient heap object. Destructor will handle buffer
     //   memory, if required.
     if (verbosity() >= LOG_LEV_DEBUG) c3p_log(LOG_LEV_DEBUG, __PRETTY_FUNCTION__, "About to reap.");
@@ -298,14 +391,9 @@ void CryptoProcessor::_reclaim_queue_item(CryptOp* op) {
   }
   else {
     // If we are here, it must mean that some other class fed us a job that
-    //   it doesn't want us cleanup. But we should at least set it
+    //   it doesn't want us to cleanup. But we should at least set it
     //   back to IDLE, and check the buffer free policy.
-    if (op->shouldFreeBuffer() && (nullptr != op->_buf)) {
-      if (verbosity() >= LOG_LEV_DEBUG) c3p_log(LOG_LEV_DEBUG, __PRETTY_FUNCTION__, "Freeing buffer...");
-      op->shouldFreeBuffer(false);
-      free(op->_buf);  // TODO: Use BurritoPlate's free().
-      op->setBuffer(nullptr, 0);
-    }
+    op->wipe();
     op->_op_state = CryptOpState::IDLE;
   }
 }
@@ -323,10 +411,11 @@ int8_t CryptoProcessor::_advance_work_queue() {
   }
 
   if (_current_job) {
-    switch (_current_job->_op_state) {
+    switch (_current_job->state()) {
       case CryptOpState::IDLE:
         _current_job->_op_state = CryptOpState::QUEUED;
       case CryptOpState::QUEUED:
+        _current_job->_op_state = CryptOpState::INITIATE;
       case CryptOpState::INITIATE:
       case CryptOpState::WAIT:
       case CryptOpState::CLEANUP:

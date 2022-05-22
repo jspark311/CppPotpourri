@@ -6,15 +6,13 @@
 #include <stdint.h>
 #include "BusQueue.h"
 #include "StringBuilder.h"
+#include "CryptoBurrito/Cryptographic.h"
 
 class ParsingConsole;
+class CryptoProcessor;
 
 #ifndef __ABSTRACT_PLATFORM_TEMPLATE_H__
 #define __ABSTRACT_PLATFORM_TEMPLATE_H__
-
-#if defined(__HAS_CRYPT_WRAPPER)
-  #include "CryptoBurrito/CryptoBurrito.h"
-#endif
 
 /**
 * These are _pflags definitions.
@@ -251,7 +249,7 @@ typedef struct __platform_thread_opts {
 class AbstractPlatform {
   public:
     #if defined(__HAS_CRYPT_WRAPPER)
-      BurritoPlate crypto;
+      CryptoProcessor* crypto = nullptr;
     #endif
 
     /* Accessors for platform capability discovery. */
