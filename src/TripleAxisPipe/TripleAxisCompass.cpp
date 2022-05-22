@@ -115,19 +115,19 @@ void TripleAxisCompass::printPipe(StringBuilder* output, uint8_t stage, uint8_t 
   output->concatf("%s+-< 3AxisPipe: Compass >----------------\n", (char*) indent.string());
   output->concatf("%s| Has callback:   %c\n", (char*) indent.string(), (nullptr != _CALLBACK)?'y':'n');
   output->concatf("%s| Seq number:     %u\n", (char*) indent.string(), _update_count);
-  output->concatf("%s| Field %s:    (%.4f, %.4f, %.4f)  Magnitude: %.4f\n", (char*) indent.string(), (dataReady()?"FRESH":"STALE"), _field.x, _field.y, _field.z, _field.length());
+  output->concatf("%s| Field %s:    (%.4f, %.4f, %.4f)  Magnitude: %.4f\n", (char*) indent.string(), (dataReady()?"FRESH":"STALE"), (double) _field.x, (double) _field.y, (double) _field.z, (double) _field.length());
   output->concatf("%s| Calibrated:     %c\n", (char*) indent.string(), isCalibrated() ? 'y':'n');
   output->concatf("%s| Tilt CTRL:      %c\n", (char*) indent.string(), _compass_flag(COMPASS_FLAG_TILT_COMPENSATE) ? 'y':'n');
   if (_compass_flag(COMPASS_FLAG_TILT_COMPENSATE)) {
-    output->concatf("%s| Gravity:        (%.4f, %.4f, %.4f)\n", (char*) indent.string(), _gravity.x, _gravity.y, _gravity.z);
-    output->concatf("%s| Tilt-comp mag:  (%.4f, %.4f, %.4f)  Magnitude: %.4f\n", (char*) indent.string(), _tc_field.x, _tc_field.y, _tc_field.z, _tc_field.length());
+    output->concatf("%s| Gravity:        (%.4f, %.4f, %.4f)\n", (char*) indent.string(), (double) _gravity.x, (double) _gravity.y, (double) _gravity.z);
+    output->concatf("%s| Tilt-comp mag:  (%.4f, %.4f, %.4f)  Magnitude: %.4f\n", (char*) indent.string(), (double) _tc_field.x, (double) _tc_field.y, (double) _tc_field.z, (double) _tc_field.length());
   }
   if (_has_error()) {
-    output->concatf("%s| Error:          (%.4f, %.4f, %.4f)\n", (char*) indent.string(), _ERR_COMPASS.x, _ERR_COMPASS.y, _ERR_COMPASS.z);
+    output->concatf("%s| Error:          (%.4f, %.4f, %.4f)\n", (char*) indent.string(), (double) _ERR_COMPASS.x, (double) _ERR_COMPASS.y, (double) _ERR_COMPASS.z);
   }
   output->concatf("%s| Last update:    %u\n", (char*) indent.string(), _last_update);
   if (_data_period) {
-    output->concatf("%s| Data rate:      %.2f vectors/sec\n", indent.string(), (1000.0 / _data_period));
+    output->concatf("%s| Data rate:      %.2f vectors/sec\n", indent.string(), (double) (1000.0 / _data_period));
   }
 
   printBearing(HeadingType::MAGNETIC_NORTH, output);
@@ -170,14 +170,14 @@ CompassErr TripleAxisCompass::setOptions(uint32_t mask, bool en) {
 *******************************************************************************/
 
 void TripleAxisCompass::printField(StringBuilder* output) {
-  output->concatf("\tField (uT):  (%.4f, %.4f, %.4f)\tMagnitude: %.4f\n", _field.x, _field.y, _field.z, _field.length());
+  output->concatf("\tField (uT):  (%.4f, %.4f, %.4f)\tMagnitude: %.4f\n", (double) _field.x, (double) _field.y, (double) _field.z, (double) _field.length());
 }
 
 
 void TripleAxisCompass::printBearing(HeadingType ht, StringBuilder* output) {
   float f = 0.0;
   getBearing(ht, &f);
-  output->concatf("\t%s:      %.3f\n", BEARING_STRINGS[((uint8_t) ht) & 0x03], f);
+  output->concatf("\t%s:      %.3f\n", BEARING_STRINGS[((uint8_t) ht) & 0x03], (double) f);
 }
 
 

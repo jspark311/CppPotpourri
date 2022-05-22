@@ -150,7 +150,7 @@ template <typename T> class SensorFilter3 : public SensorFilterBase {
     inline Vector3<T>* minValue() {   if (_stale_minmax) _calculate_minmax(); return &min_value; };
     inline Vector3<T>* maxValue() {   if (_stale_minmax) _calculate_minmax(); return &max_value; };
     inline Vector3f64* mean() {       if (_stale_mean)   _calculate_mean();   return &_mean;     };
-    inline Vector3f64* rms() {        if (_stale_rms)    _calculate_rms();    return &_rms;      };  
+    inline Vector3f64* rms() {        if (_stale_rms)    _calculate_rms();    return &_rms;      };
     inline Vector3f64* stdev() {      if (_stale_stdev)  _calculate_stdev();  return &_stdev;    };
     //inline Vector3f64* snr() {        return (mean() / stdev());                               };
     inline uint32_t    memUsed() {    return (windowSize() * sizeof(Vector3<T>));  };
@@ -300,32 +300,32 @@ template <typename T> void SensorFilter<T>::printFilter(StringBuilder* output) {
   output->concatf("\tInitialized:  %c\n",   initialized() ? 'y':'n');
   output->concatf("\tDirty:        %c\n",   _filter_dirty ? 'y':'n');
   output->concatf("\tWindow full:  %c\n",   _window_full  ? 'y':'n');
-  output->concatf("\tMin             = %.8f\n", minValue());
-  output->concatf("\tMax             = %.8f\n", maxValue());
+  output->concatf("\tMin             = %.8f\n", (double) minValue());
+  output->concatf("\tMax             = %.8f\n", (double) maxValue());
   output->concatf("\tSample window   = %u\n",   _window_size);
   switch (_strat) {
     case FilteringStrategy::RAW:
-      output->concatf("\tValue           = %.8f\n", last_value);
+      output->concatf("\tValue           = %.8f\n", (double) last_value);
       break;
     case FilteringStrategy::MOVING_AVG:
-      output->concatf("\tRunning average = %.8f\n", last_value);
+      output->concatf("\tRunning average = %.8f\n", (double) last_value);
       break;
     case FilteringStrategy::MOVING_MED:
-      output->concatf("\tRunning median  = %.8f\n", last_value);
+      output->concatf("\tRunning median  = %.8f\n", (double) last_value);
       break;
     case FilteringStrategy::HARMONIC_MEAN:
-      output->concatf("\tHarmonic mean   = %.8f\n", last_value);
+      output->concatf("\tHarmonic mean   = %.8f\n", (double) last_value);
       break;
     case FilteringStrategy::GEOMETRIC_MEAN:
-      output->concatf("\tGeometric mean  = %.8f\n", last_value);
+      output->concatf("\tGeometric mean  = %.8f\n", (double) last_value);
       break;
     case FilteringStrategy::QUANTIZER:
-      output->concatf("\tQuantized value = %.8f\n", last_value);
+      output->concatf("\tQuantized value = %.8f\n", (double) last_value);
       break;
   }
-  output->concatf("\tRMS             = %.8f\n", rms());
-  output->concatf("\tSTDEV           = %.8f\n", stdev());
-  output->concatf("\tSNR             = %.8f\n", snr());
+  output->concatf("\tRMS             = %.8f\n", (double) rms());
+  output->concatf("\tSTDEV           = %.8f\n", (double) stdev());
+  output->concatf("\tSNR             = %.8f\n", (double) snr());
 }
 
 
@@ -627,8 +627,8 @@ template <typename T> void SensorFilter3<T>::printFilter(StringBuilder* output) 
   if (_stale_rms)    _calculate_rms();
   if (_stale_stdev)  _calculate_stdev();
 
-  output->concatf("\tMin             = (%.4f, %.4f, %.4f)\n", min_value.x, min_value.y, min_value.z);
-  output->concatf("\tMax             = (%.4f, %.4f, %.4f)\n", max_value.x, max_value.y, max_value.z);
+  output->concatf("\tMin             = (%.4f, %.4f, %.4f)\n", (double) min_value.x, (double) min_value.y, (double) min_value.z);
+  output->concatf("\tMax             = (%.4f, %.4f, %.4f)\n", (double) max_value.x, (double) max_value.y, (double) max_value.z);
   output->concatf("\tSample window   = %u\n",   _window_size);
   const char* lv_label;
   switch (_strat) {
