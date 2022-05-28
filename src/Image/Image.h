@@ -131,6 +131,7 @@ class Image {
 
     bool isColor();
     uint32_t convertColor(uint32_t color, ImgBufferFormat);
+    inline uint32_t convertColor(uint32_t color) {    return convertColor(color, _buf_fmt);    };
 
     uint32_t getPixel(uint32_t x, uint32_t y);
     bool     setPixel(uint32_t x, uint32_t y, uint32_t);
@@ -143,6 +144,7 @@ class Image {
     inline bool            allocated() {    return (nullptr != _buffer);   };
     inline uint32_t        pixels() {       return (_x * _y);              };
     inline uint32_t        bytesUsed() {    return ((_x * _y * _bits_per_pixel()) >> 3);  };
+    inline uint8_t         bitsPerPixel() { return _bits_per_pixel(_buf_fmt);   };
     inline ImgOrientation  orientation() {  return ((ImgOrientation) ((_imgflags & MANUVR_IMG_FLAG_ROTATION_MASK) >> 6));  };
     void orientation(ImgOrientation);
 

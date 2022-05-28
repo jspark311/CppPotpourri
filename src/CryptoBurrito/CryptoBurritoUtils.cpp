@@ -89,7 +89,7 @@ const char* CryptOp::errorString(CryptoFault code) {
     case CryptoFault::HW_FAULT:        return "HW_FAULT";
     case CryptoFault::RECALLED:        return "RECALLED";
     case CryptoFault::QUEUE_FLUSH:     return "QUEUE_FLUSH";
-    default:                         return "<UNDEF>";
+    default:                           return "<UNDEF>";
   }
 }
 
@@ -103,6 +103,7 @@ CryptoFault CryptOp::advance() {
   switch (_op_state) {
     case CryptOpState::IDLE:
     case CryptOpState::QUEUED:
+      ret = CryptoFault::ILLEGAL_STATE;
       break;
     case CryptOpState::INITIATE:
     case CryptOpState::WAIT:
