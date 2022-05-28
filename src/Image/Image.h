@@ -89,14 +89,15 @@ typedef struct {
 
 
 enum class ImgBufferFormat : uint8_t {
-  UNALLOCATED = 0x00,  // Buffer unallocated
-  MONOCHROME  = 0x01,  // Monochrome
-  GREY_24     = 0x02,  // 24-bit greyscale
-  GREY_16     = 0x03,  // 16-bit greyscale
-  GREY_8      = 0x04,  // 8-bit greyscale
-  R8_G8_B8    = 0x05,  // 24-bit color
-  R5_G6_B5    = 0x06,  // 16-bit color
-  R3_G3_B2    = 0x07   // 8-bit color
+  UNALLOCATED    = 0x00,  // Buffer unallocated
+  MONOCHROME     = 0x01,  // Monochrome
+  GREY_24        = 0x02,  // 24-bit greyscale
+  GREY_16        = 0x03,  // 16-bit greyscale
+  GREY_8         = 0x04,  // 8-bit greyscale
+  R8_G8_B8_ALPHA = 0x05,  // 24-bit color with 8-bits of alpha.
+  R8_G8_B8       = 0x06,  // 24-bit color
+  R5_G6_B5       = 0x07,  // 16-bit color
+  R3_G3_B2       = 0x08   // 8-bit color
 };
 
 enum class ImgOrientation : uint8_t {
@@ -119,6 +120,7 @@ class Image {
     bool setBuffer(uint8_t*, ImgBufferFormat);
     bool setBufferByCopy(uint8_t*);
     bool setBufferByCopy(uint8_t*, ImgBufferFormat);
+    bool setSize(uint32_t x, uint32_t y);
     bool reallocate();
 
     void wipe();
@@ -217,6 +219,10 @@ class Image {
     int8_t _buffer_allocator();
 
     inline void _set_pixel_32(uint32_t x, uint32_t y, uint32_t c) {
+      *((uint32_t*) (_buffer + (_pixel_number(x, y) << 2))) = c;
+    };
+    inline void _set_pixel_24(uint32_t x, uint32_t y, uint32_t c) {
+      // TODO: Wrong.
       *((uint32_t*) (_buffer + (_pixel_number(x, y) << 2))) = c;
     };
     inline void _set_pixel_16(uint32_t x, uint32_t y, uint32_t c) {

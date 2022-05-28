@@ -378,6 +378,8 @@ uint8_t Image::_bits_per_pixel(ImgBufferFormat x) {
     case ImgBufferFormat::GREY_24:
     case ImgBufferFormat::R8_G8_B8:
       return 24;   // 24-bit color
+    case ImgBufferFormat::R8_G8_B8_ALPHA:
+      return 32;   // 24-bit color with 8-bits of alpha
     case ImgBufferFormat::UNALLOCATED:
     default:
       break;
@@ -518,6 +520,13 @@ bool Image::setBufferByCopy(uint8_t* buf, ImgBufferFormat fmt) {
     }
   }
   return false;
+}
+
+
+bool Image::setSize(uint32_t x, uint32_t y) {
+  _x = x;
+  _y = y;
+  return (0 == _buffer_allocator());
 }
 
 
@@ -688,6 +697,7 @@ int8_t Image::deserialize(uint8_t* buf, uint32_t len) {
 */
 bool Image::isColor() {
   switch (_buf_fmt) {
+    case ImgBufferFormat::R8_G8_B8_ALPHA:    // 32-bit color
     case ImgBufferFormat::R8_G8_B8:          // 24-bit color
     case ImgBufferFormat::R5_G6_B5:          // 16-bit color
     case ImgBufferFormat::R3_G3_B2:          // 8-bit color
@@ -808,6 +818,12 @@ uint32_t Image::getPixel(uint32_t x, uint32_t y) {
 
   if (offset < sz) {
     switch (_buf_fmt) {
+      case ImgBufferFormat::R8_G8_B8_ALPHA:    // 32-bit color
+        ret  = ((uint32_t)*(_buffer + offset + 0) << 24);
+        ret |= ((uint32_t)*(_buffer + offset + 1) << 16);
+        ret |= ((uint32_t)*(_buffer + offset + 2) << 8);
+        ret |= ((uint32_t)*(_buffer + offset + 3));
+        break;
       case ImgBufferFormat::GREY_24:           // 24-bit greyscale   TODO: Wrong. Has to be.
       case ImgBufferFormat::R8_G8_B8:          // 24-bit color
         ret = ((uint32_t)*(_buffer + offset + 0) << 16) | ((uint32_t)*(_buffer + offset + 1) << 8) | (uint32_t)*(_buffer + offset + 2);
@@ -856,9 +872,12 @@ bool Image::setPixel(uint32_t x, uint32_t y, uint32_t c) {
     case ImgBufferFormat::GREY_16:           // 16-bit greyscale
       _set_pixel_16(x, y, c);
       break;
+    case ImgBufferFormat::R8_G8_B8_ALPHA:    // 32-bit color
+      _set_pixel_32(x, y, c);
+      break;
     case ImgBufferFormat::R8_G8_B8:          // 24-bit color
     case ImgBufferFormat::GREY_24:           // 24-bit greyscale
-      _set_pixel_32(x, y, c);
+      _set_pixel_24(x, y, c);
       break;
     case ImgBufferFormat::MONOCHROME:        // Monochrome
       {
