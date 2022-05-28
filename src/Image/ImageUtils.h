@@ -47,68 +47,69 @@ class UIGfxWrapper {
   public:
     uint32_t bg_color;
     uint32_t fg_color;
+    uint32_t active_color;
+    uint32_t inactive_color;
 
-    UIGfxWrapper(Image* i) : bg_color(0), _img(i) {};
+    UIGfxWrapper(Image*);
     ~UIGfxWrapper() {};
 
     void drawGraph(
-      int x, int y, int w, int h, uint16_t color0, uint16_t color1, uint16_t color2,
+      int x, int y, int w, int h, uint color0, uint color1, uint color2,
       bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
       SensorFilter<float>* filt0, SensorFilter<float>* filt1, SensorFilter<float>* filt2
     );
 
     void drawGraph(
-      int x, int y, int w, int h, uint16_t color0, uint16_t color1,
+      int x, int y, int w, int h, uint color0, uint color1,
       bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
       SensorFilter<float>* filt0, SensorFilter<float>* filt1
     );
 
     void drawGraph(
-      int x, int y, int w, int h, uint16_t color,
+      int x, int y, int w, int h, uint color,
       bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
       SensorFilter<float>* filt
     );
 
     void drawGraph(
-      int x, int y, int w, int h, uint16_t color,
+      int x, int y, int w, int h, uint color,
       bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
       SensorFilter<uint32_t>* filt
     );
 
 
-  private:
-    Image* _img;
-    //FlagContainer32  _flags;
-
-    void _draw_graph_frame(int* x, int* y, int* w, int* h, uint color, uint32_t flags);
-    void _draw_graph_text_overlay(int x, int y, int w, int h, uint16_t color, uint32_t flags, float v_max, float v_min, float v_scale, float last_datum);
-    void _draw_graph_dataset(int x, int y, int w, int h, uint16_t color, uint32_t flags, float* dataset, uint32_t data_len);
-
-    void draw_progress_bar_horizontal(
-      int x, int y, int w, int h, uint16_t color,
+    void drawProgressBarH(
+      int x, int y, int w, int h, uint color,
       bool draw_base, bool draw_val, float percent
     );
 
-    void draw_progress_bar_vertical(
-      int x, int y, int w, int h, uint16_t color,
+    void drawProgressBarV(
+      int x, int y, int w, int h, uint color,
       bool draw_base, bool draw_val, float percent
     );
 
-    void draw_compass(
+    void drawCompass(
       int x, int y, int w, int h,
       bool scale_needle, bool draw_val, float bearing_field, float bearing_true_north
     );
 
-    void draw_3vector(
-      int x, int y, int w, int h, uint16_t color,
-      bool draw_axes, bool draw_val, float vx, float vy, float vz
-    );
-
-    void draw_data_square_field(
+    void drawHeatMap(
       int x, int y, int w, int h,
       uint32_t flags,
       float* range_min, float* range_max,
       SensorFilter<float>* filt
+    );
+
+    void drawVector(
+      int x, int y, int w, int h, uint color,
+      bool draw_axes, bool draw_val, float vx, float vy, float vz
+    );
+
+    void drawSphere(
+      int x, int y, int w, int h,
+      bool opaque,
+      int meridians, int parallels,
+      float euler_about_x, float euler_about_y   // TODO: A quat would be cleaner.
     );
 
     void draw_data_view_selector(
@@ -117,12 +118,20 @@ class UIGfxWrapper {
       DataVis selected
     );
 
-    void draw_3sphere(
-      int x, int y, int w, int h,
-      bool opaque,
-      int meridians, int parallels,
-      float euler_about_x, float euler_about_y   // TODO: A quat would be cleaner.
-    );
+    void drawButton(int x, int y, int w, int h, bool pressed);
+    void drawScrollbarH(int x, int y, int w, int h, uint color, float pos);
+    void drawScrollbarV(int x, int y, int w, int h, uint color, float pos);
+
+
+  private:
+    Image* _img;
+    //FlagContainer32  _flags;
+
+    void _draw_graph_frame(int* x, int* y, int* w, int* h, uint color, uint32_t flags);
+    void _draw_graph_text_overlay(int x, int y, int w, int h, uint color, uint32_t flags, float v_max, float v_min, float v_scale, float last_datum);
+    void _draw_graph_dataset(int x, int y, int w, int h, uint color, uint32_t flags, float* dataset, uint32_t data_len);
+
+    void _apply_color_map();
 };
 
 
