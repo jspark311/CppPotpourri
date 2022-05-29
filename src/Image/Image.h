@@ -134,6 +134,7 @@ class Image {
     inline uint32_t convertColor(uint32_t color) {    return convertColor(color, _buf_fmt);    };
 
     uint32_t getPixel(uint32_t x, uint32_t y);
+    uint32_t getPixelAsFormat(uint32_t x, uint32_t y, ImgBufferFormat);
     bool     setPixel(uint32_t x, uint32_t y, uint32_t);
     bool     setPixel(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b);
 

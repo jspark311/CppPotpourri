@@ -41,6 +41,7 @@ enum class GfxUIEvent : uint8_t {
   RELEASE     = 0x01,  //
   PRESSURE    = 0x02,  //
   DRAG        = 0x03,  //
+  HOVER       = 0x04   //
 };
 
 
@@ -50,17 +51,17 @@ enum class GfxUIEvent : uint8_t {
 *******************************************************************************/
 class GfxUIElement {
   public:
-    bool includesPoint(uint32_t x, uint32_t y) {
-      if ((x > _x) && (x < (_x + _w))) {
-        if ((y > _y) && (y < (_y + _h))) {
-          return true;
-        }
-      }
-      return false;
+    bool includesPoint(const uint32_t x, const uint32_t y) {
+      return ((x >= _x) && (x < (_x + _w)) && (y >= _y) && (y < (_y + _h)));
     };
 
-    virtual void render(UIGfxWrapper*) =0;
-    virtual bool touch(uint32_t x, uint32_t y) =0;
+    bool notify(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y) {
+      return includesPoint(x, y) ? _notify(GFX_EVNT, x, y) : false;
+    }
+
+    void render(UIGfxWrapper* ui_gfx) {
+      _render(ui_gfx);
+    };
 
 
   protected:
@@ -73,6 +74,10 @@ class GfxUIElement {
 
     GfxUIElement(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint8_t f) : _x(x), _y(y), _w(w), _h(h), _flags(f) {};
     virtual ~GfxUIElement() {};
+
+    /* These are the obligate overrides. */
+    virtual bool _notify(const GfxUIEvent, const uint32_t x, const uint32_t y) =0;
+    virtual void _render(UIGfxWrapper*) =0;
 
     inline uint8_t _class_flags() {                return _flags;            };
     inline bool _class_flag(uint8_t _flag) {       return (_flags & _flag);  };
@@ -101,20 +106,23 @@ class GfxUIButton : public GfxUIElement {
     inline bool pressed() {          return _class_flag(GFXUI_BUTTON_FLAG_STATE);       };
     inline bool momentary() {        return _class_flag(GFXUI_BUTTON_FLAG_MOMENTARY);   };
 
-    void render(UIGfxWrapper* ui_gfx) {
+    void _render(UIGfxWrapper* ui_gfx) {
       ui_gfx->drawButton(_x, _y, _w, _h, _color_active_on, pressed());
     };
 
-    bool touch(uint32_t x, uint32_t y) {
-      if (includesPoint(x, y)) {
-        pressed(true);
-        return true;
+    bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
+      switch (GFX_EVNT) {
+        case GfxUIEvent::TOUCH:
+        case GfxUIEvent::RELEASE:
+          pressed(GfxUIEvent::TOUCH == GFX_EVNT);
+          return true;
+        default:
+          return false;
       }
-      return false;
     };
 
 
-  private:
+  protected:
     uint32_t _color_active_on;   // The accent color of the element when active.
     uint32_t _color_active_off;  // The accent color of the element when active.
     uint32_t _color_inactive;    // The accent color of the element when inactive.
@@ -132,7 +140,7 @@ class GfxUISlider : public GfxUIElement {
     inline float value() {         return _percentage;    };
     inline void value(float x) {   _percentage = x;       };
 
-    void render(UIGfxWrapper* ui_gfx) {
+    void _render(UIGfxWrapper* ui_gfx) {
       if (_class_flag(GFXUI_SLIDER_FLAG_VERTICAL)) {
         ui_gfx->drawProgressBarV(
           _x, _y, _w, _h, _color_marker,
@@ -149,26 +157,58 @@ class GfxUISlider : public GfxUIElement {
       }
     };
 
-    bool touch(uint32_t x, uint32_t y) {
-      if (includesPoint(x, y)) {
-        if (_class_flag(GFXUI_SLIDER_FLAG_VERTICAL)) {
-          const float PIX_POS_REL = y - _y;
-          _percentage = 1.0f - strict_min(1.0f, strict_max(0.0f, (PIX_POS_REL / (float)(_h-2))));
-        }
-        else {
-          const float PIX_POS_REL = x - _x;
-          _percentage = strict_min(1.0f, strict_max(0.0f, (PIX_POS_REL / (float)(_w-2))));
-        }
-        return true;
+    bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
+      switch (GFX_EVNT) {
+        case GfxUIEvent::TOUCH:
+          if (_class_flag(GFXUI_SLIDER_FLAG_VERTICAL)) {
+            const float PIX_POS_REL = y - _y;
+            _percentage = 1.0f - strict_min(1.0f, strict_max(0.0f, (PIX_POS_REL / (float)_h)));
+          }
+          else {
+            const float PIX_POS_REL = x - _x;
+            _percentage = strict_min(1.0f, strict_max(0.0f, (PIX_POS_REL / (float)_w)));
+          }
+          return true;
+        default:
+          return false;
       }
-      return false;
+    };
+
+
+  protected:
+    float    _percentage;        // The current position of the mark, as a fraction.
+    uint32_t _color_marker;      // The accent color of the position mark.
+};
+
+
+
+/*******************************************************************************
+* A graphical text window that acts as a BufferPipe terminus
+*******************************************************************************/
+
+class GfxUITextArea : public GfxUIElement {
+  public:
+    GfxUITextArea(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint8_t f = 0) : GfxUIElement(x, y, w, h, f), _color_text(color) {};
+    ~GfxUITextArea() {};
+
+    inline void pressed(bool x) {
+      if (momentary()) {  _class_set_flag(GFXUI_BUTTON_FLAG_STATE, x);  }
+      else if (x) {       _flags ^= GFXUI_BUTTON_FLAG_STATE;            }
+    };
+    inline void momentary(bool x) {  _class_set_flag(GFXUI_BUTTON_FLAG_MOMENTARY, x);   };
+    inline bool pressed() {          return _class_flag(GFXUI_BUTTON_FLAG_STATE);       };
+    inline bool momentary() {        return _class_flag(GFXUI_BUTTON_FLAG_MOMENTARY);   };
+
+    void _render(UIGfxWrapper* ui_gfx) {
+    };
+
+    bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
+      return true;
     };
 
 
   private:
-    float    _percentage;        // The current position of the mark, as a fraction.
-    uint32_t _color_marker;      // The accent color of the position mark.
-    uint16_t _id;                // Function code associated with the button.
+    uint32_t _color_text;        // The accent color of the element when active.
 };
 
 

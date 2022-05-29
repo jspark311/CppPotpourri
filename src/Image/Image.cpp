@@ -808,7 +808,8 @@ void Image::_remap_for_orientation(uint32_t* xn, uint32_t* yn) {
 
 
 /**
-*
+* TODO: This class presumes a big-endian buffer to facilitate DMA to
+*   framebuffers. This assumption is bad.
 */
 uint32_t Image::getPixel(uint32_t x, uint32_t y) {
   uint32_t ret = 0;
@@ -819,17 +820,20 @@ uint32_t Image::getPixel(uint32_t x, uint32_t y) {
   if (offset < sz) {
     switch (_buf_fmt) {
       case ImgBufferFormat::R8_G8_B8_ALPHA:    // 32-bit color
-        ret  = ((uint32_t)*(_buffer + offset + 0) << 24);
-        ret |= ((uint32_t)*(_buffer + offset + 1) << 16);
-        ret |= ((uint32_t)*(_buffer + offset + 2) << 8);
-        ret |= ((uint32_t)*(_buffer + offset + 3));
+        // TODO: Presumption of little-endian framebuffer.
+        ret  = ((uint32_t) *(_buffer + offset + 0));
+        ret |= ((uint32_t) *(_buffer + offset + 1) << 8);
+        ret |= ((uint32_t) *(_buffer + offset + 2) << 16);
+        ret |= ((uint32_t) *(_buffer + offset + 3) << 24);
         break;
       case ImgBufferFormat::GREY_24:           // 24-bit greyscale   TODO: Wrong. Has to be.
       case ImgBufferFormat::R8_G8_B8:          // 24-bit color
+        // TODO: Presumption of big-endian framebuffer.
         ret = ((uint32_t)*(_buffer + offset + 0) << 16) | ((uint32_t)*(_buffer + offset + 1) << 8) | (uint32_t)*(_buffer + offset + 2);
         break;
       case ImgBufferFormat::GREY_16:           // 16-bit greyscale   TODO: Wrong. Has to be.
       case ImgBufferFormat::R5_G6_B5:          // 16-bit color
+        // TODO: Presumption of big-endian framebuffer.
         ret = ((uint32_t) *(_buffer + offset + 0) << 8) | (uint32_t) *(_buffer + offset + 1);
         break;
       case ImgBufferFormat::GREY_8:            // 8-bit greyscale    TODO: Wrong. Has to be.
@@ -851,8 +855,95 @@ uint32_t Image::getPixel(uint32_t x, uint32_t y) {
         break;
     }
   }
-  else {
-    // Addressed pixel is out-of-bounds
+  return ret;
+}
+
+
+uint32_t Image::getPixelAsFormat(uint32_t x, uint32_t y, ImgBufferFormat target_fmt) {
+  uint32_t c = getPixel(x, y);
+  if (target_fmt == _buf_fmt) {
+    return c;   // Nothing further to do.
+  }
+  uint8_t a = 0, r = 0, g = 0, b = 0;
+  uint8_t source_bpc = 8;     // Used later for greyscale conversion.
+  uint8_t target_bpp = 24;    // Used later for greyscale conversion.
+  uint32_t ret = 0;
+  switch (_buf_fmt) {
+    case ImgBufferFormat::R8_G8_B8_ALPHA:    // 32-bit color
+      r = (uint8_t) (c >> 24) & 0xFF;
+      g = (uint8_t) (c >> 16) & 0xFF;
+      b = (uint8_t) (c >> 8) & 0xFF;
+      a = (uint8_t) (c & 0xFF);
+      break;
+    case ImgBufferFormat::R8_G8_B8:          // 24-bit color
+      r = (uint8_t) (c >> 16) & 0xFF;
+      g = (uint8_t) (c >> 8) & 0xFF;
+      b = (uint8_t) (c & 0xFF);
+      break;
+    case ImgBufferFormat::R5_G6_B5:          // 16-bit color
+      r = (uint8_t) ((c >> 11) & 0x1F) << 3;
+      g = (uint8_t) ((c >> 5) & 0x3F) << 2;
+      b = (uint8_t) (c & 0x1F) << 3;
+      source_bpc = 6;
+      break;
+    case ImgBufferFormat::R3_G3_B2:          // 8-bit color
+      r = (uint8_t) ((c >> 5) & 0x07) << 5;
+      g = (uint8_t) ((c >> 2) & 0x07) << 5;
+      b = (uint8_t) (c & 0x03) << 6;
+      source_bpc = 3;
+      break;
+    case ImgBufferFormat::MONOCHROME:        // Monochrome
+      if (c) {  a = 0xFF; r = 0xFF; g = 0xFF; b = 0xFF;   }
+      else {    a = 0;    r = 0;    g = 0;    b = 0;      }
+      break;
+    case ImgBufferFormat::GREY_24:           // 24-bit greyscale   TODO: Wrong. Has to be.
+    case ImgBufferFormat::GREY_16:           // 16-bit greyscale   TODO: Wrong. Has to be.
+    case ImgBufferFormat::GREY_8:            // 8-bit greyscale    TODO: Wrong. Has to be.
+    default:
+      return ret;
+  }
+
+  switch (target_fmt) {
+    case ImgBufferFormat::R8_G8_B8_ALPHA:    // 32-bit color
+      ret |= ((uint32_t)r << 24);
+      ret |= ((uint32_t)g << 16);
+      ret |= ((uint32_t)b << 8);
+      ret |= ((uint32_t)a);
+      break;
+
+    case ImgBufferFormat::R8_G8_B8:          // 24-bit color
+      ret |= ((uint32_t)r << 16);
+      ret |= ((uint32_t)g << 8);
+      ret |= ((uint32_t)b);
+      break;
+
+    case ImgBufferFormat::R5_G6_B5:          // 16-bit color
+      ret |= ((uint32_t)(r >> 3) << 11);
+      ret |= ((uint32_t)(g >> 2) << 5);
+      ret |= ((uint32_t)(b >> 3));
+      break;
+    case ImgBufferFormat::R3_G3_B2:          // 8-bit color
+      ret |= ((uint32_t)(r >> 5) << 5);
+      ret |= ((uint32_t)(g >> 5) << 2);
+      ret |= ((uint32_t)(b >> 6));
+      break;
+    case ImgBufferFormat::GREY_8:            // 8-bit greyscale
+      target_bpp -= 16;
+    case ImgBufferFormat::GREY_16:           // 16-bit greyscale
+      target_bpp -= 8;
+    case ImgBufferFormat::GREY_24:           // 24-bit greyscale
+      {
+        // Conversion from color to grey or monochrome.
+        float avg = ((r * 0.3) + (g * 0.59) + (b * 0.11)) / 3.0;
+        float lum = avg / ((1 << source_bpc) - 1);
+        ret = ((1 << target_bpp) - 1) * lum;
+      }
+      break;
+    case ImgBufferFormat::MONOCHROME:        // Monochrome
+      ret = (0 != c) ? 0xFFFFFFFF: 0;
+      break;
+    default:
+      return 0;
   }
   return ret;
 }

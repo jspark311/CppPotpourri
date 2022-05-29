@@ -55,6 +55,8 @@ class UIGfxWrapper {
     UIGfxWrapper(Image*);
     ~UIGfxWrapper() {};
 
+    inline Image* img() {   return _img;   };
+
     void drawGraph(
       int x, int y, int w, int h, uint color0, uint color1, uint color2,
       bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
@@ -96,10 +98,10 @@ class UIGfxWrapper {
     );
 
     void drawHeatMap(
-      int x, int y, int w, int h,
+      uint x, uint y, uint w, uint h,
+      SensorFilter<float>* filt,
       uint32_t flags,
-      float* range_min, float* range_max,
-      SensorFilter<float>* filt
+      float range_lock_low = 0.0f, float range_lock_hi = 0.0f
     );
 
     void drawVector(
@@ -153,6 +155,40 @@ class GfxNTSCEffect {
   private:
     Image* _source;
     Image* _target;
+};
+
+
+/*
+* This is a data processing class that scales the source Image, and writes it
+*   into the target.
+* Can also be used to do a region-bounded copy from one image to another.
+*/
+class ImageScaler {
+  public:
+    ImageScaler(
+      Image* i_s, Image* i_t, float scale,
+      int s_x = 0, int s_y = 0, int s_w = 0, int s_h = 0,
+      int t_x = 0, int t_y = 0
+    );
+    ~ImageScaler() {};
+
+    int8_t apply();
+    inline float scale() {         return _scale;    };
+    inline void scale(float x) {   _scale = x;       };
+
+    void setParameters(float scale, int s_x, int s_y, int s_w, int s_h, int t_x, int t_y);
+
+
+  private:
+    Image* _source;
+    Image* _target;
+    float _scale;
+    int   _s_x;
+    int   _s_y;
+    int   _s_w;
+    int   _s_h;
+    int   _t_x;
+    int   _t_y;
 };
 
 

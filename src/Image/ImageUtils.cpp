@@ -11,7 +11,7 @@ TODO: This should ultimately condense into an instantiable class, to be bound
 */
 
 #include "ImageUtils.h"
-
+//#include "../AbstractPlatform.h"
 
 
 const char* const getDataVisString(const DataVis e) {
@@ -287,17 +287,34 @@ void UIGfxWrapper::drawCompass(
 * Draw the given data as a plane.
 */
 void UIGfxWrapper::drawHeatMap(
-  int x, int y, int w, int h,
+  uint x, uint y, uint w, uint h,
+  SensorFilter<float>* filt,
   uint32_t flags,
-  float* range_min, float* range_max,
-  SensorFilter<float>* filt
+  float range_lock_low, float range_lock_hi
 ) {
   const bool lock_range_to_absolute = (flags & GFXUI_FLAG_LOCK_RANGE_V) ? true : false;
   const uint32_t MIN_ELEMENTS = strict_min((uint32_t) filt->windowSize(), (uint32_t) w * h);
-  const uint8_t PIXEL_SIZE    = h / MIN_ELEMENTS;
-  const float TEMP_RANGE = *range_max - *range_min;
-  const float BINSIZE_T  = TEMP_RANGE / (PIXEL_SIZE * 8);  // Space of display gives scale size.
-  const float MIDPOINT_T = TEMP_RANGE / 2.0;
+  const uint     PIXEL_SIZE   = strict_min(w, h) / MIN_ELEMENTS;
+  const float    TEMP_MIN     = (range_lock_low == range_lock_hi) ? filt->minValue() : range_lock_low;
+  const float    TEMP_MAX     = (range_lock_low == range_lock_hi) ? filt->maxValue() : range_lock_hi;
+  const float    TEMP_RANGE   = TEMP_MAX - TEMP_MIN;
+  const float    BINSIZE_T    = TEMP_RANGE / (PIXEL_SIZE * 8);  // Allotted display area gives scale factor.
+  const float    MIDPOINT_T   = TEMP_RANGE / 2.0;
+
+  uint8_t shift_value;
+  switch (_img->format()) {
+    // We need to make an intelligent choice about color granularity if we
+    //   want the best results.
+    case ImgBufferFormat::MONOCHROME:      shift_value = 1;    break;   // Is it above the midpoint, or not?
+    case ImgBufferFormat::GREY_8:          shift_value = 8;    break;   // Middle value is midpoint, black is cold. White is hot.
+    case ImgBufferFormat::R3_G3_B2:        shift_value = 5;    break;   //
+    case ImgBufferFormat::GREY_16:         shift_value = 16;   break;   //
+    case ImgBufferFormat::R5_G6_B5:        shift_value = 10;   break;   //
+    case ImgBufferFormat::GREY_24:         shift_value = 24;   break;   //
+    case ImgBufferFormat::R8_G8_B8:        shift_value = 16;   break;   //
+    case ImgBufferFormat::R8_G8_B8_ALPHA:  shift_value = 16;   break;   //
+    default: return;  // Anything else is unsupported.
+  }
   float* dataset = filt->memPtr();
 
   //_img->setAddrWindow(x, y, w, h);
@@ -305,7 +322,7 @@ void UIGfxWrapper::drawHeatMap(
     uint x = (i & 0x07) * PIXEL_SIZE;
     uint y = (i >> 3) * PIXEL_SIZE;
     float pix_deviation = abs(MIDPOINT_T - dataset[i]);
-    uint8_t pix_intensity = BINSIZE_T * (pix_deviation / (*range_max - MIDPOINT_T));
+    uint8_t pix_intensity = BINSIZE_T * (pix_deviation / (TEMP_MAX - MIDPOINT_T));
     uint color = (dataset[i] <= MIDPOINT_T) ? pix_intensity : (pix_intensity << 11);
     _img->fillRect(x, y, PIXEL_SIZE, PIXEL_SIZE, color);
   }
@@ -361,6 +378,7 @@ void UIGfxWrapper::drawButton(int x, int y, int w, int h, uint color, bool press
   const uint ELEMENT_RADIUS = 4;
   if (pressed) {
     _img->fillRoundRect(x, y, w, h, ELEMENT_RADIUS, color);
+    _img->drawRoundRect(x, y, w, h, ELEMENT_RADIUS, fg_color);
   }
   else {
     _img->fillRect(x, y, w, h, bg_color);
@@ -517,7 +535,7 @@ void UIGfxWrapper::_draw_graph_text_overlay(
   StringBuilder tmp_val_str;
   if (flags & GFXUI_FLAG_TEXT_RANGE_V) {
     _img->setCursor(x+1, y);
-    _img->setTextColor(fg_color);
+    _img->setTextColor(fg_color, bg_color);
     tmp_val_str.concatf("%.2f", (double) v_max);
     _img->writeString(&tmp_val_str);
     tmp_val_str.clear();
@@ -529,7 +547,7 @@ void UIGfxWrapper::_draw_graph_text_overlay(
     uint8_t tmp = last_datum / v_scale;
     //_img->fillCircle(x+w, tmp+y, 1, color);
     _img->setCursor(x, strict_min((uint32_t) ((y+h)-tmp), (uint32_t) (h-1)));
-    _img->setTextColor(color);
+    _img->setTextColor(color, bg_color);
     tmp_val_str.clear();
     tmp_val_str.concatf("%.2f", (double) last_datum);
     _img->writeString(&tmp_val_str);
@@ -591,4 +609,105 @@ void UIGfxWrapper::_apply_color_map() {
   fg_color       = _img->convertColor(0x00FFFFFF);
   active_color   = _img->convertColor(0x0000CCCC);
   inactive_color = _img->convertColor(0x00505050);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*******************************************************************************
+* ImageScaler
+*******************************************************************************/
+/* Constructor */
+ImageScaler::ImageScaler(Image* i_s, Image* i_t, float scale, int s_x, int s_y, int s_w, int s_h, int t_x, int t_y) :
+  _source(i_s), _target(i_t), _scale(scale)
+{
+  _s_x = s_x;
+  _s_y = s_y;
+  _s_w = (0 != s_w) ? s_w : _source->x();  // If not provided, assume the entire source image.
+  _s_h = (0 != s_h) ? s_h : _source->y();  // If not provided, assume the entire source image.
+  _t_x = t_x;
+  _t_y = t_y;
+}
+
+
+void ImageScaler::setParameters(float scale, int s_x, int s_y, int s_w, int s_h, int t_x, int t_y) {
+  _scale = scale;
+  _s_x = s_x;
+  _s_y = s_y;
+  _s_w = s_w;
+  _s_h = s_h;
+  _t_x = t_x;
+  _t_y = t_y;
+}
+
+
+/*
+* Copy the scaled image.
+*/
+int8_t ImageScaler::apply() {
+  const uint SRC_X_RANGE_START = _s_x;
+  const uint SRC_X_RANGE_END   = (_s_x + _s_w);
+  const uint SRC_Y_RANGE_START = _s_y;
+  const uint SRC_Y_RANGE_END   = (_s_y + _s_h);
+  const uint TGT_X_RANGE_START = _t_x;
+  const uint TGT_X_RANGE_END   = (_t_x + (_scale * _s_w));
+  const uint TGT_Y_RANGE_START = _t_y;
+  const uint TGT_Y_RANGE_END   = (_t_y + (_scale * _s_h));
+  const uint SQUARE_SIZE       = (uint) _scale;
+
+  int8_t ret = -1;
+  if (_source->allocated() && _target->allocated()) {
+    ret--;
+    // If the source range is valid...
+    if ((_source->x() >= SRC_X_RANGE_END) && (_source->y() >= SRC_Y_RANGE_END)) {
+      ret--;
+      // And the target range can contain the scaled result...
+      if ((_target->x() >= TGT_X_RANGE_END) && (_target->y() >= TGT_Y_RANGE_END)) {
+        ret = 0;
+        if (_scale < 1.0f) {
+          uint source_x = SRC_X_RANGE_START;
+          uint source_y = SRC_Y_RANGE_START;
+          // If source area is larger than target area, we will need to sample an
+          //   area of the source, and write a single pixel to the target.
+          // TODO: For now, we just take the leading pixel from the source area.
+          //   It would be better to take the result of a transform of all pixels.
+          for (uint i = TGT_X_RANGE_START; i < TGT_X_RANGE_END; i++) {
+            for (uint j = TGT_Y_RANGE_START; j < TGT_Y_RANGE_END; j++) {
+              uint32_t color = _source->getPixelAsFormat(source_x, source_y, _target->format());
+              _target->setPixel(i, j, color);
+              source_y += SQUARE_SIZE;
+            }
+            source_x += SQUARE_SIZE;
+            source_y = SRC_Y_RANGE_START;
+          }
+        }
+        else {
+          //c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "(%u %u)\t(%u %u)", SRC_X_RANGE_START, SRC_Y_RANGE_START, _s_x, _s_y);
+          uint target_x = TGT_X_RANGE_START;
+          uint target_y = TGT_Y_RANGE_START;
+          // If source area is smaller than target area, we will need to sample a
+          //   single pixel of the source, and write a rectangle to the target.
+          for (uint i = SRC_X_RANGE_START; i < SRC_X_RANGE_END; i++) {
+            for (uint j = SRC_Y_RANGE_START; j < SRC_Y_RANGE_END; j++) {
+              uint32_t color = _source->getPixelAsFormat(i, j, _target->format());
+              _target->fillRect(target_x, target_y, SQUARE_SIZE, SQUARE_SIZE, color);
+              target_y += SQUARE_SIZE;
+            }
+            target_x += SQUARE_SIZE;
+            target_y = TGT_Y_RANGE_START;
+          }
+        }
+      }
+    }
+  }
+  return ret;
 }
