@@ -12,6 +12,8 @@ This source file was never part of Adafruit's library. They are small graphics
 #include "../TripleAxisPipe/TripleAxisCompass.h"
 
 
+#ifndef __MANUVR_IMG_UTILS_H
+#define __MANUVR_IMG_UTILS_H
 
 /*******************************************************************************
 * UIGfxWrapper flags
@@ -118,7 +120,7 @@ class UIGfxWrapper {
       DataVis selected
     );
 
-    void drawButton(int x, int y, int w, int h, bool pressed);
+    void drawButton(int x, int y, int w, int h, uint color, bool pressed);
     void drawScrollbarH(int x, int y, int w, int h, uint color, float pos);
     void drawScrollbarV(int x, int y, int w, int h, uint color, float pos);
 
@@ -152,3 +154,6 @@ class GfxNTSCEffect {
     Image* _source;
     Image* _target;
 };
+
+
+#endif  // __MANUVR_IMG_UTILS_H

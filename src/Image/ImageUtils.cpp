@@ -357,10 +357,10 @@ void UIGfxWrapper::drawVector(
 * Functions for rendering common UI elements
 *******************************************************************************/
 
-void UIGfxWrapper::drawButton(int x, int y, int w, int h, bool pressed) {
+void UIGfxWrapper::drawButton(int x, int y, int w, int h, uint color, bool pressed) {
   const uint ELEMENT_RADIUS = 4;
   if (pressed) {
-    _img->fillRoundRect(x, y, w, h, ELEMENT_RADIUS, active_color);
+    _img->fillRoundRect(x, y, w, h, ELEMENT_RADIUS, color);
   }
   else {
     _img->fillRect(x, y, w, h, bg_color);
