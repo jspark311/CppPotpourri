@@ -1144,6 +1144,16 @@ void Image::drawChar(uint32_t x, uint32_t y, unsigned char c, uint32_t color, ui
 }
 
 
+uint16_t Image::getFontWidth() {
+  return (_gfxFont) ? (_gfxFont->glyph->xAdvance * (uint16_t) _textsize) : ((uint16_t) _textsize * 6);
+}
+
+
+uint16_t Image::getFontHeight() {
+  return (_gfxFont) ? ((uint16_t) _textsize * (uint8_t) _gfxFont->yAdvance) : ((uint16_t) _textsize * 8);
+}
+
+
 /*!
     @brief  Print one byte/character of data, used to support print()
     @param  c  The 8-bit ascii character to write

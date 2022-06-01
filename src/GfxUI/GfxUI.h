@@ -37,6 +37,11 @@ Touch and render coordinates are assumed to be isometric.
 #define GFXUI_SENFILT_FLAG_SHOW_VALUE         0x01000000   //
 #define GFXUI_SENFILT_FLAG_SHOW_RANGE         0x02000000   //
 
+#define GFXUI_TXTAREA_FLAG_LINE_WRAP          0x01000000   //
+#define GFXUI_TXTAREA_FLAG_WORD_WRAP          0x02000000   //
+#define GFXUI_TXTAREA_FLAG_SCROLLABLE         0x04000000   //
+
+
 #define GFXUI_SLIDER_FLAG_VERTICAL            0x01000000   // This slider is vertical.
 #define GFXUI_SLIDER_FLAG_RENDER_VALUE        0x02000000   // Overlay the value on the slider bar.
 #define GFXUI_SLIDER_FLAG_MARK_ONLY           0x04000000   // Do not fill the space under the mark.
@@ -87,6 +92,18 @@ class GfxUIElement {
 
     inline void shouldReap(bool x) {  _class_set_flag(GFXUI_FLAG_FREE_THIS_ELEMENT, x);   };
     inline bool shouldReap() {        return _class_flag(GFXUI_FLAG_FREE_THIS_ELEMENT);   };
+
+    void reposition(uint32_t x, uint32_t y) {
+      _x = x;
+      _y = y;
+      _need_redraw(true);
+    };
+
+    void resize(uint32_t w, uint32_t h) {
+      _w = w;
+      _h = h;
+      _need_redraw(true);
+    };
 
     /*
     * Top-level objects are the first to handle notify.
@@ -160,6 +177,7 @@ class GfxUIButton : public GfxUIElement {
     inline void momentary(bool x) {  _class_set_flag(GFXUI_BUTTON_FLAG_MOMENTARY, x);   };
     inline bool momentary() {        return _class_flag(GFXUI_BUTTON_FLAG_MOMENTARY);   };
 
+    /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
     virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
 
@@ -179,9 +197,9 @@ class GfxUITabBar : public GfxUIElement {
     GfxUITabBar(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0);
     ~GfxUITabBar() {};
 
+    /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
     virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
-
 
 
   protected:
@@ -189,7 +207,6 @@ class GfxUITabBar : public GfxUIElement {
     uint32_t _color_marker;      // The accent color of the position mark.
     GfxUIElement* _buttons;      // A collection of buttons contained by this object.
 };
-
 
 
 
@@ -204,6 +221,7 @@ class GfxUISlider : public GfxUIElement {
     inline float value() {         return _percentage;    };
     inline void value(float x) {   _percentage = x;       };
 
+    /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
     virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
 
@@ -218,17 +236,35 @@ class GfxUISlider : public GfxUIElement {
 /*******************************************************************************
 * A graphical text area that acts as a BufferPipe terminus
 *******************************************************************************/
-class GfxUITextArea : public GfxUIElement {
+class GfxUITextArea : public GfxUIElement, BufferAccepter {
   public:
     GfxUITextArea(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f), _color_text(color) {};
     ~GfxUITextArea() {};
 
+    /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
     virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
+
+    /* Implementation of BufferAccepter. */
+    int8_t provideBuffer(StringBuilder*);
+
+    inline void wrapLines(bool x) {  _class_set_flag(GFXUI_TXTAREA_FLAG_LINE_WRAP, x);   };
+    inline bool wrapLines() {        return _class_flag(GFXUI_TXTAREA_FLAG_LINE_WRAP);   };
+    inline void wrapWords(bool x) {  _class_set_flag(GFXUI_TXTAREA_FLAG_WORD_WRAP, x);   };
+    inline bool wrapWords() {        return _class_flag(GFXUI_TXTAREA_FLAG_WORD_WRAP);   };
+    inline void scrollable(bool x) { _class_set_flag(GFXUI_TXTAREA_FLAG_SCROLLABLE, x);  };
+    inline bool scrollable() {       return _class_flag(GFXUI_TXTAREA_FLAG_SCROLLABLE);  };
+    inline void clear() {    _scrollback.clear();   };
 
 
   private:
     uint32_t _color_text;        // The accent color of the element when active.
+    uint32_t _cursor_x = 0;
+    uint32_t _cursor_y = 0;
+    uint32_t _max_scrollback_bytes = 600;   // Tokenized strings
+    uint32_t _max_cols = 0;
+    uint32_t _max_rows = 0;
+    StringBuilder _scrollback;  //
 };
 
 
@@ -240,6 +276,7 @@ class GfxUI3AxisRender : public GfxUIElement {
     GfxUI3AxisRender(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f), _color_accent(color) {};
     ~GfxUI3AxisRender() {};
 
+    /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
     virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
 
@@ -263,6 +300,7 @@ template <typename T> class GfxUISensorFilter : public GfxUIElement {
     GfxUISensorFilter(SensorFilter<T>* sf, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f | GFXUI_FLAG_ALWAYS_REDRAW), _color(color), _filter(sf) {};
     ~GfxUISensorFilter() {};
 
+    /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
     virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
 
@@ -279,6 +317,25 @@ template <typename T> class GfxUISensorFilter : public GfxUIElement {
 };
 
 
+/*******************************************************************************
+* Graphical tool for looking at KVP data.
+*******************************************************************************/
+class GfxUIKeyValuePair : public GfxUIElement {
+  public:
+    GfxUIKeyValuePair(KeyValuePair* kvp, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f | GFXUI_FLAG_ALWAYS_REDRAW), _color(color), _kvp(kvp) {};
+    ~GfxUIKeyValuePair() {};
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
+
+
+  private:
+    uint32_t _color;        // The accent color of the element when active.
+    KeyValuePair* _kvp;
+};
+
+
 
 /*******************************************************************************
 * Graphical tools for using MLinks.
@@ -288,6 +345,7 @@ class GfxUIMLink : public GfxUIElement {
     GfxUIMLink(ManuvrLink* l, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0) : GfxUIElement(x, y, w, h, f), _link(l) {};
     ~GfxUIMLink() {};
 
+    /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
     virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
 

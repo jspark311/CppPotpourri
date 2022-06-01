@@ -183,7 +183,10 @@ class Image {
     void setTextSize(uint8_t s);
     void setTextColor(uint32_t c, uint32_t bg);
     void setTextColor(uint32_t c);
+    uint16_t getFontWidth();
+    uint16_t getFontHeight();
     inline void     setFont(const GFXfont* f) {   _gfxFont = (GFXfont*) f;    };
+    inline GFXfont* getFont() {                   return _gfxFont;            };
     inline uint32_t getCursorX() const {          return _cursor_x;           };
     inline uint32_t getCursorY() const {          return _cursor_y;           };
 

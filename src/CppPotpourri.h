@@ -35,18 +35,22 @@ class StringBuilder;  // Forward declaration for buffer interchange.
 */
 inline double   strict_max(double   a, double   b) {  return (a > b) ? a : b; };
 inline float    strict_max(float    a, float    b) {  return (a > b) ? a : b; };
+inline uint64_t strict_max(uint64_t a, uint64_t b) {  return (a > b) ? a : b; };
 inline uint32_t strict_max(uint32_t a, uint32_t b) {  return (a > b) ? a : b; };
 inline uint16_t strict_max(uint16_t a, uint16_t b) {  return (a > b) ? a : b; };
 inline uint8_t  strict_max(uint8_t  a, uint8_t  b) {  return (a > b) ? a : b; };
+inline int64_t  strict_max(int64_t  a, int64_t  b) {  return (a > b) ? a : b; };
 inline int32_t  strict_max(int32_t  a, int32_t  b) {  return (a > b) ? a : b; };
 inline int16_t  strict_max(int16_t  a, int16_t  b) {  return (a > b) ? a : b; };
 inline int8_t   strict_max(int8_t   a, int8_t   b) {  return (a > b) ? a : b; };
 
 inline double   strict_min(double   a, double   b) {  return (a < b) ? a : b; };
 inline float    strict_min(float    a, float    b) {  return (a < b) ? a : b; };
+inline uint64_t strict_min(uint64_t a, uint64_t b) {  return (a < b) ? a : b; };
 inline uint32_t strict_min(uint32_t a, uint32_t b) {  return (a < b) ? a : b; };
 inline uint16_t strict_min(uint16_t a, uint16_t b) {  return (a < b) ? a : b; };
 inline uint8_t  strict_min(uint8_t  a, uint8_t  b) {  return (a < b) ? a : b; };
+inline int64_t  strict_min(int64_t  a, int64_t  b) {  return (a < b) ? a : b; };
 inline int32_t  strict_min(int32_t  a, int32_t  b) {  return (a < b) ? a : b; };
 inline int16_t  strict_min(int16_t  a, int16_t  b) {  return (a < b) ? a : b; };
 inline int8_t   strict_min(int8_t   a, int8_t   b) {  return (a < b) ? a : b; };
@@ -72,9 +76,26 @@ inline uint64_t wrap_accounted_delta(uint64_t a, uint64_t b) {   return (a > b) 
 inline uint32_t wrap_accounted_delta(uint32_t a, uint32_t b) {   return (a > b) ? (a - b) : (b - a);   };
 inline uint16_t wrap_accounted_delta(uint16_t a, uint16_t b) {   return (a > b) ? (a - b) : (b - a);   };
 inline uint8_t  wrap_accounted_delta(uint8_t  a, uint8_t  b) {   return (a > b) ? (a - b) : (b - a);   };
+inline int64_t  wrap_accounted_delta(int64_t  a, int64_t  b) {   return (a > b) ? (a - b) : (b - a);   };
 inline int32_t  wrap_accounted_delta(int32_t  a, int32_t  b) {   return (a > b) ? (a - b) : (b - a);   };
 inline int16_t  wrap_accounted_delta(int16_t  a, int16_t  b) {   return (a > b) ? (a - b) : (b - a);   };
 inline int8_t   wrap_accounted_delta(int8_t   a, int8_t   b) {   return (a > b) ? (a - b) : (b - a);   };
+
+/*
+* Given a value and a range, gives the saturated result.
+* TODO: If the compiler gives this, it will likely be ASM optimized using no
+*   branches. Until I care enough, I'll use a double-nested ternary. Suffer.
+*/
+inline double   range_bind(const double   VAL, const double   MIN, const double   MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline float    range_bind(const float    VAL, const float    MIN, const float    MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline uint64_t range_bind(const uint64_t VAL, const uint64_t MIN, const uint64_t MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline uint32_t range_bind(const uint32_t VAL, const uint32_t MIN, const uint32_t MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline uint16_t range_bind(const uint16_t VAL, const uint16_t MIN, const uint16_t MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline uint8_t  range_bind(const uint8_t  VAL, const uint8_t  MIN, const uint8_t  MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline int64_t  range_bind(const int64_t  VAL, const int64_t  MIN, const int64_t  MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline int32_t  range_bind(const int32_t  VAL, const int32_t  MIN, const int32_t  MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline int16_t  range_bind(const int16_t  VAL, const int16_t  MIN, const int16_t  MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline int8_t   range_bind(const int8_t   VAL, const int8_t   MIN, const int8_t   MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
 
 /**
 * Endian conversion wrappers.
