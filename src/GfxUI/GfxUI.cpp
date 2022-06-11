@@ -81,7 +81,8 @@ int GfxUIElement::_render_children(UIGfxWrapper* ui_gfx, bool force) {
 *******************************************************************************/
 
 int GfxUIButton::_render(UIGfxWrapper* ui_gfx) {
-  ui_gfx->drawButton(_x, _y, _w, _h, _color_active_on, pressed());
+  uint32_t current_color = elementActive() ? _color_active_on : 0x404040;
+  ui_gfx->drawButton(_x, _y, _w, _h, current_color, pressed());
   return 1;
 }
 
@@ -89,8 +90,8 @@ bool GfxUIButton::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
   bool ret = false;
   switch (GFX_EVNT) {
     case GfxUIEvent::TOUCH:
-      if (momentary()) {  _class_flip_flag(GFXUI_BUTTON_FLAG_STATE);  }
-      else {              _class_set_flag(GFXUI_BUTTON_FLAG_STATE);   }
+      if (!momentary()) {  _class_flip_flag(GFXUI_BUTTON_FLAG_STATE);  }
+      else {               _class_set_flag(GFXUI_BUTTON_FLAG_STATE);   }
       ret = true;
       break;
     case GfxUIEvent::RELEASE:
@@ -106,6 +107,19 @@ bool GfxUIButton::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
     _need_redraw(true);
   }
   return ret;
+}
+
+
+int GfxUITextButton::_render(UIGfxWrapper* ui_gfx) {
+  GfxUIButton::_render(ui_gfx);
+  uint32_t current_color = elementActive() ? _color_active_on : 0x404040;
+  ui_gfx->img()->setCursor(_x + 2, _y + 2);
+  ui_gfx->img()->setTextColor(
+    (pressed() ? 0 : current_color),
+    (pressed() ? current_color : 0)
+  );
+  ui_gfx->img()->writeString(_TXT);
+  return 1;
 }
 
 

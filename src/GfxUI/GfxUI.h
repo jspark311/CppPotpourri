@@ -205,7 +205,6 @@ class GfxUITextButton : public GfxUIButton {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
 
   protected:
     const char* _TXT;
