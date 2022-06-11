@@ -29,7 +29,8 @@ Touch and render coordinates are assumed to be isometric.
 #define GFXUI_FLAG_DRAW_FRAME_D               0x00000008   // Easy way for the application to select framing.
 #define GFXUI_FLAG_DRAW_FRAME_L               0x00000010   // Easy way for the application to select framing.
 #define GFXUI_FLAG_DRAW_FRAME_R               0x00000020   // Easy way for the application to select framing.
-#define GFXUI_FLAG_FREE_THIS_ELEMENT          0x00000040   // This object ought to be freed when no longer needed.
+#define GFXUI_FLAG_INACTIVE                   0x00000040   // Used to prevent suprious input at a class's discretion.
+#define GFXUI_FLAG_FREE_THIS_ELEMENT          0x00000080   // This object ought to be freed when no longer needed.
 
 #define GFXUI_BUTTON_FLAG_STATE               0x01000000   // Button state
 #define GFXUI_BUTTON_FLAG_MOMENTARY           0x02000000   // Button reverts to off when released.
@@ -92,6 +93,9 @@ class GfxUIElement {
 
     inline void shouldReap(bool x) {  _class_set_flag(GFXUI_FLAG_FREE_THIS_ELEMENT, x);   };
     inline bool shouldReap() {        return _class_flag(GFXUI_FLAG_FREE_THIS_ELEMENT);   };
+    inline void elementActive(bool x) {  _class_set_flag(GFXUI_FLAG_INACTIVE, !x);   };
+    inline bool elementActive() {        return !_class_flag(GFXUI_FLAG_INACTIVE);   };
+
 
     void reposition(uint32_t x, uint32_t y) {
       _x = x;
@@ -104,6 +108,11 @@ class GfxUIElement {
       _h = h;
       _need_redraw(true);
     };
+
+    inline uint16_t elementPosX() {      return _x;    };
+    inline uint16_t elementPosY() {      return _y;    };
+    inline uint16_t elementWidth() {     return _w;    };
+    inline uint16_t elementHeight() {    return _h;    };
 
     /*
     * Top-level objects are the first to handle notify.
@@ -162,7 +171,7 @@ class GfxUIElement {
 *******************************************************************************/
 
 /*******************************************************************************
-* A graphical button
+* Graphical buttons
 *******************************************************************************/
 class GfxUIButton : public GfxUIElement {
   public:
@@ -186,6 +195,20 @@ class GfxUIButton : public GfxUIElement {
     uint32_t _color_active_on;   // The accent color of the element when active.
     uint32_t _color_active_off;  // The accent color of the element when active.
     uint32_t _color_inactive;    // The accent color of the element when inactive.
+};
+
+
+class GfxUITextButton : public GfxUIButton {
+  public:
+    GfxUITextButton(const char* T, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIButton(x, y, w, h, color, f), _TXT(T) {};
+    ~GfxUITextButton() {};
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
+
+  protected:
+    const char* _TXT;
 };
 
 
@@ -234,6 +257,36 @@ class GfxUISlider : public GfxUIElement {
 
 
 /*******************************************************************************
+* A magnifier that tracks the pointer while it is on-screen.
+*******************************************************************************/
+class GfxUIMagnifier : public GfxUIElement {
+  public:
+    GfxUIMagnifier(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0);
+    ~GfxUIMagnifier() {};
+
+    inline float scale() {         return _scale;    };
+    inline void scale(float x) {   _scale = x;       };
+
+    void pointerLocation(float x, float y) {
+      _pointer_x = x;
+      _pointer_y = y;
+    };
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
+
+
+  protected:
+    uint32_t _color;             // The accent color of the position mark.
+    uint32_t _pointer_x;         //
+    uint32_t _pointer_y;         //
+    float    _scale;             // The current scale factor to apply to the source.
+};
+
+
+
+/*******************************************************************************
 * A graphical text area that acts as a BufferPipe terminus
 *******************************************************************************/
 class GfxUITextArea : public GfxUIElement, BufferAccepter {
@@ -259,11 +312,12 @@ class GfxUITextArea : public GfxUIElement, BufferAccepter {
 
   private:
     uint32_t _color_text;        // The accent color of the element when active.
-    uint32_t _cursor_x = 0;
-    uint32_t _cursor_y = 0;
+    uint32_t _cursor_x = 0;  // Location of the next character.
+    uint32_t _cursor_y = 0;  // Location of the next character.
     uint32_t _max_scrollback_bytes = 600;   // Tokenized strings
-    uint32_t _max_cols = 0;
-    uint32_t _max_rows = 0;
+    uint32_t _max_cols = 0;  // Maximum number of columns that will fit in render area.
+    uint32_t _max_rows = 0;  // Maximum number of lines that will fit in render area.
+    uint16_t _top_line = 0;  // Which line index is at the top of the render?
     StringBuilder _scrollback;  //
 };
 

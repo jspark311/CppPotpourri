@@ -25,7 +25,7 @@ bool GfxUIElement::notify(const GfxUIEvent GFX_EVNT, const uint32_t x, const uin
 
 bool GfxUIElement::_notify_children(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y) {
   if (_children.hasNext()) {
-    // There are child obects to notify.
+    // There are child objects to notify.
     const uint QUEUE_SIZE = _children.size();
     for (uint n = 0; n < QUEUE_SIZE; n++) {
       GfxUIElement* ui_obj = _children.get(n);
@@ -43,6 +43,18 @@ int GfxUIElement::render(UIGfxWrapper* ui_gfx, bool force) {
   ret += _render_children(ui_gfx, force);
   if (_need_redraw() | force) {
     ret += _render(ui_gfx);
+    if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_U) {
+      ui_gfx->img()->drawFastHLine(_x, _y, _w, 0xFFFFFF);
+    }
+    if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_D) {
+      ui_gfx->img()->drawFastHLine(_x, (_y+(_h-1)), _w, 0xFFFFFF);
+    }
+    if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_L) {
+      ui_gfx->img()->drawFastVLine(_x, _y, _h, 0xFFFFFF);
+    }
+    if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_R) {
+      ui_gfx->img()->drawFastVLine((_x+(_w-1)), _y, _h, 0xFFFFFF);
+    }
     _need_redraw(false);
   }
   return ret;
@@ -51,7 +63,7 @@ int GfxUIElement::render(UIGfxWrapper* ui_gfx, bool force) {
 int GfxUIElement::_render_children(UIGfxWrapper* ui_gfx, bool force) {
   int ret = 0;
   if (_children.hasNext()) {
-    // There are child obects to render.
+    // There are child objects to render.
     const uint QUEUE_SIZE = _children.size();
     for (uint n = 0; n < QUEUE_SIZE; n++) {
       GfxUIElement* ui_obj = _children.get(n);
@@ -180,6 +192,43 @@ bool GfxUISlider::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
 
 
 /*******************************************************************************
+* GfxUIKeyValuePair
+*******************************************************************************/
+
+GfxUIMagnifier::GfxUIMagnifier(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f) :
+  GfxUIElement(x, y, w, h, f), _color(color)
+{
+  _scale = 0.5;
+}
+
+
+int GfxUIMagnifier::_render(UIGfxWrapper* ui_gfx) {
+  return 1;
+}
+
+bool GfxUIMagnifier::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
+  bool ret = false;
+  switch (GFX_EVNT) {
+    case GfxUIEvent::MOVE_UP:
+      _scale = strict_min(1.0, (_scale + 0.01));
+      return true;
+
+    case GfxUIEvent::MOVE_DOWN:
+      _scale = strict_max(0.01, (_scale - 0.01)); // TODO: Need a more appropriate bounding.
+      return true;
+
+    default:
+      break;
+  }
+  if (ret) {
+    _need_redraw(true);
+  }
+  return ret;
+}
+
+
+
+/*******************************************************************************
 * GfxUITextArea
 *******************************************************************************/
 
@@ -204,7 +253,8 @@ int GfxUITextArea::_render(UIGfxWrapper* ui_gfx) {
     uint line_count = _scrollback.count();
     uint line_idx   = 0;
     if (line_count > _max_rows) {
-      line_idx = line_count - _max_rows;
+      line_idx = (line_count - _max_rows);
+      //line_idx = (line_count - _max_rows) - _top_line;
       line_count = _max_rows;
     }
 
@@ -230,6 +280,14 @@ int GfxUITextArea::_render(UIGfxWrapper* ui_gfx) {
 bool GfxUITextArea::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
   bool ret = false;
   switch (GFX_EVNT) {
+    case GfxUIEvent::MOVE_UP:
+      _top_line = (uint32_t) strict_min((int32_t)(_scrollback.count() - _max_rows), (int32_t)(_top_line + 1));
+      return true;
+
+    case GfxUIEvent::MOVE_DOWN:
+      _top_line = (uint32_t) strict_max((int32_t) 0, (int32_t) (_top_line - 1));
+      return true;
+
     default:
       return false;
   }
