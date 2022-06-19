@@ -13,6 +13,7 @@ Touch and render coordinates are assumed to be isometric.
 #include "../Image/Image.h"
 #include "../Image/ImageUtils.h"
 #include "../ManuvrLink/ManuvrLink.h"
+#include "../Identity/Identity.h"
 #include "../SensorFilter.h"
 
 #ifndef __MANUVR_GFXUI_H
@@ -104,11 +105,7 @@ class GfxUIElement {
       _need_redraw(true);
     };
 
-    void reposition(uint32_t x, uint32_t y) {
-      _x = x;
-      _y = y;
-      _need_redraw(true);
-    };
+    void reposition(uint32_t x, uint32_t y);
 
     void resize(uint32_t w, uint32_t h) {
       _w = w;
@@ -419,7 +416,7 @@ class GfxUIKeyValuePair : public GfxUIElement {
 *******************************************************************************/
 class GfxUIIdentity : public GfxUIElement {
   public:
-    GfxUIIdentity(Identity* id, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f | GFXUI_FLAG_ALWAYS_REDRAW), _color(color), _ident(id) {};
+    GfxUIIdentity(Identity* id, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0);
     ~GfxUIIdentity() {};
 
     /* Implementation of GfxUIElement. */
@@ -430,6 +427,8 @@ class GfxUIIdentity : public GfxUIElement {
   private:
     uint32_t _color;        // The accent color of the element when active.
     Identity* _ident;
+    GfxUITabBar _tab_bar;
+    GfxUITextArea _txt;
 };
 
 
