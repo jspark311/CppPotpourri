@@ -12,6 +12,17 @@ Date:   2022.05.29
 * GfxUIElement Base Class
 *******************************************************************************/
 
+GfxUIElement::GfxUIElement(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f) :
+  _x(x), _y(y), _w(w), _h(h),
+  _mrgn_t(0), _mrgn_b(0), _mrgn_l(0), _mrgn_r(0),
+  _flags(f | GFXUI_FLAG_NEED_RERENDER) {}
+
+
+int GfxUIElement::_add_child(GfxUIElement* chld) {
+  return _children.insert(chld);
+}
+
+
 bool GfxUIElement::notify(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y) {
   bool ret = false;
   if (includesPoint(x, y)) {
@@ -81,8 +92,13 @@ int GfxUIElement::_render_children(UIGfxWrapper* ui_gfx, bool force) {
 *******************************************************************************/
 
 int GfxUIButton::_render(UIGfxWrapper* ui_gfx) {
-  uint32_t current_color = elementActive() ? _color_active_on : 0x404040;
-  ui_gfx->drawButton(_x, _y, _w, _h, current_color, pressed());
+  uint32_t current_color = elementActive() ? _color_active_on : 0x909090;
+  ui_gfx->drawButton(
+    _internal_PosX(), _internal_PosY(),
+    _internal_Width(), _internal_Height(),
+    current_color,
+    pressed()
+  );
   return 1;
 }
 
@@ -112,8 +128,8 @@ bool GfxUIButton::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
 
 int GfxUITextButton::_render(UIGfxWrapper* ui_gfx) {
   GfxUIButton::_render(ui_gfx);
-  uint32_t current_color = elementActive() ? _color_active_on : 0x404040;
-  ui_gfx->img()->setCursor(_x + 2, _y + 2);
+  uint32_t current_color = elementActive() ? _color_active_on : 0x909090;
+  ui_gfx->img()->setCursor(_internal_PosX()+3, _internal_PosY()+3);
   ui_gfx->img()->setTextColor(
     (pressed() ? 0 : current_color),
     (pressed() ? current_color : 0)
@@ -127,22 +143,99 @@ int GfxUITextButton::_render(UIGfxWrapper* ui_gfx) {
 /*******************************************************************************
 * GfxUITabBar
 *******************************************************************************/
+GfxUITabBar::GfxUITabBar(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f) :
+  GfxUIElement(x, y, w, h, f), _color(color) {}
+
 
 int GfxUITabBar::_render(UIGfxWrapper* ui_gfx) {
-  return 1;
+  int8_t ret = 0;
+  const uint32_t BTN_COUNT = (uint32_t) _children.size();
+  for (uint btn_idx = 0; btn_idx < BTN_COUNT; btn_idx++) {
+    GfxUIButton* btn_cur = (GfxUIButton*) _children.get(btn_idx);
+    if (btn_cur->pressed()) {
+      if (1 == _set_active_tab(btn_idx)) {
+        ret = 1;
+      }
+    }
+  }
+  return ret;
 }
+
 
 bool GfxUITabBar::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
   bool ret = false;
   switch (GFX_EVNT) {
-    case GfxUIEvent::TOUCH:
-      ret = true;
-      break;
     default:
       return false;
   }
   if (ret) {
     _need_redraw(true);
+  }
+  return ret;
+}
+
+
+int8_t GfxUITabBar::addTab(const char* txt, bool selected) {
+  int8_t ret = -1;
+  const uint32_t flgs_inact = 0;
+  const uint32_t flgs_act   = (GFXUI_BUTTON_FLAG_STATE | GFXUI_FLAG_INACTIVE);
+  const uint32_t BTN_COUNT = (uint32_t) _children.size() + 1;  // Recalculate width.
+  const uint32_t INTRNL_X = _internal_PosX();
+  const uint32_t INTRNL_Y = _internal_PosY();
+  const uint32_t INTRNL_H = _internal_Height();
+  const uint32_t NEW_UNIT_W = (_internal_Width()/BTN_COUNT);
+
+  GfxUIButton* n_btn = new GfxUITextButton(txt,
+    INTRNL_X + (NEW_UNIT_W * (BTN_COUNT-1)), INTRNL_Y,
+    NEW_UNIT_W, INTRNL_H,
+    _color,
+    ((GFXUI_FLAG_FREE_THIS_ELEMENT | GFXUI_FLAG_NEED_RERENDER) | (selected ? flgs_act : flgs_inact))
+  );
+  if (n_btn) {
+    ret--;
+    if (0 <= _add_child(n_btn)) {
+      n_btn->setMargins(0, 2, 0, 0);
+      uint32_t x_pix_accum = 0;
+      for (uint btn_idx = 0; btn_idx < (BTN_COUNT-1); btn_idx++) {
+        GfxUIElement* chld = _children.get(btn_idx);
+        chld->reposition(INTRNL_X + x_pix_accum, INTRNL_Y);
+        chld->resize(NEW_UNIT_W, INTRNL_H);
+        x_pix_accum += NEW_UNIT_W;
+      }
+      _need_redraw(true);
+      ret = 0;
+    }
+    else {
+      delete n_btn;   // Oooops.
+    }
+  }
+  return ret;
+}
+
+
+int8_t GfxUITabBar::_set_active_tab(uint8_t tab_idx) {
+  int8_t ret = 0;
+  if (_active_tab != tab_idx) {
+    ret--;
+    GfxUIButton* btn_n_act = (GfxUIButton*) _children.get(tab_idx);
+    if (nullptr != btn_n_act) {
+      const uint32_t BTN_COUNT = (uint32_t) _children.size();
+      for (uint btn_idx = 0; btn_idx < BTN_COUNT; btn_idx++) {
+        GfxUIButton* btn_p_act = (GfxUIButton*) _children.get(btn_idx);
+        if (tab_idx == btn_idx) {
+          btn_p_act->buttonState(true);
+          btn_n_act->elementActive(false);   // Don't observe twice-selected tabs.
+        }
+        else {
+          // Set all other tabs inactive, and sensitive.
+          btn_p_act->buttonState(false);
+          btn_p_act->elementActive(true);
+        }
+      }
+      _active_tab = tab_idx;
+      _need_redraw(true);
+      ret = 1;
+    }
   }
   return ret;
 }
@@ -508,11 +601,53 @@ bool GfxUIKeyValuePair::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t 
 
 
 /*******************************************************************************
-* GfxUIMLink
+* GfxUIIdentity
 *******************************************************************************/
 #if defined(CONFIG_MANUVR_M2M_SUPPORT)
 
+GfxUIMLink::GfxUIMLink(ManuvrLink* l, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f)
+  : GfxUIElement(x, y, w, h, (f | GFXUI_FLAG_ALWAYS_REDRAW)), _link(l),
+  _tab_bar(_internal_PosX(), _internal_PosY(), _internal_Width(), 20, 0xCC99CC),
+  _txt(_internal_PosX(), _internal_PosY() + _tab_bar.elementHeight(), _internal_Width(), h - _tab_bar.elementHeight(), 0xCC99CC)
+{
+  // Note our subordinate objects...
+  _tab_bar.addTab("Transport", true);
+  _tab_bar.addTab("Session");
+  _tab_bar.addTab("Messages");
+  _tab_bar.addTab("Counterparty");
+  _add_child(&_tab_bar);
+  _add_child(&_txt);
+}
+
+
 int GfxUIMLink::_render(UIGfxWrapper* ui_gfx) {
+  const uint32_t INTRNL_X = _internal_PosX();
+  const uint32_t INTRNL_Y = _internal_PosY();
+  const uint32_t INTRNL_W = _internal_Width();
+  const uint32_t INTRNL_H = _internal_Height();
+  StringBuilder _tmp_sbldr;
+
+  _txt.clear();
+  switch (_tab_bar.activeTab()) {
+    case 0:
+      _tmp_sbldr.concat("Transport\n");
+      break;
+    case 1:
+      _tmp_sbldr.concat("Session\n");
+      //_tmp_sbldr.concatf(ManuvrLink::sessionStateStr(_link->getState()));
+      _link->printDebug(&_tmp_sbldr);
+      break;
+    case 2:
+      _tmp_sbldr.concat("Messages\n");
+      _link->printFSM(&_tmp_sbldr);
+      break;
+    case 3:
+      _tmp_sbldr.concat("Counterparty\n");
+      break;
+    default:
+      break;
+  }
+  _txt.provideBuffer(&_tmp_sbldr);
   return 1;
 }
 

@@ -96,6 +96,13 @@ class GfxUIElement {
     inline void elementActive(bool x) {  _class_set_flag(GFXUI_FLAG_INACTIVE, !x);   };
     inline bool elementActive() {        return !_class_flag(GFXUI_FLAG_INACTIVE);   };
 
+    inline void setMargins(uint8_t t, uint8_t b, uint8_t l, uint8_t r) {
+      _mrgn_t = t;
+      _mrgn_b = b;
+      _mrgn_l = l;
+      _mrgn_r = r;
+      _need_redraw(true);
+    };
 
     void reposition(uint32_t x, uint32_t y) {
       _x = x;
@@ -128,13 +135,26 @@ class GfxUIElement {
 
 
   protected:
-    uint32_t _x;     // Location of the upper-left corner.
-    uint32_t _y;     // Location of the upper-left corner.
-    uint16_t _w;     // Size of the element.
-    uint16_t _h;     // Size of the element.
+    uint32_t _x;      // Location of the upper-left corner.
+    uint32_t _y;      // Location of the upper-left corner.
+    uint16_t _w;      // Size of the element.
+    uint16_t _h;      // Size of the element.
+    uint8_t  _mrgn_t; // How many pixels inset should be the content?
+    uint8_t  _mrgn_b; // How many pixels inset should be the content?
+    uint8_t  _mrgn_l; // How many pixels inset should be the content?
+    uint8_t  _mrgn_r; // How many pixels inset should be the content?
+    PriorityQueue<GfxUIElement*> _children;
 
-    GfxUIElement(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f) : _x(x), _y(y), _w(w), _h(h), _flags(f | GFXUI_FLAG_NEED_RERENDER) {};
+    GfxUIElement(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f);
     virtual ~GfxUIElement() {};
+
+    // These terrible inlines calculate the internal bounds of the renderable
+    //   area after borders and margin have been taken into account.
+    inline uint32_t _internal_PosX() {    return (_x + _mrgn_l + (_class_flag(GFXUI_FLAG_DRAW_FRAME_L) ? 1 : 0));  };
+    inline uint32_t _internal_PosY() {    return (_y + _mrgn_t + (_class_flag(GFXUI_FLAG_DRAW_FRAME_U) ? 1 : 0));  };
+    inline uint16_t _internal_Width() {   return (_w - (_mrgn_r + (_class_flag(GFXUI_FLAG_DRAW_FRAME_R) ? 1 : 0) + _mrgn_l + (_class_flag(GFXUI_FLAG_DRAW_FRAME_L) ? 1 : 0)));   };
+    inline uint16_t _internal_Height() {  return (_h - (_mrgn_t + (_class_flag(GFXUI_FLAG_DRAW_FRAME_U) ? 1 : 0) + _mrgn_b + (_class_flag(GFXUI_FLAG_DRAW_FRAME_D) ? 1 : 0)));   };
+    int _add_child(GfxUIElement*);
 
     /* These are the obligate overrides. */
     virtual bool _notify(const GfxUIEvent, const uint32_t x, const uint32_t y) =0;
@@ -142,7 +162,6 @@ class GfxUIElement {
 
     inline void _need_redraw(bool x) {  _class_set_flag(GFXUI_FLAG_NEED_RERENDER, x);   };
     inline bool _need_redraw() {        return _class_flag(GFXUI_FLAG_NEED_RERENDER | GFXUI_FLAG_ALWAYS_REDRAW);   };
-
 
     inline uint32_t _class_flags() {                return _flags;            };
     inline bool _class_flag(uint32_t _flag) {       return (_flags & _flag);  };
@@ -156,7 +175,6 @@ class GfxUIElement {
 
   private:
     uint32_t _flags; // FlagContainer32 _flags;
-    PriorityQueue<GfxUIElement*> _children;
 
     bool   _notify_children(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y);
     int    _render_children(UIGfxWrapper*, bool force);
@@ -178,6 +196,7 @@ class GfxUIButton : public GfxUIElement {
     GfxUIButton(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f), _color_active_on(color) {};
     ~GfxUIButton() {};
 
+    inline void buttonState(bool x) {  _class_set_flag(GFXUI_BUTTON_FLAG_STATE, x);  };
     inline void pressed(bool x) {
       if (momentary()) {  _class_set_flag(GFXUI_BUTTON_FLAG_STATE, x);  }
       else if (x) {       _class_flip_flag(GFXUI_BUTTON_FLAG_STATE);    }
@@ -219,15 +238,21 @@ class GfxUITabBar : public GfxUIElement {
     GfxUITabBar(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0);
     ~GfxUITabBar() {};
 
+    inline uint8_t activeTab() {     return _active_tab;    };
+    inline uint8_t tabCount() {      return _children.size();    };
+    int8_t addTab(const char* txt, bool selected = false);
+
+
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
     virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
 
 
   protected:
-    float    _percentage;        // The current position of the mark, as a fraction.
-    uint32_t _color_marker;      // The accent color of the position mark.
-    GfxUIElement* _buttons;      // A collection of buttons contained by this object.
+    uint32_t _color;             //
+    uint8_t  _active_tab;        //
+
+    int8_t _set_active_tab(uint8_t tab_idx);
 };
 
 
@@ -288,7 +313,7 @@ class GfxUIMagnifier : public GfxUIElement {
 /*******************************************************************************
 * A graphical text area that acts as a BufferPipe terminus
 *******************************************************************************/
-class GfxUITextArea : public GfxUIElement, BufferAccepter {
+class GfxUITextArea : public GfxUIElement, public BufferAccepter {
   public:
     GfxUITextArea(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f), _color_text(color) {};
     ~GfxUITextArea() {};
@@ -389,13 +414,33 @@ class GfxUIKeyValuePair : public GfxUIElement {
 };
 
 
+/*******************************************************************************
+* Graphical representations for identities
+*******************************************************************************/
+class GfxUIIdentity : public GfxUIElement {
+  public:
+    GfxUIIdentity(Identity* id, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f | GFXUI_FLAG_ALWAYS_REDRAW), _color(color), _ident(id) {};
+    ~GfxUIIdentity() {};
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
+
+
+  private:
+    uint32_t _color;        // The accent color of the element when active.
+    Identity* _ident;
+};
+
+
 
 /*******************************************************************************
 * Graphical tools for using MLinks.
 *******************************************************************************/
+
 class GfxUIMLink : public GfxUIElement {
   public:
-    GfxUIMLink(ManuvrLink* l, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0) : GfxUIElement(x, y, w, h, f), _link(l) {};
+    GfxUIMLink(ManuvrLink* l, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0);
     ~GfxUIMLink() {};
 
     /* Implementation of GfxUIElement. */
@@ -405,6 +450,8 @@ class GfxUIMLink : public GfxUIElement {
 
   private:
     ManuvrLink* _link;
+    GfxUITabBar _tab_bar;
+    GfxUITextArea _txt;
 };
 
 
