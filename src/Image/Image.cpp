@@ -1160,17 +1160,29 @@ uint16_t Image::getFontHeight() {
 */
 void Image::writeChar(uint8_t c) {
   if (!_gfxFont) { // 'Classic' built-in font
-    if (c == '\n') {                        // Newline?
-      _cursor_x  = 0;                     // Reset x to zero,
-      _cursor_y += _textsize * 8;          // advance y one line
-    }
-    else if (c != '\r') {                   // Ignore carriage returns
-      if (textWrap() && ((_cursor_x + _textsize * 6) > _x)) { // Off right?
-        _cursor_x  = 0;                 // Reset x to zero,
-        _cursor_y += _textsize * 8;      // advance y one line
-      }
-      drawChar(_cursor_x, _cursor_y, c, _textcolor, _textbgcolor, _textsize);
-      _cursor_x += _textsize * 6;          // Advance x one char
+    switch (c) {
+      case '\n':                      // Newline?
+        _cursor_y += _textsize * 8;         // advance y one line
+        _cursor_x  = 0;                     // Reset x to zero,
+        break;
+      case '\r':                  // Ignore carriage returns
+        break;
+      case '\t':                  // Tab reduces to two spaces.
+        c = ' ';
+        if (textWrap() && ((_cursor_x + _textsize * 6) > _x)) { // Off right?
+          _cursor_x  = 0;                 // Reset x to zero,
+          _cursor_y += _textsize * 8;      // advance y one line
+        }
+        drawChar(_cursor_x, _cursor_y, c, _textcolor, _textbgcolor, _textsize);
+        _cursor_x += _textsize * 6;
+      default:
+        if (textWrap() && ((_cursor_x + _textsize * 6) > _x)) { // Off right?
+          _cursor_x  = 0;                 // Reset x to zero,
+          _cursor_y += _textsize * 8;      // advance y one line
+        }
+        drawChar(_cursor_x, _cursor_y, c, _textcolor, _textbgcolor, _textsize);
+        _cursor_x += _textsize * 6;          // Advance x one char
+        break;
     }
   }
   else { // Custom font
