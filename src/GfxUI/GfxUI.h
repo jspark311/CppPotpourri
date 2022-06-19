@@ -15,6 +15,7 @@ Touch and render coordinates are assumed to be isometric.
 #include "../ManuvrLink/ManuvrLink.h"
 #include "../Identity/Identity.h"
 #include "../SensorFilter.h"
+#include "../Storage.h"
 
 #ifndef __MANUVR_GFXUI_H
 #define __MANUVR_GFXUI_H
@@ -449,6 +450,48 @@ class GfxUIMLink : public GfxUIElement {
 
   private:
     ManuvrLink* _link;
+    GfxUITabBar _tab_bar;
+    GfxUITextArea _txt;
+};
+
+
+/*******************************************************************************
+* Storage objects.
+* These act as state and control breakouts for classes in the Storage apparatus.
+*******************************************************************************/
+
+/*******************************************************************************
+* Graphical representation of a DataRecord.
+*******************************************************************************/
+
+/* Storage */
+class GfxUIStorage : public GfxUIElement {
+  public:
+    GfxUIStorage(Storage* storage, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0);
+    ~GfxUIStorage() {};
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
+
+
+  private:
+    Storage* _storage;
+};
+
+/* DataRecord */
+class GfxUIDataRecord : public GfxUIElement {
+  public:
+    GfxUIDataRecord(DataRecord* record, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0);
+    ~GfxUIDataRecord() {};
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
+
+
+  private:
+    DataRecord* _record;
     GfxUITabBar _tab_bar;
     GfxUITextArea _txt;
 };
