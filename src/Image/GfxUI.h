@@ -7,11 +7,16 @@ These classes are built on top of the Image and graphics classes, and implement
   bi-directional button flows between the user and firmware. These classes
   only make sense if the mode of user input is a 2-axis surface, such as a
   mouse or touchscreen).
-Touch and render coordinates are assumed to be isometric.
+Touch and render coordinates are assumed to be isometric and to have the same
+  origin. Arrangements where this is not true must do transform work prior ro
+  providing input events.
+
+This source file was never part of Adafruit's library. They are small graphics
+  utilities that help implement simple UIs.
 */
 
-#include "../Image/Image.h"
-#include "../Image/ImageUtils.h"
+#include "Image.h"
+#include "ImageUtils.h"
 #include "../ManuvrLink/ManuvrLink.h"
 #include "../Identity/Identity.h"
 #include "../SensorFilter.h"

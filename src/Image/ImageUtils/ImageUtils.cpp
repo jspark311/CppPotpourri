@@ -10,8 +10,7 @@ TODO: This should ultimately condense into an instantiable class, to be bound
   to specific Image instances.
 */
 
-#include "ImageUtils.h"
-//#include "../AbstractPlatform.h"
+#include "../ImageUtils.h"
 
 
 const char* const getDataVisString(const DataVis e) {
@@ -609,97 +608,4 @@ void UIGfxWrapper::_apply_color_map() {
   fg_color       = _img->convertColor(0x00FFFFFF);
   active_color   = _img->convertColor(0x0000CCCC);
   inactive_color = _img->convertColor(0x00505050);
-}
-
-
-
-
-
-/*******************************************************************************
-* ImageScaler
-*******************************************************************************/
-/* Constructor */
-ImageScaler::ImageScaler(Image* i_s, Image* i_t, float scale, int s_x, int s_y, int s_w, int s_h, int t_x, int t_y) :
-  _source(i_s), _target(i_t), _scale(scale)
-{
-  _s_x = s_x;
-  _s_y = s_y;
-  _s_w = (0 != s_w) ? s_w : _source->x();  // If not provided, assume the entire source image.
-  _s_h = (0 != s_h) ? s_h : _source->y();  // If not provided, assume the entire source image.
-  _t_x = t_x;
-  _t_y = t_y;
-}
-
-
-void ImageScaler::setParameters(float scale, int s_x, int s_y, int s_w, int s_h, int t_x, int t_y) {
-  _scale = scale;
-  _s_x = s_x;
-  _s_y = s_y;
-  _s_w = s_w;
-  _s_h = s_h;
-  _t_x = t_x;
-  _t_y = t_y;
-}
-
-
-/*
-* Copy the scaled image.
-*/
-int8_t ImageScaler::apply() {
-  const uint SRC_X_RANGE_START = _s_x;
-  const uint SRC_X_RANGE_END   = (_s_x + _s_w);
-  const uint SRC_Y_RANGE_START = _s_y;
-  const uint SRC_Y_RANGE_END   = (_s_y + _s_h);
-  const uint TGT_X_RANGE_START = _t_x;
-  const uint TGT_X_RANGE_END   = (_t_x + (_scale * _s_w));
-  const uint TGT_Y_RANGE_START = _t_y;
-  const uint TGT_Y_RANGE_END   = (_t_y + (_scale * _s_h));
-  const uint SQUARE_SIZE       = (uint) _scale;
-
-  int8_t ret = -1;
-  if (_source->allocated() && _target->allocated()) {
-    ret--;
-    // If the source range is valid...
-    if ((_source->x() >= SRC_X_RANGE_END) && (_source->y() >= SRC_Y_RANGE_END)) {
-      ret--;
-      // And the target range can contain the scaled result...
-      if ((_target->x() >= TGT_X_RANGE_END) && (_target->y() >= TGT_Y_RANGE_END)) {
-        ret = 0;
-        if (_scale < 1.0f) {
-          uint source_x = SRC_X_RANGE_START;
-          uint source_y = SRC_Y_RANGE_START;
-          // If source area is larger than target area, we will need to sample an
-          //   area of the source, and write a single pixel to the target.
-          // TODO: For now, we just take the leading pixel from the source area.
-          //   It would be better to take the result of a transform of all pixels.
-          for (uint i = TGT_X_RANGE_START; i < TGT_X_RANGE_END; i++) {
-            for (uint j = TGT_Y_RANGE_START; j < TGT_Y_RANGE_END; j++) {
-              uint32_t color = _source->getPixelAsFormat(source_x, source_y, _target->format());
-              _target->setPixel(i, j, color);
-              source_y += SQUARE_SIZE;
-            }
-            source_x += SQUARE_SIZE;
-            source_y = SRC_Y_RANGE_START;
-          }
-        }
-        else {
-          //c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "(%u %u)\t(%u %u)", SRC_X_RANGE_START, SRC_Y_RANGE_START, _s_x, _s_y);
-          uint target_x = TGT_X_RANGE_START;
-          uint target_y = TGT_Y_RANGE_START;
-          // If source area is smaller than target area, we will need to sample a
-          //   single pixel of the source, and write a rectangle to the target.
-          for (uint i = SRC_X_RANGE_START; i < SRC_X_RANGE_END; i++) {
-            for (uint j = SRC_Y_RANGE_START; j < SRC_Y_RANGE_END; j++) {
-              uint32_t color = _source->getPixelAsFormat(i, j, _target->format());
-              _target->fillRect(target_x, target_y, SQUARE_SIZE, SQUARE_SIZE, color);
-              target_y += SQUARE_SIZE;
-            }
-            target_x += SQUARE_SIZE;
-            target_y = TGT_Y_RANGE_START;
-          }
-        }
-      }
-    }
-  }
-  return ret;
 }

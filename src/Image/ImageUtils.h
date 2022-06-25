@@ -5,6 +5,8 @@ Date:   2022.05.27
 
 This source file was never part of Adafruit's library. They are small graphics
   utilities that help implement simple UIs.
+
+TODO: UIGfxWrapper is somewhat vestigial. It should be subsumed into other classes.
 */
 
 #include "Image.h"
@@ -146,7 +148,7 @@ class UIGfxWrapper {
 */
 class GfxNTSCEffect {
   public:
-    GfxNTSCEffect(Image* i_s, Image* i_t) : _source(i_s), _target(i_t) {};
+    GfxNTSCEffect(Image* i_s, Image* i_t);
     ~GfxNTSCEffect() {};
 
     int8_t apply();
