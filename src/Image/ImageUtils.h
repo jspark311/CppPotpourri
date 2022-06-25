@@ -11,8 +11,9 @@ TODO: UIGfxWrapper is somewhat vestigial. It should be subsumed into other class
 
 #include "Image.h"
 #include "../SensorFilter.h"
-#include "../TripleAxisPipe/TripleAxisCompass.h"
+#include "../ManuvrLink/ManuvrLink.h"
 #include "../Identity/Identity.h"
+#include "../SensorFilter.h"
 
 
 #ifndef __MANUVR_IMG_UTILS_H
@@ -181,6 +182,50 @@ class ImageScaler {
 /*******************************************************************************
 * TODO: Stub classes for later....
 */
+
+/*
+* This is an adapter class that casts an Image over a Link.
+*/
+class ImageCaster {
+  public:
+    ImageCaster(Image* i_s, int x, int y, int w, int h);
+    ~ImageCaster() {};
+
+    //int ManuvrLink::send(KeyValuePair* kvp, bool need_reply);
+    int8_t apply();
+    bool   busy();
+
+
+  private:
+    ManuvrLink* _link;
+    Image* _source;
+    int   _s_x;
+    int   _s_y;
+    int   _s_w;
+    int   _s_h;
+};
+
+
+/*
+* This is an adapter class that writes an Image from data received over a Link.
+*/
+class ImageCatcher {
+  public:
+    ImageCatcher(Image* i_t);
+    ~ImageCatcher() {};
+
+    int8_t apply(KeyValuePair* kvp);   // Takes a serialized Image.
+
+
+  private:
+    Image* _target;
+    int   _t_x;
+    int   _t_y;
+    int   _t_w_max;
+    int   _t_h_max;
+
+};
+
 
 /*
 * This is a transform class that blends two Images and writes the result into a
