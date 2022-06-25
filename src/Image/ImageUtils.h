@@ -12,6 +12,7 @@ TODO: UIGfxWrapper is somewhat vestigial. It should be subsumed into other class
 #include "Image.h"
 #include "../SensorFilter.h"
 #include "../TripleAxisPipe/TripleAxisCompass.h"
+#include "../Identity/Identity.h"
 
 
 #ifndef __MANUVR_IMG_UTILS_H
@@ -143,24 +144,6 @@ class UIGfxWrapper {
 
 
 /*
-* This is a data processing class that applies artificial NTSC distortions to
-*   an image. Ironically, this is purely for aesthetics.
-*/
-class GfxNTSCEffect {
-  public:
-    GfxNTSCEffect(Image* i_s, Image* i_t);
-    ~GfxNTSCEffect() {};
-
-    int8_t apply();
-
-
-  private:
-    Image* _source;
-    Image* _target;
-};
-
-
-/*
 * This is a data processing class that scales the source Image, and writes it
 *   into the target.
 * Can also be used to do a region-bounded copy from one image to another.
@@ -191,6 +174,159 @@ class ImageScaler {
     int   _s_h;
     int   _t_x;
     int   _t_y;
+};
+
+
+
+/*******************************************************************************
+* TODO: Stub classes for later....
+*/
+
+/*
+* This is a transform class that blends two Images and writes the result into a
+*   third.
+*/
+class ImageCrossfader {
+  public:
+    ImageCrossfader(Image* i_0, Image* i_1, Image* i_t);
+    ~ImageCrossfader() {};
+
+    int8_t apply();
+    int8_t blendAlgo();
+
+    inline void  sourceBias0(float bias) {     _s0_bias = bias;   };
+    inline void  sourceBias1(float bias) {     _s1_bias = bias;   };
+
+
+  private:
+    Image* _source0;
+    Image* _source1;
+    Image* _target;
+    float _s0_bias;
+    float _s1_bias;
+    int   _s_x;
+    int   _s_y;
+    int   _s_w;
+    int   _s_h;
+    int   _t_x;
+    int   _t_y;
+    uint8_t  _algo;
+};
+
+
+/*
+* This is a transform class that applies artificial NTSC distortions to
+*   an image. Ironically, this is purely for aesthetics.
+*/
+class GfxNTSCEffect {
+  public:
+    GfxNTSCEffect(Image* i_s, Image* i_t);
+    ~GfxNTSCEffect() {};
+
+    int8_t apply();
+
+
+  private:
+    Image* _source;
+    Image* _target;
+};
+
+
+/*
+* This is a transform class that generates an authentication code for the source Image,
+*   and then steganographically embeds it into the Image itself, along with an
+*   optional payload. That is, it modifies the source Image. For theory and
+*   operation, see BuriedUnderTheNoiseFloor.
+*/
+class ImageSigner {
+  public:
+    ImageSigner(
+      Image* i_s, Identity* signing_ident, uint8_t* payload = nullptr, uint32_t payload_len = 0
+    );
+    ~ImageSigner() {};
+
+    int8_t sign();
+    int8_t signWithParameters();
+    bool   busy();
+
+
+  private:
+    Image*    _source;
+    Identity* _signing_ident;
+    uint8_t*  _pl;
+    uint32_t  _pl_len;
+};
+
+
+/*
+* This is a class that tries to authenticate a given Image against a given
+*   Identity, and extract any payloads that may be steganographically embedded
+*   within it. It does not modify the source Image. For theory and
+*   operation, see BuriedUnderTheNoiseFloor.
+*/
+class ImageAuthenticator {
+  public:
+    ImageAuthenticator(Image* i_s, Identity* verify_ident);
+    ~ImageAuthenticator() {};
+
+    int8_t verify();
+    int8_t verifyWithParameters();
+    bool   busy();
+    bool   authenticated();
+    bool   foundSig();
+
+    inline uint8_t* payload() {         return  _pl;        };
+    inline uint32_t payloadLength() {   return  _pl_len;    };
+
+
+  private:
+    Image*    _source;
+    Identity* _verify_ident;
+    uint8_t*  _pl;
+    uint32_t  _pl_len;
+};
+
+
+
+/*
+* This is a generating class that generates Perlin noise at a given region
+*   of the given Image.
+*/
+class PerlinNoise {
+  public:
+    PerlinNoise(Image* i_t, int x, int y, int w, int h);
+    ~PerlinNoise() {};
+
+    int8_t apply();
+
+
+  private:
+    Image* _target;
+    int   _t_x;
+    int   _t_y;
+    int   _t_w;
+    int   _t_h;
+};
+
+
+/*
+* This is a generating class that takes an array representing a heat-map,
+* Can also be used to do a region-bounded copy from one image to another.
+*/
+class ImageHeatMap {
+  public:
+    ImageHeatMap(Image* i_t, int x, int y, int w, int h);
+    ~ImageHeatMap() {};
+
+    //int8_t apply(SensorFilter*);
+
+
+  private:
+    Image* _target;
+    int   _t_x;
+    int   _t_y;
+    int   _t_w;
+    int   _t_h;
 };
 
 
