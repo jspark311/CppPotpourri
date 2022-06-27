@@ -71,12 +71,14 @@ class SensorFilterBase {
     bool     _window_full    = false;
     bool     _filter_dirty   = false;
     bool     _filter_initd   = false;
+    bool     _static_alloc   = false;
     bool     _stale_minmax   = false;  // Statistical measurement is stale.
     bool     _stale_mean     = false;  // Statistical measurement is stale.
     bool     _stale_rms      = false;  // Statistical measurement is stale.
     bool     _stale_stdev    = false;  // Statistical measurement is stale.
 
     SensorFilterBase(int ws, FilteringStrategy s) : _window_size(ws), _strat(s) {};
+
     virtual int8_t  _reallocate_sample_window(uint) =0;
     virtual int8_t  _zero_samples() =0;
 };
@@ -88,7 +90,11 @@ class SensorFilterBase {
 template <typename T> class SensorFilter : public SensorFilterBase {
   public:
     SensorFilter(uint ws, FilteringStrategy s) : SensorFilterBase(ws, s) {};
-    ~SensorFilter();
+    SensorFilter(T* buf, int ws, FilteringStrategy s) : SensorFilter(ws, s) {
+      _static_alloc = true;
+      samples = buf;
+    };
+    virtual ~SensorFilter();
 
     int8_t feedFilter(T);
     int8_t feedFilter();
@@ -137,6 +143,10 @@ template <typename T> class SensorFilter : public SensorFilterBase {
 template <typename T> class SensorFilter3 : public SensorFilterBase {
   public:
     SensorFilter3(uint ws, FilteringStrategy s) : SensorFilterBase(ws, s) {};
+    SensorFilter3(T* buf, int ws, FilteringStrategy s) : SensorFilter3(ws, s) {
+      _static_alloc = true;
+      samples = buf;
+    };
     virtual ~SensorFilter3();
 
     int8_t feedFilter(Vector3<T>*);
@@ -196,7 +206,7 @@ static const char* const FILTER_HEADER_STRING = "\t%s filter\n\t----------------
 * Base destructor. Free sample memory.
 */
 template <typename T> SensorFilter<T>::~SensorFilter() {
-  if (nullptr != samples) {
+  if ((nullptr != samples) & (!_static_alloc)) {
     free(samples);
     samples = nullptr;
   }
@@ -222,11 +232,16 @@ template <typename T> int8_t SensorFilter<T>::feedFilter() {
 * This must be called ahead of usage to allocate the needed memory.
 */
 template <typename T> int8_t SensorFilter<T>::init() {
-  uint32_t tmp_window_size = _window_size;
-  _window_size = 0;
-  int8_t ret = _reallocate_sample_window(tmp_window_size);
-  _filter_initd = (0 == ret);
-  return ret;
+  if (_static_alloc)  {
+    return ((nullptr == samples) && (_window_size > 0)) ? 0 : -1;
+  }
+  else {
+    uint32_t tmp_window_size = _window_size;
+    _window_size = 0;
+    int8_t ret = _reallocate_sample_window(tmp_window_size);
+    _filter_initd = (0 == ret);
+    return ret;
+  }
 }
 
 /*
@@ -236,19 +251,25 @@ template <typename T> int8_t SensorFilter<T>::init() {
 template <typename T> int8_t SensorFilter<T>::_reallocate_sample_window(uint win) {
   int8_t ret = -1;
   if (win != _window_size) {
-    _window_size = win;
-    _window_full = false;
-    if (nullptr != samples) {
-      free(samples);
-      samples = nullptr;
+    if (!_static_alloc) {
+      _window_size = win;
+      _window_full = false;
+      if (nullptr != samples) {
+        free(samples);
+        samples = nullptr;
+      }
+      if (_window_size > 0) {
+        samples = (T*) malloc(_window_size * sizeof(T));
+        ret = _zero_samples();
+        _sample_idx = 0;
+      }
+      else {   // Program asked for no sample depth.
+        ret = 0;
+      }
     }
-    if (_window_size > 0) {
-      samples = (T*) malloc(_window_size * sizeof(T));
-      ret = _zero_samples();
-      _sample_idx = 0;
-    }
-    else {   // Program asked for no sample depth.
-      ret = 0;
+    else {
+      // We can't reallocate if we were constructed with a buffer.
+      ret--;
     }
   }
   else {
@@ -298,6 +319,7 @@ template <typename T> int8_t SensorFilter<T>::setStrategy(FilteringStrategy s) {
 template <typename T> void SensorFilter<T>::printFilter(StringBuilder* output) {
   output->concatf(FILTER_HEADER_STRING, getFilterStr(strategy()));
   output->concatf("\tInitialized:  %c\n",   initialized() ? 'y':'n');
+  output->concatf("\tStatic alloc: %c\n",   _static_alloc ? 'y':'n');
   output->concatf("\tDirty:        %c\n",   _filter_dirty ? 'y':'n');
   output->concatf("\tWindow full:  %c\n",   _window_full  ? 'y':'n');
   output->concatf("\tMin             = %.8f\n", (double) minValue());
@@ -520,7 +542,7 @@ template <typename T> T SensorFilter<T>::_calculate_median() {
 * Base destructor. Free sample memory.
 */
 template <typename T> SensorFilter3<T>::~SensorFilter3() {
-  if (nullptr != samples) {
+  if ((nullptr != samples) && (!_static_alloc)) {
     free(samples);
     samples = nullptr;
   }
@@ -530,11 +552,16 @@ template <typename T> SensorFilter3<T>::~SensorFilter3() {
 * This must be called ahead of usage to allocate the needed memory.
 */
 template <typename T> int8_t SensorFilter3<T>::init() {
-  uint32_t tmp_window_size = _window_size;
-  _window_size = 0;
-  int8_t ret = _reallocate_sample_window(tmp_window_size);
-  _filter_initd = (0 == ret);
-  return ret;
+  if (_static_alloc)  {
+    return ((nullptr == samples) && (_window_size > 0)) ? 0 : -1;
+  }
+  else {
+    uint32_t tmp_window_size = _window_size;
+    _window_size = 0;
+    int8_t ret = _reallocate_sample_window(tmp_window_size);
+    _filter_initd = (0 == ret);
+    return ret;
+  }
 }
 
 
@@ -554,7 +581,6 @@ template <typename T> int8_t SensorFilter3<T>::feedFilter() {
 }
 
 
-
 /*
 * Reallocates the sample memory, freeing the prior allocation if necessary.
 * Returns 0 on success, -1 otherwise.
@@ -562,19 +588,25 @@ template <typename T> int8_t SensorFilter3<T>::feedFilter() {
 template <typename T> int8_t SensorFilter3<T>::_reallocate_sample_window(uint win) {
   int8_t ret = -1;
   if (win != _window_size) {
-    _window_size = win;
-    _window_full = false;
-    if (nullptr != samples) {
-      free(samples);
-      samples = nullptr;
+    if (!_static_alloc) {
+      _window_size = win;
+      _window_full = false;
+      if (nullptr != samples) {
+        free(samples);
+        samples = nullptr;
+      }
+      if (_window_size > 0) {
+        samples = (Vector3<T>*) malloc(_window_size * sizeof(Vector3<T>));
+        ret = _zero_samples();
+        _sample_idx = 0;
+      }
+      else {   // Program asked for no sample depth.
+        ret = 0;
+      }
     }
-    if (_window_size > 0) {
-      samples = (Vector3<T>*) malloc(_window_size * sizeof(Vector3<T>));
-      ret = _zero_samples();
-      _sample_idx = 0;
-    }
-    else {   // Program asked for no sample depth.
-      ret = 0;
+    else {
+      // We can't reallocate if we were constructed with a buffer.
+      ret--;
     }
   }
   else {
@@ -582,6 +614,7 @@ template <typename T> int8_t SensorFilter3<T>::_reallocate_sample_window(uint wi
   }
   return ret;
 }
+
 
 /*
 * Zero's the content of the sample memory, whatever that means to this type.
@@ -619,6 +652,7 @@ template <typename T> int8_t SensorFilter3<T>::setStrategy(FilteringStrategy s) 
 template <typename T> void SensorFilter3<T>::printFilter(StringBuilder* output) {
   output->concatf(FILTER_HEADER_STRING, getFilterStr(strategy()));
   output->concatf("\tInitialized:  %c\n",   initialized() ? 'y':'n');
+  output->concatf("\tStatic alloc: %c\n",   _static_alloc ? 'y':'n');
   output->concatf("\tDirty:        %c\n",   _filter_dirty ? 'y':'n');
   output->concatf("\tWindow full:  %c\n",   _window_full  ? 'y':'n');
 
