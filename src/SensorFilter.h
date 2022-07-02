@@ -233,15 +233,15 @@ template <typename T> int8_t SensorFilter<T>::feedFilter() {
 */
 template <typename T> int8_t SensorFilter<T>::init() {
   if (_static_alloc)  {
-    return ((nullptr == samples) && (_window_size > 0)) ? 0 : -1;
+    _filter_initd = ((nullptr != samples) & (_window_size > 0));
   }
   else {
     uint32_t tmp_window_size = _window_size;
     _window_size = 0;
     int8_t ret = _reallocate_sample_window(tmp_window_size);
     _filter_initd = (0 == ret);
-    return ret;
   }
+  return _filter_initd ? 0 : -1;
 }
 
 /*
@@ -553,15 +553,15 @@ template <typename T> SensorFilter3<T>::~SensorFilter3() {
 */
 template <typename T> int8_t SensorFilter3<T>::init() {
   if (_static_alloc)  {
-    return ((nullptr == samples) && (_window_size > 0)) ? 0 : -1;
+    _filter_initd = ((nullptr != samples) & (_window_size > 0));
   }
   else {
     uint32_t tmp_window_size = _window_size;
     _window_size = 0;
     int8_t ret = _reallocate_sample_window(tmp_window_size);
     _filter_initd = (0 == ret);
-    return ret;
   }
+  return _filter_initd ? 0 : -1;
 }
 
 
