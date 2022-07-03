@@ -83,7 +83,7 @@ bool GfxUIElement::_notify_children(const GfxUIEvent GFX_EVNT, const uint32_t x,
 
 int GfxUIElement::render(UIGfxWrapper* ui_gfx, bool force) {
   int ret = 0;
-  if (muteRender()) {
+  if (!muteRender()) {
     ret += _render_children(ui_gfx, force);
     if (_need_redraw() | force) {
       ret += _render(ui_gfx);
