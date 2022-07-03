@@ -36,7 +36,7 @@ int GfxUITextArea::_render(UIGfxWrapper* ui_gfx) {
     if (line_count > _max_rows) {
       if (scrollable()) {
         line_idx   = (line_count - _max_rows) - _top_line;
-        line_count = strict_min((line_count-line_idx), _max_rows);
+        line_count = strict_min((uint16_t) (line_count-line_idx), _max_rows);
       }
       else {
         // If the TextArea is locked, only render the bottom of the buffer.

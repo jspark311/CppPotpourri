@@ -196,6 +196,22 @@ class GfxUIElement {
 *******************************************************************************/
 
 /*******************************************************************************
+* Non-interacting utility shims
+*******************************************************************************/
+//class GfxUIGroup : public GfxUIElement {
+//  public:
+//    GfxUIGroup(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0) : GfxUIElement(x, y, w, h, f) {};
+//    ~GfxUIGroup() {};
+//
+//    inline int add_child(GfxUIElement* element) {    return _add_child(element);  };
+//
+//    /* Implementation of GfxUIElement. */
+//    int  _render(UIGfxWrapper* ui_gfx) {    return 0;   };
+//    bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {   return false;   };
+//};
+
+
+/*******************************************************************************
 * Graphical buttons
 *******************************************************************************/
 class GfxUIButton : public GfxUIElement {
