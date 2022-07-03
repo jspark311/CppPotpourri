@@ -37,7 +37,8 @@ This source file was never part of Adafruit's library. They are small graphics
 #define GFXUI_FLAG_DRAW_FRAME_L               0x00000010   // Easy way for the application to select framing.
 #define GFXUI_FLAG_DRAW_FRAME_R               0x00000020   // Easy way for the application to select framing.
 #define GFXUI_FLAG_INACTIVE                   0x00000040   // Used to prevent suprious input at a class's discretion.
-#define GFXUI_FLAG_FREE_THIS_ELEMENT          0x00000080   // This object ought to be freed when no longer needed.
+#define GFXUI_FLAG_MUTE_RENDER                0x00000080   // Used to suspend rendering that would otherwise happen.
+#define GFXUI_FLAG_FREE_THIS_ELEMENT          0x00000100   // This object ought to be freed when no longer needed.
 
 #define GFXUI_BUTTON_FLAG_STATE               0x01000000   // Button state
 #define GFXUI_BUTTON_FLAG_MOMENTARY           0x02000000   // Button reverts to off when released.
@@ -98,10 +99,13 @@ class GfxUIElement {
       _need_redraw(true);
     };
 
-    inline void shouldReap(bool x) {  _class_set_flag(GFXUI_FLAG_FREE_THIS_ELEMENT, x);   };
-    inline bool shouldReap() {        return _class_flag(GFXUI_FLAG_FREE_THIS_ELEMENT);   };
-    inline void elementActive(bool x) {  _class_set_flag(GFXUI_FLAG_INACTIVE, !x);   };
-    inline bool elementActive() {        return !_class_flag(GFXUI_FLAG_INACTIVE);   };
+    inline void shouldReap(bool x) {     _class_set_flag(GFXUI_FLAG_FREE_THIS_ELEMENT, x);  };
+    inline bool shouldReap() {           return _class_flag(GFXUI_FLAG_FREE_THIS_ELEMENT);  };
+    inline void elementActive(bool x) {  _class_set_flag(GFXUI_FLAG_INACTIVE, !x);          };
+    inline bool elementActive() {        return !_class_flag(GFXUI_FLAG_INACTIVE);          };
+    void muteRender(bool x);
+    inline bool muteRender() {           return _class_flag(GFXUI_FLAG_MUTE_RENDER);        };
+
 
     inline void setMargins(uint8_t t, uint8_t b, uint8_t l, uint8_t r) {
       _mrgn_t = t;
@@ -260,6 +264,28 @@ class GfxUITabBar : public GfxUIElement {
 
 
 
+class GfxUITabBarWithContent : public GfxUIElement {
+  public:
+    GfxUITabBarWithContent(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0);
+    ~GfxUITabBarWithContent() {};
+
+    inline uint8_t activeTab() {     return _active_tab;    };
+    int8_t addTab(const char* txt, GfxUIElement* content, bool selected = false);
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y);
+
+
+  protected:
+    GfxUITabBar _tab_bar;
+    uint8_t  _active_tab;     //
+
+    int8_t _set_active_tab(uint8_t tab_idx);
+};
+
+
+
 /*******************************************************************************
 * A graphical slider
 *******************************************************************************/
@@ -334,7 +360,7 @@ class GfxUITextArea : public GfxUIElement, public BufferAccepter {
     inline bool wrapWords() {        return _class_flag(GFXUI_TXTAREA_FLAG_WORD_WRAP);   };
     inline void scrollable(bool x) { _class_set_flag(GFXUI_TXTAREA_FLAG_SCROLLABLE, x);  };
     inline bool scrollable() {       return _class_flag(GFXUI_TXTAREA_FLAG_SCROLLABLE);  };
-    inline void clear() {    _scrollback.clear();   };
+    void clear();
 
 
   private:
@@ -343,7 +369,7 @@ class GfxUITextArea : public GfxUIElement, public BufferAccepter {
     uint32_t _cursor_y = 0;  // Location of the next character.
     uint32_t _max_scrollback_bytes = 600;   // Tokenized strings
     uint32_t _max_cols = 0;  // Maximum number of columns that will fit in render area.
-    uint32_t _max_rows = 0;  // Maximum number of lines that will fit in render area.
+    uint16_t _max_rows = 0;  // Maximum number of lines that will fit in render area.
     uint16_t _top_line = 0;  // Which line index is at the top of the render?
     StringBuilder _scrollback;  //
 };
@@ -433,8 +459,10 @@ class GfxUIIdentity : public GfxUIElement {
   private:
     uint32_t _color;        // The accent color of the element when active.
     Identity* _ident;
-    GfxUITabBar _tab_bar;
-    GfxUITextArea _txt;
+    GfxUITabBarWithContent _tab_bar;
+    GfxUITextArea _txt0;
+    GfxUITextArea _txt1;
+    GfxUITextArea _txt2;
 };
 
 

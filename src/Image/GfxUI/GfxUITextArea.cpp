@@ -21,7 +21,8 @@ int GfxUITextArea::_render(UIGfxWrapper* ui_gfx) {
 
   if (0 == _max_cols) {
     // This probably means the object hasn't been rendered yet.
-    // NOTE: Assumes monospaced fonts.
+    // NOTE: Code below assumes monospaced fonts. Use the commented code if
+    //   this assumption fails one day.
     // void getTextBounds(const uint8_t* s, uint32_t x, uint32_t y, uint32_t* x1, uint32_t* y1, uint32_t* w, uint32_t* h);
     // void getTextBounds(StringBuilder*, uint32_t x, uint32_t y, uint32_t* x1, uint32_t* y1, uint32_t* w, uint32_t* h);
     uint16_t x_adv = ui_gfx->img()->getFontWidth();
@@ -30,12 +31,18 @@ int GfxUITextArea::_render(UIGfxWrapper* ui_gfx) {
 
   if ((0 < _max_cols) & (0 < _max_rows)) {
     ui_gfx->img()->fillRect(_x, _y, _w, _h, 0);   // TODO: Use the correct API when you aren't exhausted.
-    uint line_count = _scrollback.count();
-    uint line_idx   = 0;
+    uint16_t line_count = _scrollback.count();
+    uint16_t line_idx   = 0;
     if (line_count > _max_rows) {
-      line_idx = (line_count - _max_rows);
-      //line_idx = (line_count - _max_rows) - _top_line;
-      line_count = _max_rows;
+      if (scrollable()) {
+        line_idx   = (line_count - _max_rows) - _top_line;
+        line_count = strict_min((line_count-line_idx), _max_rows);
+      }
+      else {
+        // If the TextArea is locked, only render the bottom of the buffer.
+        line_idx = (line_count - _max_rows);
+        line_count = _max_rows;
+      }
     }
 
     while (line_count > 0) {
@@ -61,16 +68,31 @@ bool GfxUITextArea::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
   bool ret = false;
   switch (GFX_EVNT) {
     case GfxUIEvent::MOVE_UP:
-      _top_line = (uint32_t) strict_min((int32_t)(_scrollback.count() - _max_rows), (int32_t)(_top_line + 1));
-      return true;
+      if (scrollable()) {
+        //_top_line = (uint32_t) strict_min((int32_t)(_scrollback.count() - _max_rows), (int32_t)(_top_line + 1));
+        if (_top_line < (_scrollback.count() - _max_rows)) {
+          _top_line++;
+          //_top_line = range_bind(_top_line, 0, (_max_rows - _top_line));
+          ret = true;
+        }
+      }
+      break;
 
     case GfxUIEvent::MOVE_DOWN:
-      _top_line = (uint32_t) strict_max((int32_t) 0, (int32_t) (_top_line - 1));
-      return true;
+      if (scrollable()) {
+        //_top_line = (uint32_t) strict_max((int32_t) 0, (int32_t) (_top_line - 1));
+        if (_top_line > 0) {
+          _top_line--;
+          //_top_line = range_bind(_top_line, 0, (_max_rows - _top_line));
+          ret = true;
+        }
+      }
+      break;
 
     default:
-      return false;
+      break;
   }
+
   if (ret) {
     _need_redraw(true);
   }
@@ -113,7 +135,17 @@ int8_t GfxUITextArea::provideBuffer(StringBuilder* buf) {
 
     // In all cases, we now need to re-tokenize the buffer on a per-line basis.
     uint lines = _scrollback.count();
-    if (!scrollable()) {
+    if (scrollable()) {
+      // If the desired top_line is such that the last line of the text
+      //   was visible before the append, update it again to maintain that
+      //   condition.
+      // The net result ought to be that scroll locks to the bottom of output if
+      //   it was already there, but scroll ceases under additional input
+      //   otherwise (up to the buffering limits).
+      // TODO: Not quite there....
+      //_top_line = range_bind(lines, 0, (_max_rows - lines));
+    }
+    else {
       // We may as well drop any lines that will never be viewed again.
       while (lines > _max_rows) {
         _scrollback.drop_position(0);
@@ -124,4 +156,13 @@ int8_t GfxUITextArea::provideBuffer(StringBuilder* buf) {
     _need_redraw(true);
   }
   return ret;
+}
+
+
+
+void GfxUITextArea::clear() {
+  _scrollback.clear();
+  if (scrollable()) {
+    _top_line = 0;
+  }
 }

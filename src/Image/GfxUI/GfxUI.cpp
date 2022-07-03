@@ -20,6 +20,18 @@ GfxUIElement::GfxUIElement(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint3
   _flags(f | GFXUI_FLAG_NEED_RERENDER) {}
 
 
+
+void GfxUIElement::muteRender(bool x) {
+  _class_set_flag(GFXUI_FLAG_MUTE_RENDER, x);
+  if (!x && (!_class_flag(GFXUI_FLAG_ALWAYS_REDRAW))) {
+    // Un-muting the render will cause a redraw, if the class isn't already
+    //   going to do it.
+    _class_set_flag(GFXUI_FLAG_NEED_RERENDER);
+  }
+}
+
+
+
 void GfxUIElement::reposition(uint32_t x, uint32_t y) {
   int32_t shift_x = x - _x;
   int32_t shift_y = y - _y;
@@ -71,22 +83,24 @@ bool GfxUIElement::_notify_children(const GfxUIEvent GFX_EVNT, const uint32_t x,
 
 int GfxUIElement::render(UIGfxWrapper* ui_gfx, bool force) {
   int ret = 0;
-  ret += _render_children(ui_gfx, force);
-  if (_need_redraw() | force) {
-    ret += _render(ui_gfx);
-    if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_U) {
-      ui_gfx->img()->drawFastHLine(_x, _y, _w, 0xFFFFFF);
+  if (muteRender()) {
+    ret += _render_children(ui_gfx, force);
+    if (_need_redraw() | force) {
+      ret += _render(ui_gfx);
+      if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_U) {
+        ui_gfx->img()->drawFastHLine(_x, _y, _w, 0xFFFFFF);
+      }
+      if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_D) {
+        ui_gfx->img()->drawFastHLine(_x, (_y+(_h-1)), _w, 0xFFFFFF);
+      }
+      if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_L) {
+        ui_gfx->img()->drawFastVLine(_x, _y, _h, 0xFFFFFF);
+      }
+      if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_R) {
+        ui_gfx->img()->drawFastVLine((_x+(_w-1)), _y, _h, 0xFFFFFF);
+      }
+      _need_redraw(false);
     }
-    if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_D) {
-      ui_gfx->img()->drawFastHLine(_x, (_y+(_h-1)), _w, 0xFFFFFF);
-    }
-    if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_L) {
-      ui_gfx->img()->drawFastVLine(_x, _y, _h, 0xFFFFFF);
-    }
-    if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_R) {
-      ui_gfx->img()->drawFastVLine((_x+(_w-1)), _y, _h, 0xFFFFFF);
-    }
-    _need_redraw(false);
   }
   return ret;
 };
