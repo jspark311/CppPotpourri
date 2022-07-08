@@ -337,14 +337,14 @@ typedef int (*random_fill_fxn)(uint8_t* buf, size_t len, uint32_t opts);
 typedef void (*error_cb)(struct oneid_ident_struct_t*, int, const char*, ...);
 
 
-typedef int (*wrapped_keygen_operation)(
-  enum Cipher,      // Algorithm class
-  enum CryptoKey,   // Key parameters
-  uint8_t* pub,     // Buffer to hold public key.
-  size_t* pub_len,  // Length of buffer. Modified to reflect written length.
-  uint8_t* priv,    // Buffer to hold private key.
-  size_t* priv_len  // Length of buffer. Modified to reflect written length.
-);
+//typedef int (*wrapped_keygen_operation)(
+//  enum Cipher,      // Algorithm class
+//  enum CryptoKey,   // Key parameters
+//  uint8_t* pub,     // Buffer to hold public key.
+//  size_t* pub_len,  // Length of buffer. Modified to reflect written length.
+//  uint8_t* priv,    // Buffer to hold private key.
+//  size_t* priv_len  // Length of buffer. Modified to reflect written length.
+//);
 
 
 /* Platform functions. */

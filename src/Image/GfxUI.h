@@ -198,17 +198,17 @@ class GfxUIElement {
 /*******************************************************************************
 * Non-interacting utility shims
 *******************************************************************************/
-//class GfxUIGroup : public GfxUIElement {
-//  public:
-//    GfxUIGroup(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0) : GfxUIElement(x, y, w, h, f) {};
-//    ~GfxUIGroup() {};
-//
-//    inline int add_child(GfxUIElement* element) {    return _add_child(element);  };
-//
-//    /* Implementation of GfxUIElement. */
-//    int  _render(UIGfxWrapper* ui_gfx) {    return 0;   };
-//    bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {   return false;   };
-//};
+class GfxUIGroup : public GfxUIElement {
+  public:
+    GfxUIGroup(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0) : GfxUIElement(x, y, w, h, f) {};
+    ~GfxUIGroup() {};
+
+    inline int add_child(GfxUIElement* element) {    return _add_child(element);  };
+
+    /* Implementation of GfxUIElement. */
+    int  _render(UIGfxWrapper* ui_gfx) {    return 0;   };
+    bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {   return false;   };
+};
 
 
 /*******************************************************************************
@@ -476,6 +476,9 @@ class GfxUIIdentity : public GfxUIElement {
     uint32_t _color;        // The accent color of the element when active.
     Identity* _ident;
     GfxUITabBarWithContent _tab_bar;
+    GfxUIGroup    _content_0;
+    GfxUIGroup    _content_1;
+    GfxUIGroup    _content_2;
     GfxUITextArea _txt0;
     GfxUITextArea _txt1;
     GfxUITextArea _txt2;

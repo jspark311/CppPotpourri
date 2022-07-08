@@ -15,14 +15,20 @@ Date:   2022.06.25
 GfxUIIdentity::GfxUIIdentity(Identity* id, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f)
   : GfxUIElement(x, y, w, h, f), _color(color), _ident(id),
   _tab_bar(_internal_PosX(), _internal_PosY(), _internal_Width(), _internal_Height(), color),
-  _txt0(0, 0, 0, 0, color),
-  _txt1(0, 0, 0, 0, color),
-  _txt2(0, 0, 0, 0, color)
+  _content_0(0, 0, 0, 0),
+  _content_1(0, 0, 0, 0),
+  _content_2(0, 0, 0, 0),
+  _txt0(0, 0, _internal_Width(), _internal_Height(), color),
+  _txt1(0, 0, _internal_Width(), _internal_Height(), color),
+  _txt2(0, 0, _internal_Width(), _internal_Height(), color)
 {
   // Note our subordinate objects...
-  _tab_bar.addTab("String", &_txt0, true);
-  _tab_bar.addTab("Flags", &_txt1);
-  _tab_bar.addTab("Conf", &_txt2);
+  _content_0.add_child(&_txt0);
+  _content_1.add_child(&_txt1);
+  _content_2.add_child(&_txt2);
+  _tab_bar.addTab("String", &_content_0, true);
+  _tab_bar.addTab("Flags", &_content_1);
+  _tab_bar.addTab("Conf", &_content_2);
   _add_child(&_tab_bar);
 }
 
