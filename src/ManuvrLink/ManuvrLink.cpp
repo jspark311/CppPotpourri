@@ -1635,11 +1635,17 @@ int8_t ManuvrLink::console_handler(StringBuilder* text_return, StringBuilder* ar
   if (0 == StringBuilder::strcasecmp(cmd, "info")) {
     printDebug(text_return);
   }
+  else if (0 == StringBuilder::strcasecmp(cmd, "fsm")) {
+    printFSM(text_return);
+  }
   else if (0 == StringBuilder::strcasecmp(cmd, "reset")) {
     text_return->concatf("Link reset() returns %d\n", reset());
   }
   else if (0 == StringBuilder::strcasecmp(cmd, "hangup")) {
     text_return->concatf("Link hangup() returns %d\n", hangup());
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "poll")) {
+    text_return->concatf("Link poll() returns %d\n", poll(text_return));
   }
   else if (0 == StringBuilder::strcasecmp(cmd, "verbosity")) {
     switch (args->count()) {
