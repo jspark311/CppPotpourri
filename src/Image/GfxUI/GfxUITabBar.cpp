@@ -126,10 +126,28 @@ GfxUITabBarWithContent::GfxUITabBarWithContent(uint32_t x, uint32_t y, uint16_t 
 
 int GfxUITabBarWithContent::_render(UIGfxWrapper* ui_gfx) {
   int8_t ret = 0;
-  const uint32_t TAB_COUNT = (uint32_t) _tab_bar.tabCount();
-  for (uint i = 0; i < TAB_COUNT; i++) {
-    if (i == _tab_bar.activeTab()) {
-      ret = _set_active_tab(i);
+  if (_active_tab != _tab_bar.activeTab()) {
+    ret--;
+    _active_tab = _tab_bar.activeTab();
+    const uint32_t TAB_COUNT = (uint32_t) _tab_bar.tabCount();
+    for (uint i = 0; i < TAB_COUNT; i++) {
+      // TODO: Fragile. Assumes tab_bar is the only other direct child, and that it
+      //   was added first, and the order never altered.
+      GfxUIElement* content = _children.get(i+1);
+      if (nullptr != content) {
+        if (_active_tab == i) {
+          content->elementActive(true);
+          content->muteRender(false);
+          content->fill(ui_gfx, 0);
+          content->render(ui_gfx, true);  // Force a re-render of the newly-active tab content.
+        }
+        else {
+          // Set all other tabs inactive, and insensitive.
+          content->elementActive(false);
+          content->muteRender(true);
+        }
+      }
+      ret = 1;
     }
   }
   return ret;
@@ -139,8 +157,7 @@ int GfxUITabBarWithContent::_render(UIGfxWrapper* ui_gfx) {
 bool GfxUITabBarWithContent::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
   // If the event was directed at the nav pane, it will be handled by the natural
   //   flow that comes from its addition as a child object.
-  bool ret = false;
-  return ret;
+  return false;
 }
 
 
@@ -148,43 +165,15 @@ int8_t GfxUITabBarWithContent::addTab(const char* txt, GfxUIElement* content, bo
   int8_t ret = -1;
   if (0 == _tab_bar.addTab(txt, selected)) {
     const uint32_t INTRNL_X = _internal_PosX();
-    const uint32_t INTRNL_Y = _internal_PosY() + 20;
+    const uint32_t INTRNL_Y = _internal_PosY() + _tab_bar.elementHeight();
     const uint32_t INTRNL_W = _internal_Width();
-    const uint32_t INTRNL_H = _internal_Height() - 20;
+    const uint32_t INTRNL_H = _internal_Height() - _tab_bar.elementHeight();
     content->reposition(INTRNL_X, INTRNL_Y);
     content->resize(INTRNL_W, INTRNL_H);
     content->elementActive(selected);
     content->muteRender(!selected);
     _add_child(content);
     ret = 0;
-  }
-  return ret;
-}
-
-
-int8_t GfxUITabBarWithContent::_set_active_tab(uint8_t tab_idx) {
-  int8_t ret = 0;
-  if (_active_tab != tab_idx) {
-    ret--;
-    const uint32_t TAB_COUNT = (uint32_t) _tab_bar.tabCount();
-    for (uint i = 0; i < TAB_COUNT; i++) {
-      // TODO: Fragile. Assumes tab_bar is the only other direct child, and that it
-      //   was added first, and the order never altered.
-      GfxUIElement* content = _children.get(i+1);
-      if (nullptr != content) {
-        if (tab_idx == i) {
-          content->elementActive(true);
-          content->muteRender(false);
-        }
-        else {
-          // Set all other tabs inactive, and insensitive.
-          content->elementActive(false);
-          content->muteRender(true);
-        }
-      }
-      _active_tab = tab_idx;
-      ret = 1;
-    }
   }
   return ret;
 }

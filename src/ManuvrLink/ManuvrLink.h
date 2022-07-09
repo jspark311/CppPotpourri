@@ -400,6 +400,10 @@ class ManuvrLink : public BufferAccepter {
     bool   linkIdle();
     int    send(KeyValuePair*, bool need_reply = false);
     inline bool     isConnected() {    return _flags.value(MANUVRLINK_FLAG_ESTABLISHED);   };
+
+    inline bool     syncCast() {        return _flags.value(MANUVRLINK_FLAG_SYNC_CASTING);   };
+    inline void     syncCast(bool x) {  _flags.set(MANUVRLINK_FLAG_SYNC_CASTING, x);         };
+
     inline uint16_t replyTimeouts() {  return _unackd_sends;     };
     inline void     verbosity(uint8_t x) {  _verbosity = x;      };
     inline uint8_t  verbosity() {           return _verbosity;   };

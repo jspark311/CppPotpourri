@@ -56,7 +56,7 @@ int GfxUIElement::_add_child(GfxUIElement* chld) {
 
 bool GfxUIElement::notify(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y) {
   bool ret = false;
-  if (includesPoint(x, y)) {
+  if (includesPoint(x, y) && elementActive()) {
     ret = _notify(GFX_EVNT, x, y);
     if (!ret) {
       ret = _notify_children(GFX_EVNT, x, y);

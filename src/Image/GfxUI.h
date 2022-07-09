@@ -43,6 +43,9 @@ This source file was never part of Adafruit's library. They are small graphics
 #define GFXUI_BUTTON_FLAG_STATE               0x01000000   // Button state
 #define GFXUI_BUTTON_FLAG_MOMENTARY           0x02000000   // Button reverts to off when released.
 
+#define GFXUI_MAGNIFIER_FLAG_SHOW_TRACERS     0x01000000   //
+#define GFXUI_MAGNIFIER_FLAG_SHOW_FEED_FRAME  0x02000000   //
+
 #define GFXUI_SENFILT_FLAG_SHOW_VALUE         0x01000000   //
 #define GFXUI_SENFILT_FLAG_SHOW_RANGE         0x02000000   //
 
@@ -113,6 +116,10 @@ class GfxUIElement {
       _mrgn_l = l;
       _mrgn_r = r;
       _need_redraw(true);
+    };
+
+    inline void fill(UIGfxWrapper* ui_gfx, uint32_t color) {
+      ui_gfx->img()->fillRect(_internal_PosX(), _internal_PosY(), _internal_Width(), _internal_Height(), color);
     };
 
     void reposition(uint32_t x, uint32_t y);
@@ -198,6 +205,10 @@ class GfxUIElement {
 /*******************************************************************************
 * Non-interacting utility shims
 *******************************************************************************/
+/**
+* A class to group UI elements into a single GfxUIElement. Only useful for
+*   building complex views.
+*/
 class GfxUIGroup : public GfxUIElement {
   public:
     GfxUIGroup(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0) : GfxUIElement(x, y, w, h, f) {};
@@ -206,9 +217,29 @@ class GfxUIGroup : public GfxUIElement {
     inline int add_child(GfxUIElement* element) {    return _add_child(element);  };
 
     /* Implementation of GfxUIElement. */
+    // This class has no rendering tasks, and doesn't respond to user input.
     int  _render(UIGfxWrapper* ui_gfx) {    return 0;   };
-    bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {   return false;   };
+    bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {  return false;   };
 };
+
+
+/**
+* A special case of GfxUIGroup that functions as an optional root container.
+* Applications that have a top-level tabbed interface probably won't want this.
+*   But it helps in situations where you have dozens of elements in the view,
+*   and you don't want to have to manage their rendering explicitly.
+*/
+class GfxUIRoot : public GfxUIGroup {
+  public:
+    GfxUIRoot(UIGfxWrapper* ui_gfx);
+    ~GfxUIRoot() {};
+
+    int render();  // Top-level call to use the built-in UIGfxWrapper.
+
+  private:
+    UIGfxWrapper* _ui_gfx;
+};
+
 
 
 /*******************************************************************************
@@ -295,9 +326,7 @@ class GfxUITabBarWithContent : public GfxUIElement {
 
   protected:
     GfxUITabBar _tab_bar;
-    uint8_t  _active_tab;     //
-
-    int8_t _set_active_tab(uint8_t tab_idx);
+    uint8_t  _active_tab;
 };
 
 
@@ -327,14 +356,18 @@ class GfxUISlider : public GfxUIElement {
 
 /*******************************************************************************
 * A magnifier that tracks the pointer while it is on-screen.
+* NOTE: If this class is configured to draw pixels outside of its own bounds, it
+*   is best used with an overlay image to avoid ghosting. This element should
+*   render to the overlay, and take the source image as a constructor parameter.
 *******************************************************************************/
 class GfxUIMagnifier : public GfxUIElement {
   public:
-    GfxUIMagnifier(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0);
+    GfxUIMagnifier(Image* src_img, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0);
     ~GfxUIMagnifier() {};
 
     inline float scale() {         return _scale;    };
     inline void scale(float x) {   _scale = x;       };
+    int setBoands(float min_mag, float max_mag);
 
     void pointerLocation(float x, float y) {
       _pointer_x = x;
@@ -347,10 +380,13 @@ class GfxUIMagnifier : public GfxUIElement {
 
 
   protected:
-    uint32_t _color;             // The accent color of the position mark.
-    uint32_t _pointer_x;         //
-    uint32_t _pointer_y;         //
-    float    _scale;             // The current scale factor to apply to the source.
+    uint32_t _color;      // The accent color of the position mark.
+    Image*   _src;        // The source image to magnify.
+    uint32_t _pointer_x;  // The center of the feed.
+    uint32_t _pointer_y;  // The center of the feed.
+    float    _scale;      // The current scale factor to apply to the source.
+    float    _min_mag;    // The current scale factor to apply to the source.
+    float    _max_mag;    // The current scale factor to apply to the source.
 };
 
 
@@ -502,8 +538,15 @@ class GfxUIMLink : public GfxUIElement {
 
   private:
     ManuvrLink* _link;
-    GfxUITabBar _tab_bar;
-    GfxUITextArea _txt;
+    GfxUITabBarWithContent _tab_bar;
+    GfxUIGroup    _content_info;
+    GfxUIGroup    _content_conf;
+    GfxUIGroup    _content_msg;
+    GfxUIGroup    _content_ses;
+    GfxUITextButton   _btn_conf_syncast;
+    GfxUITextButton   _btn_msg_send_sync;
+    GfxUITextButton   _btn_ses_hangup;
+    GfxUITextArea     _txt;
 };
 
 
