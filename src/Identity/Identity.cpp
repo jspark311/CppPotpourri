@@ -136,7 +136,7 @@ Identity* Identity::fromBuffer(uint8_t* buf, int len) {
         #endif  // __BUILD_HAS_DIGEST
         #if defined(__BUILD_HAS_ASYMMETRIC)
           case IdentFormat::PK:
-            return_value = (Identity*) new IdentityPubKey(buf, (uint16_t) len);
+            //return_value = (Identity*) new IdentityPubKey(buf, (uint16_t) len);
             break;
         #endif  // __BUILD_HAS_ASYMMETRIC
 

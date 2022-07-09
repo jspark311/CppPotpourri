@@ -192,4 +192,9 @@ class IdentityManager {
     LinkedList<Identity*> _idents;   // List of identities that are not ours.
 };
 
+
+#include "Identity/IdentityUUID.h"
+#include "Identity/IdentityCrypto.h"
+
+
 #endif // __MANUVR_IDENTITY_H__

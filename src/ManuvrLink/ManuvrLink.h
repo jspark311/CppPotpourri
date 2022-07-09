@@ -65,6 +65,7 @@ NOTE: This has been a mad binge to port over all this work from ManuvrOS. Five
 #include "../FlagContainer.h"
 #include "../PriorityQueue.h"
 #include "../ElementPool.h"
+#include "../Identity/Identity.h"
 #include "../AbstractPlatform.h"
 
 #ifndef __MANUVR_XENOSESSION_H
@@ -404,9 +405,6 @@ class ManuvrLink : public BufferAccepter {
     inline bool     syncCast() {        return _flags.value(MANUVRLINK_FLAG_SYNC_CASTING);   };
     inline void     syncCast(bool x) {  _flags.set(MANUVRLINK_FLAG_SYNC_CASTING, x);         };
 
-    inline uint16_t replyTimeouts() {  return _unackd_sends;     };
-    inline void     verbosity(uint8_t x) {  _verbosity = x;      };
-    inline uint8_t  verbosity() {           return _verbosity;   };
     //int8_t ping();
 
     /* Debugging */
@@ -414,11 +412,17 @@ class ManuvrLink : public BufferAccepter {
     void printFSM(StringBuilder*);
 
     /* Inline accessors. */
-    inline void setCallback(ManuvrLinkCB cb) {         _lnk_callback = cb;   };
-    inline void setCallback(ManuvrMsgCB cb) {          _msg_callback = cb;   };
-    inline void setOutputTarget(BufferAccepter* o) {   _output_target = o;   };
-    inline uint32_t linkTag() {                        return _session_tag;  };
-    inline ManuvrLinkState getState() {                return _fsm_pos;      };
+    inline ManuvrLinkState getState() {               return _fsm_pos;      };
+    inline void setCallback(ManuvrLinkCB cb) {        _lnk_callback = cb;   };
+    inline void setCallback(ManuvrMsgCB cb) {         _msg_callback = cb;   };
+    inline void setOutputTarget(BufferAccepter* o) {  _output_target = o;   };
+    inline uint32_t  linkTag() {                      return _session_tag;  };
+    inline uint16_t  replyTimeouts() {                return _unackd_sends;  };
+    inline void      verbosity(uint8_t x) {           _verbosity = x;        };
+    inline uint8_t   verbosity() {                    return _verbosity;     };
+    inline void      localIdentity(Identity* id) {    _id_loc = id;          };
+    inline Identity* localIdentity() {                return _id_loc;        };
+    inline Identity* remoteIdentity() {               return _id_remote;     };
 
     /* Built-in per-instance console handlers. */
     int8_t console_handler(StringBuilder* text_return, StringBuilder* args);
@@ -449,6 +453,8 @@ class ManuvrLink : public BufferAccepter {
     uint16_t          _sync_losses    = 0;        // How many times this session have we lost sync?
     uint16_t          _unackd_sends   = 0;        // How many messages that needed an ACK failed to get one?
     ManuvrMsg*        _working        = nullptr;  // If we are in the middle of receiving a message,
+    Identity*         _id_loc         = nullptr;
+    Identity*         _id_remote      = nullptr;
     BufferAccepter*   _output_target  = nullptr;  // A pointer to the transport for outbound bytes.
     ManuvrLinkCB      _lnk_callback   = nullptr;  // The application-provided callback for state changes.
     ManuvrMsgCB       _msg_callback   = nullptr;  // The application-provided callback for incoming messages.

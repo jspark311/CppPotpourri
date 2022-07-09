@@ -26,6 +26,17 @@ GfxUIMLink::GfxUIMLink(ManuvrLink* l, uint32_t x, uint32_t y, uint16_t w, uint16
   _txt(0, 0, _internal_Width(), (_internal_Height()-20), 0xCC99CC)
 {
   // Note our subordinate objects...
+  if (nullptr != _link->localIdentity()) {
+    _content_conf.add_child(
+      new GfxUIIdentity(
+        _link->localIdentity(),
+        _internal_Width()-150, 0,
+        150, 80,
+        0x20B2AA,
+        (GFXUI_FLAG_DRAW_FRAME_L | GFXUI_FLAG_DRAW_FRAME_D)
+      )
+    );
+  }
   _content_info.add_child(&_txt);
   _content_conf.add_child(&_btn_conf_syncast);
   _content_msg.add_child(&_btn_msg_send_sync);
