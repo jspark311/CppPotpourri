@@ -33,7 +33,7 @@ GfxUIMLink::GfxUIMLink(ManuvrLink* l, uint32_t x, uint32_t y, uint16_t w, uint16
         _internal_Width()-150, 0,
         150, 80,
         0x20B2AA,
-        (GFXUI_FLAG_DRAW_FRAME_L | GFXUI_FLAG_DRAW_FRAME_D)
+        (GFXUI_FLAG_FREE_THIS_ELEMENT | GFXUI_FLAG_DRAW_FRAME_L | GFXUI_FLAG_DRAW_FRAME_D)
       )
     );
   }
