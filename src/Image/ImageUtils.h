@@ -188,7 +188,7 @@ class ImageScaler {
 */
 class ImageCaster {
   public:
-    ImageCaster(Image* i_s, int x, int y, int w, int h);
+    ImageCaster(ManuvrLink* l, Image* i_s, int x = 0, int y = 0, int w = 0, int h = 0);
     ~ImageCaster() {};
 
     //int ManuvrLink::send(KeyValuePair* kvp, bool need_reply);
@@ -197,6 +197,7 @@ class ImageCaster {
 
 
   private:
+    const uint32_t _id;
     ManuvrLink* _link;
     Image* _source;
     int   _s_x;

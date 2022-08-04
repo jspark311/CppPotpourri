@@ -6,7 +6,7 @@ message(STATUS "CppPotpourri")
 message(STATUS "==============================================")
 
 idf_component_register(
-  SRC_DIRS "src" "src/cbor-cpp" "src/Image" "src/Identity" "src/ManuvrLink" "src/TripleAxisPipe"
+  SRC_DIRS "src" "src/cbor-cpp" "src/Image" "src/Image/ImageUtils" "src/Identity" "src/ManuvrLink" "src/TripleAxisPipe"
   INCLUDE_DIRS "src"
   REQUIRES ManuvrPlatform
 )
