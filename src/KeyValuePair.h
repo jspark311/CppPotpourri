@@ -49,7 +49,10 @@ TODO: Since this class renders large chains of function calls opaque to the
 #endif
 
 /* Forward declarations of classes that this type will handle. */
-class Image;
+#if defined(CONFIG_MANUVR_IMG_SUPPORT)
+  #include <Image/Image.h>
+#endif
+
 class Identity;
 
 

@@ -1163,6 +1163,8 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
     //case TCode::BASE64:
     //case TCode::IPV4_ADDR:
     //case TCode::AUDIO:
+
+    // Inflation of KVPs.
     case TCode::KVP:
       {
         KeyValuePair* tmp = KeyValuePair::unserialize(data, size, TCode::CBOR);
@@ -1172,6 +1174,8 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
         }
       }
       break;
+
+    // Inflation of Identities.
     case TCode::IDENTITY:
       {
         Identity* tmp = Identity::fromBuffer(data, size);
@@ -1181,7 +1185,19 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
         }
       }
       break;
+
+    // Inflation of Images.
     case TCode::IMAGE:
+      {
+        Image* tmp = new Image();
+        if (tmp) {
+          tmp->deserialize(data, size);
+          if (tmp->allocated()) {
+          }
+          ret = new KeyValuePair(tmp);
+          if (nullptr != ret) ret->reapValue(true);
+        }
+      }
       break;
 
     // Any other TCodes will either be handled by a CBOR native type, or should
