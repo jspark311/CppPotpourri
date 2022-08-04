@@ -23,7 +23,10 @@ limitations under the License.
 
 #if defined(CONFIG_MANUVR_M2M_SUPPORT)
 
-// Definitions only needed inside this translation unit.
+/*******************************************************************************
+* Definitions only needed inside this translation unit.
+*******************************************************************************/
+// Priority levels for various kinds of messages.
 #define MANUVRLINK_PRIORITY_WAITING_FOR_ACK  5   // These will not resend until and unless they timeout.
 #define MANUVRLINK_PRIORITY_APP              10  // Application messages.
 #define MANUVRLINK_PRIORITY_INTERNAL         20  // Classes own messages have highest priority.
@@ -168,6 +171,8 @@ ManuvrLink::ManuvrLink(const ManuvrLinkOpts* opts) : _opts(opts), _flags(opts->d
 
 /**
 * Destructor
+*
+* Destroy any queued messages.
 */
 ManuvrLink::~ManuvrLink() {
   _purge_inbound();
@@ -204,6 +209,13 @@ int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
     case ManuvrLinkState::PENDING_AUTH:
     case ManuvrLinkState::IDLE:            // The nominal case. Session is in-sync. Do nothing.
     case ManuvrLinkState::PENDING_HANGUP:
+      if (_verbosity >= LOG_LEV_DEBUG) {
+        StringBuilder tmp_log;
+        tmp_log.concatf("\n\n__________Accepted (%u)\t", buf->length());
+        buf->printDebug(&tmp_log);
+        tmp_log.concatf("\n");
+        c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, &tmp_log);
+      }
       _inbound_buf.concatHandoff(buf);
       break;
     default:
@@ -244,11 +256,11 @@ int8_t ManuvrLink::poll(StringBuilder* log_ret) {
       }
       break;
   }
-  int8_t ret = _poll_fsm();                // Poll the link's FSM.
-  if (_local_log.length() > 0) {           // If the link generated logs...
-    if (nullptr != log_ret)                // ...and the caller wants them...
-      log_ret->concatHandoff(&_local_log); // ...relay them to the caller.
-    else _local_log.clear();               // Otherwise, trash them.
+  int8_t ret = _poll_fsm();                 // Poll the link's FSM.
+  if (_remote_log.length() > 0) {           // If the link generated logs...
+    if (nullptr != log_ret)                 // ...and the caller wants them...
+      log_ret->concatHandoff(&_remote_log); // ...relay them to the caller.
+    else _remote_log.clear();               // Otherwise, trash them.
   }
   return ret;
 }
@@ -303,8 +315,12 @@ int8_t ManuvrLink::hangup(bool graceful) {
 
 /**
 * Reset the link object after a HANGUP.
+* This is not to be used as a general "class re-init". The HANGUP state is
+*   intended to give the application time to notice the Link's state, and do any
+*   side-work that might be required prior to (optionally) re-using the Link for
+*   another connection, or allowing GC. This function releases that hold.
 *
-* @return 0 on success. Nonzero otherwise.
+* @return 0 on success, or -1 on improper state.
 */
 int8_t ManuvrLink::reset() {
   int8_t ret = -1;
@@ -397,7 +413,7 @@ bool ManuvrLink::linkIdle() {
 void ManuvrLink::printDebug(StringBuilder* output) {
   uint32_t now = millis();
   StringBuilder temp("ManuvrLink ");
-  temp.concatf("(tag: 0x%x)", _session_tag);
+  temp.concatf("(tag: 0x%08x)", _session_tag);
   StringBuilder::styleHeader2(output, (const char*) temp.string());
   output->concatf("\tConnected:     %c\n", _flags.value(MANUVRLINK_FLAG_ESTABLISHED) ? 'y':'n');
   output->concatf("\tSync incoming: %c\n", _flags.value(MANUVRLINK_FLAG_SYNC_INCOMING) ? 'y':'n');
@@ -571,9 +587,11 @@ int8_t ManuvrLink::_send_msg(ManuvrMsg* msg) {
       }
     }
   }
-  if ((0 > ret) & (3 < _verbosity)) {
-    _local_log.concatf("Link 0x%x failed in _send_msg(): %d\n", _session_tag, ret);
-    msg->printDebug(&_local_log);
+  if ((0 > ret) & (LOG_LEV_ERROR >= _verbosity)) {
+    StringBuilder tmp_log;
+    tmp_log.concatf("Link 0x%08x failed in _send_msg(): %d\n", _session_tag, ret);
+    msg->printDebug(&tmp_log);
+    c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, &tmp_log);
   }
   return ret;
 }
@@ -620,21 +638,24 @@ int8_t ManuvrLink::_churn_inbound() {
   while (_inbound_messages.hasNext()) {
     bool gc_message = true;
     ManuvrMsg* temp = _inbound_messages.dequeue();
-    if (_verbosity > 5) {
-      _local_log.concatf("ManuvrLink (tag: 0x%x) responding to...\n", _session_tag);
-      temp->printDebug(&_local_log);
+    if (_verbosity >= LOG_LEV_INFO) {
+      StringBuilder tmp_log;
+      tmp_log.concatf("ManuvrLink (tag: 0x%08x) responding to...\n", _session_tag);
+      temp->printDebug(&tmp_log);
+      c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, &tmp_log);
     }
 
     switch (temp->msgCode()) {
       case ManuvrMsgCode::SYNC_KEEPALIVE:
         // We got a sync message. Is it a reply?
         if (temp->isReply()) {   // If so, we can stop casting now.
-          _flags.set(MANUVRLINK_FLAG_SYNC_REPLY_RXD);
+          _flags.set(MANUVRLINK_FLAG_SYNC_REPLY_RXD | MANUVRLINK_FLAG_SYNC_INCOMING);
           _flags.clear(MANUVRLINK_FLAG_SYNC_CASTING);
         }
         else {
           // If not, we need to reply, since the lower-tier logic has
           //   stopped doing so.
+          _flags.set(MANUVRLINK_FLAG_SYNC_INCOMING);
           _send_sync_packet(false);
         }
         break;
@@ -660,10 +681,12 @@ int8_t ManuvrLink::_churn_inbound() {
           if (0 == temp->ack()) {
             gc_message = false;
           }
-          else if (_verbosity > 2) _local_log.concatf("ManuvrLink (tag: 0x%x) Failed to reply to CONNECT\n", _session_tag);
-          //if (_verbosity > 5) {
-          //  _local_log.concatf("ManuvrLink (tag: 0x%x) responding with...\n", _session_tag);
-          //  temp->printDebug(&_local_log);
+          else if (_verbosity >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "ManuvrLink (tag: 0x%08x) Failed to reply to CONNECT\n", _session_tag);
+          //if (_verbosity >= LOG_LEV_INFO) {
+          //  StringBuilder tmp_log;
+          //  tmp_log.concatf("ManuvrLink (tag: 0x%08x) responding with...\n", _session_tag);
+          //  temp->printDebug(&tmp_log);
+          //  c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, &tmp_log);
           //}
           StringBuilder temp_out;
           temp->serialize(&temp_out);
@@ -689,7 +712,9 @@ int8_t ManuvrLink::_churn_inbound() {
               _append_fsm_route(2, ManuvrLinkState::PENDING_HANGUP, ManuvrLinkState::HUNGUP);
             }
           }
-          if (gc_message & (_verbosity > 2)) _local_log.concatf("ManuvrLink (tag: 0x%x) Failed to reply to HANGUP\n", _session_tag);
+          if (gc_message & (_verbosity >= LOG_LEV_ERROR)) {
+            c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "ManuvrLink (tag: 0x%08x) Failed to reply to HANGUP\n", _session_tag);
+          }
         }
         break;
       case ManuvrMsgCode::DESCRIBE:
@@ -701,7 +726,9 @@ int8_t ManuvrLink::_churn_inbound() {
           switch (_handle_msg_log(temp)) {
             case 2:   // Requeue the message as a reply. Don't GC it.
               gc_message = (0 != _send_msg(temp));
-              if (gc_message & (2 < _verbosity)) _local_log.concatf("Link 0x%x failed to insert a reply message into our queue.\n", _session_tag);
+              if (gc_message & (_verbosity >= LOG_LEV_ERROR)) {
+                c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "ManuvrLink (tag: 0x%08x) Failed to reply to LOG\n", _session_tag);
+              }
               break;
             default:   // Drop the message.
               break;
@@ -712,11 +739,17 @@ int8_t ManuvrLink::_churn_inbound() {
       case ManuvrMsgCode::APPLICATION:
         switch (_invoke_msg_callback(temp)) {
           case 2:   // Requeue the message as a reply. Don't GC it.
+            c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "Requeue as a reply");
             gc_message = (0 != _send_msg(temp));
-            if (gc_message & (2 < _verbosity)) _local_log.concatf("Link 0x%x failed to insert a reply message into our queue.\n", _session_tag);
+            if (gc_message & (_verbosity >= LOG_LEV_ERROR)) {
+              c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Link 0x%08x failed to insert an APPLICATION reply message into our queue.\n", _session_tag);
+            }
             break;
           case 1:   // Drop the message.
+            c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "DROPPED");
+            break;
           case 0:   // No callback. TODO: Might choose to retain in the queue?
+            c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "NO CALLBACK");
             break;
         }
         break;
@@ -842,12 +875,16 @@ int8_t ManuvrLink::_handle_msg_log(ManuvrMsg* msg) {
       char* inbound_log = nullptr;
       if (0 == inbound_kvp->valueWithKey("b", &inbound_log)) {
         // TODO: Surround with randomly-generated tags to prevent confusion.
-        _local_log.concatf("ManuvrLink (tag: 0x%x) counterparty says:\n%s", _session_tag, inbound_log);
+        _remote_log.concatf("Link 0x%08x counterparty says:\n%s\n", _session_tag, inbound_log);
       }
-      else if (1 < _verbosity) _local_log.concatf("Link 0x%x failed to decompose LOG message.\n", _session_tag);
+      else {
+        if (LOG_LEV_NOTICE <= _verbosity) c3p_log(LOG_LEV_NOTICE, __PRETTY_FUNCTION__, "Link 0x%08x failed to decompose LOG message.\n", _session_tag);
+      }
       //delete inbound_kvp;
     }
-    else if (1 < _verbosity) _local_log.concatf("Link 0x%x failed to find LOG payload.\n", _session_tag);
+    else {
+      if (LOG_LEV_NOTICE <= _verbosity) c3p_log(LOG_LEV_NOTICE, __PRETTY_FUNCTION__, "Link 0x%08x failed to find LOG payload.\n", _session_tag);
+    }
   }
   if (msg->expectsReply()) {
     // Regardless of if we wrote log or not, ack the message so it won't be
@@ -884,6 +921,12 @@ void ManuvrLink::_reset_class() {
   _sync_losses    = 0;
   _sync_losses    = 0;
   _unackd_sends   = 0;
+  if (nullptr != _id_remote) {
+    // TODO: Follow logic tree for Identity storage. For now, just wipe it.
+    Identity* tmp_ptr = _id_remote;
+    _id_remote = nullptr;
+    delete tmp_ptr;
+  }
 }
 
 
@@ -900,9 +943,17 @@ void ManuvrLink::_reset_class() {
 int8_t ManuvrLink::_relay_to_output_target(StringBuilder* buf) {
   int8_t ret = -1;
   if (nullptr != _output_target) {
+    if (_verbosity >= LOG_LEV_DEBUG) {
+      StringBuilder tmp_log;
+      tmp_log.concatf("\n\n__________Emitting (%u)\t", buf->length());
+      buf->printDebug(&tmp_log);
+      tmp_log.concatf("\n");
+      c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, &tmp_log);
+    }
+
     switch (_output_target->provideBuffer(buf)) {
       case 0:
-        buf->clear();
+        buf->clear();  // If the BufferPipe didn't claim the buffer, clear it.
         // NOTE: No break;
       case 1:
         _ms_last_send = millis();
@@ -913,7 +964,10 @@ int8_t ManuvrLink::_relay_to_output_target(StringBuilder* buf) {
         break;
     }
   }
-  if ((0 > ret) & (1 < _verbosity)) _local_log.concatf("Link 0x%x failed in _relay_to_output_target(): %d\n", _session_tag, ret);
+
+  if ((0 > ret) & (_verbosity >= LOG_LEV_ERROR)) {
+    c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Link 0x%08x failed in _relay_to_output_target(): %d\n", _session_tag, ret);
+  }
   return ret;
 }
 
@@ -966,8 +1020,6 @@ int8_t ManuvrLink::_invoke_msg_callback(ManuvrMsg* msg) {
 int8_t ManuvrLink::_process_input_buffer() {
   int8_t ret = 0;
   bool proc_fallthru = false;
-
-  if (_verbosity > 6) _inbound_buf.printDebug(&_local_log);
 
   switch (_fsm_pos) {
     // If the link is actively trying to attain sync...
@@ -1027,8 +1079,9 @@ int8_t ManuvrLink::_process_input_buffer() {
             }
             break;
         }
-        if ((_verbosity > 6) | ((ret_header < 0) & (_verbosity > 3))) {
-          _local_log.concatf("ManuvrLink (tag: 0x%x) _attempt_header_parse returned %d.\n", _session_tag, ret_header);
+
+        if ((_verbosity >= LOG_LEV_DEBUG) | ((ret_header < 0) & (_verbosity >= LOG_LEV_ERROR))) {
+          c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "ManuvrLink (tag: 0x%08x) _attempt_header_parse returned %d.\n", _session_tag, ret_header);
         }
       }
       if (nullptr != _working) {
@@ -1044,9 +1097,11 @@ int8_t ManuvrLink::_process_input_buffer() {
               // If we failed to parse too many times in-a-row, we assume the
               //   session is desyncd. Delete the bad message, and steer the
               //   session toward re-sync.
-              if (_verbosity > 5) {
-                _local_log.concatf("ManuvrLink (tag: 0x%x) experienced a parse failure:\n", _session_tag);
-                _working->printDebug(&_local_log);
+              if (_verbosity >= LOG_LEV_NOTICE) {
+                StringBuilder tmp_log;
+                tmp_log.concatf("ManuvrLink (tag: 0x%08x) experienced a parse failure:\n", _session_tag);
+                _working->printDebug(&tmp_log);
+                c3p_log(LOG_LEV_NOTICE, __PRETTY_FUNCTION__, &tmp_log);
               }
               _fsm_insert_sync_states();
               _sync_losses++;
@@ -1073,8 +1128,9 @@ int8_t ManuvrLink::_process_input_buffer() {
 *   non-sync message boundaries in the data.
 * The only case where this function will NOT cull from the input data is if the
 *   length of the input data was less than MANUVRMSGHDR_MINIMUM_HEADER_SIZE.
-* Sets the SYNC_INCOMING flag if the received sync is a reply.
-* Sends a reply sync if the received sync demands a reply.
+* Sets the SYNC_INCOMING flag and sends a reply sync if the received sync
+*   demands a reply.
+* Sets the SYNC_REPLY_RXD flag if the received sync is a reply.
 *
 * @param dat_in  The buffer to search through.
 * @return -1 on insufficient length. No change to input data.
@@ -1148,15 +1204,16 @@ int8_t ManuvrLink::_process_for_sync() {
     // Finally, consider the things we discovered about the syncs we just
     //   dropped, and act accordingly.
     if (set_sync) {
-      // If we got a sync reply, mark the class as such and stop casting.
-      _flags.set(MANUVRLINK_FLAG_SYNC_INCOMING);
-      _flags.set(MANUVRLINK_FLAG_SYNC_REPLY_RXD);
+      // If we got a sync reply, mark the class as such. The state machine
+      //   will handle any class transitions from here.
+      _flags.set(MANUVRLINK_FLAG_SYNC_REPLY_RXD | MANUVRLINK_FLAG_SYNC_INCOMING);
     }
     if (send_sync) {
       // If a sync packet demanded a reply, issue it unconditionally.
       // Issues a single reply to possibly many syncs that demanded one. So
       //   class logic needs to respect the fact that sync packets will not
       //   necesarilly get sync replies in a 1:1 ratio.
+      _flags.set(MANUVRLINK_FLAG_SYNC_INCOMING);
       _send_sync_packet(false);
     }
   }
@@ -1170,7 +1227,12 @@ int8_t ManuvrLink::_process_for_sync() {
       else {  _inbound_buf.cull(CULL_LEN);  }
     }
   }
-  if (_verbosity > 5) _local_log.concatf("Link 0x%x _process_for_sync() returned %d.\n", _session_tag, ret);
+  if (_verbosity >= LOG_LEV_DEBUG) {
+    StringBuilder tmp_log;
+    tmp_log.concatf("Link 0x%08x _process_for_sync() returned %d.\n", _session_tag, ret);
+    //_working->printDebug(&tmp_log);
+    c3p_log(LOG_LEV_DEBUG, __PRETTY_FUNCTION__, &tmp_log);
+  }
   return ret;
 }
 
@@ -1189,7 +1251,7 @@ int8_t ManuvrLink::_send_sync_packet(bool need_reply) {
   if (sync_header.serialize(&sync_packet)) {
     ret = (0 <= _relay_to_output_target(&sync_packet)) ? 0 : -2;
   }
-  //else if (2 < _verbosity) _local_log.concatf("Link 0x%x failed to serialize a sync header.\n", _session_tag);
+  //else if (2 < _verbosity) _local_log.concatf("Link 0x%08x failed to serialize a sync header.\n", _session_tag);
   return ret;
 }
 
@@ -1208,7 +1270,15 @@ int8_t ManuvrLink::_send_connect_message() {
   if (connect_header.serialize(&connect_packet)) {
     ret = (0 <= _relay_to_output_target(&connect_packet)) ? 0 : -2;
   }
-  else if (2 < _verbosity) _local_log.concatf("Link 0x%x failed to serialize a connect header.\n", _session_tag);
+  else {
+    if (_verbosity >= LOG_LEV_CRIT) {
+      StringBuilder tmp_log;
+      tmp_log.concatf("Link 0x%08x failed to serialize a connect header.\n", _session_tag);
+      _working->printDebug(&tmp_log);
+      c3p_log(LOG_LEV_CRIT, __PRETTY_FUNCTION__, &tmp_log);
+    }
+  }
+
   // TODO: Would prefer to use the code below. But SYNC is not well-enough
   //   under control.
   //ManuvrMsgHdr hdr(ManuvrMsgCode::CONNECT, 0, true);
@@ -1283,16 +1353,15 @@ int8_t ManuvrLink::_poll_fsm() {
       break;
 
     // Exit conditions: We have begun sending sync packets into the transport.
+    //   We have seen replies to our syncs, and incoming data is no longer
+    //   preceeded by sync packets.
     case ManuvrLinkState::SYNC_RESYNC:
-      fsm_advance = _flags.value(MANUVRLINK_FLAG_SYNC_CASTING);
+      fsm_advance = (_flags.value(MANUVRLINK_FLAG_SYNC_INCOMING) & _flags.value(MANUVRLINK_FLAG_SYNC_REPLY_RXD));
       break;
 
-    // Exit conditions: We have seen replies to our syncs, and incoming data is
-    //   no longer preceeded by sync packets.
+    // Exit conditions: We've exchanged CONNECT messages.
     case ManuvrLinkState::SYNC_TENTATIVE:
-      if (!_flags.value(MANUVRLINK_FLAG_SYNC_CASTING)) {
-        fsm_advance = _flags.value(MANUVRLINK_FLAG_ESTABLISHED);
-      }
+      fsm_advance = _flags.value(MANUVRLINK_FLAG_ESTABLISHED);
       break;
 
     // Exit conditions: An acceptable authentication has happened.
@@ -1377,9 +1446,10 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
       //   exchanged, and the start of non-sync data has yet to be located.
       //   Entry always succeeds.
       case ManuvrLinkState::SYNC_TENTATIVE:
+        _flags.clear(MANUVRLINK_FLAG_SYNC_CASTING);
         state_entry_success = (0 == _send_connect_message());
         if (!state_entry_success) {
-          if (3 < _verbosity) _local_log.concatf("Link 0x%x failed to send initial connect.\n", _session_tag);
+          if (_verbosity >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Link 0x%08x failed to send initial connect.\n", _session_tag);
         }
         break;
 
@@ -1402,14 +1472,14 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
       case ManuvrLinkState::PENDING_HANGUP:
         state_entry_success = (0 == _send_hangup_message(true));
         if (!state_entry_success) {
-          if (3 < _verbosity) _local_log.concatf("Link 0x%x failed to send initial HANGUP.\n", _session_tag);
+          if (_verbosity >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Link 0x%08x failed to send initial HANGUP.\n", _session_tag);
         }
         break;
 
       // Entry into HUNGUP involves clearing/releasing any buffers and states
       //   from the prior session. Entry always succeeds.
       case ManuvrLinkState::HUNGUP:
-        _reset_class();
+        //_reset_class();
         _flags.set(MANUVRLINK_FLAG_ON_HOOK);
         state_entry_success = true;
         break;
@@ -1420,7 +1490,8 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
     }
 
     if (state_entry_success) {
-      if (4 < _verbosity) _local_log.concatf("Link 0x%x moved %s ---> %s\n", _session_tag, sessionStateStr(_fsm_pos), sessionStateStr(new_state));
+      if (_verbosity >= LOG_LEV_INFO) c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "Link 0x%08x moved %s ---> %s\n", _session_tag, sessionStateStr(_fsm_pos), sessionStateStr(new_state));
+
       _fsm_pos_prior = _fsm_pos;
       _fsm_pos       = new_state;
       switch (new_state) {
@@ -1638,11 +1709,21 @@ int8_t ManuvrLink::console_handler(StringBuilder* text_return, StringBuilder* ar
   else if (0 == StringBuilder::strcasecmp(cmd, "fsm")) {
     printFSM(text_return);
   }
+  else if (0 == StringBuilder::strcasecmp(cmd, "connect")) {
+    text_return->concatf("send_connect_message() returns %d\n", _send_connect_message());
+  }
   else if (0 == StringBuilder::strcasecmp(cmd, "reset")) {
-    text_return->concatf("Link reset() returns %d\n", reset());
+    text_return->concatf("Link.reset() returns %d\n", reset());
   }
   else if (0 == StringBuilder::strcasecmp(cmd, "hangup")) {
-    text_return->concatf("Link hangup() returns %d\n", hangup());
+    text_return->concatf("Link.hangup() returns %d\n", hangup());
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "sync")) {
+    if (1 < args->count()) {
+      bool new_arg = (0 != args->position_as_int(1));
+      syncCast(new_arg);
+    }
+    text_return->concatf("Link syncCast(%c)\n", syncCast() ? '1':'0');
   }
   else if (0 == StringBuilder::strcasecmp(cmd, "poll")) {
     text_return->concatf("Link poll() returns %d\n", poll(text_return));
@@ -1665,7 +1746,7 @@ int8_t ManuvrLink::console_handler(StringBuilder* text_return, StringBuilder* ar
     //else text_return->concat("Usage: link log <logText>\n");
   }
   else {
-    text_return->concat("Usage: [info|reset|hangup|verbosity]\n");
+    text_return->concat("Usage: [info|reset|hangup|sync|poll|log|verbosity]\n");
     ret = -1;
   }
 

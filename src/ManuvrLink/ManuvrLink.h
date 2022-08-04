@@ -102,7 +102,7 @@ NOTE: This has been a mad binge to port over all this work from ManuvrOS. Five
 #define MANUVRLINK_FLAG_AUTHD           0x00000002  // Set if this session has been authenticated.
 #define MANUVRLINK_FLAG_SYNC_INCOMING   0x00000004  // We've seen a sync on this resync cycle.
 #define MANUVRLINK_FLAG_SYNC_CASTING    0x00000008  // We're sending sync on this resync cycle.
-#define MANUVRLINK_FLAG_SYNC_REPLY_RXD  0x00000010  // We've seen a sync on this resync cycle.
+#define MANUVRLINK_FLAG_SYNC_REPLY_RXD  0x00000010  // We've seen a reply to our syncs on this resync cycle.
 #define MANUVRLINK_FLAG_ESTABLISHED     0x00000020  // We've exchanged CONNECT messages.
 #define MANUVRLINK_FLAG_HANGUP_RXD      0x00000040  // We received a HANGUP message.
 #define MANUVRLINK_FLAG_HANGUP_TXD      0x00000080  // Sent a HANGUP message on this session.
@@ -459,7 +459,7 @@ class ManuvrLink : public BufferAccepter {
     ManuvrLinkCB      _lnk_callback   = nullptr;  // The application-provided callback for state changes.
     ManuvrMsgCB       _msg_callback   = nullptr;  // The application-provided callback for incoming messages.
     StringBuilder     _inbound_buf;
-    StringBuilder     _local_log;
+    StringBuilder     _remote_log;
 
     /* Message queue management */
     int8_t _send_msg(ManuvrMsg*);
