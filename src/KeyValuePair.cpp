@@ -120,11 +120,6 @@ KeyValuePair::KeyValuePair(double val, const char* key) : KeyValuePair(malloc(si
 }
 
 
-#if defined(CONFIG_MANUVR_IMG_SUPPORT)
-KeyValuePair::KeyValuePair(Image* val, char* key) : KeyValuePair((void*) val, val->bytesUsed(), TCode::IMAGE, key) {};
-#endif  // CONFIG_MANUVR_IMG_SUPPORT
-
-
 
 /*******************************************************************************
 * Accessors for key.
@@ -711,6 +706,13 @@ int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
         if (ident->toBuffer(buf)) {
           out->concat(&buf[0], i_len);
         }
+        //StringBuilder id_serial;
+        //if (ident->toBuffer(&id_serial)) {
+        //  StringBuilder tmp_log("Serialized an Identity: \n");
+        //  id_serial.printDebug(&tmp_log);
+        //  printf("%s\n", tmp_log.string());
+        //  out->concatHandoff(&id_serial);
+        //}
       }
       break;
 
@@ -929,7 +931,7 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
                 if (0 == img->serializeWithoutBuffer(intermediary, &nb_buf)) {
                   encoder.write_tag(MANUVR_CBOR_VENDOR_TYPE | TcodeToInt(src->typeCode()));
                   encoder.write_bytes(intermediary, nb_buf);   // TODO: This might cause two discrete CBOR objects.
-                  encoder.write_bytes(img->buffer(), sz_buf);
+                  //encoder.write_bytes(img->buffer(), sz_buf);
                 }
               }
             }

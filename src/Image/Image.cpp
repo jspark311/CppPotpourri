@@ -632,7 +632,7 @@ int8_t Image::serialize(uint8_t* buf, uint32_t* len) {
       *(buf + 8) = (uint8_t) _buf_fmt;
       *(buf + 9) = _imgflags;
       memcpy((buf + 10), _buffer, sz);
-      *len = sz;
+      *len = (10+sz);
       return 0;
     }
   }

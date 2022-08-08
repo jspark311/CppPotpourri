@@ -146,7 +146,7 @@ class KeyValuePair {
 
     // Conditional types.
     #if defined(CONFIG_MANUVR_IMG_SUPPORT)
-    KeyValuePair(Image* val, char* key = nullptr);
+    KeyValuePair(Image* val, char* key = nullptr) : KeyValuePair((void*) val, val->bytesUsed(), TCode::IMAGE, key) {};
     inline KeyValuePair* append(Image* val, char* key = nullptr) {   return link(new KeyValuePair(val, key));   };
     #endif   // CONFIG_MANUVR_IMG_SUPPORT
 

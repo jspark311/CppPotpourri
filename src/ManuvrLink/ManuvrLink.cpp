@@ -50,7 +50,7 @@ const char* ManuvrLink::sessionStateStr(const ManuvrLinkState CODE) {
     case ManuvrLinkState::SYNC_RESYNC:      return "SYNC_RESYNC";
     case ManuvrLinkState::SYNC_TENTATIVE:   return "SYNC_TENTATIVE";
     case ManuvrLinkState::PENDING_AUTH:     return "PENDING_AUTH";
-    case ManuvrLinkState::IDLE:             return "IDLE";
+    case ManuvrLinkState::LIVE:             return "LIVE";
     case ManuvrLinkState::PENDING_HANGUP:   return "PENDING_HANGUP";
     case ManuvrLinkState::HUNGUP:           return "HUNGUP";
     default:                                return "<UNKNOWN>";
@@ -68,6 +68,8 @@ const char* ManuvrLink::manuvMsgCodeStr(const ManuvrMsgCode CODE) {
     case ManuvrMsgCode::DESCRIBE:           return "DESCRIBE";
     case ManuvrMsgCode::MSG_FORWARD:        return "MSG_FORWARD";
     case ManuvrMsgCode::LOG:                return "LOG";
+    case ManuvrMsgCode::WHO:                return "WHO";
+    case ManuvrMsgCode::DHT_FXN:            return "DHT_FXN";
     case ManuvrMsgCode::APPLICATION:        return "APPLICATION";
     default:                                return "<UNKNOWN>";
   }
@@ -89,6 +91,8 @@ const bool ManuvrLink::msgCodeValid(const ManuvrMsgCode CODE) {
     case ManuvrMsgCode::DESCRIBE:
     case ManuvrMsgCode::MSG_FORWARD:
     case ManuvrMsgCode::LOG:
+    case ManuvrMsgCode::WHO:
+    case ManuvrMsgCode::DHT_FXN:
     case ManuvrMsgCode::APPLICATION:
       return true;
     default:
@@ -109,7 +113,7 @@ static const bool _link_fsm_code_valid(const ManuvrLinkState CODE) {
     case ManuvrLinkState::SYNC_RESYNC:
     case ManuvrLinkState::SYNC_TENTATIVE:
     case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::IDLE:
+    case ManuvrLinkState::LIVE:
     case ManuvrLinkState::PENDING_HANGUP:
     case ManuvrLinkState::HUNGUP:
       return true;
@@ -207,7 +211,7 @@ int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
     case ManuvrLinkState::SYNC_RESYNC:
     case ManuvrLinkState::SYNC_TENTATIVE:  // We have exchanged sync packets with the counterparty.
     case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::IDLE:            // The nominal case. Session is in-sync. Do nothing.
+    case ManuvrLinkState::LIVE:            // The nominal case. Session is in-sync. Do nothing.
     case ManuvrLinkState::PENDING_HANGUP:
       if (_verbosity >= LOG_LEV_DEBUG) {
         StringBuilder tmp_log;
@@ -281,7 +285,7 @@ int8_t ManuvrLink::hangup(bool graceful) {
     case ManuvrLinkState::SYNC_RESYNC:
     case ManuvrLinkState::SYNC_TENTATIVE:
     case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::IDLE:
+    case ManuvrLinkState::LIVE:
       forced_hangup = !graceful;
       if (graceful) {
         ret = _append_fsm_route(2, ManuvrLinkState::PENDING_HANGUP, ManuvrLinkState::HUNGUP);
@@ -387,7 +391,7 @@ int8_t ManuvrLink::writeRemoteLog(StringBuilder* outbound_log, bool need_reply) 
 * @return true if so. False otherwise.
 */
 bool ManuvrLink::linkIdle() {
-  if (ManuvrLinkState::IDLE == _fsm_pos) {
+  if (ManuvrLinkState::LIVE == _fsm_pos) {
     if (0 == _outbound_messages.size()) {
       if (0 == _inbound_messages.size()) {
         if (nullptr == _working) {
@@ -415,25 +419,46 @@ void ManuvrLink::printDebug(StringBuilder* output) {
   StringBuilder temp("ManuvrLink ");
   temp.concatf("(tag: 0x%08x)", _session_tag);
   StringBuilder::styleHeader2(output, (const char*) temp.string());
-  output->concatf("\tConnected:     %c\n", _flags.value(MANUVRLINK_FLAG_ESTABLISHED) ? 'y':'n');
+  output->concatf("\tConnected:     %c\n", isConnected() ? 'y':'n');
   output->concatf("\tSync incoming: %c\n", _flags.value(MANUVRLINK_FLAG_SYNC_INCOMING) ? 'y':'n');
   output->concatf("\tSync casting:  %c\n", _flags.value(MANUVRLINK_FLAG_SYNC_CASTING) ? 'y':'n');
   output->concatf("\tSync replies:  %c\n", _flags.value(MANUVRLINK_FLAG_SYNC_REPLY_RXD) ? 'y':'n');
   output->concatf("\tAllow LOG:     %c\n", _flags.value(MANUVRLINK_FLAG_ALLOW_LOG_WRITE) ? 'y':'n');
 
-  if (_flags.value(MANUVRLINK_FLAG_AUTH_REQUIRED)) {
+  if (requireAuth()) {
     output->concatf("\tAuth'd:        %c\n", _flags.value(MANUVRLINK_FLAG_AUTHD) ? 'y':'n');
   }
   output->concatf("\tMTU:           %u\n", _opts.mtu);
   output->concatf("\tTimeout:       %ums\n", _opts.ms_timeout);
-  output->concatf("\tLast outbound: %ums ago\n", (now - _ms_last_send));
-  output->concatf("\tLast inbound:  %ums ago\n", (now - _ms_last_rec));
   output->concatf("\tEncoding:      %s\n", typecodeToStr(_opts.encoding));
   output->concatf("\tSync losses:   %u\n", _sync_losses);
   output->concatf("\tACK timeouts:  %u\n", _seq_ack_fails);
   output->concatf("\tBuffer size:   %u\n", _inbound_buf.length());
-  printFSM(output);
+  output->concatf("\tLast outbound: %ums ago\n", (now - _ms_last_send));
+  output->concatf("\tLast inbound:  %ums ago\n", (now - _ms_last_rec));
 
+  if (isConnected()) {
+    output->concat("\n-- Counterparty:\n");
+    if (nullptr != remoteIdentity()) {
+
+      output->concatf("\t[%s]:\t", remoteIdentity()->getHandle());
+      remoteIdentity()->toString(output);
+      output->concat('\n');
+    }
+    else {
+      output->concat("\tUnidentified\n");
+    }
+  }
+  output->concat('\n');
+}
+
+
+/**
+* Debug support method.
+*
+* @param   StringBuilder* The buffer into which this fxn should write its output.
+*/
+void ManuvrLink::printQueues(StringBuilder* output) {
   int x = _outbound_messages.size();
   if (x > 0) {
     output->concatf("\n-- Outbound Queue %d total, showing top %d ------------\n", x, MANUVRLINK_MAX_QUEUE_PRINT);
@@ -512,7 +537,7 @@ int ManuvrLink::send(KeyValuePair* kvp, bool need_reply) {
     case ManuvrLinkState::SYNC_RESYNC:
     case ManuvrLinkState::SYNC_TENTATIVE:
     case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::IDLE:
+    case ManuvrLinkState::LIVE:
       if (_outbound_messages.size() >= _opts.max_outbound) {
         return -3;
       }
@@ -638,9 +663,11 @@ int8_t ManuvrLink::_churn_inbound() {
   while (_inbound_messages.hasNext()) {
     bool gc_message = true;
     ManuvrMsg* temp = _inbound_messages.dequeue();
+    KeyValuePair* kvps_rxd = nullptr;
+
     if (_verbosity >= LOG_LEV_INFO) {
       StringBuilder tmp_log;
-      tmp_log.concatf("ManuvrLink (tag: 0x%08x) responding to...\n", _session_tag);
+      tmp_log.concatf("Link 0x%08x processing inbound...\n", _session_tag);
       temp->printDebug(&tmp_log);
       c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, &tmp_log);
     }
@@ -665,15 +692,15 @@ int8_t ManuvrLink::_churn_inbound() {
           if (!_flags.value(MANUVRLINK_FLAG_ESTABLISHED)) {
             if (_fsm_is_stable()) {   // Ensures we are in SYNC_TENTATIVE.
               if (_flags.value(MANUVRLINK_FLAG_AUTH_REQUIRED)) {
-                _append_fsm_route(2, ManuvrLinkState::PENDING_AUTH, ManuvrLinkState::IDLE);
+                _append_fsm_route(2, ManuvrLinkState::PENDING_AUTH, ManuvrLinkState::LIVE);
               }
               else {
-                _append_fsm_route(1, ManuvrLinkState::IDLE);
+                _append_fsm_route(1, ManuvrLinkState::LIVE);
               }
             }
           }
           else {
-            _append_fsm_route(1, ManuvrLinkState::IDLE);
+            _append_fsm_route(1, ManuvrLinkState::LIVE);
           }
           _flags.set(MANUVRLINK_FLAG_ESTABLISHED);
         }
@@ -681,10 +708,10 @@ int8_t ManuvrLink::_churn_inbound() {
           if (0 == temp->ack()) {
             gc_message = false;
           }
-          else if (_verbosity >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "ManuvrLink (tag: 0x%08x) Failed to reply to CONNECT\n", _session_tag);
+          else if (_verbosity >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Link 0x%08x Failed to reply to CONNECT\n", _session_tag);
           //if (_verbosity >= LOG_LEV_INFO) {
           //  StringBuilder tmp_log;
-          //  tmp_log.concatf("ManuvrLink (tag: 0x%08x) responding with...\n", _session_tag);
+          //  tmp_log.concatf("Link 0x%08x responding with...\n", _session_tag);
           //  temp->printDebug(&tmp_log);
           //  c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, &tmp_log);
           //}
@@ -713,7 +740,7 @@ int8_t ManuvrLink::_churn_inbound() {
             }
           }
           if (gc_message & (_verbosity >= LOG_LEV_ERROR)) {
-            c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "ManuvrLink (tag: 0x%08x) Failed to reply to HANGUP\n", _session_tag);
+            c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Link 0x%08x Failed to reply to HANGUP\n", _session_tag);
           }
         }
         break;
@@ -727,13 +754,64 @@ int8_t ManuvrLink::_churn_inbound() {
             case 2:   // Requeue the message as a reply. Don't GC it.
               gc_message = (0 != _send_msg(temp));
               if (gc_message & (_verbosity >= LOG_LEV_ERROR)) {
-                c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "ManuvrLink (tag: 0x%08x) Failed to reply to LOG\n", _session_tag);
+                c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Link 0x%08x Failed to reply to LOG\n", _session_tag);
               }
               break;
             default:   // Drop the message.
               break;
           }
         }
+        break;
+
+      case ManuvrMsgCode::WHO:
+        temp->getPayload(&kvps_rxd);
+        if (kvps_rxd) {
+          // Reply or not, this message might contain Identity information about
+          //   our counterparty. If we don't already know who we're talking to,
+          //   look for an Identity, and copy it.
+          if (nullptr == _id_remote) {
+            KeyValuePair* ident_kvp = kvps_rxd->retrieveByKey("ident");
+            if (ident_kvp) {
+              if (_verbosity >= LOG_LEV_NOTICE) c3p_log(LOG_LEV_NOTICE, __PRETTY_FUNCTION__, "Link 0x%08x found a remote identity.\n", _session_tag);
+              if (0 == ident_kvp->getValueAs((void*) &_id_remote)) {
+                ident_kvp->reapValue(false);   // We now own this object.
+              }
+            }
+          }
+        }
+
+        if (temp->isReply()) {
+          // TODO: Check if we require auth, and if so, do we have a remote identity?
+          // We might choose to HANGUP if counterparty won't cooperate.
+          if (temp->expectsReply()) {
+            temp->ack();
+            gc_message = (0 != _send_msg(temp));
+          }
+        }
+        else if (temp->expectsReply()) {
+          // We are being queried about our Identity.
+          if (_id_loc) {
+            // If we have one assigned, serialize and relay it as a reply.
+            KeyValuePair* a = new KeyValuePair(_id_loc, "ident");
+            int8_t ret_local = temp->reply(a, true);
+            const uint8_t VERB_LEV = (0 > ret_local) ? LOG_LEV_ERROR : LOG_LEV_INFO;
+            if (_verbosity >= VERB_LEV) {
+              c3p_log(VERB_LEV, __PRETTY_FUNCTION__, "Link 0x%08x reply to WHO returns %u.\n", _session_tag, ret_local);
+            }
+          }
+          else {
+            // If we don't have an identity to provide, try a simple ACK, and
+            //   hope the other side doesn't HANGUP.
+            temp->ack();
+          }
+          gc_message = (0 != _send_msg(temp));
+          if (gc_message & (_verbosity >= LOG_LEV_ERROR)) {
+            c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Link 0x%08x Failed to reply to WHO\n", _session_tag);
+          }
+        }
+        break;
+
+      case ManuvrMsgCode::DHT_FXN:
         break;
 
       case ManuvrMsgCode::APPLICATION:
@@ -1046,7 +1124,7 @@ int8_t ManuvrLink::_process_input_buffer() {
     //   to incoming sync. The general parse will catch it, if it exists.
     case ManuvrLinkState::SYNC_TENTATIVE:
     case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::IDLE:
+    case ManuvrLinkState::LIVE:
     case ManuvrLinkState::PENDING_HANGUP:
       proc_fallthru = true;
       break;
@@ -1081,7 +1159,7 @@ int8_t ManuvrLink::_process_input_buffer() {
         }
 
         if ((_verbosity >= LOG_LEV_DEBUG) | ((ret_header < 0) & (_verbosity >= LOG_LEV_ERROR))) {
-          c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "ManuvrLink (tag: 0x%08x) _attempt_header_parse returned %d.\n", _session_tag, ret_header);
+          c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Link 0x%08x _attempt_header_parse returned %d.\n", _session_tag, ret_header);
         }
       }
       if (nullptr != _working) {
@@ -1099,7 +1177,7 @@ int8_t ManuvrLink::_process_input_buffer() {
               //   session toward re-sync.
               if (_verbosity >= LOG_LEV_NOTICE) {
                 StringBuilder tmp_log;
-                tmp_log.concatf("ManuvrLink (tag: 0x%08x) experienced a parse failure:\n", _session_tag);
+                tmp_log.concatf("Link 0x%08x experienced a parse failure:\n", _session_tag);
                 _working->printDebug(&tmp_log);
                 c3p_log(LOG_LEV_NOTICE, __PRETTY_FUNCTION__, &tmp_log);
               }
@@ -1319,6 +1397,34 @@ int8_t ManuvrLink::_send_hangup_message(bool graceful) {
 }
 
 
+/**
+* Sends a WHO message via the normal message pipeline.
+*
+* @return 0 on success. -1 on failure to allocate ManuvrMsg, -2 on send failure.
+*/
+int8_t ManuvrLink::_send_who_message() {
+  int8_t ret = -1;
+  ManuvrMsgHdr hdr(ManuvrMsgCode::WHO, 0, true);
+  ManuvrMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
+  if (nullptr != msg) {
+    ret--;
+    if (_id_loc) {
+      KeyValuePair* a = new KeyValuePair(_id_loc, "ident");
+      msg->setPayload(a);
+    }
+    if (0 == _send_msg(msg)) {
+      ret = 0;
+    }
+    else {
+      _reclaim_manuvrmsg(msg);
+    }
+  }
+  return ret;
+}
+
+
+
+
 /*******************************************************************************
 * FSM functions
 *******************************************************************************/
@@ -1371,7 +1477,7 @@ int8_t ManuvrLink::_poll_fsm() {
 
     // Exit conditions: These states are canonically stable. So we advance when
     //   the state is not stable (the link has somewhere else it wants to be).
-    case ManuvrLinkState::IDLE:
+    case ManuvrLinkState::LIVE:
       fsm_advance = !_fsm_is_stable();
       break;
 
@@ -1459,9 +1565,9 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
         state_entry_success = true;   // TODO: This entire feature.
         break;
 
-      // Entry into IDLE means we reset any sync-related flags.
+      // Entry into LIVE means we reset any sync-related flags.
       //   Entry always succeeds.
-      case ManuvrLinkState::IDLE:
+      case ManuvrLinkState::LIVE:
         _flags.clear(MANUVRLINK_FLAG_SYNC_INCOMING | MANUVRLINK_FLAG_SYNC_REPLY_RXD);
         state_entry_success = true;
         break;
@@ -1497,7 +1603,7 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
       switch (new_state) {
         case ManuvrLinkState::HUNGUP:        // Entry into these states might
         case ManuvrLinkState::PENDING_AUTH:  // be an event worth passing to
-        case ManuvrLinkState::IDLE:          // the application.
+        case ManuvrLinkState::LIVE:          // the application.
           _invoke_state_callback();
         default:
           break;
@@ -1706,11 +1812,51 @@ int8_t ManuvrLink::console_handler(StringBuilder* text_return, StringBuilder* ar
   if (0 == StringBuilder::strcasecmp(cmd, "info")) {
     printDebug(text_return);
   }
+  else if (0 == StringBuilder::strcasecmp(cmd, "queues")) {
+    printQueues(text_return);
+  }
   else if (0 == StringBuilder::strcasecmp(cmd, "fsm")) {
     printFSM(text_return);
   }
+  else if (0 == StringBuilder::strcasecmp(cmd, "local")) {
+    // Local identity and policy can be edited.
+    char* subcmd = args->position_trimmed(1);
+    if (0 == StringBuilder::strcasecmp(subcmd, "identity")) {
+      if (_id_loc) {
+        _id_loc->toString(text_return);
+      }
+      else {
+        text_return->concat("No local Identity in use.\n");
+      }
+    }
+    else if (0 == StringBuilder::strcasecmp(cmd, "policy")) {
+    }
+    else {
+      text_return->concat("Usage: <identity | policy>\n");
+    }
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "remote")) {
+    // Remote identity and policy can only be examined.
+    char* subcmd = args->position_trimmed(1);
+    if (0 == StringBuilder::strcasecmp(subcmd, "identity")) {
+      if (_id_remote) {
+        _id_remote->toString(text_return);
+      }
+      else {
+        text_return->concat("No remote Identity.\n");
+      }
+    }
+    else if (0 == StringBuilder::strcasecmp(cmd, "policy")) {
+    }
+    else {
+      text_return->concat("Usage: <identity | policy>\n");
+    }
+  }
   else if (0 == StringBuilder::strcasecmp(cmd, "connect")) {
     text_return->concatf("send_connect_message() returns %d\n", _send_connect_message());
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "who")) {
+    text_return->concatf("send_who_message() returns %d\n", _send_who_message());
   }
   else if (0 == StringBuilder::strcasecmp(cmd, "reset")) {
     text_return->concatf("Link.reset() returns %d\n", reset());
@@ -1746,7 +1892,7 @@ int8_t ManuvrLink::console_handler(StringBuilder* text_return, StringBuilder* ar
     //else text_return->concat("Usage: link log <logText>\n");
   }
   else {
-    text_return->concat("Usage: [info|reset|hangup|sync|poll|log|verbosity]\n");
+    text_return->concat("Usage: [info|local|remote|reset|hangup|sync|poll|log|verbosity]\n");
     ret = -1;
   }
 

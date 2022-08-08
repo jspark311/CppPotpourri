@@ -253,18 +253,15 @@ int Identity::_serialize(uint8_t* buf, uint16_t len) {
     *(buf+2) = (uint8_t) (i_flags >> 8) & 0xFF;
     *(buf+3) = (uint8_t) i_flags & 0xFF;
     *(buf+4) = (uint8_t) _format;
+    *(buf+5) = '\0';
     len -= 5;
-    buf += 5;
 
     int str_bytes = 0;
     if (_handle) {
       str_bytes = strlen((const char*) _handle);
       if (str_bytes < len) {
-        memcpy(buf, _handle, str_bytes + 1);
+        memcpy((buf+5), _handle, str_bytes + 1);
       }
-    }
-    else {
-      *(buf+5) = '\0';
     }
 
     return str_bytes + IDENTITY_BASE_PERSIST_LENGTH;

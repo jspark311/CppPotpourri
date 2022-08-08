@@ -118,9 +118,7 @@ class Identity {
     /* Provides concise representations... */
     virtual void toString(StringBuilder*)  =0;   // For readability.
     virtual int  serialize(uint8_t*, uint16_t len) =0;   // For storage.
-    inline  int  toBuffer(uint8_t* buf) {
-      return _serialize(buf, _ident_len);
-    };
+    inline  int  toBuffer(uint8_t* buf) {         return serialize(buf, _ident_len);    };
 
     inline int   length() {   return _ident_len;  };
     inline bool  isDirty() {  return _ident_flag(MANUVR_IDENT_FLAG_DIRTY);   };

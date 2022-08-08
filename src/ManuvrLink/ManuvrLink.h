@@ -160,7 +160,7 @@ enum class ManuvrLinkState : uint8_t {
   SYNC_RESYNC    = 0x02,  // Casting sync, and awaiting like replies.
   SYNC_TENTATIVE = 0x03,  // Stop casting sync. Churn until non-sync data arrives.
   PENDING_AUTH   = 0x04,  // Waiting on optional authentication.
-  IDLE           = 0x05,  // Session is in the nominal state.
+  LIVE           = 0x05,  // Session is in the sync'd and connected state.
   PENDING_HANGUP = 0x06,  // Session hangup is imminent.
   HUNGUP         = 0x07   // Session is hungup and pending cleanup for re-use.
 };
@@ -178,7 +178,9 @@ enum class ManuvrMsgCode : uint8_t {
   HANGUP         = 0x05,   // Orderly termination of an active link.
   DESCRIBE       = 0x06,   // Exchange definitions of objects.
   MSG_FORWARD    = 0x07,   // A request for relay to a 3rd party.
-  LOG            = 0x08,   // General information.
+  LOG            = 0x08,   // Write a string to the counterparty's log.
+  WHO            = 0x09,   // An announcement of Identity.
+  DHT_FXN        = 0x0E,   // TODO: Future expansion for Link-mediated DHTs.
   APPLICATION    = 0x0F    // This message carries all interchange with the app.
 };
 
@@ -345,7 +347,7 @@ class ManuvrMsg {
     void  wipe();                      // Put this object into a fresh state for re-use.
     bool  isValidMsg();
     inline int   ack() {  return reply(nullptr);  };
-    int   reply(KeyValuePair*);
+    int   reply(KeyValuePair*, bool reply_expected = false);
     int   getPayload(KeyValuePair**);  // Application calls this to gain access to the message payload.
     int   setPayload(KeyValuePair*);   // Application calls this to set the message payload.
     int   encoding(TCode);
@@ -402,6 +404,8 @@ class ManuvrLink : public BufferAccepter {
     int    send(KeyValuePair*, bool need_reply = false);
     inline bool     isConnected() {    return _flags.value(MANUVRLINK_FLAG_ESTABLISHED);   };
 
+    inline bool     requireAuth() {        return _flags.value(MANUVRLINK_FLAG_AUTH_REQUIRED);   };
+    inline void     requireAuth(bool x) {  _flags.set(MANUVRLINK_FLAG_AUTH_REQUIRED, x);         };
     inline bool     syncCast() {        return _flags.value(MANUVRLINK_FLAG_SYNC_CASTING);   };
     inline void     syncCast(bool x) {  _flags.set(MANUVRLINK_FLAG_SYNC_CASTING, x);         };
 
@@ -409,6 +413,7 @@ class ManuvrLink : public BufferAccepter {
 
     /* Debugging */
     void printDebug(StringBuilder*);
+    void printQueues(StringBuilder*);
     void printFSM(StringBuilder*);
 
     /* Inline accessors. */
@@ -484,6 +489,7 @@ class ManuvrLink : public BufferAccepter {
     int8_t _send_sync_packet(bool need_reply);
     int8_t _send_connect_message();
     int8_t _send_hangup_message(bool graceful);
+    int8_t _send_who_message();
 
     /* State machine functions */
     int8_t   _poll_fsm();

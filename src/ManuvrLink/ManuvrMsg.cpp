@@ -225,13 +225,13 @@ bool ManuvrMsg::attemptRetry() {
 *        -1 if the message isn't inbound.
 *        -2 if there was a problem serializing the message.
 */
-int ManuvrMsg::reply(KeyValuePair* kvp) {
+int ManuvrMsg::reply(KeyValuePair* kvp, bool reply_expected) {
   int ret = -1;
   if (BusOpcode::RX == _op) {
     // NOTE: No id check on purpose so that it also applies to SYNC_KA.
     ret--;
     _op = BusOpcode::TX;
-    _header.expectsReply(false);
+    _header.expectsReply(reply_expected);
     _header.isReply(true);
     _accumulator.clear();
     _kvp = kvp;
