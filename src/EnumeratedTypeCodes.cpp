@@ -187,6 +187,27 @@ const int sizeOfType(const TCode TC) {
 /*******************************************************************************
 * Support functions for dealing with SIUnit codes.                             *
 *******************************************************************************/
+const char* const SIUnitToStr(const int8_t OOM, const bool sym) {
+  switch (OOM) {
+    case -15:  return (sym ? "f" : "femto");
+    case -12:  return (sym ? "p" : "pico");
+    case -9:   return (sym ? "n" : "nano");
+    case -6:   return (sym ? "u" : "micro");
+    case -3:   return (sym ? "m" : "milli");
+    case -2:   return (sym ? "m" : "centi");
+    case -1:   return (sym ? "m" : "deci");
+    case 0:    return "";
+    case 1:    return (sym ? "da" : "deca");
+    case 2:    return (sym ? "h" : "hecto");
+    case 3:    return (sym ? "k" : "kilo");
+    case 6:    return (sym ? "M" : "mega");
+    case 9:    return (sym ? "G" : "giga");
+    case 12:   return (sym ? "T" : "tera");
+    case 15:   return (sym ? "P" : "peta");
+    default:   return "";
+  }
+}
+
 
 const char* const SIUnitToStr(const SIUnit UC, const bool sym) {
   switch (UC) {
@@ -194,7 +215,7 @@ const char* const SIUnitToStr(const SIUnit UC, const bool sym) {
     case SIUnit::SECONDS:                 return (sym ? "s" : "seconds");
     case SIUnit::METERS:                  return (sym ? "m" : "meters");
     case SIUnit::GRAMS:                   return (sym ? "g" : "grams");
-    case SIUnit::AMPERES:                 return (sym ? "I" : "Amps");
+    case SIUnit::AMPERES:                 return (sym ? "A" : "Amps");
     case SIUnit::CELCIUS:                 return (sym ? "C" : "Celcius");
     case SIUnit::MOLES:                   return (sym ? "mol" : "mol");
     case SIUnit::CANDELAS:                return (sym ? "cd" : "candela");
@@ -238,18 +259,13 @@ void SIUnitToStr(const SIUnit* UC_STR, StringBuilder* output, const bool sym) {
     SIUnit* cur_ptr = (SIUnit*) UC_STR;
     if (SIUnit::UNIT_GRAMMAR_MARKER == *cur_ptr) {
       // This is going to be a multibyte operation...
-      int8_t oom = 1;   // Implied base order-of-magnitude.
+      int8_t oom = 0;   // Implied base order-of-magnitude.
       cur_ptr++;
       while (SIUnit::UNITLESS != *cur_ptr) {
         const SIUnit CURRENT_UCODE = *cur_ptr++;
         switch (CURRENT_UCODE) {
           case SIUnit::META_ORDER_OF_MAGNITUDE:
-            {
-              int8_t temp_oom = (int8_t) *cur_ptr++;
-              if (0 != temp_oom) {
-                oom = temp_oom;
-              }
-            }
+            oom = (int8_t) *cur_ptr++;
             break;
           case SIUnit::META_DIMENSIONALITY:
             break;
@@ -271,19 +287,9 @@ void SIUnitToStr(const SIUnit* UC_STR, StringBuilder* output, const bool sym) {
             break;
         }
       }
-      if (1 != oom) {
-        // If the magnitude was specified, modify the unit with the SI prefix.
-        switch (oom) {
-          case -12:  output->prepend(sym ? "p" : "pico");     break;
-          case -9:   output->prepend(sym ? "n" : "nano");     break;
-          case -6:   output->prepend(sym ? "u" : "micro");    break;
-          case -3:   output->prepend(sym ? "m" : "milli");    break;
-          case 3:    output->prepend(sym ? "K" : "kilo");     break;
-          case 6:    output->prepend(sym ? "M" : "mega");     break;
-          case 9:    output->prepend(sym ? "G" : "giga");     break;
-          case 12:   output->prepend(sym ? "T" : "tera");     break;
-        }
-      }
+
+      // Modify the unit with the SI prefix, if called for.
+      output->prepend(SIUnitToStr(oom, sym));
     }
     else {
       output->concat(SIUnitToStr(*cur_ptr, sym));

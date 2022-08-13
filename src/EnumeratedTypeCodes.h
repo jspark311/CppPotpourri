@@ -243,6 +243,7 @@ enum class SIUnit : uint8_t {
 inline uint8_t SIUnitToInt(const SIUnit code) {  return (const uint8_t) code; };
 inline SIUnit IntToSIUnit(const uint8_t code) {  return (const SIUnit) code;  };
 
+const char* const metricPrefixStr(const int8_t OOM, const bool sym = false);
 const char* const SIUnitToStr(const SIUnit, const bool sym = false);
 void SIUnitToStr(const SIUnit*, StringBuilder*, const bool sym);
 
