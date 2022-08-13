@@ -113,62 +113,6 @@ uint64_t stringToTimestamp(const char*);
 int randomArt(uint8_t* dgst_raw, unsigned int dgst_raw_len, const char* title, StringBuilder*);
 
 
-/*
-* Constants related to differentials in systems of time-keeping and other units.
-*/
-#define  LEAP_SECONDS_SINCE_EPOCH    27
-#define  CELCIUS_KELVIN_REBASE       273.15f
-
-
-/* Physical and mathematical constants. */
-#define SPEED_OF_LIGHT         299792458  // Given in vacuum in m/s
-#define PRESSURE_AT_SEA_LEVEL  101325.0f  // Given in Pascals
-#define MEAN_RADIUS_OF_EARTH     6371009  // Given in meters (IUGG recommend value).
-
-
-#ifndef PI
-  #define PI 3.14159265358979323846264338327950288419716939937510
-#endif
-
-
-/*
-* Enum for SI units.
-* TODO: This will likely be reworked to allow natural unit derivations.
-*/
-enum class SIUnit : uint8_t {
-  UNITLESS          = 0,
-  /* SI base units */
-  SECONDS           = 1,
-  METERS            = 2,
-  GRAMS             = 3,  // Kilograms breaks logical consistency. We use Grams.
-  AMPERES           = 4,
-  CELCIUS           = 5,  // Kelvin cleanly interconverts. We use Celcius.
-  MOLES             = 6,
-  CANDELAS          = 7,
-  /* Derived units */
-  HERTZ             = 8,
-  RADIANS           = 9,
-  STERADIANS        = 10,
-  NEWTONS           = 11,
-  PASCALS           = 12,
-  JOULES            = 13,
-  WATTS             = 14,
-  COULOMBS          = 15,
-  VOLTS             = 16,
-  FARADS            = 17,
-  OHMS              = 18,
-  WEBERS            = 19,
-  TESLAS            = 20,
-  LUMENS            = 21,
-  /* Units as related to time */
-  METERS_PER_SECOND          = 128,   // Speed
-  METERS_PER_SECOND_SQUARED  = 129,   // Acceleration
-  METERS_PER_SECOND_CUBED    = 130,   // Impulse
-  RADIANS_PER_SECOND         = 131,   // Angular velocity
-  RADIANS_PER_SECOND_SQUARED = 132,   // Angular acceleration
-  RADIANS_PER_SECOND_CUBED   = 133    // Angular impulse
-};
-
 
 /*******************************************************************************
 * Interfaces and callback definitions in use throughout this library.

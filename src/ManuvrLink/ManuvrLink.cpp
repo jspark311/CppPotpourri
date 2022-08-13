@@ -1569,6 +1569,7 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
       //   Entry always succeeds.
       case ManuvrLinkState::LIVE:
         _flags.clear(MANUVRLINK_FLAG_SYNC_INCOMING | MANUVRLINK_FLAG_SYNC_REPLY_RXD);
+        _send_who_message();
         state_entry_success = true;
         break;
 

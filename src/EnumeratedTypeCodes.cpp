@@ -23,6 +23,7 @@ TODO: Might-should adopt some IANA standard code-spaces here? Is there a
 */
 
 #include "EnumeratedTypeCodes.h"
+#include "StringBuilder.h"
 
 /**
 * This is the private structure with which we define types. It conveys the type
@@ -77,10 +78,14 @@ static const TypeCodeDef static_type_codes[] = {
   {TCode::COLOR8,         (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          1,  "COLOR8"},
   {TCode::COLOR16,        (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          2,  "COLOR16"},
   {TCode::COLOR24,        (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          3,  "COLOR24"},
+  {TCode::SI_UNIT,        (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_IS_NULL_DELIMITED),  0,  "SI_UNIT"},
   {TCode::BINARY,         (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "BINARY"},
   {TCode::BASE64,         (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "BASE64"},
+  {TCode::JSON,           (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "JSON"},
   {TCode::CBOR,           (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "CBOR"},
+
   {TCode::STR_BUILDER,    (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_HAS_DESTRUCTOR),     0,  "STR_BLDR"},
+  {TCode::GEOLOCATION,    (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_HAS_DESTRUCTOR),     0,  "GEOLOCATION"},
   {TCode::RESERVED,       (TCODE_FLAG_NON_EXPORTABLE),                               0,  "RESERVED"},
   //{TCode::VECT_2_FLOAT,   (0),                                                       0,  "VEC2_FLOAT"};
   //{TCode::VECT_2_DOUBLE,  (0),                                                       0,  "VEC2_DOUBLE"};
@@ -92,12 +97,9 @@ static const TypeCodeDef static_type_codes[] = {
   //{TCode::VECT_2_UINT32,  (0),                                                       0,  "VEC2_UINT32"};
   //{TCode::VECT_3_DOUBLE,  (0),                                                       0,  "VEC3_DOUBLE"};
   //{TCode::VECT_4_FLOAT,   (0),                                                       16, "VEC4_FLOAT"},
-  //{TCode::LATLON,         (0),                                                       16, "LATLON"};
-  //{TCode::SI_UNIT,        (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          1,  "SI_UNIT"};
   //{TCode::IPV4_ADDR,      (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          4,  "IPV4_ADDR"};
   //{TCode::URL,            (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_IS_NULL_DELIMITED),  1,  "URL"},
   //{TCode::AUDIO,          (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_HAS_DESTRUCTOR),     0,  "AUDIO"},
-  //{TCode::JSON,           (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "JSON"},
 };
 
 
@@ -179,4 +181,112 @@ const int sizeOfType(const TCode TC) {
     return def->fixed_len;
   }
   return -1;
+}
+
+
+/*******************************************************************************
+* Support functions for dealing with SIUnit codes.                             *
+*******************************************************************************/
+
+const char* const SIUnitToStr(const SIUnit UC, const bool sym) {
+  switch (UC) {
+    case SIUnit::UNITLESS:                return (sym ? "" : "unitless");
+    case SIUnit::SECONDS:                 return (sym ? "s" : "seconds");
+    case SIUnit::METERS:                  return (sym ? "m" : "meters");
+    case SIUnit::GRAMS:                   return (sym ? "g" : "grams");
+    case SIUnit::AMPERES:                 return (sym ? "I" : "Amps");
+    case SIUnit::CELCIUS:                 return (sym ? "C" : "Celcius");
+    case SIUnit::MOLES:                   return (sym ? "mol" : "mol");
+    case SIUnit::CANDELAS:                return (sym ? "cd" : "candela");
+    case SIUnit::COUNTS:                  return (sym ? "" : "counts");
+    case SIUnit::DEGREES:                 return (sym ? "deg" : "degrees");
+    case SIUnit::RADIANS:                 return (sym ? "rad" : "radians");
+    case SIUnit::STERADIANS:              return (sym ? "str" : "steradians");
+    case SIUnit::PH:                      return (sym ? "pH" : "pH");
+    case SIUnit::DECIBEL:                 return (sym ? "dB" : "dB");
+    case SIUnit::GEES:                    return (sym ? "g's" : "g's");
+    case SIUnit::COULOMBS:                return (sym ? "Q" : "Coulombs");
+    case SIUnit::VOLTS:                   return (sym ? "V" : "Volts");
+    case SIUnit::FARADS:                  return (sym ? "F" : "Farads");
+    case SIUnit::OHMS:                    return (sym ? "Ohms" : "Ohms");
+    case SIUnit::WEBERS:                  return (sym ? "Wb" : "Webers");
+    case SIUnit::TESLAS:                  return (sym ? "T" : "Teslas");
+    case SIUnit::LUMENS:                  return (sym ? "lm" : "lumens");
+    case SIUnit::HERTZ:                   return (sym ? "Hz" : "Hertz");
+    case SIUnit::NEWTONS:                 return (sym ? "N" : "Newtons");
+    case SIUnit::PASCALS:                 return (sym ? "Pa" : "Pascals");
+    case SIUnit::JOULES:                  return (sym ? "J" : "Joules");
+    case SIUnit::WATTS:                   return (sym ? "W" : "Watts");
+    case SIUnit::CONSTANT_PI:             return (sym ? "pi" : "pi");
+    case SIUnit::CONSTANT_EULER:          return (sym ? "e" : "e");
+    case SIUnit::CONSTANT_C:              return (sym ? "c" : "c");
+    case SIUnit::CONSTANT_G:              return (sym ? "G" : "G");
+    case SIUnit::OPERATOR_EXPONENT:       return "^";
+    case SIUnit::OPERATOR_PLUS:           return "+";
+    case SIUnit::OPERATOR_MINUS:          return "-";
+    case SIUnit::OPERATOR_MULTIPLIED:     return "*";
+    case SIUnit::OPERATOR_DIVIDED:        return "/";
+    case SIUnit::OPERATOR_GROUP_LEFT:     return "(";
+    case SIUnit::OPERATOR_GROUP_RIGHT:    return ")";
+    default:   return "";   // Anything non-printable is an empty string.
+  }
+}
+
+
+void SIUnitToStr(const SIUnit* UC_STR, StringBuilder* output, const bool sym) {
+  if (nullptr != UC_STR) {
+    SIUnit* cur_ptr = (SIUnit*) UC_STR;
+    if (SIUnit::UNIT_GRAMMAR_MARKER == *cur_ptr) {
+      // This is going to be a multibyte operation...
+      int8_t oom = 1;   // Implied base order-of-magnitude.
+      cur_ptr++;
+      while (SIUnit::UNITLESS != *cur_ptr) {
+        const SIUnit CURRENT_UCODE = *cur_ptr++;
+        switch (CURRENT_UCODE) {
+          case SIUnit::META_ORDER_OF_MAGNITUDE:
+            {
+              int8_t temp_oom = (int8_t) *cur_ptr++;
+              if (0 != temp_oom) {
+                oom = temp_oom;
+              }
+            }
+            break;
+          case SIUnit::META_DIMENSIONALITY:
+            break;
+          case SIUnit::META_LITERAL_TCODE:
+            {  // TODO: Assumes an int8 (wrongly, eventually).
+              TCode value_tcode = (TCode) *cur_ptr++;
+              int8_t literal_int = (int8_t) *cur_ptr++;
+              if (-1 == literal_int) {
+                output->concat('-');
+              }
+              else if (1 != literal_int) {
+                output->concatf("%d", literal_int);
+              }
+            }
+            break;
+
+          default:
+            output->concat(SIUnitToStr(CURRENT_UCODE, sym));
+            break;
+        }
+      }
+      if (1 != oom) {
+        // If the magnitude was specified, modify the unit with the SI prefix.
+        switch (oom) {
+          case -12:  output->prepend(sym ? "p" : "pico");     break;
+          case -9:   output->prepend(sym ? "n" : "nano");     break;
+          case -6:   output->prepend(sym ? "u" : "micro");    break;
+          case -3:   output->prepend(sym ? "m" : "milli");    break;
+          case 3:    output->prepend(sym ? "K" : "kilo");     break;
+          case 6:    output->prepend(sym ? "M" : "mega");     break;
+          case 9:    output->prepend(sym ? "G" : "giga");     break;
+          case 12:   output->prepend(sym ? "T" : "tera");     break;
+        }
+      }
+    }
+    else {
+      output->concat(SIUnitToStr(*cur_ptr, sym));
+    }
+  }
 }
