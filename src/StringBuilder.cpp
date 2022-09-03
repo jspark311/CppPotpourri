@@ -34,7 +34,7 @@ limitations under the License.
 *******************************************************************************/
 
 /*
-*
+* Locate a substring within a string (case insensitive).
 */
 char* StringBuilder::strcasestr(const char* haystack, const char* needle) {
   if ((nullptr != haystack) && (nullptr != needle) && (0 != *needle)) {
@@ -320,6 +320,40 @@ void StringBuilder::clear() {
 
 
 /**
+* Convert all printable characters to uppercase. Use only on ASCII strings.
+*/
+void StringBuilder::toUpper() {
+  for (int i = 0; i < col_length; i++) {
+    *(str + i) = toupper(*(str + i));  // Process the collapsed string (if any).
+  }
+  StrLL *current = this->root;
+  while (current != nullptr) {   // Process the fragments (if any).
+    for (int i = 0; i < current->len; i++) {
+      *(current->str + i) = toupper(*(current->str + i));
+    }
+    current = current->next;
+  }
+}
+
+
+/**
+* Convert all printable characters to lowercase. Use only on ASCII strings.
+*/
+void StringBuilder::toLower() {
+  for (int i = 0; i < col_length; i++) {
+    *(str + i) = tolower(*(str + i));  // Process the collapsed string (if any).
+  }
+  StrLL *current = this->root;
+  while (current != nullptr) {   // Process the fragments (if any).
+    for (int i = 0; i < current->len; i++) {
+      *(current->str + i) = tolower(*(current->str + i));
+    }
+    current = current->next;
+  }
+}
+
+
+/**
 * Return a castable pointer for the string at position <pos>.
 *
 * @param pos is the index of the desired token.
@@ -488,7 +522,7 @@ bool StringBuilder::drop_position(unsigned int pos) {
 *   difficult-to-trace bugs, we modify the donor SB to prevent its destruction from
 *   taking the data we now have with it.
 */
-void StringBuilder::concatHandoff(StringBuilder *nu) {
+void StringBuilder::concatHandoff(StringBuilder* nu) {
   #if defined(__BUILD_HAS_PTHREADS)
     pthread_mutex_lock(&_mutex);
     pthread_mutex_lock(&nu->_mutex);
@@ -527,7 +561,7 @@ void StringBuilder::concatHandoff(StringBuilder *nu) {
 * ...the mechanics of the language will prevent compilation, and thus, not allow you
 *       to overlook it on accident.
 */
-void StringBuilder::prependHandoff(StringBuilder *nu) {
+void StringBuilder::prependHandoff(StringBuilder* nu) {
   if (nullptr != nu) {
     #if defined(__BUILD_HAS_PTHREADS)
       //pthread_mutex_lock(&_mutex);
@@ -708,8 +742,8 @@ void StringBuilder::concat(double nu) {
 
 /**
 * Override to cleanly support Our own type.
-* This costs a great deal more than concatHandoff(StringBuilder *), but has
-*   the advantage of making a copy of the argument.
+* This costs a great deal more than concatHandoff(StringBuilder*), but has
+*   the advantage of making a deep copy of the argument.
 *
 * @param nu The StringBuilder to append.
 */

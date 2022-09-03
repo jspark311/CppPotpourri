@@ -89,7 +89,7 @@ class StringBuilder {
     StringBuilder();
     StringBuilder(char *initial);
     StringBuilder(unsigned char *initial, int len);
-    StringBuilder(const char *);
+    StringBuilder(const char*);
     ~StringBuilder();
 
     int length();
@@ -138,6 +138,8 @@ class StringBuilder {
     void cull(int length);              // Use to discard the first X characters from the string.
     void trim();                        // Trim whitespace off the ends of the string.
     void clear();                       // Clears the string and frees the memory that was used to hold it.
+    void toUpper();                     // Convert all printable characters to the given case.
+    void toLower();                     // Convert all printable characters to the given case.
 
     /* The functions below are meant to aid basic tokenization. They all consider the collapsed
        root string (if present) to be index zero. This detail is concealed from client classes. */
