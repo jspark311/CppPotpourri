@@ -178,11 +178,6 @@ class ImageScaler {
 };
 
 
-
-/*******************************************************************************
-* TODO: Stub classes for later....
-*/
-
 /*
 * This is an adapter class that casts an Image over a Link.
 */
@@ -212,21 +207,31 @@ class ImageCaster {
 */
 class ImageCatcher {
   public:
-    ImageCatcher(Image* i_t);
-    ~ImageCatcher() {};
+    ImageCatcher();
+    ImageCatcher(Image* i_t, int x, int y, int w = 0, int h = 0);
+    ~ImageCatcher();
 
     int8_t apply(KeyValuePair* kvp);   // Takes a serialized Image.
+    inline Image* img() {         return _target;   };
+    inline bool   allocated() {   return ((nullptr != _target) && (_target->allocated()));   };
 
 
   private:
+    uint32_t _id;
     Image* _target;
     int   _t_x;
     int   _t_y;
     int   _t_w_max;
     int   _t_h_max;
-
+    bool  _target_is_ours;
 };
 
+
+
+
+/*******************************************************************************
+* TODO: Stub classes for later....
+*/
 
 /*
 * This is a transform class that blends two Images and writes the result into a
