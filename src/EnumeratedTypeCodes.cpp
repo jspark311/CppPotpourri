@@ -216,7 +216,7 @@ const char* const SIUnitToStr(const SIUnit UC, const bool sym) {
     case SIUnit::METERS:                  return (sym ? "m" : "meters");
     case SIUnit::GRAMS:                   return (sym ? "g" : "grams");
     case SIUnit::AMPERES:                 return (sym ? "A" : "Amps");
-    case SIUnit::CELCIUS:                 return (sym ? "C" : "Celcius");
+    case SIUnit::KELVIN:                  return (sym ? "K" : "Kelvin");
     case SIUnit::MOLES:                   return (sym ? "mol" : "mol");
     case SIUnit::CANDELAS:                return (sym ? "cd" : "candela");
     case SIUnit::COUNTS:                  return (sym ? "" : "counts");
@@ -238,6 +238,7 @@ const char* const SIUnitToStr(const SIUnit UC, const bool sym) {
     case SIUnit::PASCALS:                 return (sym ? "Pa" : "Pascals");
     case SIUnit::JOULES:                  return (sym ? "J" : "Joules");
     case SIUnit::WATTS:                   return (sym ? "W" : "Watts");
+    case SIUnit::CELCIUS:                 return (sym ? "C" : "Celcius");
     case SIUnit::CONSTANT_PI:             return (sym ? "pi" : "pi");
     case SIUnit::CONSTANT_EULER:          return (sym ? "e" : "e");
     case SIUnit::CONSTANT_C:              return (sym ? "c" : "c");

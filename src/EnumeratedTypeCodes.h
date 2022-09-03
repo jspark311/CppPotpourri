@@ -171,7 +171,7 @@ enum class SIUnit : uint8_t {
   METERS            = 0x02,
   GRAMS             = 0x03,  // Kilograms breaks logical consistency. We use Grams.
   AMPERES           = 0x04,
-  CELCIUS           = 0x05,  // Kelvin cleanly interconverts. We use Celcius.
+  KELVIN            = 0x05,
   MOLES             = 0x06,
   CANDELAS          = 0x07,
 
@@ -197,6 +197,7 @@ enum class SIUnit : uint8_t {
   PASCALS           = 0x49,
   JOULES            = 0x4A,
   WATTS             = 0x4B,
+  CELCIUS           = 0x4C,
 
   /* Constants and ratios */
   CONSTANT_PI       = 0xC0,  //
