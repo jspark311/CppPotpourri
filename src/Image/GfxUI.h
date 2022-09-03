@@ -63,11 +63,13 @@ This source file was never part of Adafruit's library. They are small graphics
 
 
 /*******************************************************************************
-* UIGfxWrapper flags
+* UIGfxWrapper types
 *******************************************************************************/
 /*
 * These are the possible meanings of signals that might come in
 *   from the user's plane.
+*
+* TODO: This is not going to port well to restricted input interfaces.
 */
 enum class GfxUIEvent : uint8_t {
   NONE        = 0x00,  //
@@ -86,16 +88,117 @@ enum class GfxUIEvent : uint8_t {
 };
 
 
-
-/*******************************************************************************
-* Base class that handles all touchable images.
-*******************************************************************************/
-class GfxUIElement {
+/*
+* This is a color pallate for an element. Not all elements will use all of it,
+*   but storing a reference to a few pallates is much simpler
+*   than having to hard-code and tweak them individually.
+*/
+class GfxUIStyle {
   public:
+    uint32_t color_bg;          // The background color.
+    uint32_t color_border;      // Color of borders, if enabled.
+    uint32_t color_header;      // Color of any leading elements.
+    uint32_t color_active;      // Accent color for active elements.
+    uint32_t color_inactive;    // Wash-out color for inactive elements.
+    uint32_t color_selected;    // A blend to accentuate selected elements.
+    uint32_t color_unselected;  // A blend to subdue unselected elements.
+    uint8_t  text_size;         // How big should baseline text be?
+
+    GfxUIStyle() :
+      color_bg(0),
+      color_border(0xFFFFFF),
+      color_header(0xFFFFFF),
+      color_active(0xFFFFFF),
+      color_inactive(0xFFFFFF),
+      color_selected(0xFFFFFF),
+      color_unselected(0xFFFFFF),
+      text_size(1) {};
+};
+
+
+/*
+* This class is intended to manage the parameters common to all elements. The
+*   intent is to separate the concerns of (size, shape, and style) from those
+*   of (behavior and specific content). Hierarchy might be greased with support
+*   functions in this class for features like view flows.
+* Creating one of these objects is sufficient to place and size any on-screen
+*   element.
+*/
+class GfxUILayout {
+  public:
+    /* Constructor with optional global margins and borders. */
+    GfxUILayout(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint8_t margin = 0, uint8_t border = 0) :
+      _x(x), _y(y), _w(w), _h(h),
+      _mrgn_t(margin), _mrgn_b(margin), _mrgn_l(margin), _mrgn_r(margin),
+      _bordr_t(border), _bordr_b(border), _bordr_l(border), _bordr_r(border) {};
+
+    /* Constructor that specifies each margin specifically. */
+    GfxUILayout(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint8_t m_t, uint8_t m_b, uint8_t m_l, uint8_t m_r) :
+      _x(x), _y(y), _w(w), _h(h), _mrgn_t(m_t), _mrgn_b(m_b), _mrgn_l(m_l), _mrgn_r(m_r) {};
+
+    /* Fully-specified constructor. */
+    GfxUILayout(
+      uint32_t x, uint32_t y, uint16_t w, uint16_t h,
+      uint8_t m_t, uint8_t m_b, uint8_t m_l, uint8_t m_r,
+      uint8_t b_t, uint8_t b_b, uint8_t b_l, uint8_t b_r
+    ) :
+      _x(x), _y(y), _w(w), _h(h),
+      _mrgn_t(m_t), _mrgn_b(m_b), _mrgn_l(m_l), _mrgn_r(m_r),
+      _bordr_t(m_t), _bordr_b(m_b), _bordr_l(m_l), _bordr_r(m_r) {};
+
+    /* Copy constructor. */
+    GfxUILayout(GfxUILayout* src) :
+      _x(src->_x), _y(src->_y), _w(src->_w), _h(src->_h),
+      _mrgn_t(src->_mrgn_t), _mrgn_b(src->_mrgn_b), _mrgn_l(src->_mrgn_l), _mrgn_r(src->_mrgn_r),
+      _bordr_t(src->_bordr_t), _bordr_b(src->_bordr_b), _bordr_l(src->_bordr_l), _bordr_r(src->_bordr_r) {};
+
+
+    inline uint16_t elementPosX() {      return _x;    };
+    inline uint16_t elementPosY() {      return _y;    };
+    inline uint16_t elementWidth() {     return _w;    };
+    inline uint16_t elementHeight() {    return _h;    };
+
+    /* Does the given point fall on this region? */
     bool includesPoint(const uint32_t x, const uint32_t y) {
       return ((x >= _x) && (x < (_x + _w)) && (y >= _y) && (y < (_y + _h)));
     };
 
+
+    /* Static utility methods for automating flows during view construction. */
+    static bool flowRight(GfxUILayout*, uint spacing = 0);
+    static bool flowDown(GfxUILayout*, uint spacing = 0);
+
+
+  protected:
+    uint32_t _x;       // Location of the upper-left corner.
+    uint32_t _y;       // Location of the upper-left corner.
+    uint16_t _w;       // Size of the element.
+    uint16_t _h;       // Size of the element.
+    uint8_t  _mrgn_t;  // How many pixels inset should be the content?
+    uint8_t  _mrgn_b;  // How many pixels inset should be the content?
+    uint8_t  _mrgn_l;  // How many pixels inset should be the content?
+    uint8_t  _mrgn_r;  // How many pixels inset should be the content?
+    uint8_t  _bordr_t; // How many pixels should be the drawn border?
+    uint8_t  _bordr_b; // How many pixels should be the drawn border?
+    uint8_t  _bordr_l; // How many pixels should be the drawn border?
+    uint8_t  _bordr_r; // How many pixels should be the drawn border?
+    //FlagContainer32 _flags;
+
+    // These terrible inlines calculate the internal bounds of the renderable
+    //   area after borders and margin have been taken into account.
+    inline uint32_t _internal_PosX() {    return (_x + _mrgn_l + _bordr_l);  };
+    inline uint32_t _internal_PosY() {    return (_y + _mrgn_t + _bordr_t);  };
+    inline uint16_t _internal_Width() {   return (_w - (_mrgn_r + _bordr_r + _mrgn_l + _bordr_l));   };
+    inline uint16_t _internal_Height() {  return (_h - (_mrgn_t + _bordr_t + _mrgn_b + _bordr_b));   };
+};
+
+
+
+/*******************************************************************************
+* Base class that handles all touchable images.
+*******************************************************************************/
+class GfxUIElement : public GfxUILayout {
+  public:
     void enableFrames(uint32_t frame_flags = GFXUI_FLAG_DRAW_FRAME_MASK) {
       _class_clear_flag(GFXUI_FLAG_DRAW_FRAME_MASK);
       _class_set_flag(frame_flags & GFXUI_FLAG_DRAW_FRAME_MASK);
@@ -130,11 +233,6 @@ class GfxUIElement {
       _need_redraw(true);
     };
 
-    inline uint16_t elementPosX() {      return _x;    };
-    inline uint16_t elementPosY() {      return _y;    };
-    inline uint16_t elementWidth() {     return _w;    };
-    inline uint16_t elementHeight() {    return _h;    };
-
     /*
     * Top-level objects are the first to handle notify.
     * Iteration and recursion both stop on the first positive return value.
@@ -149,25 +247,15 @@ class GfxUIElement {
 
 
   protected:
-    uint32_t _x;      // Location of the upper-left corner.
-    uint32_t _y;      // Location of the upper-left corner.
-    uint16_t _w;      // Size of the element.
-    uint16_t _h;      // Size of the element.
-    uint8_t  _mrgn_t; // How many pixels inset should be the content?
-    uint8_t  _mrgn_b; // How many pixels inset should be the content?
-    uint8_t  _mrgn_l; // How many pixels inset should be the content?
-    uint8_t  _mrgn_r; // How many pixels inset should be the content?
+    GfxUIStyle* _style;
     PriorityQueue<GfxUIElement*> _children;
 
+    GfxUIElement(GfxUILayout* layout, GfxUIStyle* style, uint32_t f);
     GfxUIElement(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f);
+    GfxUIElement(GfxUILayout* layout, uint32_t f) : GfxUIElement(layout, nullptr, f) {};
+
     virtual ~GfxUIElement() {};
 
-    // These terrible inlines calculate the internal bounds of the renderable
-    //   area after borders and margin have been taken into account.
-    inline uint32_t _internal_PosX() {    return (_x + _mrgn_l + (_class_flag(GFXUI_FLAG_DRAW_FRAME_L) ? 1 : 0));  };
-    inline uint32_t _internal_PosY() {    return (_y + _mrgn_t + (_class_flag(GFXUI_FLAG_DRAW_FRAME_U) ? 1 : 0));  };
-    inline uint16_t _internal_Width() {   return (_w - (_mrgn_r + (_class_flag(GFXUI_FLAG_DRAW_FRAME_R) ? 1 : 0) + _mrgn_l + (_class_flag(GFXUI_FLAG_DRAW_FRAME_L) ? 1 : 0)));   };
-    inline uint16_t _internal_Height() {  return (_h - (_mrgn_t + (_class_flag(GFXUI_FLAG_DRAW_FRAME_U) ? 1 : 0) + _mrgn_b + (_class_flag(GFXUI_FLAG_DRAW_FRAME_D) ? 1 : 0)));   };
     int _add_child(GfxUIElement*);
 
     /* These are the obligate overrides. */
@@ -212,6 +300,8 @@ class GfxUIElement {
 class GfxUIGroup : public GfxUIElement {
   public:
     GfxUIGroup(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0) : GfxUIElement(x, y, w, h, f) {};
+    GfxUIGroup(GfxUILayout layout, uint32_t f = 0) : GfxUIElement(&layout, f) {};
+    GfxUIGroup(GfxUILayout* layout, uint32_t f = 0) : GfxUIElement(layout, f) {};
     ~GfxUIGroup() {};
 
     inline int add_child(GfxUIElement* element) {    return _add_child(element);  };

@@ -14,9 +14,27 @@ This file contains the base implementation of GfxUIElement. All classes in the
 * GfxUIElement Base Class
 *******************************************************************************/
 
+/* Simple constructor with discrete paramters. */
 GfxUIElement::GfxUIElement(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f) :
-  _x(x), _y(y), _w(w), _h(h),
-  _mrgn_t(0), _mrgn_b(0), _mrgn_l(0), _mrgn_r(0),
+  GfxUILayout(
+    x, y, w, h,
+    0, 0, 0, 0,
+    0, 0, 0, 0
+  ),
+  _style(nullptr),
+  _flags(f | GFXUI_FLAG_NEED_RERENDER)
+{
+  if (_class_flag(GFXUI_FLAG_DRAW_FRAME_U)) _bordr_t = 1;   // TODO: Temporary hack until styles are in-use.
+  if (_class_flag(GFXUI_FLAG_DRAW_FRAME_D)) _bordr_b = 1;   // TODO: Temporary hack until styles are in-use.
+  if (_class_flag(GFXUI_FLAG_DRAW_FRAME_L)) _bordr_l = 1;   // TODO: Temporary hack until styles are in-use.
+  if (_class_flag(GFXUI_FLAG_DRAW_FRAME_R)) _bordr_r = 1;   // TODO: Temporary hack until styles are in-use.
+}
+
+
+/* Constructor with fully-specified paramters. */
+GfxUIElement::GfxUIElement(GfxUILayout* layout, GfxUIStyle* style, uint32_t f) :
+  GfxUILayout(layout),
+  _style(style),
   _flags(f | GFXUI_FLAG_NEED_RERENDER) {}
 
 
@@ -87,17 +105,26 @@ int GfxUIElement::render(UIGfxWrapper* ui_gfx, bool force) {
     ret += _render_children(ui_gfx, force);
     if (_need_redraw() | force) {
       ret += _render(ui_gfx);
+      const uint32_t COLOR = (_style) ? _style->color_border : 0xFFFFFF;
       if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_U) {
-        ui_gfx->img()->drawFastHLine(_x, _y, _w, 0xFFFFFF);
+        for (uint8_t i = 0; i < _bordr_t; i++) {
+          ui_gfx->img()->drawFastHLine(_x, (_y+i), _w, COLOR);
+        }
       }
       if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_D) {
-        ui_gfx->img()->drawFastHLine(_x, (_y+(_h-1)), _w, 0xFFFFFF);
+        for (uint8_t i = 0; i < _bordr_b; i++) {
+          ui_gfx->img()->drawFastHLine(_x, (_y+(_h-(1+i))), _w, COLOR);
+        }
       }
       if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_L) {
-        ui_gfx->img()->drawFastVLine(_x, _y, _h, 0xFFFFFF);
+        for (uint8_t i = 0; i < _bordr_l; i++) {
+          ui_gfx->img()->drawFastVLine((_x+i), _y, _h, COLOR);
+        }
       }
       if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_R) {
-        ui_gfx->img()->drawFastVLine((_x+(_w-1)), _y, _h, 0xFFFFFF);
+        for (uint8_t i = 0; i < _bordr_r; i++) {
+          ui_gfx->img()->drawFastVLine((_x+(_w-(1+i))), _y, _h, COLOR);
+        }
       }
       _need_redraw(false);
     }
