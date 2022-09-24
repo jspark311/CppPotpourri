@@ -68,8 +68,8 @@ NOTE: This has been a mad binge to port over all this work from ManuvrOS. Five
 #include "../Identity/Identity.h"
 #include "../AbstractPlatform.h"
 
-#ifndef __MANUVR_XENOSESSION_H
-#define __MANUVR_XENOSESSION_H
+#ifndef __C3P_XENOSESSION_H
+#define __C3P_XENOSESSION_H
 
 
 /*******************************************************************************
@@ -197,7 +197,7 @@ enum class M2MMsgCode : uint8_t {
 * TODO: This might be wrong-headed. Don't use it yet.
 */
 enum class M2MLinkProto : uint8_t {
-  MANUVR       = 0x00,   // CppPotpourri's native types.
+  NATIVE       = 0x00,   // CppPotpourri's native types.
   CONSOLE      = 0x01,   // Textual output for a user.
   MQTT         = 0x02,   //
   TCP          = 0x03,   //
@@ -274,7 +274,7 @@ class M2MLinkOpts {
 */
 class M2MMsgHdr {
   public:
-    M2MMsgCode msg_code;  // The message code.
+    M2MMsgCode    msg_code;  // The message code.
     uint8_t       flags;     // Flags to be encoded into the message.
     uint8_t       chk_byte;  // The expected checksum for the header.
     uint32_t      msg_len;   // Total length of the message (header + payload).
@@ -410,12 +410,12 @@ class M2MLink : public BufferAccepter {
     int8_t writeRemoteLog(StringBuilder*, bool need_reply = false);
     bool   linkIdle();
     int    send(KeyValuePair*, bool need_reply = false);
-    inline bool     isConnected() {    return _flags.value(M2MLINK_FLAG_ESTABLISHED);   };
 
-    inline bool     requireAuth() {        return _flags.value(M2MLINK_FLAG_AUTH_REQUIRED);   };
-    inline void     requireAuth(bool x) {  _flags.set(M2MLINK_FLAG_AUTH_REQUIRED, x);         };
-    inline bool     syncCast() {        return _flags.value(M2MLINK_FLAG_SYNC_CASTING);   };
-    inline void     syncCast(bool x) {  _flags.set(M2MLINK_FLAG_SYNC_CASTING, x);         };
+    inline bool isConnected() {        return _flags.value(M2MLINK_FLAG_ESTABLISHED);    };
+    inline bool requireAuth() {        return _flags.value(M2MLINK_FLAG_AUTH_REQUIRED);  };
+    inline void requireAuth(bool x) {  _flags.set(M2MLINK_FLAG_AUTH_REQUIRED, x);        };
+    inline bool syncCast() {           return _flags.value(M2MLINK_FLAG_SYNC_CASTING);   };
+    inline void syncCast(bool x) {     _flags.set(M2MLINK_FLAG_SYNC_CASTING, x);         };
 
     //int8_t ping();
 
@@ -425,17 +425,17 @@ class M2MLink : public BufferAccepter {
     void printFSM(StringBuilder*);
 
     /* Inline accessors. */
-    inline M2MLinkState getState() {               return _fsm_pos;      };
-    inline void setCallback(M2MLinkCB cb) {        _lnk_callback = cb;   };
-    inline void setCallback(M2MMsgCB cb) {         _msg_callback = cb;   };
+    inline M2MLinkState getState() {                  return _fsm_pos;      };
+    inline void setCallback(M2MLinkCB cb) {           _lnk_callback = cb;   };
+    inline void setCallback(M2MMsgCB cb) {            _msg_callback = cb;   };
     inline void setOutputTarget(BufferAccepter* o) {  _output_target = o;   };
     inline uint32_t  linkTag() {                      return _session_tag;  };
-    inline uint16_t  replyTimeouts() {                return _unackd_sends;  };
-    inline void      verbosity(uint8_t x) {           _verbosity = x;        };
-    inline uint8_t   verbosity() {                    return _verbosity;     };
-    inline void      localIdentity(Identity* id) {    _id_loc = id;          };
-    inline Identity* localIdentity() {                return _id_loc;        };
-    inline Identity* remoteIdentity() {               return _id_remote;     };
+    inline uint16_t  replyTimeouts() {                return _unackd_sends; };
+    inline void      verbosity(uint8_t x) {           _verbosity = x;       };
+    inline uint8_t   verbosity() {                    return _verbosity;    };
+    inline void      localIdentity(Identity* id) {    _id_loc = id;         };
+    inline Identity* localIdentity() {                return _id_loc;       };
+    inline Identity* remoteIdentity() {               return _id_remote;    };
 
     /* Built-in per-instance console handlers. */
     int8_t console_handler(StringBuilder* text_return, StringBuilder* args);
@@ -452,27 +452,27 @@ class M2MLink : public BufferAccepter {
     //ElementPool<M2MMsg*>   _preallocd(4, &_msg_pool);
     PriorityQueue<M2MMsg*> _outbound_messages;   // Messages that are bound for the counterparty.
     PriorityQueue<M2MMsg*> _inbound_messages;    // Messages that came from the counterparty.
-    FlagContainer32   _flags;
-    M2MLinkState   _fsm_waypoints[M2MLINK_FSM_WAYPOINT_DEPTH] = {M2MLinkState::UNINIT, };
-    uint32_t          _fsm_lockout_ms = 0;        // Used to enforce a delay between state transitions.
-    M2MLinkState   _fsm_pos        = M2MLinkState::UNINIT;  // TODO: Optimize this away.
-    M2MLinkState   _fsm_pos_prior  = M2MLinkState::UNINIT;  // TODO: Remove? Never used in logic.
-    uint8_t           _verbosity      = 0;        // By default, this class won't generate logs.
-    uint8_t           _seq_parse_errs = 0;
-    uint8_t           _seq_ack_fails  = 0;
-    uint32_t          _session_tag    = 0;        // Allows the application to keep track of our callbacks.
-    uint32_t          _ms_last_send   = 0;        // At what time did the last message go out?
-    uint32_t          _ms_last_rec    = 0;        // At what time did the last message come in?
-    uint16_t          _sync_losses    = 0;        // How many times this session have we lost sync?
-    uint16_t          _unackd_sends   = 0;        // How many messages that needed an ACK failed to get one?
-    M2MMsg*        _working        = nullptr;  // If we are in the middle of receiving a message,
-    Identity*         _id_loc         = nullptr;
-    Identity*         _id_remote      = nullptr;
-    BufferAccepter*   _output_target  = nullptr;  // A pointer to the transport for outbound bytes.
-    M2MLinkCB      _lnk_callback   = nullptr;  // The application-provided callback for state changes.
-    M2MMsgCB       _msg_callback   = nullptr;  // The application-provided callback for incoming messages.
-    StringBuilder     _inbound_buf;
-    StringBuilder     _remote_log;
+    FlagContainer32 _flags;
+    M2MLinkState    _fsm_waypoints[M2MLINK_FSM_WAYPOINT_DEPTH] = {M2MLinkState::UNINIT, };
+    uint32_t        _fsm_lockout_ms = 0;        // Used to enforce a delay between state transitions.
+    M2MLinkState    _fsm_pos        = M2MLinkState::UNINIT;  // TODO: Optimize this away.
+    M2MLinkState    _fsm_pos_prior  = M2MLinkState::UNINIT;  // TODO: Remove? Never used in logic.
+    uint8_t         _verbosity      = 0;        // By default, this class won't generate logs.
+    uint8_t         _seq_parse_errs = 0;
+    uint8_t         _seq_ack_fails  = 0;
+    uint32_t        _session_tag    = 0;        // Allows the application to keep track of our callbacks.
+    uint32_t        _ms_last_send   = 0;        // At what time did the last message go out?
+    uint32_t        _ms_last_rec    = 0;        // At what time did the last message come in?
+    uint16_t        _sync_losses    = 0;        // How many times this session have we lost sync?
+    uint16_t        _unackd_sends   = 0;        // How many messages that needed an ACK failed to get one?
+    M2MMsg*         _working        = nullptr;  // If we are in the middle of receiving a message,
+    Identity*       _id_loc         = nullptr;
+    Identity*       _id_remote      = nullptr;
+    BufferAccepter* _output_target  = nullptr;  // A pointer to the transport for outbound bytes.
+    M2MLinkCB       _lnk_callback   = nullptr;  // The application-provided callback for state changes.
+    M2MMsgCB        _msg_callback   = nullptr;  // The application-provided callback for incoming messages.
+    StringBuilder   _inbound_buf;
+    StringBuilder   _remote_log;
 
     /* Message queue management */
     int8_t _send_msg(M2MMsg*);
@@ -500,20 +500,20 @@ class M2MLink : public BufferAccepter {
     int8_t _send_who_message();
 
     /* State machine functions */
-    int8_t   _poll_fsm();
-    int8_t   _set_fsm_position(M2MLinkState);
-    int8_t   _set_fsm_route(int count, ...);
-    int8_t   _append_fsm_route(int count, ...);
-    int8_t   _prepend_fsm_state(M2MLinkState);
-    int8_t   _advance_state_machine();
-    bool     _fsm_is_waiting();
-    int8_t   _fsm_insert_sync_states();
+    int8_t _poll_fsm();
+    int8_t _set_fsm_position(M2MLinkState);
+    int8_t _set_fsm_route(int count, ...);
+    int8_t _append_fsm_route(int count, ...);
+    int8_t _prepend_fsm_state(M2MLinkState);
+    int8_t _advance_state_machine();
+    bool   _fsm_is_waiting();
+    int8_t _fsm_insert_sync_states();
     inline M2MLinkState _fsm_pos_next() {   return _fsm_waypoints[0];   };
     inline bool _fsm_is_stable() {   return (M2MLinkState::UNINIT == _fsm_waypoints[0]);   };
 
     /* Message lifecycle */
-    M2MMsg* _allocate_manuvrmsg(M2MMsgHdr*, BusOpcode);
-    void       _reclaim_manuvrmsg(M2MMsg*);
+    M2MMsg* _allocate_m2mmsg(M2MMsgHdr*, BusOpcode);
+    void    _reclaim_m2mmsg(M2MMsg*);
 };
 
-#endif   // __MANUVR_XENOSESSION_H
+#endif   // __C3P_XENOSESSION_H

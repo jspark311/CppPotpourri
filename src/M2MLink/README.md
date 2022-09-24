@@ -5,7 +5,7 @@ The protocol is binary, with optional CBOR encoding for payloads.
 
 
 
-Manuvr's protocol is formatted this way:
+The M2M protocol is framed this way:
 
 All multibyte values are stored "little-endian".
 Checksum = 0x55 (Preload) + Every other byte after it. Then truncate to uint8.

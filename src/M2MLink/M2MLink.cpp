@@ -182,7 +182,7 @@ M2MLink::~M2MLink() {
   _purge_inbound();
   _purge_outbound();
   if (nullptr != _working) {
-    _reclaim_manuvrmsg(_working);
+    _reclaim_m2mmsg(_working);
     _working = nullptr;
   }
 }
@@ -359,7 +359,7 @@ int8_t M2MLink::writeRemoteLog(StringBuilder* outbound_log, bool need_reply) {
     if (_flags.value(M2MLINK_FLAG_ESTABLISHED)) {
       ret--;
       M2MMsgHdr hdr(M2MMsgCode::LOG, 0, (need_reply ? M2MMSGHDR_FLAG_EXPECTING_REPLY : 0));
-      M2MMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
+      M2MMsg* msg = _allocate_m2mmsg(&hdr, BusOpcode::TX);
       ret--;
       if (nullptr != msg) {
         bool gc_message = true;  // Trash the message if sending doesn't work.
@@ -376,7 +376,7 @@ int8_t M2MLink::writeRemoteLog(StringBuilder* outbound_log, bool need_reply) {
           }
         }
         outbound_log->clear();  // Free the original buffer.
-        if (gc_message) _reclaim_manuvrmsg(msg);
+        if (gc_message) _reclaim_m2mmsg(msg);
       }
     }
   }
@@ -551,7 +551,7 @@ int M2MLink::send(KeyValuePair* kvp, bool need_reply) {
   }
 
   M2MMsgHdr hdr(M2MMsgCode::APPLICATION, 0, need_reply);
-  M2MMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
+  M2MMsg* msg = _allocate_m2mmsg(&hdr, BusOpcode::TX);
   if (nullptr != msg) {
     ret = 0;
     if (nullptr != kvp) {
@@ -569,7 +569,7 @@ int M2MLink::send(KeyValuePair* kvp, bool need_reply) {
 
     // Clean up after ourselves if we fail.
     if (0 > ret) {
-      _reclaim_manuvrmsg(msg);
+      _reclaim_m2mmsg(msg);
     }
   }
   return ret;
@@ -631,7 +631,7 @@ int M2MLink::_purge_inbound() {
   int return_value = _inbound_messages.size();
   while (_inbound_messages.hasNext()) {
     M2MMsg* temp = _inbound_messages.dequeue();
-    _reclaim_manuvrmsg(temp);
+    _reclaim_m2mmsg(temp);
   }
   return return_value;
 }
@@ -646,7 +646,7 @@ int M2MLink::_purge_outbound() {
   int return_value = _outbound_messages.size();
   while (_outbound_messages.hasNext()) {
     M2MMsg* temp = _outbound_messages.dequeue();
-    _reclaim_manuvrmsg(temp);
+    _reclaim_m2mmsg(temp);
   }
   return return_value;
 }
@@ -840,7 +840,7 @@ int8_t M2MLink::_churn_inbound() {
       if (temp->isReply()) {
         _clear_waiting_send_by_id(temp->uniqueId());
       }
-      _reclaim_manuvrmsg(temp);
+      _reclaim_m2mmsg(temp);
     }
   }
   return ret;
@@ -902,7 +902,7 @@ int8_t M2MLink::_churn_outbound() {
 
       if (gc_msg) {
         _outbound_messages.remove(temp);
-        _reclaim_manuvrmsg(temp);
+        _reclaim_m2mmsg(temp);
       }
       else {
         // NOTE: We skip the queue-size check, considering that we just pulled
@@ -989,7 +989,7 @@ void M2MLink::_reset_class() {
   _purge_inbound();
   _purge_outbound();
   if (nullptr != _working) {
-    _reclaim_manuvrmsg(_working);
+    _reclaim_m2mmsg(_working);
     _working = nullptr;
   }
   _flags.clear(~M2MLINK_FLAG_RESET_PRESERVE_MASK);
@@ -1155,7 +1155,7 @@ int8_t M2MLink::_process_input_buffer() {
           case 2:   // header found, and message complete with payload.
             _inbound_buf.cull(_header.header_length());
             if (_header.total_length() <= (int) _opts.mtu) {
-              _working = _allocate_manuvrmsg(&_header, BusOpcode::RX);
+              _working = _allocate_m2mmsg(&_header, BusOpcode::RX);
             }
             break;
         }
@@ -1191,7 +1191,7 @@ int8_t M2MLink::_process_input_buffer() {
               _fsm_insert_sync_states();
               _sync_losses++;
             }
-            _reclaim_manuvrmsg(_working);
+            _reclaim_m2mmsg(_working);
           }
           _working = nullptr;
         }
@@ -1367,14 +1367,14 @@ int8_t M2MLink::_send_connect_message() {
   // TODO: Would prefer to use the code below. But SYNC is not well-enough
   //   under control.
   //M2MMsgHdr hdr(M2MMsgCode::CONNECT, 0, true);
-  //M2MMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
+  //M2MMsg* msg = _allocate_m2mmsg(&hdr, BusOpcode::TX);
   //if (nullptr != msg) {
   //  ret--;
   //  if (0 == _send_msg(msg)) {
   //    ret = 0;
   //  }
   //  else {
-  //    _reclaim_manuvrmsg(msg);
+  //    _reclaim_m2mmsg(msg);
   //  }
   //}
   return ret;
@@ -1390,14 +1390,14 @@ int8_t M2MLink::_send_connect_message() {
 int8_t M2MLink::_send_hangup_message(bool graceful) {
   int8_t ret = -1;
   M2MMsgHdr hdr(M2MMsgCode::HANGUP, 0, true);
-  M2MMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
+  M2MMsg* msg = _allocate_m2mmsg(&hdr, BusOpcode::TX);
   if (nullptr != msg) {
     ret--;
     if (0 == _send_msg(msg)) {
       ret = 0;
     }
     else {
-      _reclaim_manuvrmsg(msg);
+      _reclaim_m2mmsg(msg);
     }
   }
   return ret;
@@ -1412,7 +1412,7 @@ int8_t M2MLink::_send_hangup_message(bool graceful) {
 int8_t M2MLink::_send_who_message() {
   int8_t ret = -1;
   M2MMsgHdr hdr(M2MMsgCode::WHO, 0, true);
-  M2MMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
+  M2MMsg* msg = _allocate_m2mmsg(&hdr, BusOpcode::TX);
   if (nullptr != msg) {
     ret--;
     if (_id_loc) {
@@ -1423,7 +1423,7 @@ int8_t M2MLink::_send_who_message() {
       ret = 0;
     }
     else {
-      _reclaim_manuvrmsg(msg);
+      _reclaim_m2mmsg(msg);
     }
   }
   return ret;
@@ -1547,7 +1547,7 @@ int8_t M2MLink::_set_fsm_position(M2MLinkState new_state) {
       case M2MLinkState::SYNC_RESYNC:
         _inbound_buf.clear();
         if (nullptr != _working) {
-          _reclaim_manuvrmsg(_working);
+          _reclaim_m2mmsg(_working);
           _working = nullptr;
         }
         _flags.clear(M2MLINK_FLAG_SYNC_INCOMING | M2MLINK_FLAG_SYNC_REPLY_RXD);
@@ -1788,7 +1788,7 @@ int8_t M2MLink::_fsm_insert_sync_states() {
 * @param hdr is the M2MMsg to clean up. Possibly for re-use.
 * @return A M2MMsg* ready for use, or nullptr on failure.
 */
-M2MMsg* M2MLink::_allocate_manuvrmsg(M2MMsgHdr* hdr, BusOpcode op) {
+M2MMsg* M2MLink::_allocate_m2mmsg(M2MMsgHdr* hdr, BusOpcode op) {
   M2MMsg* ret = new M2MMsg(hdr, op);
   if (nullptr != ret) {
     ret->encoding(_opts.encoding);
@@ -1802,7 +1802,7 @@ M2MMsg* M2MLink::_allocate_manuvrmsg(M2MMsgHdr* hdr, BusOpcode op) {
 *
 * @param msg is the M2MMsg to clean up. Possibly for re-use.
 */
-void M2MLink::_reclaim_manuvrmsg(M2MMsg* msg) {
+void M2MLink::_reclaim_m2mmsg(M2MMsg* msg) {
   if (nullptr != msg) {
     msg->wipe();
     delete msg;
