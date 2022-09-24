@@ -76,27 +76,15 @@ class ConsoleCommand {
     const char    shortcut;     // Single letter shortcut.
     const uint8_t req_count;    // How many of the arguments are required?
     const uint8_t should_free;  // Should this object be freed?
-    const TCode*  fmt;          // A null-terminated string of TCodes.
     const consoleCallback ccb;  // Callback for successful parse.
     const char*   help_text;    // One-line help text for this command.
     const char*   param_text;   // Detailed help text for this command.
 
-    ConsoleCommand(const char* c, const char sc, const TCode* f, const char* h, const char* p, const uint8_t r, const consoleCallback cb) :
+    ConsoleCommand(const char* c, const char sc, const char* h, const char* p, const uint8_t r, const consoleCallback cb, const bool s_free = false) :
       cmd(c),
       shortcut(sc),
       req_count(r),
-      should_free(0),
-      fmt(f),
-      ccb(cb),
-      help_text(h),
-      param_text(p) {};
-
-    ConsoleCommand(const char* c, const char sc, const TCode* f, const char* h, const char* p, const uint8_t r, const consoleCallback cb, const bool s_free) :
-      cmd(c),
-      shortcut(sc),
-      req_count(r),
-      should_free(1),
-      fmt(f),
+      should_free(s_free ? 1 : 0),
       ccb(cb),
       help_text(h),
       param_text(p) {};
@@ -105,8 +93,6 @@ class ConsoleCommand {
 
 
     void printDetailedHelp(StringBuilder* output);
-    int maxArgumentCount();
-
     inline const bool shouldFree() {   return (0 != should_free);   };
 };
 
@@ -148,8 +134,8 @@ class ParsingConsole : public BufferAccepter {
     inline LineTerm getTXTerminator() {   return _tx_terminator;   };
     inline LineTerm getRXTerminator() {   return _rx_terminator;   };
 
-    int8_t defineCommand(const char* c, const TCode* f, const char* h, const char* p, const uint8_t r, const consoleCallback);
-    int8_t defineCommand(const char* c, const char sc, const TCode* f, const char* h, const char* p, const uint8_t r, const consoleCallback);
+    int8_t defineCommand(const char* c, const char* h, const char* p, const uint8_t r, const consoleCallback);
+    int8_t defineCommand(const char* c, const char sc, const char* h, const char* p, const uint8_t r, const consoleCallback);
     int8_t defineCommand(const ConsoleCommand* cmd);
     int8_t defineCommands(const ConsoleCommand* cmds, const int cmd_count);
     inline void errorCallback(consoleErrCallback ecb) {  errCB = ecb;           };
@@ -184,18 +170,6 @@ class ParsingConsole : public BufferAccepter {
     /* Built-in per-instance console handlers. */
     int8_t console_handler_help(StringBuilder* text_return, StringBuilder* args);
     int8_t console_handler_conf(StringBuilder* text_return, StringBuilder* args);
-
-    /* Common static TCode strings. */
-    static const TCode tcodes_0[];
-    static const TCode tcodes_uint_1[];
-    static const TCode tcodes_uint_2[];
-    static const TCode tcodes_uint_3[];
-    static const TCode tcodes_uint_4[];
-    static const TCode tcodes_str_1[];
-    static const TCode tcodes_str_2[];
-    static const TCode tcodes_str_3[];
-    static const TCode tcodes_str_4[];
-    static const TCode tcodes_float_1[];
 
 
   private:

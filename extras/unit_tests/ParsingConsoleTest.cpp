@@ -118,12 +118,12 @@ int console_error_callback(StringBuilder* text_return, const ConsoleErr err, con
 * These. Just.
 */
 const ConsoleCommand commands_that_should_be_added[] = {
-  ConsoleCommand("test1",  '1', ParsingConsole::tcodes_0, "Test callback #1", "Detailed help for test1", 0, callback_test1),
-  ConsoleCommand("test2",  '2', ParsingConsole::tcodes_0, "Test callback #2", "Detailed help for test2", 0, callback_test2),
-  ConsoleCommand("test3",  '3', ParsingConsole::tcodes_0, "Test callback #3", "Detailed help for test3", 0, callback_test3),
-  ConsoleCommand("test4",  '4', ParsingConsole::tcodes_uint_3, "Test callback #4", "Detailed help for test4", 2, callback_test4)
+  ConsoleCommand("test1",  '1', "Test callback #1", "Detailed help for test1", 0, callback_test1),
+  ConsoleCommand("test2",  '2', "Test callback #2", "Detailed help for test2", 0, callback_test2),
+  ConsoleCommand("test3",  '3', "Test callback #3", "Detailed help for test3", 0, callback_test3),
+  ConsoleCommand("test4",  '4', "Test callback #4", "Detailed help for test4", 2, callback_test4)
 };
-const ConsoleCommand cmd5("test5",  '5', ParsingConsole::tcodes_0, "Test callback #5", "Detailed help for test5", 0, callback_test5);
+const ConsoleCommand cmd5("test5",  '5', "Test callback #5", "Detailed help for test5", 0, callback_test5);
 
 
 /*******************************************************************************
@@ -170,7 +170,7 @@ int setup_console(StringBuilder* output) {
     ret--;
     if (0 == console.defineCommand(&cmd5)) {
       ret--;
-      if (0 == console.defineCommand("test6", '6', ParsingConsole::tcodes_0, "Test callback #6", "Detailed help for test6", 0, callback_test6)) {
+      if (0 == console.defineCommand("test6", '6', "Test callback #6", "Detailed help for test6", 0, callback_test6)) {
         if (0 == console.init()) {
           output->concat("setup_console() passed.\n");
           ret = 0;

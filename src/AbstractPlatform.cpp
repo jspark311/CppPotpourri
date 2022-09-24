@@ -280,9 +280,9 @@ int callback_reboot(StringBuilder* text_return, StringBuilder* args) {
 }
 
 
-const ConsoleCommand cmd00 = ConsoleCommand("gpio",   '\0', ParsingConsole::tcodes_str_3,  "GPIO values", "[val|mode] [pin] [value]", 2, callback_gpio_value);
-const ConsoleCommand cmd01 = ConsoleCommand("pfinfo", '\0', ParsingConsole::tcodes_str_1,  "Platform information", "[types | crypto]", 0, callback_platform_info);
-const ConsoleCommand cmd02 = ConsoleCommand("reboot", '\0', ParsingConsole::tcodes_uint_1, "Reboot firmware", "[reason code]", 0, callback_reboot);
+const ConsoleCommand cmd00 = ConsoleCommand("gpio",   '\0', "GPIO values", "[val|mode] [pin] [value]", 2, callback_gpio_value);
+const ConsoleCommand cmd01 = ConsoleCommand("pfinfo", '\0', "Platform information", "[types | crypto]", 0, callback_platform_info);
+const ConsoleCommand cmd02 = ConsoleCommand("reboot", '\0', "Reboot firmware", "[reason code]", 0, callback_reboot);
 
 
 /**

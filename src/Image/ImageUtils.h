@@ -10,7 +10,6 @@ TODO: UIGfxWrapper is somewhat vestigial. It should be subsumed into other class
 */
 
 #include "Image.h"
-#include "../SensorFilter.h"
 #include "../ManuvrLink/ManuvrLink.h"
 #include "../Identity/Identity.h"
 #include "../SensorFilter.h"

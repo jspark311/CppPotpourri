@@ -37,18 +37,6 @@ static const uint8_t DPAD_ESCAPE_SEQUENCE_D[4] = {27, 91, 66, 0};
 static const uint8_t DPAD_ESCAPE_SEQUENCE_R[4] = {27, 91, 67, 0};
 static const uint8_t DPAD_ESCAPE_SEQUENCE_L[4] = {27, 91, 68, 0};
 
-/* Common TCode strings. */
-const TCode ParsingConsole::tcodes_0[]         = {TCode::NONE};
-const TCode ParsingConsole::tcodes_uint_1[]    = {TCode::UINT32, TCode::NONE};
-const TCode ParsingConsole::tcodes_uint_2[]    = {TCode::UINT32, TCode::UINT32, TCode::NONE};
-const TCode ParsingConsole::tcodes_uint_3[]    = {TCode::UINT32, TCode::UINT32, TCode::UINT32, TCode::NONE};
-const TCode ParsingConsole::tcodes_uint_4[]    = {TCode::UINT32, TCode::UINT32, TCode::UINT32, TCode::UINT32, TCode::NONE};
-const TCode ParsingConsole::tcodes_str_1[]     = {TCode::STR, TCode::NONE};
-const TCode ParsingConsole::tcodes_str_2[]     = {TCode::STR, TCode::STR, TCode::NONE};
-const TCode ParsingConsole::tcodes_str_3[]     = {TCode::STR, TCode::STR, TCode::STR, TCode::NONE};
-const TCode ParsingConsole::tcodes_str_4[]     = {TCode::STR, TCode::STR, TCode::STR, TCode::STR, TCode::NONE};
-const TCode ParsingConsole::tcodes_float_1[]   = {TCode::FLOAT, TCode::NONE};
-
 
 const char* const ParsingConsole::errToStr(ConsoleErr err) {
   switch (err) {
@@ -248,8 +236,8 @@ void ParsingConsole::fetchLog(StringBuilder* l) {
 }
 
 
-int8_t ParsingConsole::defineCommand(const char* c, const TCode* f, const char* h, const char* p, const uint8_t r, const consoleCallback ccb) {
-  ConsoleCommand* cmd = new ConsoleCommand(c, '\0', f, h, p, r, ccb, true);
+int8_t ParsingConsole::defineCommand(const char* c, const char* h, const char* p, const uint8_t r, const consoleCallback ccb) {
+  ConsoleCommand* cmd = new ConsoleCommand(c, '\0', h, p, r, ccb, true);
   if (nullptr != cmd) {
     _max_cmd_len = strict_max(_max_cmd_len, (uint8_t) strlen(c));
     _cmd_list.insert(cmd);
@@ -259,8 +247,8 @@ int8_t ParsingConsole::defineCommand(const char* c, const TCode* f, const char* 
 }
 
 
-int8_t ParsingConsole::defineCommand(const char* c, const char sc, const TCode* f, const char* h, const char* p, const uint8_t r, const consoleCallback ccb) {
-  ConsoleCommand* cmd = new ConsoleCommand(c, sc, f, h, p, r, ccb, true);
+int8_t ParsingConsole::defineCommand(const char* c, const char sc, const char* h, const char* p, const uint8_t r, const consoleCallback ccb) {
+  ConsoleCommand* cmd = new ConsoleCommand(c, sc, h, p, r, ccb, true);
   if (nullptr != cmd) {
     _max_cmd_len = strict_max(_max_cmd_len, (uint8_t) strlen(c));
     _cmd_list.insert(cmd);
@@ -312,7 +300,7 @@ int8_t ParsingConsole::_exec_line(StringBuilder* line) {
   if (nullptr != cmd) {
     tmp_line.drop_position(0);  // Drop the command, leaving the arguments.
     ret--;
-    if ((tmp_line.count() >= cmd->req_count) && (tmp_line.count() <= cmd->maxArgumentCount())) {
+    if ((tmp_line.count() >= cmd->req_count)) {
       // If we have enough arguments to be plausibly valid....
       if (0 != cmd->ccb(&_log, &tmp_line)) {
         if (printHelpOnFail()) {
@@ -511,22 +499,13 @@ void ConsoleCommand::printDetailedHelp(StringBuilder* output) {
   tmp.concat(cmd);
   StringBuilder::styleHeader2(output, (const char*) tmp.string());
   output->concatf("%s\nUsage: ", help_text);
-  for (int i = 0; i < maxArgumentCount(); i++) {
-    output->concatf(
-      ((i < req_count) ? "%s " : "[%s] "),
-      typecodeToStr(*(fmt + i))
-    );
-  }
+  // for (int i = 0; i < maxArgumentCount(); i++) {
+  //   output->concatf(
+  //     ((i < req_count) ? "%s " : "[%s] "),
+  //     typecodeToStr(*(fmt + i))
+  //   );
+  // }
   output->concatf("\n%s\n", param_text);
-}
-
-
-int ConsoleCommand::maxArgumentCount() {
-  int ret = 0;
-  while (TCode::NONE != *(fmt + ret)) {
-    ret++;
-  }
-  return ret;
 }
 
 
