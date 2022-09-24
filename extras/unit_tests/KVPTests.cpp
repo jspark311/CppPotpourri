@@ -22,6 +22,33 @@ This program runs tests against the KeyValuePair class.
 */
 
 
+
+void dump_kvp(KeyValuePair* a) {
+  if (a) {
+    StringBuilder log;
+    a->printDebug(&log);
+    printf("%s\n", (char*) log.string());
+    log.clear();
+  }
+  else {
+    printf("dump_kvp() was passed a nullptr.\n");
+  }
+}
+
+
+void dump_strbldr(StringBuilder* a) {
+  if (a) {
+    StringBuilder log;
+    a->printDebug(&log);
+    printf("%s\n", (char*) log.string());
+    log.clear();
+  }
+  else {
+    printf("dump_strbldr() was passed a nullptr.\n");
+  }
+}
+
+
 /*******************************************************************************
 * KVP test routines
 *******************************************************************************/
@@ -35,7 +62,7 @@ This program runs tests against the KeyValuePair class.
 */
 int test_KeyValuePair_KVP() {
   int return_value = -1;
-  StringBuilder log("===< KeyValuePairs KVP >====================================\n");
+  printf("===< KeyValuePairs KVP >====================================\n");
 
   uint32_t val0  = (uint32_t) randomUInt32();
   uint16_t val1  = (uint16_t) randomUInt32();
@@ -59,7 +86,7 @@ int test_KeyValuePair_KVP() {
   Vector3<float> ret7(0.0f, 0.0f, 0.0f);
   //float    ret9 = 0.0d;
 
-  log.concat("Adding arguments...\n\n");
+  printf("Adding arguments...\n\n");
   KeyValuePair a(val3);
   a.append(val0)->setKey("value0");
   a.append(val1, "value1");
@@ -71,21 +98,20 @@ int test_KeyValuePair_KVP() {
   a.append(&val7)->setKey("value7");
   a.append(val9)->setKey("value9");
 
-  a.printDebug(&log);
-  log.concat("\n");
+  dump_kvp(&a);
 
   StringBuilder temp_buffer;
   int key_count = a.collectKeys(&temp_buffer);
-  log.concatf("\t Breadth-first keyset (%d total keys):   ", key_count);
+  printf("\t Breadth-first keyset (%d total keys):   ", key_count);
   for (int i = 0; i < key_count; i++) {
-    log.concatf("%s ", temp_buffer.position(i));
+    printf("%s ", temp_buffer.position(i));
   }
-  log.concat("\n");
+  printf("\n");
 
   temp_buffer.clear();
   a.serialize(&temp_buffer, TCode::BINARY);
-  log.concatf("\t temp_buffer is %u bytes long.\n", temp_buffer.length());
-  temp_buffer.printDebug(&log);
+  printf("\t temp_buffer is %u bytes long.\n", temp_buffer.length());
+  dump_strbldr(&temp_buffer);
 
   if (a.count() == 10) {
     if ((0 == a.valueWithKey("value6", &ret6)) && (ret6 == val6)) {
@@ -102,33 +128,32 @@ int test_KeyValuePair_KVP() {
                           if ((0 == a.valueWithIdx(5, &ret5)) && (ret5 == val5)) {
                             return_value = 0;
                           }
-                          else log.concatf("int8_t failed (%d vs %d)...\n", val5, ret5);
+                          else printf("int8_t failed (%d vs %d)...\n", val5, ret5);
                         }
-                        else log.concatf("int16_t failed (%d vs %d)...\n", val4, ret4);
+                        else printf("int16_t failed (%d vs %d)...\n", val4, ret4);
                       }
-                      else log.concatf("int32_t failed (%d vs %d)...\n", val3, ret3);
+                      else printf("int32_t failed (%d vs %d)...\n", val3, ret3);
                     }
-                    else log.concatf("uint8_t failed (%u vs %u)...\n", val2, ret2);
+                    else printf("uint8_t failed (%u vs %u)...\n", val2, ret2);
                   }
-                  else log.concatf("uint16_t failed (%u vs %u)...\n", val1, ret1);
+                  else printf("uint16_t failed (%u vs %u)...\n", val1, ret1);
                 }
-                else log.concatf("uint32_t failed (%u vs %u)...\n", val0, ret0);
+                else printf("uint32_t failed (%u vs %u)...\n", val0, ret0);
               }
-              else log.concat("Found key (nullptr), which should have been nonexistant...\n");
+              else printf("Found key (nullptr), which should have been nonexistant...\n");
             }
-            else log.concat("Found key 'non-key', which should have been nonexistant...\n");
+            else printf("Found key 'non-key', which should have been nonexistant...\n");
           }
-          else log.concat("Failed to vet key 'value5'...\n");
+          else printf("Failed to vet key 'value5'...\n");
         }
-        else log.concat("Failed to vet key 'value4'...\n");
+        else printf("Failed to vet key 'value4'...\n");
       }
-      else log.concat("Failed to vet key 'value0'...\n");
+      else printf("Failed to vet key 'value0'...\n");
     }
-    else log.concatf("Failed for float (%f vs %f)...\n", (double) val6, (double) ret6);
+    else printf("Failed for float (%f vs %f)...\n", (double) val6, (double) ret6);
   }
-  else log.concatf("Total KeyValuePairs:  %d\tExpected 10.\n", a.count());
+  else printf("Total KeyValuePairs:  %d\tExpected 10.\n", a.count());
 
-  printf("%s\n\n", (const char*) log.string());
   return return_value;
 }
 
@@ -140,22 +165,22 @@ int test_KeyValuePair_KVP() {
 */
 int test_KeyValuePair_InternalTypes() {
   int return_value = 1;
-  StringBuilder log("===< KeyValuePairs Internal Types >=========================\n");
+  printf("===< KeyValuePairs Internal Types >=========================\n");
   StringBuilder val0("Some string");
   KeyValuePair a(&val0);
-  a.printDebug(&log);
 
   StringBuilder* ret0 = nullptr;
+
+  dump_kvp(&a);
 
   if (0 == a.getValueAs(&ret0)) {
     if (&val0 == ret0) {
       return_value = 0;
     }
-    else log.concat("StringBuilder pointer retrieved from KeyValuePair is not the same as what went in. Fail...\n");
+    else printf("StringBuilder pointer retrieved from KeyValuePair is not the same as what went in. Fail...\n");
   }
-  else log.concat("Failed to retrieve StringBuilder pointer.\n");
+  else printf("Failed to retrieve StringBuilder pointer.\n");
 
-  printf("%s\n\n", (const char*) log.string());
   return return_value;
 }
 
@@ -166,8 +191,8 @@ int test_KeyValuePair_InternalTypes() {
 */
 int test_KeyValuePair_Value_Placement() {
   int return_value = -1;
-  StringBuilder log("===< KeyValuePair Value Placement >=========================\n");
   StringBuilder shuttle;  // We will transport the CBOR encoded-bytes through this.
+  printf("===< KeyValuePair Value Placement >=========================\n");
 
   int32_t  val0  = (int32_t)  randomUInt32();
   int16_t  val1  = (int16_t)  randomUInt32();
@@ -243,33 +268,32 @@ int test_KeyValuePair_Value_Placement() {
                 if ((0 == arg8.getValueAs(&ret8)) && (ret8 == val8)) {
                   if ((0 == arg9.getValueAs(&ret9)) && (ret9 == val9)) {
                     if ((0 == arg10.getValueAs(&ret10)) && (ret10 == val10)) {
-                      log.concatf("Value placement tests good for all types.\n");
+                      printf("Value placement tests good for all types.\n");
                       return_value = 0;
                     }
-                    else log.concat("Failed to vet bool placement.\n");
+                    else printf("Failed to vet bool placement.\n");
                   }
-                  else log.concat("Failed to vet bool placement.\n");
+                  else printf("Failed to vet bool placement.\n");
                 }
-                else log.concatf("Failed to vet key 'value8'... %.20f vs %.20f\n", ret8, val8);
+                else printf("Failed to vet key 'value8'... %.20f vs %.20f\n", ret8, val8);
               }
-              else log.concatf("Failed to vet key 'value6'... %.3f vs %.3f\n", (double) ret6, (double) val6);
+              else printf("Failed to vet key 'value6'... %.3f vs %.3f\n", (double) ret6, (double) val6);
             }
-            else log.concatf("Failed to vet key 'value5'... %u vs %u\n", ret5, val5);
+            else printf("Failed to vet key 'value5'... %u vs %u\n", ret5, val5);
           }
-          else log.concatf("Failed to vet key 'value4'... %u vs %u\n", ret4, val4);
+          else printf("Failed to vet key 'value4'... %u vs %u\n", ret4, val4);
         }
-        else log.concatf("Failed to vet key 'value3'... %u vs %u\n", ret3, val3);
+        else printf("Failed to vet key 'value3'... %u vs %u\n", ret3, val3);
       }
-      else log.concatf("Failed to vet key 'value2'... %u vs %u\n", ret2, val2);
+      else printf("Failed to vet key 'value2'... %u vs %u\n", ret2, val2);
     }
-    else log.concatf("Failed to vet key 'value1'... %u vs %u\n", ret1, val1);
+    else printf("Failed to vet key 'value1'... %u vs %u\n", ret1, val1);
   }
-  else log.concatf("Failed to vet key 'value0'... %u vs %u\n", ret0, val0);
+  else printf("Failed to vet key 'value0'... %u vs %u\n", ret0, val0);
 
   if (return_value) {
-    //a.printDebug(&log);
+    //dump_kvp(&a);
   }
-  printf("%s\n\n", (const char*) log.string());
   return return_value;
 }
 
@@ -282,7 +306,7 @@ int test_KeyValuePair_Value_Placement() {
 */
 int test_KeyValuePair_Value_Translation() {
   int return_value = -1;
-  StringBuilder log("===< KeyValuePair Value Translation >=========================\n");
+  printf("===< KeyValuePair Value Translation >=========================\n");
 
   uint32_t val0  = (uint32_t) randomUInt32();
   uint16_t val1  = (uint16_t) randomUInt32();
@@ -303,7 +327,7 @@ int test_KeyValuePair_Value_Translation() {
   a.append(val6, "float");
   a.append(val7, "double");
   a.append(&val8, "Vector3<f>");
-  a.printDebug(&log);
+  dump_kvp(&a);
 
   // Experimental values.
   double   ret0 = 0;
@@ -336,32 +360,31 @@ int test_KeyValuePair_Value_Translation() {
               if ((0 == a.valueWithKey("float", &ret6)) && (ret6 == compare6)) {
                 if ((0 == a.valueWithKey("double", &ret7)) && (ret7 == compare7)) {
                   if ((0 == a.valueWithKey("Vector3<f>", &ret8)) && (ret8 == compare8)) {
-                    log.concatf("Value Translation tests pass.\n");
+                    printf("Value Translation tests pass.\n");
                     return_value = 0;
                   }
-                  else log.concat("Failed to vet Vector3<float> --> Vector3<int32>\n");
+                  else printf("Failed to vet Vector3<float> --> Vector3<int32>\n");
                 }
-                else log.concat("Failed to vet double --> int32_t\n");
+                else printf("Failed to vet double --> int32_t\n");
               }
-              else log.concat("Failed to vet float --> int8\n");
+              else printf("Failed to vet float --> int8\n");
             }
-            else log.concat("Failed to vet int8 --> int16\n");
+            else printf("Failed to vet int8 --> int16\n");
           }
-          else log.concat("Failed to vet int16 --> int32\n");
+          else printf("Failed to vet int16 --> int32\n");
         }
-        else log.concat("Failed to vet int32 --> double\n");
+        else printf("Failed to vet int32 --> double\n");
       }
-      else log.concat("Failed to vet uint8_t --> uint16_t\n");
+      else printf("Failed to vet uint8_t --> uint16_t\n");
     }
-    else log.concat("Failed to vet uint16_t --> uint32_t\n");
+    else printf("Failed to vet uint16_t --> uint32_t\n");
   }
-  else log.concat("Failed to vet uint32_t --> double\n");
+  else printf("Failed to vet uint32_t --> double\n");
 
-  // If the safe translations passed, try the ones that should be error-cases.
+  // TODO: If the safe translations passed, try the ones that should be error-cases.
   if (0 == return_value) {
   }
 
-  printf("\n%s\n\n", (const char*) log.string());
   return return_value;
 }
 
@@ -374,7 +397,7 @@ int test_KeyValuePair_Value_Translation() {
 */
 int test_KeyValuePair_Key_Abuse() {
   int return_value = -1;
-  StringBuilder log("===< KeyValuePair Key Abuse >=========================\n");
+  printf("===< KeyValuePair Key Abuse >=========================\n");
 
   const char* feed_str = "mallocd_key";
   uint m_str_len = strlen(feed_str);
@@ -435,7 +458,7 @@ int test_KeyValuePair_Key_Abuse() {
                                   if ((0 == a.valueWithKey(key7, &ret7)) && (ret7 == val7)) {
                                     if ((0 == a.valueWithKey(key8, &ret8)) && (ret8 == val8)) {
                                       if ((0 == a.valueWithKey(key9, &ret9)) && (ret9 == val9)) {
-                                        log.concatf("Key abuse tests pass.\n");
+                                        printf("Key abuse tests pass.\n");
                                         return_value = 0;
                                       }
                                     }
@@ -456,9 +479,8 @@ int test_KeyValuePair_Key_Abuse() {
       }
     }
   }
-  a.printDebug(&log);
+  dump_kvp(&a);
 
-  printf("\n%s\n\n", (const char*) log.string());
   return return_value;
 }
 
@@ -471,7 +493,7 @@ int test_KeyValuePair_Key_Abuse() {
 */
 int test_CBOR_KeyValuePair() {
   int return_value = -1;
-  StringBuilder log("===< KVPs CBOR >===================================\n");
+  printf("===< KVPs CBOR >===================================\n");
   StringBuilder shuttle;  // We will transport the CBOR encoded-bytes through this.
 
   int32_t  val0  = (int32_t)  randomUInt32();
@@ -503,22 +525,19 @@ int test_CBOR_KeyValuePair() {
   a.append(val6)->setKey("val6");
   a.append(&val7)->setKey("val7");
   a.append(val8, "val8");
-
-  a.printDebug(&log);
+  dump_kvp(&a);
 
   int8_t ret_local = a.serialize(&shuttle, TCode::CBOR);
   KeyValuePair* r = KeyValuePair::unserialize(shuttle.string(), shuttle.length(), TCode::CBOR);
 
   if (0 == ret_local) {
-    log.concatf("CBOR encoding occupies %d bytes\n\t", shuttle.length());
-    shuttle.printDebug(&log);
-    log.concat("\n");
+    printf("CBOR encoding occupies %d bytes\n\t", shuttle.length());
+    dump_strbldr(&shuttle);
 
     if (nullptr != r) {
-      log.concat("CBOR decoded:\n");
-      r->printDebug(&log);
+      printf("CBOR decoded:\n");
+      dump_kvp(r);
 
-      log.concat("\n");
       if ((0 == r->valueWithIdx(0, &ret0)) && (ret0 == val0)) {
         if ((0 == r->valueWithIdx(1, &ret1)) && (ret1 == val1)) {
           if ((0 == r->valueWithIdx(2, &ret2)) && (ret2 == val2)) {
@@ -530,29 +549,28 @@ int test_CBOR_KeyValuePair() {
                       if (r->count() == a.count()) {
                         return_value = 0;
                       }
-                      else log.concatf("Arg counts don't match: %d vs %d\n", r->count(), a.count());
+                      else printf("Arg counts don't match: %d vs %d\n", r->count(), a.count());
                     }
-                    else log.concatf("Failed to vet key 'value8'... %.6f vs %.6f\n", ret8, val8);
+                    else printf("Failed to vet key 'value8'... %.6f vs %.6f\n", ret8, val8);
                   }
-                  else log.concatf("Failed to vet key 'value6'... %.3f vs %.3f\n", (double) ret6, (double) val6);
+                  else printf("Failed to vet key 'value6'... %.3f vs %.3f\n", (double) ret6, (double) val6);
                 }
-                else log.concatf("Failed to vet key 'value5'... %u vs %u\n", ret5, val5);
+                else printf("Failed to vet key 'value5'... %u vs %u\n", ret5, val5);
               }
-              else log.concatf("Failed to vet key 'value4'... %u vs %u\n", ret4, val4);
+              else printf("Failed to vet key 'value4'... %u vs %u\n", ret4, val4);
             }
-            else log.concatf("Failed to vet key 'value3'... %u vs %u\n", ret3, val3);
+            else printf("Failed to vet key 'value3'... %u vs %u\n", ret3, val3);
           }
-          else log.concatf("Failed to vet key 'value2'... %u vs %u\n", ret2, val2);
+          else printf("Failed to vet key 'value2'... %u vs %u\n", ret2, val2);
         }
-        else log.concatf("Failed to vet key 'value1'... %u vs %u\n", ret1, val1);
+        else printf("Failed to vet key 'value1'... %u vs %u\n", ret1, val1);
       }
-      else log.concatf("Failed to vet key 'value0'... %u vs %u\n", ret0, val0);
+      else printf("Failed to vet key 'value0'... %u vs %u\n", ret0, val0);
     }
-    else log.concat("Failed to decode KVP chain from CBOR...\n");
+    else printf("Failed to decode KVP chain from CBOR...\n");
   }
-  else log.concatf("Failed to encode KVP chain into CBOR: %d\n", ret_local);
+  else printf("Failed to encode KVP chain into CBOR: %d\n", ret_local);
 
-  printf("%s\n\n", (const char*) log.string());
   return return_value;
 }
 
@@ -567,7 +585,7 @@ int test_CBOR_KeyValuePair() {
 */
 int test_CBOR_Problematic_KeyValuePair() {
   int return_value = -1;
-  StringBuilder log("===< KeyValuePairs CBOR Minefield >=========================\n");
+  printf("===< KeyValuePairs CBOR Minefield >=========================\n");
   StringBuilder shuttle;  // We will transport the CBOR encoded-bytes through this.
 
   int32_t  val0  = (int32_t)  -65500;
@@ -593,20 +611,18 @@ int test_CBOR_Problematic_KeyValuePair() {
   a.append(val4)->setKey("val4");
   a.append(val5)->setKey("val5");
 
-  a.printDebug(&log);
+  dump_kvp(&a);
 
   int8_t ret_local = a.serialize(&shuttle, TCode::CBOR);
   if (0 == ret_local) {
-    log.concatf("CBOR encoding occupies %d bytes\n\t", shuttle.length());
-    shuttle.printDebug(&log);
-    log.concat("\n");
+    printf("CBOR encoding occupies %d bytes\n\t", shuttle.length());
+    dump_strbldr(&shuttle);
 
     KeyValuePair* r = KeyValuePair::unserialize(shuttle.string(), shuttle.length(), TCode::CBOR);
     if (nullptr != r) {
-      log.concat("CBOR decoded:\n");
-      r->printDebug(&log);
+      printf("CBOR decoded:\n");
+      dump_kvp(r);
 
-      log.concat("\n");
       if ((0 == r->valueWithIdx((uint8_t) 0, &ret0)) && (ret0 == val0)) {
         if ((0 == r->valueWithIdx((uint8_t) 1, &ret1)) && (ret1 == val1)) {
           if ((0 == r->valueWithIdx((uint8_t) 2, &ret2)) && (ret2 == val2)) {
@@ -616,28 +632,28 @@ int test_CBOR_Problematic_KeyValuePair() {
                     if (r->count() == a.count()) {
                       return_value = 0;
                     }
-                    else log.concatf("Arg counts don't match: %d vs %d\n", r->count(), a.count());
+                    else printf("Arg counts don't match: %d vs %d\n", r->count(), a.count());
                 }
-                else log.concatf("Failed to vet key 'value5'... %u vs %u\n", ret5, val5);
+                else printf("Failed to vet key 'value5'... %u vs %u\n", ret5, val5);
               }
-              else log.concatf("Failed to vet key 'value4'... %u vs %u\n", ret4, val4);
+              else printf("Failed to vet key 'value4'... %u vs %u\n", ret4, val4);
             }
-            else log.concatf("Failed to vet key 'value3'... %u vs %u\n", ret3, val3);
+            else printf("Failed to vet key 'value3'... %u vs %u\n", ret3, val3);
           }
-          else log.concatf("Failed to vet key 'value2'... %u vs %u\n", ret2, val2);
+          else printf("Failed to vet key 'value2'... %u vs %u\n", ret2, val2);
         }
-        else log.concatf("Failed to vet key 'value1'... %u vs %u\n", ret1, val1);
+        else printf("Failed to vet key 'value1'... %u vs %u\n", ret1, val1);
       }
-      else log.concatf("Failed to vet key 'value0'... %u vs %u\n", ret0, val0);
+      else printf("Failed to vet key 'value0'... %u vs %u\n", ret0, val0);
     }
-    else log.concat("Failed to decode KeyValuePair chain from CBOR...\n");
+    else printf("Failed to decode KeyValuePair chain from CBOR...\n");
   }
-  else log.concat("Failed to encode KeyValuePair chain into CBOR...\n");
+  else printf("Failed to encode KeyValuePair chain into CBOR...\n");
 
   if (return_value) {
-    a.printDebug(&log);
+    dump_kvp(&a);
   }
-  printf("%s\n\n", (const char*) log.string());
+
   return return_value;
 }
 #endif  // CONFIG_MANUVR_CBOR
@@ -650,7 +666,7 @@ int test_CBOR_Problematic_KeyValuePair() {
 */
 int test_KeyValuePair_Build_Polytyped_KVP(KeyValuePair* a) {
   int return_value = -1;
-  StringBuilder log("===< KeyValuePair Build_Polytyped_KVP >=========================\n");
+  printf("===< KeyValuePair Build_Polytyped_KVP >=========================\n");
 
   int32_t  val0  = (int32_t)  randomUInt32();
   int16_t  val1  = (int16_t)  randomUInt32();
@@ -686,37 +702,36 @@ int test_KeyValuePair_Build_Polytyped_KVP(KeyValuePair* a) {
                           KeyValuePair* raw_buf_kvp = a->append(val20, TEST_BUFFER_SIZE, "raw_buf");
                           if (nullptr != raw_buf_kvp) {
                             raw_buf_kvp->reapValue(true);
-                            log.concat("Successfully built a test KVP:\n");
-                            a->printDebug(&log);
+                            printf("Successfully built a test KVP:\n");
+                            dump_kvp(a);
                             return_value = 0;
                           }
-                          else log.concat("Failed to append a void*/len\n");
+                          else printf("Failed to append a void*/len\n");
                         }
-                        else log.concat("Failed to append a Vector3<u32>\n");
+                        else printf("Failed to append a Vector3<u32>\n");
                       }
-                      else log.concat("Failed to append a Vector3<f>\n");
+                      else printf("Failed to append a Vector3<f>\n");
                     }
-                    else log.concat("Failed to append a bool\n");
+                    else printf("Failed to append a bool\n");
                   }
-                  else log.concat("Failed to append a char*\n");
+                  else printf("Failed to append a char*\n");
                 }
-                else log.concat("Failed to append a double\n");
+                else printf("Failed to append a double\n");
               }
-              else log.concat("Failed to append a float\n");
+              else printf("Failed to append a float\n");
             }
-            else log.concat("Failed to append a uint8\n");
+            else printf("Failed to append a uint8\n");
           }
-          else log.concat("Failed to append a uint16\n");
+          else printf("Failed to append a uint16\n");
         }
-        else log.concat("Failed to append a uint32\n");
+        else printf("Failed to append a uint32\n");
       }
-      else log.concat("Failed to append a int8\n");
+      else printf("Failed to append a int8\n");
     }
-    else log.concat("Failed to append a int16\n");
+    else printf("Failed to append a int16\n");
   }
-  else log.concat("Failed to append a int32\n");
+  else printf("Failed to append a int32\n");
 
-  printf("%s\n\n", (const char*) log.string());
   return return_value;
 }
 
@@ -766,7 +781,7 @@ int test_KeyValuePair() {
 
   if (0 == return_value) {
     printf("**********************************\n");
-    printf("*  ManuvrLink tests all pass     *\n");
+    printf("*  KeyValuePair tests all pass   *\n");
     printf("**********************************\n");
   }
   return return_value;

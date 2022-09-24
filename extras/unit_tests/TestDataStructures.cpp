@@ -274,7 +274,8 @@ int test_RingBuffer() {
 * @return 0 on pass. Non-zero otherwise.
 */
 int test_UUID() {
-  StringBuilder log("===< UUID >=============================================\n");
+  printf("===< UUID >=============================================\n");
+  StringBuilder log;
   StringBuilder temp;
   UUID test0;
   UUID test1;
@@ -282,73 +283,93 @@ int test_UUID() {
   // Do UUID's initialize to zero?
   for (int i = 0; i < 16; i++) {
     if (0 != *((uint8_t*) &test0.id[i])) {
-      log.concat("UUID should be initialized to zeros. It was not. Failing...\n");
-      printf("%s\n\n", (const char*) log.string());
+      printf("UUID should be initialized to zeros. It was not. Failing...\n");
       return -1;
     }
   }
 
   // Does the comparison function work?
+  printf("UUID comparison... ");
   if (uuid_compare(&test0, &test1)) {
-    log.concat("UUID function considers these distinct. Failing...\n");
-    temp.concat((uint8_t*) &test0.id, sizeof(test0));
+    printf(" considers these distinct. Failing...\n");
+    temp.concat((uint8_t*) &test0, sizeof(test0));
     temp.printDebug(&log);
     temp.clear();
-    temp.concat((uint8_t*) &test1.id, sizeof(test1));
+    temp.concat((uint8_t*) &test1, sizeof(test1));
     temp.printDebug(&log);
     printf("%s\n\n", (const char*) log.string());
     return -1;
   }
+  printf("success.\n");
+
+  printf("UUID generation... ");
   uuid_gen(&test0);
   // Does the comparison function work?
   if (0 == uuid_compare(&test0, &test1)) {
-    log.concat("UUID function considers these the same. Failing...\n");
-    temp.concat((uint8_t*) &test0.id, sizeof(test0));
+    printf("produced no change in the UUID. Failing...\n");
+    temp.concat((uint8_t*) &test0, sizeof(test0));
     temp.printDebug(&log);
     temp.clear();
-    temp.concat((uint8_t*) &test1.id, sizeof(test1));
+    temp.concat((uint8_t*) &test1, sizeof(test1));
     temp.printDebug(&log);
     printf("%s\n\n", (const char*) log.string());
     return -1;
   }
+  printf("success.\n");
 
   // Generate a whole mess of UUID and ensure that they are different.
+  printf("UUID generation (closer look)... ");
   for (int i = 0; i < 10; i++) {
-    temp.concat((uint8_t*) &test0.id, sizeof(test0));
+    temp.concat((uint8_t*) &test0, sizeof(test0));
     log.concat("temp0 bytes:  ");
     temp.printDebug(&log);
     temp.clear();
 
     if (0 == uuid_compare(&test0, &test1)) {
-      log.concat("UUID generator gave us a repeat UUID. Fail...\n");
+      printf("UUID generator gave us a repeat UUID. Fail...\n");
       printf("%s\n\n", (const char*) log.string());
       return -1;
     }
     uuid_copy(&test0, &test1);
     if (0 != uuid_compare(&test0, &test1)) {
       log.concat("UUID copy appears to have failed...\n");
-      temp.concat((uint8_t*) &test0.id, sizeof(test0));
+      temp.concat((uint8_t*) &test0, sizeof(test0));
       temp.printDebug(&log);
       temp.clear();
-      temp.concat((uint8_t*) &test1.id, sizeof(test1));
+      temp.concat((uint8_t*) &test1, sizeof(test1));
       temp.printDebug(&log);
       printf("%s\n\n", (const char*) log.string());
       return -1;
     }
     uuid_gen(&test0);
   }
+  printf("success.\n");
 
-  char str_buffer[40] = "";
+  printf("UUID packing...\n");
+  char* str_buffer = (char*) alloca(40);
+  bzero(str_buffer, 40);
   uuid_to_str(&test0, str_buffer, 40);
-  log.concatf("test0 string: %s\n", str_buffer);
+
+  //log.concatf("test0 string: %s\n", str_buffer);   // TODO: Why does this line crash the test?
   log.concat("uuid_to_sb(test0): ");
   uuid_to_sb(&test0, &log);
   log.concat("\n");
 
+  printf("UUID parsing...\n");
   uuid_from_str(str_buffer, &test1);
+
+  log.concat("uuid_to_sb(test1): ");
+  uuid_to_sb(&test1, &log);
+
   log.concat("temp1 bytes:  ");
-  temp.concat((uint8_t*) &test1.id, sizeof(test1));
+  temp.concat((uint8_t*) &test1, sizeof(test1));
   temp.printDebug(&log);
+
+  if (0 != uuid_compare(&test0, &test1)) {
+    printf("UUID parsing of the string previously packed did not yield the same value. Failing...\n");
+    printf("%s\n\n", (const char*) log.string());
+    return -1;
+  }
 
   // TODO: This is the end of the happy-path. Now we should abuse the program
   // by feeding it garbage and ensure that its behavior is defined.

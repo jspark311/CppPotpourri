@@ -31,9 +31,9 @@ This class makes extensive use of the heap, low-level memory assumptions, and is
 * StringBuilder test routines
 *******************************************************************************/
 
-int test_strcasecmp(StringBuilder* log) {
+int test_strcasecmp() {
   int return_value = -1;
-  log->concat("===< strcasecmp tests >====================================\n");
+  printf("===< strcasecmp tests >====================================\n");
   if (0 == StringBuilder::strcasecmp("CHARACTER CONST STRING COMPARE", "CHARACTER CONST STRING COMPARE")) {
     if (0 == StringBuilder::strcasecmp("cHArACTER CONST sTRING COMpARE", "CHARACTER CONST STRING COMPARE")) {
       if (0 != StringBuilder::strcasecmp("CHARACTER CONST STRING 1OMPARE", "CHARACTER CONST STRING !OMPARE")) {
@@ -43,25 +43,25 @@ int test_strcasecmp(StringBuilder* log) {
               if (0 != StringBuilder::strcasecmp("CHARACTER CONST STRING COMPARE", nullptr)) {
                 return_value = 0;
               }
-              else log->concat("strcasecmp() nullptr as arg2 passed and should have failed.\n");
+              else printf("strcasecmp() nullptr as arg2 passed and should have failed.\n");
             }
-            else log->concat("strcasecmp() nullptr as arg1 passed and should have failed.\n");
+            else printf("strcasecmp() nullptr as arg1 passed and should have failed.\n");
           }
-          else log->concat("strcasecmp() test 5 passed and should have failed.\n");
+          else printf("strcasecmp() test 5 passed and should have failed.\n");
         }
-        else log->concat("strcasecmp() test 4 passed and should have failed.\n");
+        else printf("strcasecmp() test 4 passed and should have failed.\n");
       }
-      else log->concat("strcasecmp() test 3 passed and should have failed.\n");
+      else printf("strcasecmp() test 3 passed and should have failed.\n");
     }
-    else log->concat("strcasecmp() test 2 failed and should have passed.\n");
+    else printf("strcasecmp() test 2 failed and should have passed.\n");
   }
-  else log->concat("strcasecmp() test 1 failed and should have passed.\n");
+  else printf("strcasecmp() test 1 failed and should have passed.\n");
   return return_value;
 }
 
 
 
-int test_strcasestr(StringBuilder* log) {
+int test_strcasestr() {
   int return_value = -1;
   const char* haystack = "Has Anyone Really Been Far Even as Decided to Use Even Go Want to do Look More Like?";
   const char* needle0  = "ly Been F";    // First find, case insensitive
@@ -72,7 +72,7 @@ int test_strcasestr(StringBuilder* log) {
   char* target0 = ((char*) haystack + 15);
   char* target1 = ((char*) haystack + 4);
 
-  log->concat("===< strcasestr tests >====================================\n");
+  printf("===< strcasestr tests >====================================\n");
   if (target0 == StringBuilder::strcasestr(haystack, needle0)) {
     if (target1 == StringBuilder::strcasestr(haystack, needle1)) {
       if (nullptr == StringBuilder::strcasestr(haystack, needle2)) {
@@ -80,30 +80,30 @@ int test_strcasestr(StringBuilder* log) {
           if (nullptr == StringBuilder::strcasestr(needle0, haystack)) {     // Swapped order.
             if (nullptr == StringBuilder::strcasestr(nullptr, needle0)) {    // nullptr
               if (nullptr == StringBuilder::strcasestr(haystack, nullptr)) { // nullptr
-                log->concat("\tstrcasestr() tests pass:\n");
+                printf("\tstrcasestr() tests pass:\n");
                 return_value = 0;
               }
-              else log->concat("strcasestr() nullptr as arg2 passed and should have failed.\n");
+              else printf("strcasestr() nullptr as arg2 passed and should have failed.\n");
             }
-            else log->concat("strcasestr() nullptr as arg1 passed and should have failed.\n");
+            else printf("strcasestr() nullptr as arg1 passed and should have failed.\n");
           }
-          else log->concat("strcasestr() test for comically-large needle passed and should have failed.\n");
+          else printf("strcasestr() test for comically-large needle passed and should have failed.\n");
         }
-        else log->concat("strcasestr() test 4 passed and should have failed.\n");
+        else printf("strcasestr() test 4 passed and should have failed.\n");
       }
-      else log->concat("strcasestr() test 3 passed and should have failed.\n");
+      else printf("strcasestr() test 3 passed and should have failed.\n");
     }
-    else log->concat("strcasestr() test 2 failed and should have passed.\n");
+    else printf("strcasestr() test 2 failed and should have passed.\n");
   }
-  else log->concat("strcasestr() test 1 failed and should have passed.\n");
+  else printf("strcasestr() test 1 failed and should have passed.\n");
   return return_value;
 }
 
 
-int test_Tokenizer(StringBuilder* log) {
+int test_Tokenizer() {
   StringBuilder stack_obj;
   int ret = -1;
-  log->concat("===< Tokenizer tests >====================================\n");
+  printf("===< Tokenizer tests >====================================\n");
   stack_obj.concat("                 _______  \n");
   stack_obj.concat("                / _____ \\ \n");
   stack_obj.concat("          _____/ /     \\ \\_____ \n");
@@ -136,20 +136,20 @@ int test_Tokenizer(StringBuilder* log) {
   stack_obj.string();
   int f_length = stack_obj.length();
   int f_count  = stack_obj.count();
-  log->concatf("Initial:\n\t Length:    %d\n", i_length);
-  log->concatf("\t Elements:  %d\n", i_count);
-  log->concatf("Post-chunk:\n\t Length:    %d\n", p_length);
-  log->concatf("\t Elements:  %d\n", p_count);
-  log->concatf("\t Chunks:    %d\n", chunks);
-  log->concatf("Final:\n\t Length:    %d\n", f_length);
-  log->concatf("\t Elements:  %d\n", f_count);
-  log->concat("Final Stack obj:\n");
-  log->concat((char*) stack_obj.string());
-  log->concat("\n\n");
+  printf("Initial:\n\t Length:    %d\n", i_length);
+  printf("\t Elements:  %d\n", i_count);
+  printf("Post-chunk:\n\t Length:    %d\n", p_length);
+  printf("\t Elements:  %d\n", p_count);
+  printf("\t Chunks:    %d\n", chunks);
+  printf("Final:\n\t Length:    %d\n", f_length);
+  printf("\t Elements:  %d\n", f_count);
+  printf("Final Stack obj:\n");
+  printf("%s", (char*) stack_obj.string());
+  printf("\n\n");
 
   if ((-1 != chunks) & (p_count == chunks)) {
     if ((i_length == p_length) & (i_length == f_length)) {
-      log->concat("\tTokenizer tests pass:\n");
+      printf("\tTokenizer tests pass:\n");
       ret = 0;
     }
   }
@@ -158,11 +158,11 @@ int test_Tokenizer(StringBuilder* log) {
 
 
 
-int test_Implode(StringBuilder* log) {
+int test_Implode() {
   const char* DELIM_STR = "\n\t";
   StringBuilder stack_obj;
   int ret = -1;
-  log->concat("===< Implode tests >====================================\n");
+  printf("===< Implode tests >====================================\n");
   stack_obj.concat("This string");
   stack_obj.concat("had no tabs");
   stack_obj.concat("or newlines");
@@ -175,27 +175,26 @@ int test_Implode(StringBuilder* log) {
 
   int p_length = stack_obj.length();
   int p_count  = stack_obj.count();
-  log->concatf("Initial:\n\t Length:    %d\n", i_length);
-  log->concatf("\t Elements:  %d\n", i_count);
-  log->concatf("Post-implosion:\n\t Length:    %d\n", p_length);
-  log->concatf("\t Elements:  %d\n", p_count);
-  log->concatf("\t implode returns %d\n", toks);
-  log->concat((char*) stack_obj.string());
-  log->concat("\n");
+  printf("Initial:\n\t Length:    %d\n", i_length);
+  printf("\t Elements:  %d\n", i_count);
+  printf("Post-implosion:\n\t Length:    %d\n", p_length);
+  printf("\t Elements:  %d\n", p_count);
+  printf("\t implode returns %d\n", toks);
+  printf("%s\n", (char*) stack_obj.string());
 
   int retoks = stack_obj.split(DELIM_STR);
   int f_length = stack_obj.length();
   int f_count  = stack_obj.count();
-  log->concatf("Re-split:\n\t Length:    %d\n", f_length);
-  log->concatf("\t Elements:  %d\n", f_count);
-  log->concatf("\t split() returns %d\n", retoks);
-  log->concat("\n\n");
+  printf("Re-split:\n\t Length:    %d\n", f_length);
+  printf("\t Elements:  %d\n", f_count);
+  printf("\t split() returns %d\n", retoks);
+  printf("\n\n");
 
   if ((i_count == f_count) & (i_length == f_length)) {   // We started and ended with the same length and token count.
     if (f_count == toks) {       // That token count equals the return value from implode.
       if (p_count == 1) {        // Implode fully reduced the original set of tokens.
         if (toks == retoks) {    // implode and split have the same return value.
-          log->concat("\tImplode tests pass:\n");
+          printf("\tImplode tests pass:\n");
           ret = 0;
         }
       }
@@ -205,12 +204,12 @@ int test_Implode(StringBuilder* log) {
 }
 
 
-int test_replace(StringBuilder* log) {
+int test_replace() {
   const char* DELIM_STR = "\n\t";
   StringBuilder stack_obj;
   int ret = -1;
   int replacements = 0;
-  log->concat("===< Replace tests >====================================\n");
+  printf("===< Replace tests >====================================\n");
 
   const int REPLACE_COUNT_0 = 7;
   const int REPLACE_COUNT_1 = 6;
@@ -241,20 +240,20 @@ int test_replace(StringBuilder* log) {
           replacements = stack_obj.replace("---", "");
           if (REPLACE_COUNT_0 == replacements) {
             if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), ref_string_0_2)) {
-              log->concatf("\tReplacement test block 0 passes:\t%s\n", (char*)stack_obj.string());
+              printf("\tReplacement test block 0 passes:\t%s\n", (char*)stack_obj.string());
               ret = 0;
             }
-            else log->concatf("replace() result does not match ref_string_0_2.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_0_2);
+            else printf("replace() result does not match ref_string_0_2.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_0_2);
           }
-          else log->concatf("replace(\"--\", \"\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_0, (char*)stack_obj.string());
+          else printf("replace(\"--\", \"\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_0, (char*)stack_obj.string());
         }
-        else log->concatf("replace() result does not match ref_string_0_1.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_0_1);
+        else printf("replace() result does not match ref_string_0_1.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_0_1);
       }
-      else log->concatf("replace(\".\", \"--\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_0, (char*)stack_obj.string());
+      else printf("replace(\".\", \"--\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_0, (char*)stack_obj.string());
     }
-    else log->concatf("replace() result does not match ref_string_0_0.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_0_0);
+    else printf("replace() result does not match ref_string_0_0.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_0_0);
   }
-  else log->concatf("replace(\"|\", \".\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_0, (char*)stack_obj.string());
+  else printf("replace(\"|\", \".\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_0, (char*)stack_obj.string());
 
   if (0 == ret) {
     ret--;
@@ -269,20 +268,20 @@ int test_replace(StringBuilder* log) {
             replacements = stack_obj.replace("***", "*");
             if (REPLACE_COUNT_1 == replacements) {
               if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), ref_string_1_2)) {
-                log->concatf("\tReplacement test block 1 passes:\t%s\n", (char*)stack_obj.string());
+                printf("\tReplacement test block 1 passes:\t%s\n", (char*)stack_obj.string());
                 ret = 0;
               }
-              else log->concatf("replace() result does not match ref_string_1_2.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_1_2);
+              else printf("replace() result does not match ref_string_1_2.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_1_2);
             }
-            else log->concatf("replace(\"***\", \"*\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_1, (char*)stack_obj.string());
+            else printf("replace(\"***\", \"*\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_1, (char*)stack_obj.string());
           }
-          else log->concatf("replace() result does not match ref_string_1_1.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_1_1);
+          else printf("replace() result does not match ref_string_1_1.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_1_1);
         }
-        else log->concatf("replace(\":tag:\", \"***\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_1, (char*)stack_obj.string());
+        else printf("replace(\":tag:\", \"***\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_1, (char*)stack_obj.string());
       }
-      else log->concatf("replace() result does not match ref_string_1_0.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_1_0);
+      else printf("replace() result does not match ref_string_1_0.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_1_0);
     }
-    else log->concatf("replace(\":TAG:\", \":tag:\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_1, (char*)stack_obj.string());
+    else printf("replace(\":TAG:\", \":tag:\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_1, (char*)stack_obj.string());
   }
 
   if (0 == ret) {
@@ -306,27 +305,29 @@ int test_replace(StringBuilder* log) {
             replacements = stack_obj.replace("\n", "\n\t");
             if (REPLACE_COUNT_2 == replacements) {
               if (1 == stack_obj.cmpBinString(debug_str, debug_str_len)) {
-                log->concatf("\tReplacement test block 2 passes:\t%s\n", (char*)stack_obj.string());
+                printf("\tReplacement test block 2 passes:\t%s\n", (char*)stack_obj.string());
                 print_err = false;
                 ret = 0;
               }
-              else log->concatf("replace() result does not match ref_string_2_2.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_2_2);
+              else printf("replace() result does not match ref_string_2_2.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_2_2);
             }
-            else log->concatf("replace(LF, TAB+LF) returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_2, (char*)stack_obj.string());
+            else printf("replace(LF, TAB+LF) returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_2, (char*)stack_obj.string());
           }
-          else log->concatf("replace() result does not match ref_string_2_1.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_2_1);
+          else printf("replace() result does not match ref_string_2_1.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_2_1);
         }
-        else log->concatf("replace(CR+LF, LF) returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_2, (char*)stack_obj.string());
+        else printf("replace(CR+LF, LF) returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_2, (char*)stack_obj.string());
       }
-      else log->concatf("replace() result does not match ref_string_2_0.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_2_0);
+      else printf("replace() result does not match ref_string_2_0.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_2_0);
     }
-    else log->concatf("replace(LF, CR+LF) returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_2, (char*)stack_obj.string());
+    else printf("replace(LF, CR+LF) returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_2, (char*)stack_obj.string());
 
     if (print_err) {
-      log->concat("\n\nExpected:\n");
-      StringBuilder::printBuffer(log, debug_str, debug_str_len);
-      log->concat("\n\nActual:\n");
-      StringBuilder::printBuffer(log, stack_obj.string(), stack_obj.length());
+      StringBuilder log;
+      log.concat("\n\nExpected:\n");
+      StringBuilder::printBuffer(&log, debug_str, debug_str_len);
+      log.concat("\n\nActual:\n");
+      StringBuilder::printBuffer(&log, stack_obj.string(), stack_obj.length());
+      printf("%s", (char*) log.string());
     }
   }
 
@@ -344,52 +345,51 @@ int test_replace(StringBuilder* log) {
         if (0 == replacements) {
           replacements = stack_obj.replace("Some not-empty string key that is too long", "+");
           if (0 == replacements) {
-            log->concatf("\tReplacement test block 3 passes:\t%s\n", (char*)stack_obj.string());
+            printf("\tReplacement test block 3 passes:\t%s\n", (char*)stack_obj.string());
             ret = 0;
           }
-          else log->concatf("replace() called with a needle longer than the subject string should return 0 but returned %d instead.\n", replacements);
+          else printf("replace() called with a needle longer than the subject string should return 0 but returned %d instead.\n", replacements);
         }
-        else log->concatf("replace() called on an empty needle should return 0 but returned %d instead.\n", replacements);
+        else printf("replace() called on an empty needle should return 0 but returned %d instead.\n", replacements);
       }
-      else log->concatf("replace() called on an empty StringBuilder and with an empty needle should return 0 but returned %d instead.\n", replacements);
+      else printf("replace() called on an empty StringBuilder and with an empty needle should return 0 but returned %d instead.\n", replacements);
     }
-    else log->concatf("replace() called on an empty StringBuilder should return 0 but returned %d instead.\n", replacements);
+    else printf("replace() called on an empty StringBuilder should return 0 but returned %d instead.\n", replacements);
   }
   return ret;
 }
 
 
-int test_StringBuilder(StringBuilder* log) {
+int test_StringBuilder() {
   int return_value = -1;
-  log->concat("===< StringBuilder >====================================\n");
+  printf("===< StringBuilder >====================================\n");
   StringBuilder* heap_obj = new StringBuilder((char*) "This is datas we want to transfer.");
   StringBuilder  stack_obj;
   StringBuilder  tok_obj;
 
   char* empty_str = (char*) stack_obj.string();
   if (0 == strlen(empty_str)) {
-    free(empty_str);
     stack_obj.concat("a test of the StringBuilder ");
     stack_obj.concat("used in stack. ");
     stack_obj.prepend("This is ");
     stack_obj.string();
 
     tok_obj.concat("This");
-    log->concatf("\t tok_obj split:   %d\n", tok_obj.split(" "));
-    log->concatf("\t tok_obj count:   %d\n", tok_obj.count());
+    printf("\t tok_obj split:   %d\n", tok_obj.split(" "));
+    printf("\t tok_obj count:   %d\n", tok_obj.count());
     tok_obj.concat(" This");
-    log->concatf("\t tok_obj split:   %d\n", tok_obj.split(" "));
-    log->concatf("\t tok_obj count:   %d\n", tok_obj.count());
+    printf("\t tok_obj split:   %d\n", tok_obj.split(" "));
+    printf("\t tok_obj count:   %d\n", tok_obj.count());
     tok_obj.concat("   This");
-    log->concatf("\t tok_obj split:   %d\n", tok_obj.split(" "));
-    log->concatf("\t tok_obj count:   %d\n", tok_obj.count());
-    log->concatf("\t Heap obj before culling:   %s\n", heap_obj->string());
+    printf("\t tok_obj split:   %d\n", tok_obj.split(" "));
+    printf("\t tok_obj count:   %d\n", tok_obj.count());
+    printf("\t Heap obj before culling:   %s\n", heap_obj->string());
 
     while (heap_obj->length() > 10) {
       heap_obj->cull(5);
-      log->concatf("\t Heap obj during culling:   %s\n", heap_obj->string());
+      printf("\t Heap obj during culling:   %s\n", heap_obj->string());
     }
-    log->concatf("\t Heap obj after culling:   %s\n", heap_obj->string());
+    printf("\t Heap obj after culling:   %s\n", heap_obj->string());
 
     heap_obj->prepend("Meaningless data ");
     heap_obj->concat(" And stuff tackt onto the end.");
@@ -400,17 +400,17 @@ int test_StringBuilder(StringBuilder* log) {
 
     stack_obj.split(" ");
 
-    log->concatf("\t Final Stack obj:          %s\n", stack_obj.string());
+    printf("\t Final Stack obj:          %s\n", stack_obj.string());
     return_value = 0;
   }
-  else log->concat("StringBuilder.string() failed to produce an empty string.\n");
+  else printf("StringBuilder.string() failed to produce an empty string.\n");
 
   return return_value;
 }
 
 
 
-int test_StringBuilderHeapVersusStack(StringBuilder* log) {
+int test_StringBuilderHeapVersusStack() {
   int return_value = -1;
   StringBuilder *heap_obj = new StringBuilder("This is datas we want to transfer.");
   StringBuilder stack_obj;
@@ -443,7 +443,7 @@ int test_StringBuilderHeapVersusStack(StringBuilder* log) {
 }
 
 
-int test_stringbuilder_isempty(StringBuilder* log) {
+int test_stringbuilder_isempty() {
   int return_value = -1;
   uint8_t tmp_buf[8] = {0, };
   StringBuilder should_be_empty;
@@ -461,27 +461,78 @@ int test_stringbuilder_isempty(StringBuilder* log) {
             if (should_be_empty.isEmpty(true)) {
               if (!should_have_things.isEmpty()) {
                 if (!should_have_things.isEmpty(true)) {
-                  log->concat("\tisEmpty() passes.\n");
+                  printf("\tisEmpty() passes.\n");
                   return_value = 0;
                 }
-                else log->concat("should_have_things.isEmpty(true) found nothing.\n");
+                else printf("should_have_things.isEmpty(true) found nothing.\n");
               }
-              else log->concat("should_have_things.isEmpty() found nothing. Bad.\n");
+              else printf("should_have_things.isEmpty() found nothing. Bad.\n");
             }
-            else log->concat("should_be_empty.isEmpty(true) failed to find bytes after adding a null-terminator.\n");
+            else printf("should_be_empty.isEmpty(true) failed to find bytes after adding a null-terminator.\n");
           }
-          else log->concat("should_be_empty.isEmpty() found bytes after adding a null-terminator.\n");
+          else printf("should_be_empty.isEmpty() found bytes after adding a null-terminator.\n");
         }
-        else log->concat("should_be_empty.isEmpty(true) returned true after adding a null-terminator.\n");
+        else printf("should_be_empty.isEmpty(true) returned true after adding a null-terminator.\n");
       }
-      else log->concat("should_be_empty.isEmpty() found bytes after adding a null-terminator.\n");
+      else printf("should_be_empty.isEmpty() found bytes after adding a null-terminator.\n");
     }
-    else log->concat("should_be_empty.isEmpty(true) found bytes.\n");
+    else printf("should_be_empty.isEmpty(true) found bytes.\n");
   }
-  else log->concat("should_be_empty.isEmpty() found bytes. Bad.\n");
+  else printf("should_be_empty.isEmpty() found bytes. Bad.\n");
 
   return return_value;
 }
+
+
+/*
+* StringBuilder is a big API. It's easy to make mistakes or under-estimate
+*   memory impact.
+*/
+int test_misuse_cases() {
+  int return_value = -1;
+  printf("===< Mis-use tests >====================================\n");
+  StringBuilder content_from_const("The compiler considered this string a (const char*).");
+  content_from_const.clear();
+
+  if (content_from_const.isEmpty(true)) {
+    printf("About to double-clear content_from_const... ");
+    content_from_const.clear();
+    printf("success.\n");
+    if (nullptr != content_from_const.string()) {    // Should always return an empty string, in the worst-case.
+      printf("About to concat(const) --> concatf() --> destruct-by-scope... ");
+      {
+        StringBuilder scope_limited("More const content. ");
+        scope_limited.concatf("current time is %u.", millis());
+      }
+      printf("success.\n");
+
+      printf("About to concatf() --> destruct-by-scope... ");
+      {
+        StringBuilder scope_limited("More const content. ");
+        printf("%s", (char*) scope_limited.string());
+      }
+      printf("success.\n");
+
+      printf("About to concat(const) --> concatf() --> string() --> destruct-by-scope... ");
+      {
+        StringBuilder scope_limited("More const content. ");
+        scope_limited.concatf("current time is %u.", millis());
+        printf("%s", (char*) scope_limited.string());
+      }
+      printf("success.\n");
+
+      // If nothing above caused a segfault, the tests pass.
+      printf("\tMis-use tests pass.\n");
+      return_value = 0;
+    }
+    else printf("content_from_const.string() returned nullptr, but should have returned \"\".\n");
+  }
+  else printf("content_from_const.isEmpty() found bytes. Bad.\n");
+
+  return return_value;
+}
+
+
 
 
 /*******************************************************************************
@@ -489,19 +540,21 @@ int test_stringbuilder_isempty(StringBuilder* log) {
 *******************************************************************************/
 int stringbuilder_main() {
   int ret = 1;   // Failure is the default result.
-  StringBuilder log;
 
-  if (0 == test_strcasecmp(&log)) {
-    if (0 == test_strcasestr(&log)) {
-      if (0 == test_StringBuilder(&log)) {
-        if (0 == test_Tokenizer(&log)) {
-          if (0 == test_Implode(&log)) {
-            if (0 == test_replace(&log)) {
-              if (0 == test_stringbuilder_isempty(&log)) {
-                log.concat("**********************************\n");
-                log.concat("*  StringBuilder tests all pass  *\n");
-                log.concat("**********************************\n");
-                ret = 0;
+  if (0 == test_strcasecmp()) {
+    if (0 == test_strcasestr()) {
+      if (0 == test_StringBuilder()) {
+        if (0 == test_Tokenizer()) {
+          if (0 == test_Implode()) {
+            if (0 == test_replace()) {
+              if (0 == test_stringbuilder_isempty()) {
+                if (0 == test_misuse_cases()) {
+                  printf("**********************************\n");
+                  printf("*  StringBuilder tests all pass  *\n");
+                  printf("**********************************\n");
+                  ret = 0;
+                }
+                else printTestFailure("Hardening against mis-use");
               }
               else printTestFailure("isEmpty");
             }
@@ -517,6 +570,5 @@ int stringbuilder_main() {
   }
   else printTestFailure("strcasecmp");
 
-  printf("%s\n\n", (const char*) log.string());
   return ret;
 }

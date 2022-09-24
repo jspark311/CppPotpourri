@@ -42,20 +42,22 @@ SOURCES_CPP += ../../src/EnumeratedTypeCodes.cpp
 SOURCES_CPP += ../../src/KeyValuePair.cpp
 SOURCES_CPP += ../../src/uuid.cpp
 SOURCES_CPP += ../../src/WakeLock.cpp
-SOURCES_CPP += ../../src/Image/Image.cpp
-SOURCES_CPP += ../../src/cbor-cpp/cbor.cpp
 SOURCES_CPP += ../../src/BusQueue.cpp
 SOURCES_CPP += ../../src/GPSWrapper.cpp
 SOURCES_CPP += ../../src/ParsingConsole.cpp
 SOURCES_CPP += ../../src/Quaternion.cpp
 SOURCES_CPP += ../../src/Storage.cpp
-SOURCES_CPP += ../../src/TripleAxisPipe.cpp
+SOURCES_CPP += ../../src/AbstractPlatform.cpp
+SOURCES_CPP += ../../src/Image/*.cpp
+SOURCES_CPP += ../../src/cbor-cpp/*.cpp
+SOURCES_CPP += ../../src/TripleAxisPipe/*.cpp
 SOURCES_CPP += ../../src/ManuvrLink/*.cpp
 SOURCES_CPP += ../../src/Identity/*.cpp
 
 CXXFLAGS  = -fsingle-precision-constant -Wdouble-promotion -fno-rtti -fno-exceptions
 CXXFLAGS += -D_GNU_SOURCE -fprofile-dir=$(COVERAGE_PATH)
 CXXFLAGS += -DCONFIG_MANUVR_CBOR -DCONFIG_MANUVR_M2M_SUPPORT
+CXXFLAGS += -DCONFIG_MANUVR_IMG_SUPPORT
 
 LIBS  = -L$(OUTPUT_PATH) -lstdc++ -lm
 

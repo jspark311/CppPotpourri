@@ -423,7 +423,7 @@ Image::Image(uint32_t x, uint32_t y) : _x(x), _y(y) {}
 /*
 * Constructor
 */
-Image::Image() : _x(0), _y(0) {}
+Image::Image() : Image(0, 0) {}
 
 
 /*

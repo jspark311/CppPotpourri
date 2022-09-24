@@ -166,10 +166,7 @@ void StringBuilder::styleHeader2(StringBuilder* output, const char* text) {
 /**
 * Vanilla constructor.
 */
-StringBuilder::StringBuilder() {
-  root        = nullptr;
-  str         = nullptr;
-  col_length  = 0;
+StringBuilder::StringBuilder() : root(nullptr), str(nullptr), col_length(0) {
   #if defined(__BUILD_HAS_PTHREADS)
     #if defined (PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP)
     _mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
@@ -281,19 +278,29 @@ unsigned short StringBuilder::count() {
 *   null-terminated zero-length string in the worst-case.
 * The caller must not try to free() the value returned.
 *
-* @return The number of linked-lists that are being used to hold this string
+* @return A pointer to the content of the StringBuilder, made contiguous.
 */
 unsigned char* StringBuilder::string() {
   if ((this->str == nullptr) && (this->root == nullptr)) {
     // Nothing in this object. Return a zero-length string.
-    this->str = (uint8_t*) malloc(1);
-    this->str[0] = '\0';
-    this->col_length  = 0;
+    // this->str = (uint8_t*) malloc(1);
+    // this->str[0] = '\0';
+    // this->col_length  = 0;
+    // NOTE: We would previously allocate an empty string to satisfy the caller,
+    //   but this causes undue heap thrash, and serves no real purpose.
+    // Besides... If the caller is going to take the risk of direct value
+    //   manipulation of the memory at the location returned by this function,
+    //   then that code needs to at least have enough sense to check a length
+    //   first. So the fib we are telling by casting in the manner below should
+    //   not expose the user of this class to any illegal memory accesses
+    //   (writing to read-only mem) that their bounds-checking wouldn't already
+    //   prevent.            --- J. Ian Lindsay Sat 24 Sep 2022 01:03:08 AM MDT
+    return (uint8_t*) "";
   }
   else {
     this->_collapse_into_buffer();
+    return this->str;
   }
-  return this->str;
 }
 
 

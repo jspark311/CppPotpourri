@@ -1588,6 +1588,7 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
       case ManuvrLinkState::HUNGUP:
         //_reset_class();
         _flags.set(MANUVRLINK_FLAG_ON_HOOK);
+        _flags.clear(MANUVRLINK_FLAG_ESTABLISHED);
         state_entry_success = true;
         break;
 
