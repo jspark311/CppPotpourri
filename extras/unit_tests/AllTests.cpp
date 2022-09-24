@@ -27,7 +27,7 @@
 #include "Image/Image.h"
 #include "Identity/IdentityUUID.h"
 #include "Identity/Identity.h"
-#include "ManuvrLink/ManuvrLink.h"
+#include "M2MLink/M2MLink.h"
 
 
 /*******************************************************************************
@@ -116,10 +116,10 @@ void printTypeSizes() {
   output.concatf("\tIdentity              %u\n", sizeof(Identity));
   output.concatf("\tIdentityUUID          %u\n", sizeof(IdentityUUID));
   output.concat("-- M2M classes:\n");
-  output.concatf("\tManuvrLink            %u\n", sizeof(ManuvrLink));
-  output.concatf("\tManuvrMsg             %u\n", sizeof(ManuvrMsg));
-  output.concatf("\tManuvrMsgHdr          %u\n", sizeof(ManuvrMsgHdr));
-  output.concatf("\tManuvrLinkOpts        %u\n", sizeof(ManuvrLinkOpts));
+  output.concatf("\tM2MLink            %u\n", sizeof(M2MLink));
+  output.concatf("\tM2MMsg             %u\n", sizeof(M2MMsg));
+  output.concatf("\tM2MMsgHdr          %u\n", sizeof(M2MMsgHdr));
+  output.concatf("\tM2MLinkOpts        %u\n", sizeof(M2MLinkOpts));
   printf("%s\n\n", (const char*) output.string());
 }
 
@@ -141,7 +141,7 @@ void printTestFailure(const char* test) {
 #include "TestDataStructures.cpp"
 #include "ParsingConsoleTest.cpp"
 #include "IdentityTest.cpp"
-#include "ManuvrLinkTests.cpp"
+#include "M2MLinkTests.cpp"
 
 
 /****************************************************************************************************

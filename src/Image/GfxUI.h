@@ -17,7 +17,7 @@ This source file was never part of Adafruit's library. They are small graphics
 
 #include "Image.h"
 #include "ImageUtils.h"
-#include "../ManuvrLink/ManuvrLink.h"
+#include "../M2MLink/M2MLink.h"
 #include "../Identity/Identity.h"
 #include "../SensorFilter.h"
 #include "../Storage.h"
@@ -618,7 +618,7 @@ class GfxUIIdentity : public GfxUIElement {
 
 class GfxUIMLink : public GfxUIElement {
   public:
-    GfxUIMLink(ManuvrLink* l, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0);
+    GfxUIMLink(M2MLink* l, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0);
     ~GfxUIMLink() {};
 
     /* Implementation of GfxUIElement. */
@@ -627,7 +627,7 @@ class GfxUIMLink : public GfxUIElement {
 
 
   private:
-    ManuvrLink* _link;
+    M2MLink* _link;
     GfxUITabBarWithContent _tab_bar;
     GfxUIGroup    _content_info;
     GfxUIGroup    _content_conf;

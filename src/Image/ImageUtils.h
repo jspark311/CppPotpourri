@@ -10,7 +10,7 @@ TODO: UIGfxWrapper is somewhat vestigial. It should be subsumed into other class
 */
 
 #include "Image.h"
-#include "../ManuvrLink/ManuvrLink.h"
+#include "../M2MLink/M2MLink.h"
 #include "../Identity/Identity.h"
 #include "../SensorFilter.h"
 
@@ -182,17 +182,17 @@ class ImageScaler {
 */
 class ImageCaster {
   public:
-    ImageCaster(ManuvrLink* l, Image* i_s, int x = 0, int y = 0, int w = 0, int h = 0);
+    ImageCaster(M2MLink* l, Image* i_s, int x = 0, int y = 0, int w = 0, int h = 0);
     ~ImageCaster() {};
 
-    //int ManuvrLink::send(KeyValuePair* kvp, bool need_reply);
+    //int M2MLink::send(KeyValuePair* kvp, bool need_reply);
     int8_t apply();
     bool   busy();
 
 
   private:
     const uint32_t _id;
-    ManuvrLink* _link;
+    M2MLink* _link;
     Image* _source;
     int   _s_x;
     int   _s_y;

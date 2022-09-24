@@ -1,5 +1,5 @@
 /*
-File:   ManuvrLinkTests.cpp
+File:   M2MLinkTests.cpp
 Author: J. Ian Lindsay
 Date:   2021.10.08
 
@@ -25,8 +25,8 @@ This program runs tests against the M2M communication class.
 * Globals
 *******************************************************************************/
 
-ManuvrLink* vlad = nullptr;
-ManuvrLink* carl = nullptr;
+M2MLink* vlad = nullptr;
+M2MLink* carl = nullptr;
 
 KeyValuePair* args_sent_vlad = nullptr;
 KeyValuePair* args_sent_carl = nullptr;
@@ -56,14 +56,14 @@ void check_that_kvps_match(StringBuilder* log, KeyValuePair* k0, KeyValuePair* k
 }
 
 
-void callback_link_state(ManuvrLink* cb_link) {
+void callback_link_state(M2MLink* cb_link) {
   StringBuilder log;
-  log.concatf("Link (0x%x) entered state %s\n", cb_link->linkTag(), ManuvrLink::sessionStateStr(cb_link->getState()));
+  log.concatf("Link (0x%x) entered state %s\n", cb_link->linkTag(), M2MLink::sessionStateStr(cb_link->getState()));
   printf("%s\n\n", (const char*) log.string());
 }
 
 
-void callback_vlad(uint32_t tag, ManuvrMsg* msg) {
+void callback_vlad(uint32_t tag, M2MMsg* msg) {
   StringBuilder log;
   KeyValuePair* kvps_rxd = nullptr;
   log.concatf("callback_vlad(0x%x): \n", tag, msg->uniqueId());
@@ -81,7 +81,7 @@ void callback_vlad(uint32_t tag, ManuvrMsg* msg) {
 }
 
 
-void callback_carl(uint32_t tag, ManuvrMsg* msg) {
+void callback_carl(uint32_t tag, M2MMsg* msg) {
   StringBuilder log;
   KeyValuePair* kvps_rxd = nullptr;
   log.concatf("callback_carl(0x%x): \n", tag, msg->uniqueId());
@@ -99,7 +99,7 @@ void callback_carl(uint32_t tag, ManuvrMsg* msg) {
 }
 
 
-bool poll_until_disconnected(ManuvrLink* vlad, ManuvrLink* carl) {
+bool poll_until_disconnected(M2MLink* vlad, M2MLink* carl) {
   int polling_cycles = 0;
   bool idle = false;
   uint32_t now = millis();
@@ -122,7 +122,7 @@ bool poll_until_disconnected(ManuvrLink* vlad, ManuvrLink* carl) {
 }
 
 
-bool poll_until_finished(ManuvrLink* vlad, ManuvrLink* carl) {
+bool poll_until_finished(M2MLink* vlad, M2MLink* carl) {
   int polling_cycles = 0;
   bool idle = false;
   uint32_t now = millis();
@@ -146,17 +146,17 @@ bool poll_until_finished(ManuvrLink* vlad, ManuvrLink* carl) {
 
 
 /*******************************************************************************
-* ManuvrMsg functionality
+* M2MMsg functionality
 *******************************************************************************/
 
 /* Header tests */
 int link_tests_message_battery_0() {
   int ret = -1;
-  StringBuilder log("===< ManuvrMsg battery 0 (Header) >==========================\n");
-  ManuvrMsgHdr msg_valid_with_reply(ManuvrMsgCode::SYNC_KEEPALIVE, 0, true);
-  ManuvrMsgHdr msg_valid_without_reply(ManuvrMsgCode::SYNC_KEEPALIVE, 0, false);
-  ManuvrMsgHdr msg_valid_reply_without_id(ManuvrMsgCode::CONNECT, 0, true);
-  ManuvrMsgHdr msg_invalid_bad_code(ManuvrMsgCode::UNDEFINED, 0, false);
+  StringBuilder log("===< M2MMsg battery 0 (Header) >==========================\n");
+  M2MMsgHdr msg_valid_with_reply(M2MMsgCode::SYNC_KEEPALIVE, 0, true);
+  M2MMsgHdr msg_valid_without_reply(M2MMsgCode::SYNC_KEEPALIVE, 0, false);
+  M2MMsgHdr msg_valid_reply_without_id(M2MMsgCode::CONNECT, 0, true);
+  M2MMsgHdr msg_invalid_bad_code(M2MMsgCode::UNDEFINED, 0, false);
 
   if (msg_valid_with_reply.isValid()) {
     if (msg_valid_with_reply.expectsReply()) {
@@ -201,22 +201,22 @@ int link_tests_message_battery_0() {
     ret--;
     // Setting the payload length member directly will subvert the class's length
     //   field checks, and will thus not update the flags.
-    ManuvrMsgHdr msg_invalid_bad_length(ManuvrMsgCode::CONNECT, 6, false);
+    M2MMsgHdr msg_invalid_bad_length(M2MMsgCode::CONNECT, 6, false);
     msg_invalid_bad_length.msg_len = 0x1f000;  // Make the length require too many bytes.
     msg_invalid_bad_length.rebuild_checksum();   // Ensure it isn't a checksum fault.
     if (!msg_invalid_bad_length.isValid()) {
       if (!msg_invalid_bad_code.isValid()) {
         // Here, we'll make a change to the header byte, but we won't update the
         //   checksum.
-        ManuvrMsgHdr msg_invalid_bad_chksum(ManuvrMsgCode::CONNECT, 0, false);
+        M2MMsgHdr msg_invalid_bad_chksum(M2MMsgCode::CONNECT, 0, false);
         msg_invalid_bad_chksum.expectsReply(true);
         if (!msg_invalid_bad_chksum.isValid()) {
-          // Replies can't happen without an ID. If the ManuvrMsgHdr constructor
+          // Replies can't happen without an ID. If the M2MMsgHdr constructor
           //   knows that one will be needed, it will generate one. But in this
           //   case, we'll construct the header as requiring no reply, but then
           //   we'll change out mind.
-          ManuvrMsgHdr msg_invalid_reply_without_id(ManuvrMsgCode::CONNECT, 0, false);
-          msg_invalid_reply_without_id.expectsReply(true);  // ManuvrMsg should accomodate this.
+          M2MMsgHdr msg_invalid_reply_without_id(M2MMsgCode::CONNECT, 0, false);
+          msg_invalid_reply_without_id.expectsReply(true);  // M2MMsg should accomodate this.
           msg_invalid_reply_without_id.rebuild_checksum();   // Ensure it isn't a checksum fault.
           if (!msg_invalid_reply_without_id.isValid()) {
             log.concat("\t msg_invalid_reply_without_id passes tests.\n");
@@ -233,7 +233,7 @@ int link_tests_message_battery_0() {
 
   if (0 == ret) {
     ret--;
-    ManuvrMsgHdr stupid_simple_sync(ManuvrMsgCode::SYNC_KEEPALIVE);
+    M2MMsgHdr stupid_simple_sync(M2MMsgCode::SYNC_KEEPALIVE);
     if (stupid_simple_sync.isValid()) {
       msg_valid_with_reply.wipe();
       stupid_simple_sync.rebuild_checksum();
@@ -254,9 +254,9 @@ int link_tests_message_battery_0() {
 /* Message pack-parse tests */
 int link_tests_message_battery_1() {
   int ret = -1;
-  StringBuilder log("===< ManuvrMsg battery 1 (Parse-pack) >=======================\n");
-  ManuvrMsgHdr hdr_parse_pack_0(ManuvrMsgCode::APPLICATION, 0, true);
-  ManuvrMsg* msg_parse_pack_0 = new ManuvrMsg(&hdr_parse_pack_0, BusOpcode::TX);
+  StringBuilder log("===< M2MMsg battery 1 (Parse-pack) >=======================\n");
+  M2MMsgHdr hdr_parse_pack_0(M2MMsgCode::APPLICATION, 0, true);
+  M2MMsg* msg_parse_pack_0 = new M2MMsg(&hdr_parse_pack_0, BusOpcode::TX);
   if (msg_parse_pack_0) {
     uint32_t now     = millis();
     uint32_t rand    = randomUInt32();
@@ -278,7 +278,7 @@ int link_tests_message_battery_1() {
         msg_parse_pack_0->printDebug(&log);
         if (!msg_0_serial.isEmpty()) {
           msg_0_serial.printDebug(&log);
-          ManuvrMsg* msg_parse_pack_1 = ManuvrMsg::unserialize(&msg_0_serial);
+          M2MMsg* msg_parse_pack_1 = M2MMsg::unserialize(&msg_0_serial);
           if (nullptr != msg_parse_pack_1) {
             if (msg_parse_pack_1->rxComplete()) {
               KeyValuePair* pl = nullptr;
@@ -315,9 +315,9 @@ int link_tests_message_battery_1() {
               }
               else log.concat("Failed to retrieve payload.\n");
             }
-            else log.concat("ManuvrMsg::unserialize() returned an incomplete message.\n");
+            else log.concat("M2MMsg::unserialize() returned an incomplete message.\n");
           }
-          else log.concat("ManuvrMsg::unserialize() failed.\n");
+          else log.concat("M2MMsg::unserialize() failed.\n");
         }
         else log.concat("Serializer produced an empty string.\n");
       }
@@ -334,7 +334,7 @@ int link_tests_message_battery_1() {
 
 
 /*******************************************************************************
-* Basic ManuvrLink functionality
+* Basic M2MLink functionality
 *******************************************************************************/
 
 /*
@@ -345,8 +345,8 @@ int link_tests_message_battery_1() {
 *   callback_vlad <---> vlad <---> UART <---> UART <---> carl <---> callback_carl
 * ...or something similar.
 */
-int link_tests_build_and_connect(ManuvrLink* vlad, ManuvrLink* carl) {
-  StringBuilder log("===< ManuvrLink Build and connect >====================================\n");
+int link_tests_build_and_connect(M2MLink* vlad, M2MLink* carl) {
+  StringBuilder log("===< M2MLink Build and connect >====================================\n");
   int ret = -1;
   if ((nullptr != vlad) & (nullptr != carl)) {
     // Connect Vlad's output to Carl's input, and Carl's output to Vlad's input.
@@ -367,7 +367,7 @@ int link_tests_build_and_connect(ManuvrLink* vlad, ManuvrLink* carl) {
     vlad->printDebug(&log);
     carl->printDebug(&log);
   }
-  else log.concat("Failed to allocate two ManuvrLinks.\n");
+  else log.concat("Failed to allocate two M2MLinks.\n");
   printf("%s\n\n", (const char*) log.string());
   return ret;
 }
@@ -376,8 +376,8 @@ int link_tests_build_and_connect(ManuvrLink* vlad, ManuvrLink* carl) {
 /*
 * Uses the previously-setup links to move some messages.
 */
-int link_tests_simple_messages(ManuvrLink* vlad, ManuvrLink* carl) {
-  StringBuilder log("===< ManuvrLink Simple messages >====================================\n");
+int link_tests_simple_messages(M2MLink* vlad, M2MLink* carl) {
+  StringBuilder log("===< M2MLink Simple messages >====================================\n");
   int ret = -1;
   int ret_local = -1;
   if ((nullptr != vlad) & (nullptr != carl) && vlad->linkIdle() && carl->linkIdle()) {
@@ -432,32 +432,32 @@ int link_tests_simple_messages(ManuvrLink* vlad, ManuvrLink* carl) {
 }
 
 
-int link_tests_complex_messages(ManuvrLink* vlad, ManuvrLink* carl) {
-  StringBuilder log("===< ManuvrLink complex messages >====================================\n");
+int link_tests_complex_messages(M2MLink* vlad, M2MLink* carl) {
+  StringBuilder log("===< M2MLink complex messages >====================================\n");
   int ret = -1;
   printf("%s\n\n", (const char*) log.string());
   return ret;
 }
 
 
-int link_tests_exotic_encodings(ManuvrLink* vlad, ManuvrLink* carl) {
-  StringBuilder log("===< ManuvrLink exotic encodings >====================================\n");
+int link_tests_exotic_encodings(M2MLink* vlad, M2MLink* carl) {
+  StringBuilder log("===< M2MLink exotic encodings >====================================\n");
   int ret = -1;
   printf("%s\n\n", (const char*) log.string());
   return ret;
 }
 
 
-int link_tests_message_flood(ManuvrLink* vlad, ManuvrLink* carl) {
-  StringBuilder log("===< ManuvrLink message flood >====================================\n");
+int link_tests_message_flood(M2MLink* vlad, M2MLink* carl) {
+  StringBuilder log("===< M2MLink message flood >====================================\n");
   int ret = -1;
   printf("%s\n\n", (const char*) log.string());
   return ret;
 }
 
 
-int link_tests_remote_log_insertion(ManuvrLink* vlad, ManuvrLink* carl) {
-  StringBuilder log("===< ManuvrLink remote log insertion >=============================\n");
+int link_tests_remote_log_insertion(M2MLink* vlad, M2MLink* carl) {
+  StringBuilder log("===< M2MLink remote log insertion >=============================\n");
   int ret = -1;
   if ((nullptr != vlad) & (nullptr != carl) && vlad->isConnected() && carl->isConnected()) {
     StringBuilder sendlog_vlad("This is a log from Vlad (no reply).");
@@ -499,8 +499,8 @@ int link_tests_remote_log_insertion(ManuvrLink* vlad, ManuvrLink* carl) {
 }
 
 
-int link_tests_reestablish_after_hangup(ManuvrLink* vlad, ManuvrLink* carl) {
-  StringBuilder log("===< ManuvrLink re-establish after hangup >========================\n");
+int link_tests_reestablish_after_hangup(M2MLink* vlad, M2MLink* carl) {
+  StringBuilder log("===< M2MLink re-establish after hangup >========================\n");
   int ret = -1;
   int ret_local = -1;
   if ((nullptr != vlad) & (nullptr != carl) && !(vlad->isConnected() | carl->isConnected())) {
@@ -525,8 +525,8 @@ int link_tests_reestablish_after_hangup(ManuvrLink* vlad, ManuvrLink* carl) {
 }
 
 
-int link_tests_hangup_gentle(ManuvrLink* vlad, ManuvrLink* carl) {
-  StringBuilder log("===< ManuvrLink gentle hangup >====================================\n");
+int link_tests_hangup_gentle(M2MLink* vlad, M2MLink* carl) {
+  StringBuilder log("===< M2MLink gentle hangup >====================================\n");
   int ret = -1;
   int ret_local = -1;
   if ((nullptr != vlad) & (nullptr != carl) && vlad->linkIdle() && carl->linkIdle()) {
@@ -549,16 +549,16 @@ int link_tests_hangup_gentle(ManuvrLink* vlad, ManuvrLink* carl) {
 }
 
 
-int link_tests_hangup_abrupt(ManuvrLink* vlad, ManuvrLink* carl) {
-  StringBuilder log("===< ManuvrLink abrupt hangup >====================================\n");
+int link_tests_hangup_abrupt(M2MLink* vlad, M2MLink* carl) {
+  StringBuilder log("===< M2MLink abrupt hangup >====================================\n");
   int ret = -1;
   printf("%s\n\n", (const char*) log.string());
   return ret;
 }
 
 
-int link_tests_interrupted_transport(ManuvrLink* vlad, ManuvrLink* carl) {
-  StringBuilder log("===< ManuvrLink interrupted transport >====================================\n");
+int link_tests_interrupted_transport(M2MLink* vlad, M2MLink* carl) {
+  StringBuilder log("===< M2MLink interrupted transport >====================================\n");
   int ret = -1;
   printf("%s\n\n", (const char*) log.string());
   return ret;
@@ -568,8 +568,8 @@ int link_tests_interrupted_transport(ManuvrLink* vlad, ManuvrLink* carl) {
 /*
 * Feed garbage into the stream, and make sure the link resyncs.
 */
-int link_tests_corrupted_transport(ManuvrLink* vlad, ManuvrLink* carl) {
-  StringBuilder log("===< ManuvrLink corrupted transport >====================================\n");
+int link_tests_corrupted_transport(M2MLink* vlad, M2MLink* carl) {
+  StringBuilder log("===< M2MLink corrupted transport >====================================\n");
   int ret = -1;
   if ((nullptr != vlad) & (nullptr != carl)) {
     uint32_t buf_0[4] = {randomUInt32(), randomUInt32(), randomUInt32(), randomUInt32()};
@@ -596,7 +596,7 @@ int link_tests_corrupted_transport(ManuvrLink* vlad, ManuvrLink* carl) {
     vlad->printDebug(&log);
     carl->printDebug(&log);
   }
-  else log.concat("Failed to allocate two ManuvrLinks.\n");
+  else log.concat("Failed to allocate two M2MLinks.\n");
   printf("%s\n\n", (const char*) log.string());
   return ret;
 }
@@ -604,27 +604,27 @@ int link_tests_corrupted_transport(ManuvrLink* vlad, ManuvrLink* carl) {
 
 
 /**
-* This is the root of the ManuvrLink tests.
+* This is the root of the M2MLink tests.
 *
 * @return 0 on success. Nonzero otherwise.
 */
 int manuvrlink_main() {
-  ManuvrLinkOpts opts_vlad(
+  M2MLinkOpts opts_vlad(
     100,   // ACK timeout is 100ms. Vlad is patient.
     2000,  // Send a KA every 2s.
     2048,  // MTU for this link is 2 kibi.
     TCode::CBOR,   // Payloads should be CBOR encoded.
-    MANUVRLINK_FLAG_ALLOW_LOG_WRITE
+    M2MLINK_FLAG_ALLOW_LOG_WRITE
   );
-  ManuvrLinkOpts opts_carl(
+  M2MLinkOpts opts_carl(
     40,    // ACK timeout is 40ms.
     2000,  // Send a KA every 2s.
     1024,  // MTU for this link is 1 kibi.
     TCode::CBOR,   // Payloads should be CBOR encoded.
     0      // No flags.
   );
-  vlad = new ManuvrLink(&opts_vlad);  // One half of the link.
-  carl = new ManuvrLink(&opts_carl);  // One half of the link.
+  vlad = new M2MLink(&opts_vlad);  // One half of the link.
+  carl = new M2MLink(&opts_carl);  // One half of the link.
   vlad->verbosity(6);
   carl->verbosity(6);
   int ret = -1;
@@ -656,7 +656,7 @@ int manuvrlink_main() {
 
   if (0 == ret) {
     printf("**********************************\n");
-    printf("*  ManuvrLink tests all pass     *\n");
+    printf("*  M2MLink tests all pass     *\n");
     printf("**********************************\n");
   }
   vlad->setOutputTarget(nullptr);

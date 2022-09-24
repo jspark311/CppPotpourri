@@ -1,4 +1,4 @@
-Each instance of ManuvrLink represents a persistent dialog with another machine
+Each instance of M2MLink represents a persistent dialog with another machine
 via some unspecified transport.
 
 The protocol is binary, with optional CBOR encoding for payloads.

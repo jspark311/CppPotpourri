@@ -1,5 +1,5 @@
 /*
-File:   ManuvrLink.h
+File:   M2MLink.h
 Author: J. Ian Lindsay
 Date:   2021.10.08
 
@@ -49,10 +49,10 @@ NOTE: This has been a mad binge to port over all this work from ManuvrOS. Five
   build something with it. Testing coverage at this date:
     Filename          Line Coverage       Functions
     ------------------------------------------------------
-    ManuvrLink.cpp     82.4%  570 / 692    95.0%  38 / 40
-    ManuvrLink.h       98.3%   57 / 58    100.0%  34 / 34
-    ManuvrMsg.cpp      90.4%  132 / 146    93.8%  15 / 16
-    ManuvrMsgHdr.cpp  100.0%   92 / 92    100.0%   7 / 7
+    M2MLink.cpp     82.4%  570 / 692    95.0%  38 / 40
+    M2MLink.h       98.3%   57 / 58    100.0%  34 / 34
+    M2MMsg.cpp      90.4%  132 / 146    93.8%  15 / 16
+    M2MMsgHdr.cpp  100.0%   92 / 92    100.0%   7 / 7
   Taking the mandatory build flag out ahead of release.
                                            ---J. Ian Lindsay 2021.10.16 20:27:54
 */
@@ -78,8 +78,8 @@ NOTE: This has been a mad binge to port over all this work from ManuvrOS. Five
 
 //#define CONFIG_C3P_M2M_SUPPORT 1   // TODO: Until Rationalizer.h is done.
 
-//#ifndef CONFIG_MANUVRMSG_PREALLOC_COUNT
-//  #define CONFIG_MANUVRMSG_PREALLOC_COUNT   4
+//#ifndef CONFIG_M2MMSG_PREALLOC_COUNT
+//  #define CONFIG_M2MMSG_PREALLOC_COUNT   4
 //#endif
 
 /*
@@ -92,67 +92,67 @@ NOTE: This has been a mad binge to port over all this work from ManuvrOS. Five
 
 
 /*******************************************************************************
-* Fixed definitions for the ManuvrLink subsystem                               *
+* Fixed definitions for the M2MLink subsystem                               *
 *******************************************************************************/
 
 // This value is our checksum preload. Calculation of new checksums should start
 //   with this byte. It helps prevents us from acknowledging spurious data as a
 //   connection attempt.
-#define MANUVRLINK_SERIALIZATION_VERSION   1
+#define M2MLINK_SERIALIZATION_VERSION   1
 
-#define MANUVRLINK_MAX_PARSE_FAILURES      3  // How many failures-to-parse should we tolerate before SYNCing?
-#define MANUVRLINK_MAX_ACK_FAILURES        3  // How many failures-to-ACK should we tolerate before SYNCing?
-#define MANUVRLINK_MAX_QUEUE_PRINT         3  //
-#define MANUVRLINK_FSM_WAYPOINT_DEPTH      8  // How deep is our state planning?
+#define M2MLINK_MAX_PARSE_FAILURES      3  // How many failures-to-parse should we tolerate before SYNCing?
+#define M2MLINK_MAX_ACK_FAILURES        3  // How many failures-to-ACK should we tolerate before SYNCing?
+#define M2MLINK_MAX_QUEUE_PRINT         3  //
+#define M2MLINK_FSM_WAYPOINT_DEPTH      8  // How deep is our state planning?
 
-/* Class flags for ManuvrLink. */
-#define MANUVRLINK_FLAG_AUTH_REQUIRED   0x00000001  // Set if this session requires authentication.
-#define MANUVRLINK_FLAG_AUTHD           0x00000002  // Set if this session has been authenticated.
-#define MANUVRLINK_FLAG_SYNC_INCOMING   0x00000004  // We've seen a sync on this resync cycle.
-#define MANUVRLINK_FLAG_SYNC_CASTING    0x00000008  // We're sending sync on this resync cycle.
-#define MANUVRLINK_FLAG_SYNC_REPLY_RXD  0x00000010  // We've seen a reply to our syncs on this resync cycle.
-#define MANUVRLINK_FLAG_ESTABLISHED     0x00000020  // We've exchanged CONNECT messages.
-#define MANUVRLINK_FLAG_HANGUP_RXD      0x00000040  // We received a HANGUP message.
-#define MANUVRLINK_FLAG_HANGUP_TXD      0x00000080  // Sent a HANGUP message on this session.
-#define MANUVRLINK_FLAG_SEND_KA         0x00000100  // We will send a keep-alive on a defined interval.
-#define MANUVRLINK_FLAG_ON_HOOK         0x00000200  // Following HANGUP, the app needs to reset this.
-#define MANUVRLINK_FLAG_ALLOW_LOG_WRITE 0x00000400  // Do we allow a counterparty to write to our log?
+/* Class flags for M2MLink. */
+#define M2MLINK_FLAG_AUTH_REQUIRED   0x00000001  // Set if this session requires authentication.
+#define M2MLINK_FLAG_AUTHD           0x00000002  // Set if this session has been authenticated.
+#define M2MLINK_FLAG_SYNC_INCOMING   0x00000004  // We've seen a sync on this resync cycle.
+#define M2MLINK_FLAG_SYNC_CASTING    0x00000008  // We're sending sync on this resync cycle.
+#define M2MLINK_FLAG_SYNC_REPLY_RXD  0x00000010  // We've seen a reply to our syncs on this resync cycle.
+#define M2MLINK_FLAG_ESTABLISHED     0x00000020  // We've exchanged CONNECT messages.
+#define M2MLINK_FLAG_HANGUP_RXD      0x00000040  // We received a HANGUP message.
+#define M2MLINK_FLAG_HANGUP_TXD      0x00000080  // Sent a HANGUP message on this session.
+#define M2MLINK_FLAG_SEND_KA         0x00000100  // We will send a keep-alive on a defined interval.
+#define M2MLINK_FLAG_ON_HOOK         0x00000200  // Following HANGUP, the app needs to reset this.
+#define M2MLINK_FLAG_ALLOW_LOG_WRITE 0x00000400  // Do we allow a counterparty to write to our log?
 
-// These ManuvrLink flags are allowed to be passed in as configuration.
-#define MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK (MANUVRLINK_FLAG_AUTH_REQUIRED | \
-                                                MANUVRLINK_FLAG_SEND_KA | \
-                                                MANUVRLINK_FLAG_ALLOW_LOG_WRITE)
-// These ManuvrLink flags survive class reset.
-#define MANUVRLINK_FLAG_RESET_PRESERVE_MASK (MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK)
-
-
-/* Class flags for ManuvrMsg. These are for state tracking, and will NOT be sent with each message. */
-#define MANUVRMSG_FLAG_ACCUMULATOR_COMPLETE     0x01  // The accumulator contains the complete message.
-#define MANUVRMSG_FLAG_TX_COMPLETE              0x02  // This outbound message went to the transport.
-#define MANUVRMSG_FLAG_WAS_ACKD                 0x04  // This outbound message saw a reply come back.
+// These M2MLink flags are allowed to be passed in as configuration.
+#define M2MLINK_FLAG_ALLOWABLE_DEFAULT_MASK (M2MLINK_FLAG_AUTH_REQUIRED | \
+                                                M2MLINK_FLAG_SEND_KA | \
+                                                M2MLINK_FLAG_ALLOW_LOG_WRITE)
+// These M2MLink flags survive class reset.
+#define M2MLINK_FLAG_RESET_PRESERVE_MASK (M2MLINK_FLAG_ALLOWABLE_DEFAULT_MASK)
 
 
-/* Class flags for ManuvrMsgHdr. These will be sent with each message. */
-#define MANUVRMSGHDR_FLAG_EXPECTING_REPLY       0x01  // This message needs to be ACKd.
-#define MANUVRMSGHDR_FLAG_IS_REPLY              0x02  // This message IS a reply.
-#define MANUVRMSGHDR_FLAG_RESERVED_0            0x04  // Must be 0.
-#define MANUVRMSGHDR_FLAG_RESERVED_1            0x08  // Must be 0.
-#define MANUVRMSGHDR_FLAG_ENCODES_LENGTH_BYTES  0x30  // Mask for 2-bit field. How many bytes of length are encoded?
-#define MANUVRMSGHDR_FLAG_ENCODES_ID_BYTES      0xC0  // Mask for 2-bit field. How many bytes of ID are encoded?
+/* Class flags for M2MMsg. These are for state tracking, and will NOT be sent with each message. */
+#define M2MMSG_FLAG_ACCUMULATOR_COMPLETE     0x01  // The accumulator contains the complete message.
+#define M2MMSG_FLAG_TX_COMPLETE              0x02  // This outbound message went to the transport.
+#define M2MMSG_FLAG_WAS_ACKD                 0x04  // This outbound message saw a reply come back.
 
-#define MANUVRMSGHDR_FLAG_RESERVED_MASK (MANUVRMSGHDR_FLAG_RESERVED_0 | MANUVRMSGHDR_FLAG_RESERVED_1)
+
+/* Class flags for M2MMsgHdr. These will be sent with each message. */
+#define M2MMSGHDR_FLAG_EXPECTING_REPLY       0x01  // This message needs to be ACKd.
+#define M2MMSGHDR_FLAG_IS_REPLY              0x02  // This message IS a reply.
+#define M2MMSGHDR_FLAG_RESERVED_0            0x04  // Must be 0.
+#define M2MMSGHDR_FLAG_RESERVED_1            0x08  // Must be 0.
+#define M2MMSGHDR_FLAG_ENCODES_LENGTH_BYTES  0x30  // Mask for 2-bit field. How many bytes of length are encoded?
+#define M2MMSGHDR_FLAG_ENCODES_ID_BYTES      0xC0  // Mask for 2-bit field. How many bytes of ID are encoded?
+
+#define M2MMSGHDR_FLAG_RESERVED_MASK (M2MMSGHDR_FLAG_RESERVED_0 | M2MMSGHDR_FLAG_RESERVED_1)
 
 // This value is used to mask-off bytes that are not considered when
 //   testing for a sync packet.
-#define MANUVRMSGHDR_FLAG_SYNC_MASK  ~(MANUVRMSGHDR_FLAG_IS_REPLY | MANUVRMSGHDR_FLAG_EXPECTING_REPLY)
+#define M2MMSGHDR_FLAG_SYNC_MASK  ~(M2MMSGHDR_FLAG_IS_REPLY | M2MMSGHDR_FLAG_EXPECTING_REPLY)
 
 // The minimum header (thus, message) size.
-#define MANUVRMSGHDR_MINIMUM_HEADER_SIZE  4
+#define M2MMSGHDR_MINIMUM_HEADER_SIZE  4
 
 // Which bits are not automatic in the header?
-#define MANUVRMSGHDR_SETTABLE_FLAG_BITS (MANUVRMSGHDR_FLAG_RESERVED_MASK | \
-                                         MANUVRMSGHDR_FLAG_ENCODES_LENGTH_BYTES | \
-                                         MANUVRMSGHDR_FLAG_ENCODES_ID_BYTES)
+#define M2MMSGHDR_SETTABLE_FLAG_BITS (M2MMSGHDR_FLAG_RESERVED_MASK | \
+                                         M2MMSGHDR_FLAG_ENCODES_LENGTH_BYTES | \
+                                         M2MMSGHDR_FLAG_ENCODES_ID_BYTES)
 
 
 /*******************************************************************************
@@ -162,7 +162,7 @@ NOTE: This has been a mad binge to port over all this work from ManuvrOS. Five
 * These are possible states of the link. They confine the space of our
 *   possible dialog, and bias the conversation in a given direction.
 */
-enum class ManuvrLinkState : uint8_t {
+enum class M2MLinkState : uint8_t {
   UNINIT         = 0x00,  // Nothing has happened. Freshly-instantiated session.
   PENDING_SETUP  = 0x01,  // Class is clean and ready for a session.
   SYNC_RESYNC    = 0x02,  // Casting sync, and awaiting like replies.
@@ -177,7 +177,7 @@ enum class ManuvrLinkState : uint8_t {
 * These are possible identifiers for the nature of messages we exchange
 *   with a counterparty.
 */
-enum class ManuvrMsgCode : uint8_t {
+enum class M2MMsgCode : uint8_t {
   UNDEFINED      = 0x00,   // This is the invalid-in-use default code.
   SYNC_KEEPALIVE = 0x01,   // Minimal message to keep a channel alive.
   CONNECT        = 0x02,   // Connection request.
@@ -196,7 +196,7 @@ enum class ManuvrMsgCode : uint8_t {
 * These are the enumerations of the protocols we intend to support.
 * TODO: This might be wrong-headed. Don't use it yet.
 */
-enum class ManuvrLinkProto : uint8_t {
+enum class M2MLinkProto : uint8_t {
   MANUVR       = 0x00,   // CppPotpourri's native types.
   CONSOLE      = 0x01,   // Textual output for a user.
   MQTT         = 0x02,   //
@@ -209,14 +209,14 @@ enum class ManuvrLinkProto : uint8_t {
   HTTP         = 0x09,   //
 };
 
-class ManuvrLink;
-class ManuvrMsg;
+class M2MLink;
+class M2MMsg;
 
 /* Callback for notifications of link state change. */
-typedef void (*ManuvrLinkCB)(ManuvrLink*);
+typedef void (*M2MLinkCB)(M2MLink*);
 
 /* Callback for application-directed messages from a link. */
-typedef void (*ManuvrMsgCB)(uint32_t tag, ManuvrMsg*);
+typedef void (*M2MMsgCB)(uint32_t tag, M2MMsg*);
 
 
 /*******************************************************************************
@@ -224,12 +224,12 @@ typedef void (*ManuvrMsgCB)(uint32_t tag, ManuvrMsg*);
 *******************************************************************************/
 
 /*
-* Conf representation for a ManuvrLink.
+* Conf representation for a M2MLink.
 *
 * TODO: Any incompatabilities with counterparties induced by these settings
 *   should be reported in the Link's local log.
 */
-class ManuvrLinkOpts {
+class M2MLinkOpts {
   public:
     uint32_t ms_timeout;     // How many ms of dead air constitutes a timeout?
     uint32_t ms_keepalive;   // How often in a connected session ought we ping?
@@ -242,11 +242,11 @@ class ManuvrLinkOpts {
     uint8_t  prealloc_count; // How many messages should we preallocate?
     TCode    encoding;       // Start out as basic as possible.
 
-    ManuvrLinkOpts(const ManuvrLinkOpts* obj) :
+    M2MLinkOpts(const M2MLinkOpts* obj) :
       ms_timeout(obj->ms_timeout),
       ms_keepalive(obj->ms_keepalive),
       mtu(obj->mtu),
-      default_flags(MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK & obj->default_flags),
+      default_flags(M2MLINK_FLAG_ALLOWABLE_DEFAULT_MASK & obj->default_flags),
       max_outbound(obj->max_outbound),
       max_inbound(obj->max_inbound),
       max_parse_errs(obj->max_parse_errs),
@@ -254,11 +254,11 @@ class ManuvrLinkOpts {
       prealloc_count(obj->prealloc_count),
       encoding(obj->encoding) {};
 
-    ManuvrLinkOpts(uint32_t msto, uint32_t mska, uint32_t m, TCode enc = TCode::BINARY, uint32_t def_flgs = 0) :
+    M2MLinkOpts(uint32_t msto, uint32_t mska, uint32_t m, TCode enc = TCode::BINARY, uint32_t def_flgs = 0) :
       ms_timeout(msto),
       ms_keepalive(mska),
       mtu(m),
-      default_flags(MANUVRLINK_FLAG_ALLOWABLE_DEFAULT_MASK & def_flgs),
+      default_flags(M2MLINK_FLAG_ALLOWABLE_DEFAULT_MASK & def_flgs),
       max_outbound(8),
       max_inbound(8),
       max_parse_errs(3),
@@ -272,16 +272,16 @@ class ManuvrLinkOpts {
 * Class representation for a message header.
 * All messages have this data structure in common.
 */
-class ManuvrMsgHdr {
+class M2MMsgHdr {
   public:
-    ManuvrMsgCode msg_code;  // The message code.
+    M2MMsgCode msg_code;  // The message code.
     uint8_t       flags;     // Flags to be encoded into the message.
     uint8_t       chk_byte;  // The expected checksum for the header.
     uint32_t      msg_len;   // Total length of the message (header + payload).
     uint32_t      msg_id;    // A unique ID for this message.
 
     /* Copy constructor */
-    ManuvrMsgHdr(const ManuvrMsgHdr* obj) :
+    M2MMsgHdr(const M2MMsgHdr* obj) :
       msg_code(obj->msg_code),
       flags(obj->flags),
       chk_byte(obj->chk_byte),
@@ -289,23 +289,23 @@ class ManuvrMsgHdr {
       msg_id(obj->msg_id) {};
 
     /* General constructor */
-    ManuvrMsgHdr(ManuvrMsgCode, uint8_t pl_len, uint8_t flags, uint32_t i = 0);
+    M2MMsgHdr(M2MMsgCode, uint8_t pl_len, uint8_t flags, uint32_t i = 0);
 
     /* Convenience overloads */
-    ManuvrMsgHdr(ManuvrMsgCode m) : ManuvrMsgHdr(m, 0, 0, 0) {};
-    //ManuvrMsgHdr() : ManuvrMsgHdr(ManuvrMsgCode::UNDEFINED, 0, 0, 0) {};
-    ManuvrMsgHdr() : msg_code(ManuvrMsgCode::UNDEFINED), flags(0), chk_byte(0), msg_len(0), msg_id(0) {};
+    M2MMsgHdr(M2MMsgCode m) : M2MMsgHdr(m, 0, 0, 0) {};
+    //M2MMsgHdr() : M2MMsgHdr(M2MMsgCode::UNDEFINED, 0, 0, 0) {};
+    M2MMsgHdr() : msg_code(M2MMsgCode::UNDEFINED), flags(0), chk_byte(0), msg_len(0), msg_id(0) {};
 
 
-    inline bool isReply() {        return (flags & MANUVRMSGHDR_FLAG_IS_REPLY);         };
-    inline bool expectsReply() {   return (flags & MANUVRMSGHDR_FLAG_EXPECTING_REPLY);  };
+    inline bool isReply() {        return (flags & M2MMSGHDR_FLAG_IS_REPLY);         };
+    inline bool expectsReply() {   return (flags & M2MMSGHDR_FLAG_EXPECTING_REPLY);  };
     inline void isReply(bool x) {
-      if (x) flags |= MANUVRMSGHDR_FLAG_IS_REPLY;
-      else   flags &= ~MANUVRMSGHDR_FLAG_IS_REPLY;
+      if (x) flags |= M2MMSGHDR_FLAG_IS_REPLY;
+      else   flags &= ~M2MMSGHDR_FLAG_IS_REPLY;
     };
     inline void expectsReply(bool x) {
-      if (x) flags |= MANUVRMSGHDR_FLAG_EXPECTING_REPLY;
-      else   flags &= ~MANUVRMSGHDR_FLAG_EXPECTING_REPLY;
+      if (x) flags |= M2MMSGHDR_FLAG_EXPECTING_REPLY;
+      else   flags &= ~M2MMSGHDR_FLAG_EXPECTING_REPLY;
     };
 
     void wipe();
@@ -316,10 +316,10 @@ class ManuvrMsgHdr {
     int  header_length();
     inline int payload_length() {  return (msg_len - header_length());    };
     inline int total_length() {    return msg_len;  };
-    inline uint8_t len_length() {  return ((flags & MANUVRMSGHDR_FLAG_ENCODES_LENGTH_BYTES) >> 4);  };
-    inline uint8_t id_length() {   return ((flags & MANUVRMSGHDR_FLAG_ENCODES_ID_BYTES) >> 6);      };
+    inline uint8_t len_length() {  return ((flags & M2MMSGHDR_FLAG_ENCODES_LENGTH_BYTES) >> 4);  };
+    inline uint8_t id_length() {   return ((flags & M2MMSGHDR_FLAG_ENCODES_ID_BYTES) >> 6);      };
     inline uint8_t calc_hdr_chcksm() {
-      return (uint8_t) (flags + msg_len + (uint8_t)msg_code + MANUVRLINK_SERIALIZATION_VERSION);
+      return (uint8_t) (flags + msg_len + (uint8_t)msg_code + M2MLINK_SERIALIZATION_VERSION);
     };
     inline void rebuild_checksum() {   chk_byte = calc_hdr_chcksm();    };
 };
@@ -328,18 +328,18 @@ class ManuvrMsgHdr {
 /**
 * This class represents an singular message between us and a counterparty.
 */
-class ManuvrMsg {
+class M2MMsg {
   public:
-    //ManuvrMsg(KeyValuePair*);  // Construct this way for outbound KVP.
-    ManuvrMsg(ManuvrMsgHdr*, BusOpcode dir = BusOpcode::RX);
-    ManuvrMsg() {};            // Featureless constructor for static allocation.
-    ~ManuvrMsg();
+    //M2MMsg(KeyValuePair*);  // Construct this way for outbound KVP.
+    M2MMsg(M2MMsgHdr*, BusOpcode dir = BusOpcode::RX);
+    M2MMsg() {};            // Featureless constructor for static allocation.
+    ~M2MMsg();
 
     /* Accessors for the message header */
     inline void expectsReply(bool);
     inline bool expectsReply() {        return _header.expectsReply();   };
     inline bool isReply() {             return _header.isReply();        };
-    inline ManuvrMsgCode msgCode() {    return _header.msg_code;         };
+    inline M2MMsgCode msgCode() {    return _header.msg_code;         };
     inline uint32_t uniqueId() {        return _header.msg_id;           };
 
     /* Inlines for message options, flags, and status markers. */
@@ -347,9 +347,9 @@ class ManuvrMsg {
     inline BusOpcode direction() {    return _op;                                                 };
     inline uint32_t  msSinceSend() {  return wrap_accounted_delta(_ms_io_mark, (uint32_t)millis()); };
     inline bool      rxComplete() {   return (_accumulator.length() == _header.payload_length()); };
-    inline bool      wasSent() {      return _class_flag(MANUVRMSG_FLAG_TX_COMPLETE);             };
-    inline bool      wasACKd() {      return _class_flag(MANUVRMSG_FLAG_WAS_ACKD);                };
-    inline void      markACKd() {     _class_set_flag(MANUVRMSG_FLAG_WAS_ACKD);                   };
+    inline bool      wasSent() {      return _class_flag(M2MMSG_FLAG_TX_COMPLETE);             };
+    inline bool      wasACKd() {      return _class_flag(M2MMSG_FLAG_WAS_ACKD);                };
+    inline void      markACKd() {     _class_set_flag(M2MMSG_FLAG_WAS_ACKD);                   };
 
     void  markSent();
     void  wipe();                      // Put this object into a fresh state for re-use.
@@ -365,12 +365,12 @@ class ManuvrMsg {
 
     bool attemptRetry();
 
-    static ManuvrMsg* unserialize(StringBuilder*);
-    static int8_t attempt_header_parse(ManuvrMsgHdr*, StringBuilder*);
+    static M2MMsg* unserialize(StringBuilder*);
+    static int8_t attempt_header_parse(M2MMsgHdr*, StringBuilder*);
 
 
   private:
-    ManuvrMsgHdr _header;
+    M2MMsgHdr _header;
     BusOpcode _op         = BusOpcode::UNDEF;  // Differentiate between inbound and outbount messages.
     TCode     _encoding   = TCode::CBOR;     // Start out as basic as possible.
     uint8_t   _retries    = 3;    // No retries by default.
@@ -395,10 +395,10 @@ class ManuvrMsg {
 * This class represents an open comm session with a foreign device via an
 *   unspecified transport. All we care about is the byte stream.
 */
-class ManuvrLink : public BufferAccepter {
+class M2MLink : public BufferAccepter {
   public:
-    ManuvrLink(const ManuvrLinkOpts* opts);
-    virtual ~ManuvrLink();
+    M2MLink(const M2MLinkOpts* opts);
+    virtual ~M2MLink();
 
     /* Implementation of BufferAccepter. Accepts data from a transport. */
     int8_t provideBuffer(StringBuilder*);
@@ -410,12 +410,12 @@ class ManuvrLink : public BufferAccepter {
     int8_t writeRemoteLog(StringBuilder*, bool need_reply = false);
     bool   linkIdle();
     int    send(KeyValuePair*, bool need_reply = false);
-    inline bool     isConnected() {    return _flags.value(MANUVRLINK_FLAG_ESTABLISHED);   };
+    inline bool     isConnected() {    return _flags.value(M2MLINK_FLAG_ESTABLISHED);   };
 
-    inline bool     requireAuth() {        return _flags.value(MANUVRLINK_FLAG_AUTH_REQUIRED);   };
-    inline void     requireAuth(bool x) {  _flags.set(MANUVRLINK_FLAG_AUTH_REQUIRED, x);         };
-    inline bool     syncCast() {        return _flags.value(MANUVRLINK_FLAG_SYNC_CASTING);   };
-    inline void     syncCast(bool x) {  _flags.set(MANUVRLINK_FLAG_SYNC_CASTING, x);         };
+    inline bool     requireAuth() {        return _flags.value(M2MLINK_FLAG_AUTH_REQUIRED);   };
+    inline void     requireAuth(bool x) {  _flags.set(M2MLINK_FLAG_AUTH_REQUIRED, x);         };
+    inline bool     syncCast() {        return _flags.value(M2MLINK_FLAG_SYNC_CASTING);   };
+    inline void     syncCast(bool x) {  _flags.set(M2MLINK_FLAG_SYNC_CASTING, x);         };
 
     //int8_t ping();
 
@@ -425,9 +425,9 @@ class ManuvrLink : public BufferAccepter {
     void printFSM(StringBuilder*);
 
     /* Inline accessors. */
-    inline ManuvrLinkState getState() {               return _fsm_pos;      };
-    inline void setCallback(ManuvrLinkCB cb) {        _lnk_callback = cb;   };
-    inline void setCallback(ManuvrMsgCB cb) {         _msg_callback = cb;   };
+    inline M2MLinkState getState() {               return _fsm_pos;      };
+    inline void setCallback(M2MLinkCB cb) {        _lnk_callback = cb;   };
+    inline void setCallback(M2MMsgCB cb) {         _msg_callback = cb;   };
     inline void setOutputTarget(BufferAccepter* o) {  _output_target = o;   };
     inline uint32_t  linkTag() {                      return _session_tag;  };
     inline uint16_t  replyTimeouts() {                return _unackd_sends;  };
@@ -441,22 +441,22 @@ class ManuvrLink : public BufferAccepter {
     int8_t console_handler(StringBuilder* text_return, StringBuilder* args);
 
     /* Static support fxns for enums */
-    static const char* sessionStateStr(const ManuvrLinkState);
-    static const char* manuvMsgCodeStr(const ManuvrMsgCode);
-    static const bool  msgCodeValid(const ManuvrMsgCode);
+    static const char* sessionStateStr(const M2MLinkState);
+    static const char* manuvMsgCodeStr(const M2MMsgCode);
+    static const bool  msgCodeValid(const M2MMsgCode);
 
 
   private:
-    ManuvrLinkOpts    _opts;    // These are the application-provided options for the link.
-    //ManuvrMsg                 _msg_pool[4];
-    //ElementPool<ManuvrMsg*>   _preallocd(4, &_msg_pool);
-    PriorityQueue<ManuvrMsg*> _outbound_messages;   // Messages that are bound for the counterparty.
-    PriorityQueue<ManuvrMsg*> _inbound_messages;    // Messages that came from the counterparty.
+    M2MLinkOpts    _opts;    // These are the application-provided options for the link.
+    //M2MMsg                 _msg_pool[4];
+    //ElementPool<M2MMsg*>   _preallocd(4, &_msg_pool);
+    PriorityQueue<M2MMsg*> _outbound_messages;   // Messages that are bound for the counterparty.
+    PriorityQueue<M2MMsg*> _inbound_messages;    // Messages that came from the counterparty.
     FlagContainer32   _flags;
-    ManuvrLinkState   _fsm_waypoints[MANUVRLINK_FSM_WAYPOINT_DEPTH] = {ManuvrLinkState::UNINIT, };
+    M2MLinkState   _fsm_waypoints[M2MLINK_FSM_WAYPOINT_DEPTH] = {M2MLinkState::UNINIT, };
     uint32_t          _fsm_lockout_ms = 0;        // Used to enforce a delay between state transitions.
-    ManuvrLinkState   _fsm_pos        = ManuvrLinkState::UNINIT;  // TODO: Optimize this away.
-    ManuvrLinkState   _fsm_pos_prior  = ManuvrLinkState::UNINIT;  // TODO: Remove? Never used in logic.
+    M2MLinkState   _fsm_pos        = M2MLinkState::UNINIT;  // TODO: Optimize this away.
+    M2MLinkState   _fsm_pos_prior  = M2MLinkState::UNINIT;  // TODO: Remove? Never used in logic.
     uint8_t           _verbosity      = 0;        // By default, this class won't generate logs.
     uint8_t           _seq_parse_errs = 0;
     uint8_t           _seq_ack_fails  = 0;
@@ -465,17 +465,17 @@ class ManuvrLink : public BufferAccepter {
     uint32_t          _ms_last_rec    = 0;        // At what time did the last message come in?
     uint16_t          _sync_losses    = 0;        // How many times this session have we lost sync?
     uint16_t          _unackd_sends   = 0;        // How many messages that needed an ACK failed to get one?
-    ManuvrMsg*        _working        = nullptr;  // If we are in the middle of receiving a message,
+    M2MMsg*        _working        = nullptr;  // If we are in the middle of receiving a message,
     Identity*         _id_loc         = nullptr;
     Identity*         _id_remote      = nullptr;
     BufferAccepter*   _output_target  = nullptr;  // A pointer to the transport for outbound bytes.
-    ManuvrLinkCB      _lnk_callback   = nullptr;  // The application-provided callback for state changes.
-    ManuvrMsgCB       _msg_callback   = nullptr;  // The application-provided callback for incoming messages.
+    M2MLinkCB      _lnk_callback   = nullptr;  // The application-provided callback for state changes.
+    M2MMsgCB       _msg_callback   = nullptr;  // The application-provided callback for incoming messages.
     StringBuilder     _inbound_buf;
     StringBuilder     _remote_log;
 
     /* Message queue management */
-    int8_t _send_msg(ManuvrMsg*);
+    int8_t _send_msg(M2MMsg*);
     int    _purge_inbound();
     int    _purge_outbound();
     int8_t _churn_inbound();
@@ -483,12 +483,12 @@ class ManuvrLink : public BufferAccepter {
     int8_t _clear_waiting_send_by_id(uint32_t);
 
     /* Internal handlers for receiving messages confined to this class. */
-    int8_t   _handle_msg_log(ManuvrMsg*);
+    int8_t   _handle_msg_log(M2MMsg*);
 
     /* Buffers, parsing, and scattered low-level functions */
     void   _reset_class();
     int8_t _relay_to_output_target(StringBuilder*);
-    int8_t _invoke_msg_callback(ManuvrMsg*);
+    int8_t _invoke_msg_callback(M2MMsg*);
     void   _invoke_state_callback();
     int8_t _process_input_buffer();
     int8_t _process_for_sync();
@@ -501,19 +501,19 @@ class ManuvrLink : public BufferAccepter {
 
     /* State machine functions */
     int8_t   _poll_fsm();
-    int8_t   _set_fsm_position(ManuvrLinkState);
+    int8_t   _set_fsm_position(M2MLinkState);
     int8_t   _set_fsm_route(int count, ...);
     int8_t   _append_fsm_route(int count, ...);
-    int8_t   _prepend_fsm_state(ManuvrLinkState);
+    int8_t   _prepend_fsm_state(M2MLinkState);
     int8_t   _advance_state_machine();
     bool     _fsm_is_waiting();
     int8_t   _fsm_insert_sync_states();
-    inline ManuvrLinkState _fsm_pos_next() {   return _fsm_waypoints[0];   };
-    inline bool _fsm_is_stable() {   return (ManuvrLinkState::UNINIT == _fsm_waypoints[0]);   };
+    inline M2MLinkState _fsm_pos_next() {   return _fsm_waypoints[0];   };
+    inline bool _fsm_is_stable() {   return (M2MLinkState::UNINIT == _fsm_waypoints[0]);   };
 
     /* Message lifecycle */
-    ManuvrMsg* _allocate_manuvrmsg(ManuvrMsgHdr*, BusOpcode);
-    void       _reclaim_manuvrmsg(ManuvrMsg*);
+    M2MMsg* _allocate_manuvrmsg(M2MMsgHdr*, BusOpcode);
+    void       _reclaim_manuvrmsg(M2MMsg*);
 };
 
 #endif   // __MANUVR_XENOSESSION_H

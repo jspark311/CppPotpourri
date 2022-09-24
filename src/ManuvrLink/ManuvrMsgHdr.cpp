@@ -1,5 +1,5 @@
 /*
-File:   ManuvrMsgHeader.cpp
+File:   M2MMsgHeader.cpp
 Author: J. Ian Lindsay
 Date:   2021.10.11
 
@@ -18,7 +18,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#include "ManuvrLink.h"
+#include "M2MLink.h"
 #include "../BusQueue.h"
 
 #if defined(CONFIG_C3P_M2M_SUPPORT)
@@ -32,15 +32,15 @@ limitations under the License.
 * Constructors/destructors, class initialization functions and so-forth...
 *******************************************************************************/
 
-ManuvrMsgHdr::ManuvrMsgHdr(ManuvrMsgCode m, uint8_t pl_len, uint8_t f, uint32_t i) :
-    msg_code(m), flags(f & ~(MANUVRMSGHDR_SETTABLE_FLAG_BITS)),
+M2MMsgHdr::M2MMsgHdr(M2MMsgCode m, uint8_t pl_len, uint8_t f, uint32_t i) :
+    msg_code(m), flags(f & ~(M2MMSGHDR_SETTABLE_FLAG_BITS)),
     chk_byte(0),
     msg_len(0),
     msg_id(i & 0x00FFFFFF)
 {
-  if ((f & MANUVRMSGHDR_FLAG_EXPECTING_REPLY) & (0 == i)) {
+  if ((f & M2MMSGHDR_FLAG_EXPECTING_REPLY) & (0 == i)) {
     // Assign an ID automatically, if needed.
-    if (ManuvrMsgCode::SYNC_KEEPALIVE != m) {
+    if (M2MMsgCode::SYNC_KEEPALIVE != m) {
       // SYNC is allowed to have a reply with no ID.
       msg_id = (0x00FFFFFF & randomUInt32());
     }
@@ -50,22 +50,22 @@ ManuvrMsgHdr::ManuvrMsgHdr(ManuvrMsgCode m, uint8_t pl_len, uint8_t f, uint32_t 
   if (msg_id > 0x00000000) calcd_id_sz++;
   if (msg_id > 0x000000FF) calcd_id_sz++;
   if (msg_id > 0x0000FFFF) calcd_id_sz++;
-  flags = ((flags & ~MANUVRMSGHDR_FLAG_ENCODES_ID_BYTES) | (calcd_id_sz << 6));
+  flags = ((flags & ~M2MMSGHDR_FLAG_ENCODES_ID_BYTES) | (calcd_id_sz << 6));
 
   uint8_t calcd_len_sz = 1;
-  uint32_t needed_total_sz = calcd_id_sz + pl_len + MANUVRMSGHDR_MINIMUM_HEADER_SIZE;
+  uint32_t needed_total_sz = calcd_id_sz + pl_len + M2MMSGHDR_MINIMUM_HEADER_SIZE;
   if (needed_total_sz > 0x000000FF) calcd_len_sz++;
   if (needed_total_sz > 0x0000FFFE) calcd_len_sz++;
   if (needed_total_sz <= 0x00FFFFFD) {  // Anything larger than this is invalid.
-    flags = ((flags & ~MANUVRMSGHDR_FLAG_ENCODES_LENGTH_BYTES) | (calcd_len_sz << 4));
+    flags = ((flags & ~M2MMSGHDR_FLAG_ENCODES_LENGTH_BYTES) | (calcd_len_sz << 4));
     msg_len = needed_total_sz;
-    chk_byte = (uint8_t) (flags + msg_len + (uint8_t)msg_code + MANUVRLINK_SERIALIZATION_VERSION);
+    chk_byte = (uint8_t) (flags + msg_len + (uint8_t)msg_code + M2MLINK_SERIALIZATION_VERSION);
   }
 }
 
 
-void ManuvrMsgHdr::wipe() {
-    msg_code = ManuvrMsgCode::UNDEFINED;
+void M2MMsgHdr::wipe() {
+    msg_code = M2MMsgCode::UNDEFINED;
     flags    = 0;
     chk_byte = 0;
     msg_len  = 0;
@@ -77,13 +77,13 @@ void ManuvrMsgHdr::wipe() {
 * Accessors for lengths                                                        *
 *******************************************************************************/
 
-int ManuvrMsgHdr::header_length() {
+int M2MMsgHdr::header_length() {
   int ret = 0;
-  uint8_t len_bytes = (flags & MANUVRMSGHDR_FLAG_ENCODES_LENGTH_BYTES) >> 4;
-  uint8_t id_bytes  = (flags & MANUVRMSGHDR_FLAG_ENCODES_ID_BYTES) >> 6;
+  uint8_t len_bytes = (flags & M2MMSGHDR_FLAG_ENCODES_LENGTH_BYTES) >> 4;
+  uint8_t id_bytes  = (flags & M2MMSGHDR_FLAG_ENCODES_ID_BYTES) >> 6;
   if (len_bytes) {
     // Byte cost for header:
-    // ManuvrMsgCode  1
+    // M2MMsgCode  1
     // Flags          1
     // Length field   (1, 3)   Length is a required field.
     // ID field       (0, 3)
@@ -94,14 +94,14 @@ int ManuvrMsgHdr::header_length() {
 }
 
 
-bool ManuvrMsgHdr::set_payload_length(uint32_t pl_len) {
+bool M2MMsgHdr::set_payload_length(uint32_t pl_len) {
   bool ret = false;
   uint8_t calcd_len_sz = 1;
-  uint32_t needed_total_sz = id_length() + pl_len + MANUVRMSGHDR_MINIMUM_HEADER_SIZE;
+  uint32_t needed_total_sz = id_length() + pl_len + M2MMSGHDR_MINIMUM_HEADER_SIZE;
   if (needed_total_sz > 0x000000FF) calcd_len_sz++;
   if (needed_total_sz > 0x0000FFFE) calcd_len_sz++;
   if (needed_total_sz <= 0x00FFFFFD) {  // Anything larger than this is invalid.
-    flags = ((flags & ~MANUVRMSGHDR_FLAG_ENCODES_LENGTH_BYTES) | (calcd_len_sz << 4));
+    flags = ((flags & ~M2MMSGHDR_FLAG_ENCODES_LENGTH_BYTES) | (calcd_len_sz << 4));
     msg_len = needed_total_sz;
     chk_byte = calc_hdr_chcksm();
     ret = true;
@@ -114,7 +114,7 @@ bool ManuvrMsgHdr::set_payload_length(uint32_t pl_len) {
 * Parser, Packer, and validity checking                                        *
 *******************************************************************************/
 
-bool ManuvrMsgHdr::serialize(StringBuilder* buf) {
+bool M2MMsgHdr::serialize(StringBuilder* buf) {
   bool ret = isValid();
   if (ret) {
     const uint8_t len_l = len_length();
@@ -141,11 +141,11 @@ bool ManuvrMsgHdr::serialize(StringBuilder* buf) {
 }
 
 
-bool ManuvrMsgHdr::isValid() {
+bool M2MMsgHdr::isValid() {
   bool ret = false;
-  if (flags == (flags & ~MANUVRMSGHDR_FLAG_RESERVED_MASK)) {   // Reserved flag bits are 0?
-    if (MANUVRMSGHDR_MINIMUM_HEADER_SIZE <= header_length()) { // 4 bytes is the minimum header length.
-      if (ManuvrLink::msgCodeValid(msg_code)) {           // Valid message code?
+  if (flags == (flags & ~M2MMSGHDR_FLAG_RESERVED_MASK)) {   // Reserved flag bits are 0?
+    if (M2MMSGHDR_MINIMUM_HEADER_SIZE <= header_length()) { // 4 bytes is the minimum header length.
+      if (M2MLink::msgCodeValid(msg_code)) {           // Valid message code?
         uint8_t calcd_id_sz  = 0;
         uint8_t calcd_len_sz = 0;
         if (msg_id > 0x00000000) calcd_id_sz++;
@@ -159,10 +159,10 @@ bool ManuvrMsgHdr::isValid() {
 
         if (calcd_id_sz == id_length()) {                 // Is the ID field properly sized?
           if (calcd_len_sz == len_length()) {           // Is the length field properly sized?
-            if (msg_len >= MANUVRMSGHDR_MINIMUM_HEADER_SIZE) {   // If the total length is legal...
+            if (msg_len >= M2MMSGHDR_MINIMUM_HEADER_SIZE) {   // If the total length is legal...
               if (chk_byte == calc_hdr_chcksm()) {       // Does the checksum match?
                 // Reply logic needs an ID if the message isn't a sync frame.
-                if (ManuvrMsgCode::SYNC_KEEPALIVE != msg_code) {
+                if (M2MMsgCode::SYNC_KEEPALIVE != msg_code) {
                   ret = ((isReply() | expectsReply()) == (0 < id_length()));
                 }
                 else {   ret = true;   }
@@ -177,11 +177,11 @@ bool ManuvrMsgHdr::isValid() {
 }
 
 
-bool ManuvrMsgHdr::isSync() {
+bool M2MMsgHdr::isSync() {
   bool ret = false;
-  if (ManuvrMsgCode::SYNC_KEEPALIVE == msg_code) {
-    if ((flags & MANUVRMSGHDR_FLAG_SYNC_MASK) == 0x10) {
-      if (msg_len == MANUVRMSGHDR_MINIMUM_HEADER_SIZE) {
+  if (M2MMsgCode::SYNC_KEEPALIVE == msg_code) {
+    if ((flags & M2MMSGHDR_FLAG_SYNC_MASK) == 0x10) {
+      if (msg_len == M2MMSGHDR_MINIMUM_HEADER_SIZE) {
         ret = (chk_byte == calc_hdr_chcksm());
       }
     }

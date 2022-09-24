@@ -13,7 +13,7 @@ Date:   2022.06.25
 *******************************************************************************/
 #if defined(CONFIG_C3P_M2M_SUPPORT)
 
-GfxUIMLink::GfxUIMLink(ManuvrLink* l, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f)
+GfxUIMLink::GfxUIMLink(M2MLink* l, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f)
   : GfxUIElement(x, y, w, h, (f | GFXUI_FLAG_ALWAYS_REDRAW)), _link(l),
   _tab_bar(_internal_PosX(), _internal_PosY(), _internal_Width(), _internal_Height(), 0xCC99CC),
   _content_info(0, 0, 0, 0),
@@ -71,7 +71,7 @@ int GfxUIMLink::_render(UIGfxWrapper* ui_gfx) {
       if (_btn_ses_hangup.pressed()) {
         _link->hangup();
       }
-      //_tmp_sbldr.concatf(ManuvrLink::sessionStateStr(_link->getState()));
+      //_tmp_sbldr.concatf(M2MLink::sessionStateStr(_link->getState()));
       break;
     default:
       break;

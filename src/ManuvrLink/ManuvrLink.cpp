@@ -1,5 +1,5 @@
 /*
-File:   ManuvrLink.cpp
+File:   M2MLink.cpp
 Author: J. Ian Lindsay
 Date:   2021.10.08
 
@@ -18,7 +18,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#include "ManuvrLink.h"
+#include "M2MLink.h"
 #include "../BusQueue.h"
 
 #if defined(CONFIG_C3P_M2M_SUPPORT)
@@ -27,9 +27,9 @@ limitations under the License.
 * Definitions only needed inside this translation unit.
 *******************************************************************************/
 // Priority levels for various kinds of messages.
-#define MANUVRLINK_PRIORITY_WAITING_FOR_ACK  5   // These will not resend until and unless they timeout.
-#define MANUVRLINK_PRIORITY_APP              10  // Application messages.
-#define MANUVRLINK_PRIORITY_INTERNAL         20  // Classes own messages have highest priority.
+#define M2MLINK_PRIORITY_WAITING_FOR_ACK  5   // These will not resend until and unless they timeout.
+#define M2MLINK_PRIORITY_APP              10  // Application messages.
+#define M2MLINK_PRIORITY_INTERNAL         20  // Classes own messages have highest priority.
 
 
 /*******************************************************************************
@@ -43,34 +43,34 @@ limitations under the License.
 * Static members and initializers should be located here.
 *******************************************************************************/
 
-const char* ManuvrLink::sessionStateStr(const ManuvrLinkState CODE) {
+const char* M2MLink::sessionStateStr(const M2MLinkState CODE) {
   switch (CODE) {
-    case ManuvrLinkState::UNINIT:           return "UNINIT";
-    case ManuvrLinkState::PENDING_SETUP:    return "PENDING_SETUP";
-    case ManuvrLinkState::SYNC_RESYNC:      return "SYNC_RESYNC";
-    case ManuvrLinkState::SYNC_TENTATIVE:   return "SYNC_TENTATIVE";
-    case ManuvrLinkState::PENDING_AUTH:     return "PENDING_AUTH";
-    case ManuvrLinkState::LIVE:             return "LIVE";
-    case ManuvrLinkState::PENDING_HANGUP:   return "PENDING_HANGUP";
-    case ManuvrLinkState::HUNGUP:           return "HUNGUP";
+    case M2MLinkState::UNINIT:           return "UNINIT";
+    case M2MLinkState::PENDING_SETUP:    return "PENDING_SETUP";
+    case M2MLinkState::SYNC_RESYNC:      return "SYNC_RESYNC";
+    case M2MLinkState::SYNC_TENTATIVE:   return "SYNC_TENTATIVE";
+    case M2MLinkState::PENDING_AUTH:     return "PENDING_AUTH";
+    case M2MLinkState::LIVE:             return "LIVE";
+    case M2MLinkState::PENDING_HANGUP:   return "PENDING_HANGUP";
+    case M2MLinkState::HUNGUP:           return "HUNGUP";
     default:                                return "<UNKNOWN>";
   }
 }
 
-const char* ManuvrLink::manuvMsgCodeStr(const ManuvrMsgCode CODE) {
+const char* M2MLink::manuvMsgCodeStr(const M2MMsgCode CODE) {
   switch (CODE) {
-    case ManuvrMsgCode::UNDEFINED:          return "UNDEFINED";
-    case ManuvrMsgCode::SYNC_KEEPALIVE:     return "SYNC_KEEPALIVE";
-    case ManuvrMsgCode::CONNECT:            return "CONNECT";
-    case ManuvrMsgCode::PROTOCOL:           return "PROTOCOL";
-    case ManuvrMsgCode::AUTH_CHALLENGE:     return "AUTH_CHALLENGE";
-    case ManuvrMsgCode::HANGUP:             return "HANGUP";
-    case ManuvrMsgCode::DESCRIBE:           return "DESCRIBE";
-    case ManuvrMsgCode::MSG_FORWARD:        return "MSG_FORWARD";
-    case ManuvrMsgCode::LOG:                return "LOG";
-    case ManuvrMsgCode::WHO:                return "WHO";
-    case ManuvrMsgCode::DHT_FXN:            return "DHT_FXN";
-    case ManuvrMsgCode::APPLICATION:        return "APPLICATION";
+    case M2MMsgCode::UNDEFINED:          return "UNDEFINED";
+    case M2MMsgCode::SYNC_KEEPALIVE:     return "SYNC_KEEPALIVE";
+    case M2MMsgCode::CONNECT:            return "CONNECT";
+    case M2MMsgCode::PROTOCOL:           return "PROTOCOL";
+    case M2MMsgCode::AUTH_CHALLENGE:     return "AUTH_CHALLENGE";
+    case M2MMsgCode::HANGUP:             return "HANGUP";
+    case M2MMsgCode::DESCRIBE:           return "DESCRIBE";
+    case M2MMsgCode::MSG_FORWARD:        return "MSG_FORWARD";
+    case M2MMsgCode::LOG:                return "LOG";
+    case M2MMsgCode::WHO:                return "WHO";
+    case M2MMsgCode::DHT_FXN:            return "DHT_FXN";
+    case M2MMsgCode::APPLICATION:        return "APPLICATION";
     default:                                return "<UNKNOWN>";
   }
 }
@@ -78,22 +78,22 @@ const char* ManuvrLink::manuvMsgCodeStr(const ManuvrMsgCode CODE) {
 /**
 * Is the given message code valid? Used to do safe enum conversion.
 *
-* @param The ManuvrMsgCode code to test.
+* @param The M2MMsgCode code to test.
 * @return true if so. False otherwise.
 */
-const bool ManuvrLink::msgCodeValid(const ManuvrMsgCode CODE) {
+const bool M2MLink::msgCodeValid(const M2MMsgCode CODE) {
   switch (CODE) {
-    case ManuvrMsgCode::SYNC_KEEPALIVE:
-    case ManuvrMsgCode::CONNECT:
-    case ManuvrMsgCode::PROTOCOL:
-    case ManuvrMsgCode::AUTH_CHALLENGE:
-    case ManuvrMsgCode::HANGUP:
-    case ManuvrMsgCode::DESCRIBE:
-    case ManuvrMsgCode::MSG_FORWARD:
-    case ManuvrMsgCode::LOG:
-    case ManuvrMsgCode::WHO:
-    case ManuvrMsgCode::DHT_FXN:
-    case ManuvrMsgCode::APPLICATION:
+    case M2MMsgCode::SYNC_KEEPALIVE:
+    case M2MMsgCode::CONNECT:
+    case M2MMsgCode::PROTOCOL:
+    case M2MMsgCode::AUTH_CHALLENGE:
+    case M2MMsgCode::HANGUP:
+    case M2MMsgCode::DESCRIBE:
+    case M2MMsgCode::MSG_FORWARD:
+    case M2MMsgCode::LOG:
+    case M2MMsgCode::WHO:
+    case M2MMsgCode::DHT_FXN:
+    case M2MMsgCode::APPLICATION:
       return true;
     default:
       return false;
@@ -106,16 +106,16 @@ const bool ManuvrLink::msgCodeValid(const ManuvrMsgCode CODE) {
 * @param The FSM code to test.
 * @return true if so. False otherwise.
 */
-static const bool _link_fsm_code_valid(const ManuvrLinkState CODE) {
+static const bool _link_fsm_code_valid(const M2MLinkState CODE) {
   switch (CODE) {
-    case ManuvrLinkState::UNINIT:
-    case ManuvrLinkState::PENDING_SETUP:
-    case ManuvrLinkState::SYNC_RESYNC:
-    case ManuvrLinkState::SYNC_TENTATIVE:
-    case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::LIVE:
-    case ManuvrLinkState::PENDING_HANGUP:
-    case ManuvrLinkState::HUNGUP:
+    case M2MLinkState::UNINIT:
+    case M2MLinkState::PENDING_SETUP:
+    case M2MLinkState::SYNC_RESYNC:
+    case M2MLinkState::SYNC_TENTATIVE:
+    case M2MLinkState::PENDING_AUTH:
+    case M2MLinkState::LIVE:
+    case M2MLinkState::PENDING_HANGUP:
+    case M2MLinkState::HUNGUP:
       return true;
     default:
       return false;
@@ -140,10 +140,10 @@ static int _contains_sync_pattern(StringBuilder* dat_in) {
     const uint8_t b1 = *(buf + i + 1);
     const uint8_t b2 = *(buf + i + 2);
     const uint8_t b3 = *(buf + i + 3);
-    const uint8_t EXPECTED_4TH_SYNC_BYTE = (b0 + b1 + b2 + MANUVRLINK_SERIALIZATION_VERSION);
-    if (b0 == (uint8_t) ManuvrMsgCode::SYNC_KEEPALIVE) {
-      if ((b1 & MANUVRMSGHDR_FLAG_SYNC_MASK) == 0x10) {
-        if (b2 == MANUVRMSGHDR_MINIMUM_HEADER_SIZE) {
+    const uint8_t EXPECTED_4TH_SYNC_BYTE = (b0 + b1 + b2 + M2MLINK_SERIALIZATION_VERSION);
+    if (b0 == (uint8_t) M2MMsgCode::SYNC_KEEPALIVE) {
+      if ((b1 & M2MMSGHDR_FLAG_SYNC_MASK) == 0x10) {
+        if (b2 == M2MMSGHDR_MINIMUM_HEADER_SIZE) {
           if (b3 == EXPECTED_4TH_SYNC_BYTE) {
             return i;
           }
@@ -169,7 +169,7 @@ static int _contains_sync_pattern(StringBuilder* dat_in) {
 /**
 * Constructor
 */
-ManuvrLink::ManuvrLink(const ManuvrLinkOpts* opts) : _opts(opts), _flags(opts->default_flags) {
+M2MLink::M2MLink(const M2MLinkOpts* opts) : _opts(opts), _flags(opts->default_flags) {
 }
 
 
@@ -178,7 +178,7 @@ ManuvrLink::ManuvrLink(const ManuvrLinkOpts* opts) : _opts(opts), _flags(opts->d
 *
 * Destroy any queued messages.
 */
-ManuvrLink::~ManuvrLink() {
+M2MLink::~M2MLink() {
   _purge_inbound();
   _purge_outbound();
   if (nullptr != _working) {
@@ -203,16 +203,16 @@ ManuvrLink::~ManuvrLink() {
 * @param buf Incoming data from the transport.
 * @return -1 to reject buffer, 0 to accept without claiming, 1 to accept with claim.
 */
-int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
+int8_t M2MLink::provideBuffer(StringBuilder* buf) {
   int8_t ret = 1;
   _ms_last_rec = millis();
 
   switch (_fsm_pos) {   // Consider the session state.
-    case ManuvrLinkState::SYNC_RESYNC:
-    case ManuvrLinkState::SYNC_TENTATIVE:  // We have exchanged sync packets with the counterparty.
-    case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::LIVE:            // The nominal case. Session is in-sync. Do nothing.
-    case ManuvrLinkState::PENDING_HANGUP:
+    case M2MLinkState::SYNC_RESYNC:
+    case M2MLinkState::SYNC_TENTATIVE:  // We have exchanged sync packets with the counterparty.
+    case M2MLinkState::PENDING_AUTH:
+    case M2MLinkState::LIVE:            // The nominal case. Session is in-sync. Do nothing.
+    case M2MLinkState::PENDING_HANGUP:
       if (_verbosity >= LOG_LEV_DEBUG) {
         StringBuilder tmp_log;
         tmp_log.concatf("\n\n__________Accepted (%u)\t", buf->length());
@@ -243,17 +243,17 @@ int8_t ManuvrLink::provideBuffer(StringBuilder* buf) {
 *         0 on no action
 *        -1 on error
 */
-int8_t ManuvrLink::poll(StringBuilder* log_ret) {
+int8_t M2MLink::poll(StringBuilder* log_ret) {
   switch (_fsm_pos) {
-    case ManuvrLinkState::PENDING_SETUP:
-    case ManuvrLinkState::HUNGUP:
+    case M2MLinkState::PENDING_SETUP:
+    case M2MLinkState::HUNGUP:
       break;
     default:
       _process_input_buffer();
       _churn_inbound();
       _churn_outbound();
       // If we need to send an obligatory sync packet, do so.
-      if (_flags.value(MANUVRLINK_FLAG_SYNC_CASTING | MANUVRLINK_FLAG_SEND_KA)) {
+      if (_flags.value(M2MLINK_FLAG_SYNC_CASTING | M2MLINK_FLAG_SEND_KA)) {
         if (wrap_accounted_delta(_ms_last_send, (uint32_t) millis()) > _opts.ms_keepalive) {
           _send_sync_packet(true);
         }
@@ -278,23 +278,23 @@ int8_t ManuvrLink::poll(StringBuilder* log_ret) {
 *        -1 if the link is not in such a state as to support a HANGUP.
 *        -2 if a hangup is already in progress.
 */
-int8_t ManuvrLink::hangup(bool graceful) {
+int8_t M2MLink::hangup(bool graceful) {
   int8_t ret = -1;
   bool forced_hangup = false;
   switch (_fsm_pos) {
-    case ManuvrLinkState::SYNC_RESYNC:
-    case ManuvrLinkState::SYNC_TENTATIVE:
-    case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::LIVE:
+    case M2MLinkState::SYNC_RESYNC:
+    case M2MLinkState::SYNC_TENTATIVE:
+    case M2MLinkState::PENDING_AUTH:
+    case M2MLinkState::LIVE:
       forced_hangup = !graceful;
       if (graceful) {
-        ret = _append_fsm_route(2, ManuvrLinkState::PENDING_HANGUP, ManuvrLinkState::HUNGUP);
+        ret = _append_fsm_route(2, M2MLinkState::PENDING_HANGUP, M2MLinkState::HUNGUP);
       }
       break;
 
     // We might be seeing a repeat call from the application.
-    case ManuvrLinkState::PENDING_HANGUP:
-    case ManuvrLinkState::HUNGUP:
+    case M2MLinkState::PENDING_HANGUP:
+    case M2MLinkState::HUNGUP:
       forced_hangup = !graceful;
       if (graceful) {
         ret = -2;
@@ -310,7 +310,7 @@ int8_t ManuvrLink::hangup(bool graceful) {
     //   with the PENDING_HANGUP state. Obliterate the existing dialogs.
     _purge_inbound();
     _purge_outbound();
-    ret = _set_fsm_route(1, ManuvrLinkState::HUNGUP);
+    ret = _set_fsm_route(1, M2MLinkState::HUNGUP);
   }
   return ret;
 }
@@ -326,12 +326,12 @@ int8_t ManuvrLink::hangup(bool graceful) {
 *
 * @return 0 on success, or -1 on improper state.
 */
-int8_t ManuvrLink::reset() {
+int8_t M2MLink::reset() {
   int8_t ret = -1;
-  if (ManuvrLinkState::HUNGUP == _fsm_pos) {
+  if (M2MLinkState::HUNGUP == _fsm_pos) {
     // Clearing this flag will allow the polling loop to start re-using the
     //   class instance for another connection.
-    _flags.clear(MANUVRLINK_FLAG_ON_HOOK);
+    _flags.clear(M2MLINK_FLAG_ON_HOOK);
     ret = 0;
   }
   return ret;
@@ -349,17 +349,17 @@ int8_t ManuvrLink::reset() {
 * @return 0 on successful send.
 *        -1 if the log is empty.
 *        -2 if the link is not established.
-*        -3 on failure to allocate ManuvrMsg.
+*        -3 on failure to allocate M2MMsg.
 *        -4 on failure to append logs to message.
 *        -5 on failure to send completed message.
 */
-int8_t ManuvrLink::writeRemoteLog(StringBuilder* outbound_log, bool need_reply) {
+int8_t M2MLink::writeRemoteLog(StringBuilder* outbound_log, bool need_reply) {
   int8_t ret = -1;
   if (!outbound_log->isEmpty()) {
-    if (_flags.value(MANUVRLINK_FLAG_ESTABLISHED)) {
+    if (_flags.value(M2MLINK_FLAG_ESTABLISHED)) {
       ret--;
-      ManuvrMsgHdr hdr(ManuvrMsgCode::LOG, 0, (need_reply ? MANUVRMSGHDR_FLAG_EXPECTING_REPLY : 0));
-      ManuvrMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
+      M2MMsgHdr hdr(M2MMsgCode::LOG, 0, (need_reply ? M2MMSGHDR_FLAG_EXPECTING_REPLY : 0));
+      M2MMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
       ret--;
       if (nullptr != msg) {
         bool gc_message = true;  // Trash the message if sending doesn't work.
@@ -390,8 +390,8 @@ int8_t ManuvrLink::writeRemoteLog(StringBuilder* outbound_log, bool need_reply) 
 *
 * @return true if so. False otherwise.
 */
-bool ManuvrLink::linkIdle() {
-  if (ManuvrLinkState::LIVE == _fsm_pos) {
+bool M2MLink::linkIdle() {
+  if (M2MLinkState::LIVE == _fsm_pos) {
     if (0 == _outbound_messages.size()) {
       if (0 == _inbound_messages.size()) {
         if (nullptr == _working) {
@@ -414,19 +414,19 @@ bool ManuvrLink::linkIdle() {
 *
 * @param   StringBuilder* The buffer into which this fxn should write its output.
 */
-void ManuvrLink::printDebug(StringBuilder* output) {
+void M2MLink::printDebug(StringBuilder* output) {
   uint32_t now = millis();
-  StringBuilder temp("ManuvrLink ");
+  StringBuilder temp("M2MLink ");
   temp.concatf("(tag: 0x%08x)", _session_tag);
   StringBuilder::styleHeader2(output, (const char*) temp.string());
   output->concatf("\tConnected:     %c\n", isConnected() ? 'y':'n');
-  output->concatf("\tSync incoming: %c\n", _flags.value(MANUVRLINK_FLAG_SYNC_INCOMING) ? 'y':'n');
-  output->concatf("\tSync casting:  %c\n", _flags.value(MANUVRLINK_FLAG_SYNC_CASTING) ? 'y':'n');
-  output->concatf("\tSync replies:  %c\n", _flags.value(MANUVRLINK_FLAG_SYNC_REPLY_RXD) ? 'y':'n');
-  output->concatf("\tAllow LOG:     %c\n", _flags.value(MANUVRLINK_FLAG_ALLOW_LOG_WRITE) ? 'y':'n');
+  output->concatf("\tSync incoming: %c\n", _flags.value(M2MLINK_FLAG_SYNC_INCOMING) ? 'y':'n');
+  output->concatf("\tSync casting:  %c\n", _flags.value(M2MLINK_FLAG_SYNC_CASTING) ? 'y':'n');
+  output->concatf("\tSync replies:  %c\n", _flags.value(M2MLINK_FLAG_SYNC_REPLY_RXD) ? 'y':'n');
+  output->concatf("\tAllow LOG:     %c\n", _flags.value(M2MLINK_FLAG_ALLOW_LOG_WRITE) ? 'y':'n');
 
   if (requireAuth()) {
-    output->concatf("\tAuth'd:        %c\n", _flags.value(MANUVRLINK_FLAG_AUTHD) ? 'y':'n');
+    output->concatf("\tAuth'd:        %c\n", _flags.value(M2MLINK_FLAG_AUTHD) ? 'y':'n');
   }
   output->concatf("\tMTU:           %u\n", _opts.mtu);
   output->concatf("\tTimeout:       %ums\n", _opts.ms_timeout);
@@ -458,11 +458,11 @@ void ManuvrLink::printDebug(StringBuilder* output) {
 *
 * @param   StringBuilder* The buffer into which this fxn should write its output.
 */
-void ManuvrLink::printQueues(StringBuilder* output) {
+void M2MLink::printQueues(StringBuilder* output) {
   int x = _outbound_messages.size();
   if (x > 0) {
-    output->concatf("\n-- Outbound Queue %d total, showing top %d ------------\n", x, MANUVRLINK_MAX_QUEUE_PRINT);
-    int max_print = (x < MANUVRLINK_MAX_QUEUE_PRINT) ? x : MANUVRLINK_MAX_QUEUE_PRINT;
+    output->concatf("\n-- Outbound Queue %d total, showing top %d ------------\n", x, M2MLINK_MAX_QUEUE_PRINT);
+    int max_print = (x < M2MLINK_MAX_QUEUE_PRINT) ? x : M2MLINK_MAX_QUEUE_PRINT;
     for (int i = 0; i < max_print; i++) {
       _outbound_messages.get(i)->printDebug(output);
     }
@@ -470,15 +470,15 @@ void ManuvrLink::printQueues(StringBuilder* output) {
 
   x = _inbound_messages.size();
   if (x > 0) {
-    output->concatf("\n-- Inbound Queue %d total, showing top %d -------------\n", x, MANUVRLINK_MAX_QUEUE_PRINT);
-    int max_print = (x < MANUVRLINK_MAX_QUEUE_PRINT) ? x : MANUVRLINK_MAX_QUEUE_PRINT;
+    output->concatf("\n-- Inbound Queue %d total, showing top %d -------------\n", x, M2MLINK_MAX_QUEUE_PRINT);
+    int max_print = (x < M2MLINK_MAX_QUEUE_PRINT) ? x : M2MLINK_MAX_QUEUE_PRINT;
     for (int i = 0; i < max_print; i++) {
       _inbound_messages.get(i)->printDebug(output);
     }
   }
 
   if (_working) {
-    output->concat("\n-- ManuvrMsg in process  ----------------------------\n");
+    output->concat("\n-- M2MMsg in process  ----------------------------\n");
     _working->printDebug(output);
   }
   output->concat('\n');
@@ -490,13 +490,13 @@ void ManuvrLink::printQueues(StringBuilder* output) {
 *
 * @param   StringBuilder* The buffer into which this fxn should write its output.
 */
-void ManuvrLink::printFSM(StringBuilder* output) {
+void M2MLink::printFSM(StringBuilder* output) {
   bool keep_looping = true;
   int i = 0;
   output->concatf("\tPrior state:   %s\n", sessionStateStr(_fsm_pos_prior));
   output->concatf("\tCurrent state: %s%s\n\tNext states:   ", sessionStateStr(_fsm_pos), _fsm_is_waiting() ? " (LOCKED)":" ");
-  while (keep_looping & (i < MANUVRLINK_FSM_WAYPOINT_DEPTH)) {
-    if (ManuvrLinkState::UNINIT == _fsm_waypoints[i]) {
+  while (keep_looping & (i < M2MLINK_FSM_WAYPOINT_DEPTH)) {
+    if (M2MLinkState::UNINIT == _fsm_waypoints[i]) {
       output->concat("<STABLE>");
       keep_looping = false;
     }
@@ -523,35 +523,35 @@ void ManuvrLink::printFSM(StringBuilder* output) {
 *
 * @return  0 on success with no ID
 *         >0 on success with a message ID for application tracking.
-*         -1 if we fail to allocate a ManuvrMsg
+*         -1 if we fail to allocate a M2MMsg
 *         -2 if payload serialization failed
 *         -3 on queue insertion failure
 *         -4 if the link is unwilling to take the message
 */
-int ManuvrLink::send(KeyValuePair* kvp, bool need_reply) {
+int M2MLink::send(KeyValuePair* kvp, bool need_reply) {
   int ret = -1;
 
   // Early abort tests.
   switch (_fsm_pos) {
-    case ManuvrLinkState::PENDING_SETUP:
-    case ManuvrLinkState::SYNC_RESYNC:
-    case ManuvrLinkState::SYNC_TENTATIVE:
-    case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::LIVE:
+    case M2MLinkState::PENDING_SETUP:
+    case M2MLinkState::SYNC_RESYNC:
+    case M2MLinkState::SYNC_TENTATIVE:
+    case M2MLinkState::PENDING_AUTH:
+    case M2MLinkState::LIVE:
       if (_outbound_messages.size() >= _opts.max_outbound) {
         return -3;
       }
       break;
 
-    case ManuvrLinkState::UNINIT:
-    case ManuvrLinkState::PENDING_HANGUP:  // If we are hanging/hung up, refuse.
-    case ManuvrLinkState::HUNGUP:
+    case M2MLinkState::UNINIT:
+    case M2MLinkState::PENDING_HANGUP:  // If we are hanging/hung up, refuse.
+    case M2MLinkState::HUNGUP:
     default:
       return -4;
   }
 
-  ManuvrMsgHdr hdr(ManuvrMsgCode::APPLICATION, 0, need_reply);
-  ManuvrMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
+  M2MMsgHdr hdr(M2MMsgCode::APPLICATION, 0, need_reply);
+  M2MMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
   if (nullptr != msg) {
     ret = 0;
     if (nullptr != kvp) {
@@ -584,7 +584,7 @@ int ManuvrLink::send(KeyValuePair* kvp, bool need_reply) {
 *         -2 on invalid message
 *         -3 on queue insertion failure
 */
-int8_t ManuvrLink::_send_msg(ManuvrMsg* msg) {
+int8_t M2MLink::_send_msg(M2MMsg* msg) {
   int8_t ret = -1;
   if (_outbound_messages.size() < _opts.max_outbound) {
     ret--;
@@ -594,12 +594,12 @@ int8_t ManuvrLink::_send_msg(ManuvrMsg* msg) {
       //   they are waiting for replies or not. Messages wit ha priority of 0 are
       //   only being held in the queue to verify that a response arrives.
       // Being as this is, a new message, it gets the default priority.
-      int priority = MANUVRLINK_PRIORITY_INTERNAL;
+      int priority = M2MLINK_PRIORITY_INTERNAL;
       switch (msg->msgCode()) {
-        case ManuvrMsgCode::APPLICATION:
-          priority = MANUVRLINK_PRIORITY_APP;
+        case M2MMsgCode::APPLICATION:
+          priority = M2MLINK_PRIORITY_APP;
           break;
-        case ManuvrMsgCode::HANGUP:
+        case M2MMsgCode::HANGUP:
           priority = 0;   // Hangup ought to be the last thing we deal with.
           // If we are processing a HANGUP message going outbound, we lock-out
           //   any additional sends that aren't already in the queue.
@@ -627,10 +627,10 @@ int8_t ManuvrLink::_send_msg(ManuvrMsg* msg) {
 *
 * @return  int The number of inbound messages that were purged.
 */
-int ManuvrLink::_purge_inbound() {
+int M2MLink::_purge_inbound() {
   int return_value = _inbound_messages.size();
   while (_inbound_messages.hasNext()) {
-    ManuvrMsg* temp = _inbound_messages.dequeue();
+    M2MMsg* temp = _inbound_messages.dequeue();
     _reclaim_manuvrmsg(temp);
   }
   return return_value;
@@ -642,10 +642,10 @@ int ManuvrLink::_purge_inbound() {
 *
 * @return  int The number of outbound messages that were purged.
 */
-int ManuvrLink::_purge_outbound() {
+int M2MLink::_purge_outbound() {
   int return_value = _outbound_messages.size();
   while (_outbound_messages.hasNext()) {
-    ManuvrMsg* temp = _outbound_messages.dequeue();
+    M2MMsg* temp = _outbound_messages.dequeue();
     _reclaim_manuvrmsg(temp);
   }
   return return_value;
@@ -658,11 +658,11 @@ int ManuvrLink::_purge_outbound() {
 *
 * @return  int The number of inbound messages processed.
 */
-int8_t ManuvrLink::_churn_inbound() {
+int8_t M2MLink::_churn_inbound() {
   int8_t ret = 0;
   while (_inbound_messages.hasNext()) {
     bool gc_message = true;
-    ManuvrMsg* temp = _inbound_messages.dequeue();
+    M2MMsg* temp = _inbound_messages.dequeue();
     KeyValuePair* kvps_rxd = nullptr;
 
     if (_verbosity >= LOG_LEV_INFO) {
@@ -673,36 +673,36 @@ int8_t ManuvrLink::_churn_inbound() {
     }
 
     switch (temp->msgCode()) {
-      case ManuvrMsgCode::SYNC_KEEPALIVE:
+      case M2MMsgCode::SYNC_KEEPALIVE:
         // We got a sync message. Is it a reply?
         if (temp->isReply()) {   // If so, we can stop casting now.
-          _flags.set(MANUVRLINK_FLAG_SYNC_REPLY_RXD | MANUVRLINK_FLAG_SYNC_INCOMING);
-          _flags.clear(MANUVRLINK_FLAG_SYNC_CASTING);
+          _flags.set(M2MLINK_FLAG_SYNC_REPLY_RXD | M2MLINK_FLAG_SYNC_INCOMING);
+          _flags.clear(M2MLINK_FLAG_SYNC_CASTING);
         }
         else {
           // If not, we need to reply, since the lower-tier logic has
           //   stopped doing so.
-          _flags.set(MANUVRLINK_FLAG_SYNC_INCOMING);
+          _flags.set(M2MLINK_FLAG_SYNC_INCOMING);
           _send_sync_packet(false);
         }
         break;
 
-      case ManuvrMsgCode::CONNECT:
+      case M2MMsgCode::CONNECT:
         if (temp->isReply()) {
-          if (!_flags.value(MANUVRLINK_FLAG_ESTABLISHED)) {
+          if (!_flags.value(M2MLINK_FLAG_ESTABLISHED)) {
             if (_fsm_is_stable()) {   // Ensures we are in SYNC_TENTATIVE.
-              if (_flags.value(MANUVRLINK_FLAG_AUTH_REQUIRED)) {
-                _append_fsm_route(2, ManuvrLinkState::PENDING_AUTH, ManuvrLinkState::LIVE);
+              if (_flags.value(M2MLINK_FLAG_AUTH_REQUIRED)) {
+                _append_fsm_route(2, M2MLinkState::PENDING_AUTH, M2MLinkState::LIVE);
               }
               else {
-                _append_fsm_route(1, ManuvrLinkState::LIVE);
+                _append_fsm_route(1, M2MLinkState::LIVE);
               }
             }
           }
           else {
-            _append_fsm_route(1, ManuvrLinkState::LIVE);
+            _append_fsm_route(1, M2MLinkState::LIVE);
           }
-          _flags.set(MANUVRLINK_FLAG_ESTABLISHED);
+          _flags.set(M2MLINK_FLAG_ESTABLISHED);
         }
         else if (temp->expectsReply()) {
           if (0 == temp->ack()) {
@@ -721,12 +721,12 @@ int8_t ManuvrLink::_churn_inbound() {
         }
         break;
 
-      case ManuvrMsgCode::PROTOCOL:
-      case ManuvrMsgCode::AUTH_CHALLENGE:
+      case M2MMsgCode::PROTOCOL:
+      case M2MMsgCode::AUTH_CHALLENGE:
         break;
-      case ManuvrMsgCode::HANGUP:
+      case M2MMsgCode::HANGUP:
         // The other side wants to hang up. ACK if needed.
-        _flags.set(MANUVRLINK_FLAG_HANGUP_RXD);
+        _flags.set(M2MLINK_FLAG_HANGUP_RXD);
         if (temp->isReply()) {
           // We are seeing a reply to a HANGUP we previously sent. We take this
           //   to mean that our counterparty has finished sending, and has
@@ -736,7 +736,7 @@ int8_t ManuvrLink::_churn_inbound() {
           if (0 == temp->ack()) {
             if (0 == _send_msg(temp)) {
               gc_message = false;
-              _append_fsm_route(2, ManuvrLinkState::PENDING_HANGUP, ManuvrLinkState::HUNGUP);
+              _append_fsm_route(2, M2MLinkState::PENDING_HANGUP, M2MLinkState::HUNGUP);
             }
           }
           if (gc_message & (_verbosity >= LOG_LEV_ERROR)) {
@@ -744,10 +744,10 @@ int8_t ManuvrLink::_churn_inbound() {
           }
         }
         break;
-      case ManuvrMsgCode::DESCRIBE:
-      case ManuvrMsgCode::MSG_FORWARD:
+      case M2MMsgCode::DESCRIBE:
+      case M2MMsgCode::MSG_FORWARD:
         break;
-      case ManuvrMsgCode::LOG:
+      case M2MMsgCode::LOG:
         // Allow the counterparty to write to our session log?
         if (!temp->isReply()) {
           switch (_handle_msg_log(temp)) {
@@ -763,7 +763,7 @@ int8_t ManuvrLink::_churn_inbound() {
         }
         break;
 
-      case ManuvrMsgCode::WHO:
+      case M2MMsgCode::WHO:
         temp->getPayload(&kvps_rxd);
         if (kvps_rxd) {
           // Reply or not, this message might contain Identity information about
@@ -811,10 +811,10 @@ int8_t ManuvrLink::_churn_inbound() {
         }
         break;
 
-      case ManuvrMsgCode::DHT_FXN:
+      case M2MMsgCode::DHT_FXN:
         break;
 
-      case ManuvrMsgCode::APPLICATION:
+      case M2MMsgCode::APPLICATION:
         switch (_invoke_msg_callback(temp)) {
           case 2:   // Requeue the message as a reply. Don't GC it.
             c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "Requeue as a reply");
@@ -853,20 +853,20 @@ int8_t ManuvrLink::_churn_inbound() {
 *
 * @return the number of messages sent.
 */
-int8_t ManuvrLink::_churn_outbound() {
+int8_t M2MLink::_churn_outbound() {
   int8_t ret = 0;
   if (_outbound_messages.hasNext()) {
     int current_priority = _outbound_messages.getPriority(0);
-    ManuvrMsg* temp = _outbound_messages.dequeue();
+    M2MMsg* temp = _outbound_messages.dequeue();
     if (nullptr != temp) {
-      int new_priority = (temp->msgCode() == ManuvrMsgCode::APPLICATION) ? MANUVRLINK_PRIORITY_APP : MANUVRLINK_PRIORITY_INTERNAL;
+      int new_priority = (temp->msgCode() == M2MMsgCode::APPLICATION) ? M2MLINK_PRIORITY_APP : M2MLINK_PRIORITY_INTERNAL;
       bool gc_msg    = false;
       bool will_send = !temp->wasSent();
       switch (current_priority) {
-        case MANUVRLINK_PRIORITY_WAITING_FOR_ACK:
-          new_priority = MANUVRLINK_PRIORITY_WAITING_FOR_ACK;
-        case MANUVRLINK_PRIORITY_APP:
-        case MANUVRLINK_PRIORITY_INTERNAL:
+        case M2MLINK_PRIORITY_WAITING_FOR_ACK:
+          new_priority = M2MLINK_PRIORITY_WAITING_FOR_ACK;
+        case M2MLINK_PRIORITY_APP:
+        case M2MLINK_PRIORITY_INTERNAL:
         default:
           if (!will_send) {
             if (_opts.ms_timeout < temp->msSinceSend()) {
@@ -888,12 +888,12 @@ int8_t ManuvrLink::_churn_outbound() {
           if (0 <= _relay_to_output_target(&temp_out)) {
             // If the buffer was moved to the transport driver...
             temp->markSent();
-            new_priority = MANUVRLINK_PRIORITY_WAITING_FOR_ACK;
+            new_priority = M2MLINK_PRIORITY_WAITING_FOR_ACK;
             gc_msg = !temp->expectsReply();
             // Some internal message types have implications upon
             //   being successfully sent.
-            if (ManuvrMsgCode::HANGUP == temp->msgCode()) {
-              _flags.set(MANUVRLINK_FLAG_HANGUP_TXD);
+            if (M2MMsgCode::HANGUP == temp->msgCode()) {
+              _flags.set(M2MLINK_FLAG_HANGUP_TXD);
             }
             ret++;
           }
@@ -923,10 +923,10 @@ int8_t ManuvrLink::_churn_outbound() {
 * @param id is the message's uniqueID to search for.
 * @return the number of messages cleared from the outbound queue.
 */
-int8_t ManuvrLink::_clear_waiting_send_by_id(uint32_t id) {
+int8_t M2MLink::_clear_waiting_send_by_id(uint32_t id) {
   int8_t ret = 0;
   for (int i = 0; i < _outbound_messages.size(); i++) {
-    ManuvrMsg* temp = _outbound_messages.get(i);
+    M2MMsg* temp = _outbound_messages.get(i);
     if (nullptr != temp) {
       if (id == temp->uniqueId()) {
         temp->markACKd();
@@ -946,9 +946,9 @@ int8_t ManuvrLink::_clear_waiting_send_by_id(uint32_t id) {
 *         1 if the message is to be dropped.
 *         2 if the message was converted into a reply.
 */
-int8_t ManuvrLink::_handle_msg_log(ManuvrMsg* msg) {
+int8_t M2MLink::_handle_msg_log(M2MMsg* msg) {
   int8_t ret = 0;
-  if (_flags.value(MANUVRLINK_FLAG_ALLOW_LOG_WRITE)) {   // Will we allow a write to our log?
+  if (_flags.value(M2MLINK_FLAG_ALLOW_LOG_WRITE)) {   // Will we allow a write to our log?
     ret++;
     KeyValuePair* inbound_kvp = nullptr;
     if (0 == msg->getPayload(&inbound_kvp)) {
@@ -984,7 +984,7 @@ int8_t ManuvrLink::_handle_msg_log(ManuvrMsg* msg) {
 /**
 * Resets the object to a fresh state in preparation for a new session.
 */
-void ManuvrLink::_reset_class() {
+void M2MLink::_reset_class() {
   _inbound_buf.clear();
   _purge_inbound();
   _purge_outbound();
@@ -992,7 +992,7 @@ void ManuvrLink::_reset_class() {
     _reclaim_manuvrmsg(_working);
     _working = nullptr;
   }
-  _flags.clear(~MANUVRLINK_FLAG_RESET_PRESERVE_MASK);
+  _flags.clear(~M2MLINK_FLAG_RESET_PRESERVE_MASK);
   _session_tag    = 0;
   _ms_last_send   = 0;
   _ms_last_rec    = 0;
@@ -1020,7 +1020,7 @@ void ManuvrLink::_reset_class() {
 *         -1 on error (no transport set)
 *          0 on success
 */
-int8_t ManuvrLink::_relay_to_output_target(StringBuilder* buf) {
+int8_t M2MLink::_relay_to_output_target(StringBuilder* buf) {
   int8_t ret = -1;
   if (nullptr != _output_target) {
     if (_verbosity >= LOG_LEV_DEBUG) {
@@ -1056,7 +1056,7 @@ int8_t ManuvrLink::_relay_to_output_target(StringBuilder* buf) {
 * Internal function to invoke the application-provided callback for noteworthy
 *   state changes.
 */
-void ManuvrLink::_invoke_state_callback() {
+void M2MLink::_invoke_state_callback() {
   if (nullptr != _lnk_callback) {   // Call the callback, if it is set.
     _lnk_callback(this);
   }
@@ -1072,7 +1072,7 @@ void ManuvrLink::_invoke_state_callback() {
 *         1 if the message is to be dropped.
 *         2 if the message was converted into a reply.
 */
-int8_t ManuvrLink::_invoke_msg_callback(ManuvrMsg* msg) {
+int8_t M2MLink::_invoke_msg_callback(M2MMsg* msg) {
   int8_t ret = 0;
   if (nullptr != _msg_callback) {   // Call the callback, if it is set.
     ret++;
@@ -1097,13 +1097,13 @@ int8_t ManuvrLink::_invoke_msg_callback(ManuvrMsg* msg) {
 *
 * @return 0 on
 */
-int8_t ManuvrLink::_process_input_buffer() {
+int8_t M2MLink::_process_input_buffer() {
   int8_t ret = 0;
   bool proc_fallthru = false;
 
   switch (_fsm_pos) {
     // If the link is actively trying to attain sync...
-    case ManuvrLinkState::SYNC_RESYNC:
+    case M2MLinkState::SYNC_RESYNC:
       switch (_process_for_sync()) {
         case -1:   // insufficient length. No change to input data.
         case 0:    // no sync was found and so the input data was maximally culled.
@@ -1112,7 +1112,7 @@ int8_t ManuvrLink::_process_input_buffer() {
         case 1:    // sync found and search ended because we ran out of data to cull.
         case 2:    // sync found and search ended because sync ceased repeating.
           proc_fallthru = true;
-          if (_flags.value(MANUVRLINK_FLAG_SYNC_CASTING)) {
+          if (_flags.value(M2MLINK_FLAG_SYNC_CASTING)) {
             // Prevents us from having to wait on our own timeout to trigger
             //   our half of the sync exchange.
             _send_sync_packet(true);
@@ -1124,10 +1124,10 @@ int8_t ManuvrLink::_process_input_buffer() {
     // The link believes that the input buffer is neatly-justified, but has yet
     //   to see something other than sync come across. We don't want to react
     //   to incoming sync. The general parse will catch it, if it exists.
-    case ManuvrLinkState::SYNC_TENTATIVE:
-    case ManuvrLinkState::PENDING_AUTH:
-    case ManuvrLinkState::LIVE:
-    case ManuvrLinkState::PENDING_HANGUP:
+    case M2MLinkState::SYNC_TENTATIVE:
+    case M2MLinkState::PENDING_AUTH:
+    case M2MLinkState::LIVE:
+    case M2MLinkState::PENDING_HANGUP:
       proc_fallthru = true;
       break;
 
@@ -1139,8 +1139,8 @@ int8_t ManuvrLink::_process_input_buffer() {
   if (proc_fallthru) {
     if (_inbound_buf.length() >= 4) {
       if (nullptr == _working) {
-        ManuvrMsgHdr _header;
-        int8_t ret_header = ManuvrMsg::attempt_header_parse(&_header, &_inbound_buf);
+        M2MMsgHdr _header;
+        int8_t ret_header = M2MMsg::attempt_header_parse(&_header, &_inbound_buf);
         switch (ret_header) {
           case -3:  // no header found because the initial bytes are totally wrong. Sync error.
             _fsm_insert_sync_states();
@@ -1178,7 +1178,7 @@ int8_t ManuvrLink::_process_input_buffer() {
           }
           else {
             _seq_parse_errs++;
-            if (_seq_parse_errs >= MANUVRLINK_MAX_PARSE_FAILURES) {
+            if (_seq_parse_errs >= M2MLINK_MAX_PARSE_FAILURES) {
               // If we failed to parse too many times in-a-row, we assume the
               //   session is desyncd. Delete the bad message, and steer the
               //   session toward re-sync.
@@ -1212,7 +1212,7 @@ int8_t ManuvrLink::_process_input_buffer() {
 * Only call this function if sync is required, since it will disregard any
 *   non-sync message boundaries in the data.
 * The only case where this function will NOT cull from the input data is if the
-*   length of the input data was less than MANUVRMSGHDR_MINIMUM_HEADER_SIZE.
+*   length of the input data was less than M2MMSGHDR_MINIMUM_HEADER_SIZE.
 * Sets the SYNC_INCOMING flag and sends a reply sync if the received sync
 *   demands a reply.
 * Sets the SYNC_REPLY_RXD flag if the received sync is a reply.
@@ -1223,7 +1223,7 @@ int8_t ManuvrLink::_process_input_buffer() {
 *          1 if sync found and search ended because we ran out of data to cull.
 *          2 if sync found and search ended because sync ceased repeating.
 */
-int8_t ManuvrLink::_process_for_sync() {
+int8_t M2MLink::_process_for_sync() {
   const int AVAILABLE_LEN = _inbound_buf.length();
   int ret = -1;
   int i = _contains_sync_pattern(&_inbound_buf);
@@ -1234,7 +1234,7 @@ int8_t ManuvrLink::_process_for_sync() {
     ret = 1;
     uint8_t* buf          = _inbound_buf.string();
     int      sync_0_idx   = i;  // Correct for cases where (0 != offset % 4).
-    bool     keep_looping = ((AVAILABLE_LEN-i) >= MANUVRMSGHDR_MINIMUM_HEADER_SIZE);
+    bool     keep_looping = ((AVAILABLE_LEN-i) >= M2MMSGHDR_MINIMUM_HEADER_SIZE);
     bool     set_sync     = false;
     bool     send_sync    = false;
 
@@ -1246,22 +1246,22 @@ int8_t ManuvrLink::_process_for_sync() {
       const uint8_t b1 = *(buf + sync_0_idx + 1);  // flags
       const uint8_t b2 = *(buf + sync_0_idx + 2);  // length
       const uint8_t b3 = *(buf + sync_0_idx + 3);  // chksum
-      const uint8_t MANUVRMSG_4TH_SYNC_BYTE = (b0 + b1 + b2 + MANUVRLINK_SERIALIZATION_VERSION);
+      const uint8_t M2MMSG_4TH_SYNC_BYTE = (b0 + b1 + b2 + M2MLINK_SERIALIZATION_VERSION);
 
       // In order to search for more data, we need at least the minimum header
       //   length, beyond what we just looked at.
-      bool enough_4_nxt_loop = ((sync_0_idx + (MANUVRMSGHDR_MINIMUM_HEADER_SIZE << 1)) <= AVAILABLE_LEN);
+      bool enough_4_nxt_loop = ((sync_0_idx + (M2MMSGHDR_MINIMUM_HEADER_SIZE << 1)) <= AVAILABLE_LEN);
 
       // Is the current index the start of a sync packet?
-      bool bail = (b0 != (uint8_t) ManuvrMsgCode::SYNC_KEEPALIVE);
-      bail |= ((b1 & MANUVRMSGHDR_FLAG_SYNC_MASK) != 0x10);
-      bail |= (b2 != MANUVRMSGHDR_MINIMUM_HEADER_SIZE);
-      bail |= (b3 != MANUVRMSG_4TH_SYNC_BYTE);
+      bool bail = (b0 != (uint8_t) M2MMsgCode::SYNC_KEEPALIVE);
+      bail |= ((b1 & M2MMSGHDR_FLAG_SYNC_MASK) != 0x10);
+      bail |= (b2 != M2MMSGHDR_MINIMUM_HEADER_SIZE);
+      bail |= (b3 != M2MMSG_4TH_SYNC_BYTE);
 
       if (!bail) {
         // If this packet was sync, accumulate flags.
-        set_sync  |= (b1 & MANUVRMSGHDR_FLAG_IS_REPLY);
-        send_sync |= (b1 & MANUVRMSGHDR_FLAG_EXPECTING_REPLY);
+        set_sync  |= (b1 & M2MMSGHDR_FLAG_IS_REPLY);
+        send_sync |= (b1 & M2MMSGHDR_FLAG_EXPECTING_REPLY);
       }
       else {
         // Otherwise, the search may have ended because we found the last sync.
@@ -1276,7 +1276,7 @@ int8_t ManuvrLink::_process_for_sync() {
       //   buffer remaining to test for another one.
       keep_looping = (enough_4_nxt_loop & !bail);
       if (keep_looping) {
-        sync_0_idx += MANUVRMSGHDR_MINIMUM_HEADER_SIZE;
+        sync_0_idx += M2MMSGHDR_MINIMUM_HEADER_SIZE;
       }
     }
 
@@ -1291,14 +1291,14 @@ int8_t ManuvrLink::_process_for_sync() {
     if (set_sync) {
       // If we got a sync reply, mark the class as such. The state machine
       //   will handle any class transitions from here.
-      _flags.set(MANUVRLINK_FLAG_SYNC_REPLY_RXD | MANUVRLINK_FLAG_SYNC_INCOMING);
+      _flags.set(M2MLINK_FLAG_SYNC_REPLY_RXD | M2MLINK_FLAG_SYNC_INCOMING);
     }
     if (send_sync) {
       // If a sync packet demanded a reply, issue it unconditionally.
       // Issues a single reply to possibly many syncs that demanded one. So
       //   class logic needs to respect the fact that sync packets will not
       //   necesarilly get sync replies in a 1:1 ratio.
-      _flags.set(MANUVRLINK_FLAG_SYNC_INCOMING);
+      _flags.set(M2MLINK_FLAG_SYNC_INCOMING);
       _send_sync_packet(false);
     }
   }
@@ -1329,10 +1329,10 @@ int8_t ManuvrLink::_process_for_sync() {
 * @param need_reply should be set to true if we are still expecting SYNC reply.
 * @return 0 on success. Nonzero on failure (typically rejection by the transport).
 */
-int8_t ManuvrLink::_send_sync_packet(bool need_reply) {
+int8_t M2MLink::_send_sync_packet(bool need_reply) {
   int8_t ret = -1;
   StringBuilder sync_packet;
-  ManuvrMsgHdr sync_header(ManuvrMsgCode::SYNC_KEEPALIVE, 0, (need_reply ? MANUVRMSGHDR_FLAG_EXPECTING_REPLY : MANUVRMSGHDR_FLAG_IS_REPLY));
+  M2MMsgHdr sync_header(M2MMsgCode::SYNC_KEEPALIVE, 0, (need_reply ? M2MMSGHDR_FLAG_EXPECTING_REPLY : M2MMSGHDR_FLAG_IS_REPLY));
   if (sync_header.serialize(&sync_packet)) {
     ret = (0 <= _relay_to_output_target(&sync_packet)) ? 0 : -2;
   }
@@ -1344,14 +1344,14 @@ int8_t ManuvrLink::_send_sync_packet(bool need_reply) {
 /**
 * Sends a CONNECT message via the normal message pipeline.
 *
-* @return 0 on success. -1 on failure to allocate ManuvrMsg, -2 on send failure.
+* @return 0 on success. -1 on failure to allocate M2MMsg, -2 on send failure.
 */
-int8_t ManuvrLink::_send_connect_message() {
+int8_t M2MLink::_send_connect_message() {
   int8_t ret = -1;
   // TODO: For now, this will just send a connection message directly to the transport.
   StringBuilder connect_packet;
-  ManuvrMsgHdr connect_header(ManuvrMsgCode::CONNECT, 0, true);
-  ManuvrMsg connect_msg(&connect_header, BusOpcode::TX);
+  M2MMsgHdr connect_header(M2MMsgCode::CONNECT, 0, true);
+  M2MMsg connect_msg(&connect_header, BusOpcode::TX);
   if (connect_header.serialize(&connect_packet)) {
     ret = (0 <= _relay_to_output_target(&connect_packet)) ? 0 : -2;
   }
@@ -1366,8 +1366,8 @@ int8_t ManuvrLink::_send_connect_message() {
 
   // TODO: Would prefer to use the code below. But SYNC is not well-enough
   //   under control.
-  //ManuvrMsgHdr hdr(ManuvrMsgCode::CONNECT, 0, true);
-  //ManuvrMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
+  //M2MMsgHdr hdr(M2MMsgCode::CONNECT, 0, true);
+  //M2MMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
   //if (nullptr != msg) {
   //  ret--;
   //  if (0 == _send_msg(msg)) {
@@ -1385,12 +1385,12 @@ int8_t ManuvrLink::_send_connect_message() {
 * Sends a HANGUP message via the normal message pipeline.
 *
 * @param graceful should be true if we want orderly termination on both sides.
-* @return 0 on success. -1 on failure to allocate ManuvrMsg, -2 on send failure.
+* @return 0 on success. -1 on failure to allocate M2MMsg, -2 on send failure.
 */
-int8_t ManuvrLink::_send_hangup_message(bool graceful) {
+int8_t M2MLink::_send_hangup_message(bool graceful) {
   int8_t ret = -1;
-  ManuvrMsgHdr hdr(ManuvrMsgCode::HANGUP, 0, true);
-  ManuvrMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
+  M2MMsgHdr hdr(M2MMsgCode::HANGUP, 0, true);
+  M2MMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
   if (nullptr != msg) {
     ret--;
     if (0 == _send_msg(msg)) {
@@ -1407,12 +1407,12 @@ int8_t ManuvrLink::_send_hangup_message(bool graceful) {
 /**
 * Sends a WHO message via the normal message pipeline.
 *
-* @return 0 on success. -1 on failure to allocate ManuvrMsg, -2 on send failure.
+* @return 0 on success. -1 on failure to allocate M2MMsg, -2 on send failure.
 */
-int8_t ManuvrLink::_send_who_message() {
+int8_t M2MLink::_send_who_message() {
   int8_t ret = -1;
-  ManuvrMsgHdr hdr(ManuvrMsgCode::WHO, 0, true);
-  ManuvrMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
+  M2MMsgHdr hdr(M2MMsgCode::WHO, 0, true);
+  M2MMsg* msg = _allocate_manuvrmsg(&hdr, BusOpcode::TX);
   if (nullptr != msg) {
     ret--;
     if (_id_loc) {
@@ -1446,21 +1446,21 @@ int8_t ManuvrLink::_send_who_message() {
 *          0 on no action
 *         -1 on error
 */
-int8_t ManuvrLink::_poll_fsm() {
+int8_t M2MLink::_poll_fsm() {
   int8_t ret = 0;
   bool fsm_advance = false;
   switch (_fsm_pos) {
     // Exit conditions: Class config is valid, and we have all the pointers we
     //   need.
-    case ManuvrLinkState::UNINIT:
+    case M2MLinkState::UNINIT:
       fsm_advance = ((nullptr != _output_target) & (nullptr != _msg_callback));
       if (fsm_advance) {   // Make sure we have somewhere to advance INTO.
-        _set_fsm_route(3, ManuvrLinkState::PENDING_SETUP, ManuvrLinkState::SYNC_RESYNC, ManuvrLinkState::SYNC_TENTATIVE);
+        _set_fsm_route(3, M2MLinkState::PENDING_SETUP, M2MLinkState::SYNC_RESYNC, M2MLinkState::SYNC_TENTATIVE);
       }
       break;
 
     // Exit conditions: The class has seen the first data for this session.
-    case ManuvrLinkState::PENDING_SETUP:
+    case M2MLinkState::PENDING_SETUP:
       fsm_advance = true;
       //fsm_advance = (0 < _inbound_buf.length());
       break;
@@ -1468,40 +1468,40 @@ int8_t ManuvrLink::_poll_fsm() {
     // Exit conditions: We have begun sending sync packets into the transport.
     //   We have seen replies to our syncs, and incoming data is no longer
     //   preceeded by sync packets.
-    case ManuvrLinkState::SYNC_RESYNC:
-      fsm_advance = (_flags.value(MANUVRLINK_FLAG_SYNC_INCOMING) & _flags.value(MANUVRLINK_FLAG_SYNC_REPLY_RXD));
+    case M2MLinkState::SYNC_RESYNC:
+      fsm_advance = (_flags.value(M2MLINK_FLAG_SYNC_INCOMING) & _flags.value(M2MLINK_FLAG_SYNC_REPLY_RXD));
       break;
 
     // Exit conditions: We've exchanged CONNECT messages.
-    case ManuvrLinkState::SYNC_TENTATIVE:
-      fsm_advance = _flags.value(MANUVRLINK_FLAG_ESTABLISHED);
+    case M2MLinkState::SYNC_TENTATIVE:
+      fsm_advance = _flags.value(M2MLINK_FLAG_ESTABLISHED);
       break;
 
     // Exit conditions: An acceptable authentication has happened.
-    case ManuvrLinkState::PENDING_AUTH:
-      fsm_advance = _flags.value(MANUVRLINK_FLAG_AUTHD);
+    case M2MLinkState::PENDING_AUTH:
+      fsm_advance = _flags.value(M2MLINK_FLAG_AUTHD);
       break;
 
     // Exit conditions: These states are canonically stable. So we advance when
     //   the state is not stable (the link has somewhere else it wants to be).
-    case ManuvrLinkState::LIVE:
+    case M2MLinkState::LIVE:
       fsm_advance = !_fsm_is_stable();
       break;
 
     // Exit conditions: The outbound queue is empty, and at least one HANGUP
     //   message has been sent and ACK'd.
-    case ManuvrLinkState::PENDING_HANGUP:
+    case M2MLinkState::PENDING_HANGUP:
       if (!_outbound_messages.hasNext()) {
-        fsm_advance = _flags.value(MANUVRLINK_FLAG_HANGUP_RXD) & _flags.value(MANUVRLINK_FLAG_HANGUP_TXD);
+        fsm_advance = _flags.value(M2MLINK_FLAG_HANGUP_RXD) & _flags.value(M2MLINK_FLAG_HANGUP_TXD);
       }
       break;
 
     // Exit conditions: The application has called reset(), to take this link
     //   back "off-hook".
-    case ManuvrLinkState::HUNGUP:
-      fsm_advance = !_flags.value(MANUVRLINK_FLAG_ON_HOOK);
+    case M2MLinkState::HUNGUP:
+      fsm_advance = !_flags.value(M2MLINK_FLAG_ON_HOOK);
       if (fsm_advance) {   // Make sure we have somewhere to advance INTO.
-        _set_fsm_route(3, ManuvrLinkState::PENDING_SETUP, ManuvrLinkState::SYNC_RESYNC, ManuvrLinkState::SYNC_TENTATIVE);
+        _set_fsm_route(3, M2MLinkState::PENDING_SETUP, M2MLinkState::SYNC_RESYNC, M2MLinkState::SYNC_TENTATIVE);
       }
       break;
 
@@ -1528,14 +1528,14 @@ int8_t ManuvrLink::_poll_fsm() {
 * @param The FSM code to test.
 * @return 0 on success, -1 otherwise.
 */
-int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
+int8_t M2MLink::_set_fsm_position(M2MLinkState new_state) {
   int8_t fxn_ret = -1;
   bool state_entry_success = false;   // Fail by default.
   if (!_fsm_is_waiting()) {
     switch (new_state) {
       // Entry into PENDING_SETUP means that the class has been wiped, and the
       //   values we depend upon later have been validated.
-      case ManuvrLinkState::PENDING_SETUP:
+      case M2MLinkState::PENDING_SETUP:
         _reset_class();
         _session_tag = randomUInt32();
         state_entry_success = (_session_tag != 0);
@@ -1544,22 +1544,22 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
       // Entry into SYNC_CASTING means we trash any unprocessed inbound data, and
       //   begin emitting and expecting sync packets. Entry is contingent on a
       //   successful TX of a sync packet.
-      case ManuvrLinkState::SYNC_RESYNC:
+      case M2MLinkState::SYNC_RESYNC:
         _inbound_buf.clear();
         if (nullptr != _working) {
           _reclaim_manuvrmsg(_working);
           _working = nullptr;
         }
-        _flags.clear(MANUVRLINK_FLAG_SYNC_INCOMING | MANUVRLINK_FLAG_SYNC_REPLY_RXD);
+        _flags.clear(M2MLINK_FLAG_SYNC_INCOMING | M2MLINK_FLAG_SYNC_REPLY_RXD);
         state_entry_success = (0 == _send_sync_packet(true));
-        _flags.set(MANUVRLINK_FLAG_SYNC_CASTING, state_entry_success);
+        _flags.set(M2MLINK_FLAG_SYNC_CASTING, state_entry_success);
         break;
 
       // Entry into SYNC_TENTATIVE requires that sync packets have been
       //   exchanged, and the start of non-sync data has yet to be located.
       //   Entry always succeeds.
-      case ManuvrLinkState::SYNC_TENTATIVE:
-        _flags.clear(MANUVRLINK_FLAG_SYNC_CASTING);
+      case M2MLinkState::SYNC_TENTATIVE:
+        _flags.clear(M2MLINK_FLAG_SYNC_CASTING);
         state_entry_success = (0 == _send_connect_message());
         if (!state_entry_success) {
           if (_verbosity >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Link 0x%08x failed to send initial connect.\n", _session_tag);
@@ -1568,14 +1568,14 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
 
       // Entry into PENDING_AUTH means we have successfully dispatched an
       //   authentication message.
-      case ManuvrLinkState::PENDING_AUTH:
+      case M2MLinkState::PENDING_AUTH:
         state_entry_success = true;   // TODO: This entire feature.
         break;
 
       // Entry into LIVE means we reset any sync-related flags.
       //   Entry always succeeds.
-      case ManuvrLinkState::LIVE:
-        _flags.clear(MANUVRLINK_FLAG_SYNC_INCOMING | MANUVRLINK_FLAG_SYNC_REPLY_RXD);
+      case M2MLinkState::LIVE:
+        _flags.clear(M2MLINK_FLAG_SYNC_INCOMING | M2MLINK_FLAG_SYNC_REPLY_RXD);
         _send_who_message();
         state_entry_success = true;
         break;
@@ -1583,7 +1583,7 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
       // Entry into PENDING_HANGUP means we have successfully dispatched a
       //   message notifying our counterparty of our desire to hang-up, and are
       //   now waiting on the handshake to complete.
-      case ManuvrLinkState::PENDING_HANGUP:
+      case M2MLinkState::PENDING_HANGUP:
         state_entry_success = (0 == _send_hangup_message(true));
         if (!state_entry_success) {
           if (_verbosity >= LOG_LEV_ERROR) c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Link 0x%08x failed to send initial HANGUP.\n", _session_tag);
@@ -1592,10 +1592,10 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
 
       // Entry into HUNGUP involves clearing/releasing any buffers and states
       //   from the prior session. Entry always succeeds.
-      case ManuvrLinkState::HUNGUP:
+      case M2MLinkState::HUNGUP:
         //_reset_class();
-        _flags.set(MANUVRLINK_FLAG_ON_HOOK);
-        _flags.clear(MANUVRLINK_FLAG_ESTABLISHED);
+        _flags.set(M2MLINK_FLAG_ON_HOOK);
+        _flags.clear(M2MLINK_FLAG_ESTABLISHED);
         state_entry_success = true;
         break;
 
@@ -1610,9 +1610,9 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
       _fsm_pos_prior = _fsm_pos;
       _fsm_pos       = new_state;
       switch (new_state) {
-        case ManuvrLinkState::HUNGUP:        // Entry into these states might
-        case ManuvrLinkState::PENDING_AUTH:  // be an event worth passing to
-        case ManuvrLinkState::LIVE:          // the application.
+        case M2MLinkState::HUNGUP:        // Entry into these states might
+        case M2MLinkState::PENDING_AUTH:  // be an event worth passing to
+        case M2MLinkState::LIVE:          // the application.
           _invoke_state_callback();
         default:
           break;
@@ -1634,15 +1634,15 @@ int8_t ManuvrLink::_set_fsm_position(ManuvrLinkState new_state) {
 *
 * @return 0 on state change, -1 otherwise.
 */
-int8_t ManuvrLink::_advance_state_machine() {
+int8_t M2MLink::_advance_state_machine() {
   int8_t ret = -1;
-  if (ManuvrLinkState::UNINIT != _fsm_waypoints[0]) {
+  if (M2MLinkState::UNINIT != _fsm_waypoints[0]) {
     if (0 == _set_fsm_position(_fsm_waypoints[0])) {
       ret = 0;
-      for (int i = 0; i < (MANUVRLINK_FSM_WAYPOINT_DEPTH-1); i++) {
+      for (int i = 0; i < (M2MLINK_FSM_WAYPOINT_DEPTH-1); i++) {
         _fsm_waypoints[i] = _fsm_waypoints[i+1];
       }
-      _fsm_waypoints[MANUVRLINK_FSM_WAYPOINT_DEPTH-1] = ManuvrLinkState::UNINIT;
+      _fsm_waypoints[M2MLINK_FSM_WAYPOINT_DEPTH-1] = M2MLinkState::UNINIT;
     }
   }
   return ret;
@@ -1659,16 +1659,16 @@ int8_t ManuvrLink::_advance_state_machine() {
 *
 * @return 0 on success, -1 on no params, -2 on invalid FSM code.
 */
-int8_t ManuvrLink::_set_fsm_route(int arg_count, ...) {
+int8_t M2MLink::_set_fsm_route(int arg_count, ...) {
   int8_t ret = -1;
-  const int PARAM_COUNT = strict_min((int8_t) arg_count, (int8_t) MANUVRLINK_FSM_WAYPOINT_DEPTH);
+  const int PARAM_COUNT = strict_min((int8_t) arg_count, (int8_t) M2MLINK_FSM_WAYPOINT_DEPTH);
   if (PARAM_COUNT > 0) {
     va_list args;
     va_start(args, arg_count);
-    ManuvrLinkState test_values[PARAM_COUNT] = {ManuvrLinkState::UNINIT, };
+    M2MLinkState test_values[PARAM_COUNT] = {M2MLinkState::UNINIT, };
     ret = 0;
     for (int i = 0; i < PARAM_COUNT; i++) {
-      test_values[i] = (ManuvrLinkState) va_arg(args, int);
+      test_values[i] = (M2MLinkState) va_arg(args, int);
     }
     va_end(args);   // Close out the va_args, and error-check each value.
     for (int i = 0; i < PARAM_COUNT; i++) {
@@ -1679,8 +1679,8 @@ int8_t ManuvrLink::_set_fsm_route(int arg_count, ...) {
     if (0 == ret) {
       // If everything looks good, add items to the state traversal list, and
       //   zero the remainder.
-      for (int i = 0; i < MANUVRLINK_FSM_WAYPOINT_DEPTH; i++) {
-        _fsm_waypoints[i] = (i < PARAM_COUNT) ? test_values[i] : ManuvrLinkState::UNINIT;
+      for (int i = 0; i < M2MLINK_FSM_WAYPOINT_DEPTH; i++) {
+        _fsm_waypoints[i] = (i < PARAM_COUNT) ? test_values[i] : M2MLinkState::UNINIT;
       }
     }
   }
@@ -1698,16 +1698,16 @@ int8_t ManuvrLink::_set_fsm_route(int arg_count, ...) {
 *
 * @return 0 on success, -1 on no params, -2 on invalid FSM code.
 */
-int8_t ManuvrLink::_append_fsm_route(int arg_count, ...) {
+int8_t M2MLink::_append_fsm_route(int arg_count, ...) {
   int8_t ret = -1;
-  const int PARAM_COUNT = strict_min((int8_t) arg_count, (int8_t) MANUVRLINK_FSM_WAYPOINT_DEPTH);
+  const int PARAM_COUNT = strict_min((int8_t) arg_count, (int8_t) M2MLINK_FSM_WAYPOINT_DEPTH);
   if (PARAM_COUNT > 0) {
     va_list args;
     va_start(args, arg_count);
-    ManuvrLinkState test_values[PARAM_COUNT] = {ManuvrLinkState::UNINIT, };
+    M2MLinkState test_values[PARAM_COUNT] = {M2MLinkState::UNINIT, };
     ret = 0;
     for (int i = 0; i < PARAM_COUNT; i++) {
-      test_values[i] = (ManuvrLinkState) va_arg(args, int);
+      test_values[i] = (M2MLinkState) va_arg(args, int);
     }
     va_end(args);   // Close out the va_args, and error-check each value.
     for (int i = 0; i < PARAM_COUNT; i++) {
@@ -1719,10 +1719,10 @@ int8_t ManuvrLink::_append_fsm_route(int arg_count, ...) {
       // If everything looks good, seek to the end of the state traversal list,
       //   and append.
       uint8_t fidx = 0;
-      while ((fidx < MANUVRLINK_FSM_WAYPOINT_DEPTH) && (ManuvrLinkState::UNINIT != _fsm_waypoints[fidx])) {
+      while ((fidx < M2MLINK_FSM_WAYPOINT_DEPTH) && (M2MLinkState::UNINIT != _fsm_waypoints[fidx])) {
         fidx++;
       }
-      const uint8_t PARAMS_TO_COPY = strict_min((uint8_t)(MANUVRLINK_FSM_WAYPOINT_DEPTH - fidx), (uint8_t) PARAM_COUNT);
+      const uint8_t PARAMS_TO_COPY = strict_min((uint8_t)(M2MLINK_FSM_WAYPOINT_DEPTH - fidx), (uint8_t) PARAM_COUNT);
       for (int i = 0; i < PARAMS_TO_COPY; i++) {
         _fsm_waypoints[i + fidx] = test_values[i];
       }
@@ -1732,21 +1732,21 @@ int8_t ManuvrLink::_append_fsm_route(int arg_count, ...) {
 }
 
 
-int8_t ManuvrLink::_prepend_fsm_state(ManuvrLinkState nxt) {
+int8_t M2MLink::_prepend_fsm_state(M2MLinkState nxt) {
   int8_t ret = -1;
   if (_link_fsm_code_valid(nxt)) {
     ret--;
     // If everything looks good, seek to the end of the state traversal list,
     //   and append.
     uint8_t fidx = 0;
-    ManuvrLinkState last = _fsm_waypoints[0];
-    while ((fidx < MANUVRLINK_FSM_WAYPOINT_DEPTH) && (ManuvrLinkState::UNINIT != _fsm_waypoints[fidx])) {
+    M2MLinkState last = _fsm_waypoints[0];
+    while ((fidx < M2MLINK_FSM_WAYPOINT_DEPTH) && (M2MLinkState::UNINIT != _fsm_waypoints[fidx])) {
       last = _fsm_waypoints[fidx];
       _fsm_waypoints[fidx] = nxt;
       nxt = last;
       fidx++;
     }
-    if (fidx < MANUVRLINK_FSM_WAYPOINT_DEPTH) {
+    if (fidx < M2MLINK_FSM_WAYPOINT_DEPTH) {
       _fsm_waypoints[fidx] = nxt;
       ret = 0;
     }
@@ -1755,7 +1755,7 @@ int8_t ManuvrLink::_prepend_fsm_state(ManuvrLinkState nxt) {
 }
 
 
-bool ManuvrLink::_fsm_is_waiting() {
+bool M2MLink::_fsm_is_waiting() {
   bool ret = false;
   if (0 != _fsm_lockout_ms) {
     ret = !(millis() >= _fsm_lockout_ms);
@@ -1767,10 +1767,10 @@ bool ManuvrLink::_fsm_is_waiting() {
 }
 
 
-int8_t ManuvrLink::_fsm_insert_sync_states() {
+int8_t M2MLink::_fsm_insert_sync_states() {
   int8_t ret = -1;
-  if (0 == _prepend_fsm_state(ManuvrLinkState::SYNC_TENTATIVE)) {
-    if (0 == _prepend_fsm_state(ManuvrLinkState::SYNC_RESYNC)) {
+  if (0 == _prepend_fsm_state(M2MLinkState::SYNC_TENTATIVE)) {
+    if (0 == _prepend_fsm_state(M2MLinkState::SYNC_RESYNC)) {
       ret = 0;
     }
   }
@@ -1779,17 +1779,17 @@ int8_t ManuvrLink::_fsm_insert_sync_states() {
 
 
 /*******************************************************************************
-* ManuvrMsg memory lifecycle functions                                         *
+* M2MMsg memory lifecycle functions                                         *
 *******************************************************************************/
 
 /**
-* Allocate a ManuvrMsg for this class, and imbue it with the given properties.
+* Allocate a M2MMsg for this class, and imbue it with the given properties.
 *
-* @param hdr is the ManuvrMsg to clean up. Possibly for re-use.
-* @return A ManuvrMsg* ready for use, or nullptr on failure.
+* @param hdr is the M2MMsg to clean up. Possibly for re-use.
+* @return A M2MMsg* ready for use, or nullptr on failure.
 */
-ManuvrMsg* ManuvrLink::_allocate_manuvrmsg(ManuvrMsgHdr* hdr, BusOpcode op) {
-  ManuvrMsg* ret = new ManuvrMsg(hdr, op);
+M2MMsg* M2MLink::_allocate_manuvrmsg(M2MMsgHdr* hdr, BusOpcode op) {
+  M2MMsg* ret = new M2MMsg(hdr, op);
   if (nullptr != ret) {
     ret->encoding(_opts.encoding);
   }
@@ -1798,11 +1798,11 @@ ManuvrMsg* ManuvrLink::_allocate_manuvrmsg(ManuvrMsgHdr* hdr, BusOpcode op) {
 
 
 /**
-* Dispose of ManuvrMsgs for this class.
+* Dispose of M2MMsgs for this class.
 *
-* @param msg is the ManuvrMsg to clean up. Possibly for re-use.
+* @param msg is the M2MMsg to clean up. Possibly for re-use.
 */
-void ManuvrLink::_reclaim_manuvrmsg(ManuvrMsg* msg) {
+void M2MLink::_reclaim_manuvrmsg(M2MMsg* msg) {
   if (nullptr != msg) {
     msg->wipe();
     delete msg;
@@ -1815,7 +1815,7 @@ void ManuvrLink::_reclaim_manuvrmsg(ManuvrMsg* msg) {
 * These are built-in handlers for using this instance via a console.
 *******************************************************************************/
 
-int8_t ManuvrLink::console_handler(StringBuilder* text_return, StringBuilder* args) {
+int8_t M2MLink::console_handler(StringBuilder* text_return, StringBuilder* args) {
   int ret = 0;
   char* cmd = args->position_trimmed(0);
   if (0 == StringBuilder::strcasecmp(cmd, "info")) {

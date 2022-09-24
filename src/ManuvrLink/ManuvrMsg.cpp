@@ -1,5 +1,5 @@
 /*
-File:   ManuvrMsg.cpp
+File:   M2MMsg.cpp
 Author: J. Ian Lindsay
 Date:   2021.10.09
 
@@ -18,7 +18,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#include "ManuvrLink.h"
+#include "M2MLink.h"
 #include "../BusQueue.h"
 
 #if defined(CONFIG_C3P_M2M_SUPPORT)
@@ -50,12 +50,12 @@ limitations under the License.
 *          1 for header found, and message complete with no payload.
 *          2 for header found, and message complete with payload.
 */
-int8_t ManuvrMsg::attempt_header_parse(ManuvrMsgHdr* hdr, StringBuilder* dat_in) {
+int8_t M2MMsg::attempt_header_parse(M2MMsgHdr* hdr, StringBuilder* dat_in) {
   int8_t ret = -2;
   const int AVAILABLE_LEN = dat_in->length();
-  if (AVAILABLE_LEN >= MANUVRMSGHDR_MINIMUM_HEADER_SIZE) {
+  if (AVAILABLE_LEN >= M2MMSGHDR_MINIMUM_HEADER_SIZE) {
     uint8_t* tmp_buf = dat_in->string();
-    hdr->msg_code = (ManuvrMsgCode) *(tmp_buf++);
+    hdr->msg_code = (M2MMsgCode) *(tmp_buf++);
     hdr->flags    = *(tmp_buf++);
 
     const uint8_t len_l = hdr->len_length();
@@ -78,9 +78,9 @@ int8_t ManuvrMsg::attempt_header_parse(ManuvrMsgHdr* hdr, StringBuilder* dat_in)
 }
 
 
-ManuvrMsg* ManuvrMsg::unserialize(StringBuilder* dat_in) {
-  ManuvrMsg* ret = nullptr;
-  ManuvrMsgHdr _header;
+M2MMsg* M2MMsg::unserialize(StringBuilder* dat_in) {
+  M2MMsg* ret = nullptr;
+  M2MMsgHdr _header;
   int8_t ret_header = attempt_header_parse(&_header, dat_in);
   switch (ret_header) {
     case -3:  // no header found because the initial bytes are totally wrong. Sync error.
@@ -91,7 +91,7 @@ ManuvrMsg* ManuvrMsg::unserialize(StringBuilder* dat_in) {
     case 1:   // header found, and message complete with no payload.
     case 2:   // header found, and message complete with payload.
       dat_in->cull(_header.header_length());
-      ret = new ManuvrMsg(&_header);
+      ret = new M2MMsg(&_header);
       if (nullptr != ret) {
         ret->accumulate(dat_in);
         //if (ret->rxComplete()) {
@@ -116,20 +116,20 @@ ManuvrMsg* ManuvrMsg::unserialize(StringBuilder* dat_in) {
 /**
 * Constructor for an outbound message.
 */
-//ManuvrMsg::ManuvrMsg(KeyValuePair* kvp) : _header(ManuvrMsgCode::APPLICATION), _op(BusOpcode::TX) {
+//M2MMsg::M2MMsg(KeyValuePair* kvp) : _header(M2MMsgCode::APPLICATION), _op(BusOpcode::TX) {
 //  _kvp = kvp;
 //}
 
 /**
 * Constructor for an inbound message.
 */
-ManuvrMsg::ManuvrMsg(ManuvrMsgHdr* hdr, BusOpcode d) : _header(hdr), _op(d) {
+M2MMsg::M2MMsg(M2MMsgHdr* hdr, BusOpcode d) : _header(hdr), _op(d) {
 }
 
 /**
 * Destructor.
 */
-ManuvrMsg::~ManuvrMsg() {
+M2MMsg::~M2MMsg() {
 }
 
 
@@ -141,16 +141,16 @@ ManuvrMsg::~ManuvrMsg() {
 /**
 * Marks this outbound message as having been sent to the output buffer.
 */
-void ManuvrMsg::markSent() {
+void M2MMsg::markSent() {
   _ms_io_mark = millis();
-  _class_set_flag(MANUVRMSG_FLAG_TX_COMPLETE);
+  _class_set_flag(M2MMSG_FLAG_TX_COMPLETE);
 }
 
 
 /**
 * Sometimes we might want to re-use this allocated object rather than free it.
 */
-void ManuvrMsg::wipe() {
+void M2MMsg::wipe() {
   _op          = BusOpcode::UNDEF;
   _encoding    = TCode::BINARY;
   _flags       = 0;
@@ -159,7 +159,7 @@ void ManuvrMsg::wipe() {
 }
 
 
-bool ManuvrMsg::isValidMsg() {
+bool M2MMsg::isValidMsg() {
   bool ret = _header.isValid();
   //switch (_op) {
   //  case BusOpcode::RX:
@@ -181,7 +181,7 @@ bool ManuvrMsg::isValidMsg() {
 }
 
 
-void ManuvrMsg::expectsReply(bool x) {
+void M2MMsg::expectsReply(bool x) {
   if (x) {
     if (!_header.expectsReply() | (0 == _header.msg_id)) {
       // Assign IDs idempotently.
@@ -205,7 +205,7 @@ void ManuvrMsg::expectsReply(bool x) {
 *
 * @return true if a send retry should be attempted.
 */
-bool ManuvrMsg::attemptRetry() {
+bool M2MMsg::attemptRetry() {
   if (_retries > 0) {
     _retries--;
     return true;
@@ -225,7 +225,7 @@ bool ManuvrMsg::attemptRetry() {
 *        -1 if the message isn't inbound.
 *        -2 if there was a problem serializing the message.
 */
-int ManuvrMsg::reply(KeyValuePair* kvp, bool reply_expected) {
+int M2MMsg::reply(KeyValuePair* kvp, bool reply_expected) {
   int ret = -1;
   if (BusOpcode::RX == _op) {
     // NOTE: No id check on purpose so that it also applies to SYNC_KA.
@@ -235,7 +235,7 @@ int ManuvrMsg::reply(KeyValuePair* kvp, bool reply_expected) {
     _header.isReply(true);
     _accumulator.clear();
     _kvp = kvp;
-    _class_clear_flag(MANUVRMSG_FLAG_ACCUMULATOR_COMPLETE);
+    _class_clear_flag(M2MMSG_FLAG_ACCUMULATOR_COMPLETE);
     if (0 == serialize(&_accumulator)) {
       ret = 0;
     }
@@ -245,7 +245,7 @@ int ManuvrMsg::reply(KeyValuePair* kvp, bool reply_expected) {
 
 
 // Application calls this to gain access to the message payload.
-int ManuvrMsg::getPayload(KeyValuePair** payload) {
+int M2MMsg::getPayload(KeyValuePair** payload) {
   int ret = -1;
   if (rxComplete()) {
     ret--;
@@ -268,7 +268,7 @@ int ManuvrMsg::getPayload(KeyValuePair** payload) {
 * @return 0 on success.
 *        -1 on wrong type of message.
 */
-int ManuvrMsg::setPayload(KeyValuePair* payload) {
+int M2MMsg::setPayload(KeyValuePair* payload) {
   int ret = -1;
   switch (_op) {
     case BusOpcode::UNDEF:   // Might happen on a fresh message object.
@@ -276,7 +276,7 @@ int ManuvrMsg::setPayload(KeyValuePair* payload) {
       // NOTE: No break;
     case BusOpcode::TX:
       _accumulator.clear();
-      _class_clear_flag(MANUVRMSG_FLAG_ACCUMULATOR_COMPLETE);
+      _class_clear_flag(M2MMSG_FLAG_ACCUMULATOR_COMPLETE);
       _kvp = payload;
       ret = (0 == serialize(&_accumulator)) ? 0 : -2;
       _kvp = nullptr;   // TODO: Clearly enforce memory contract with client classes.
@@ -295,7 +295,7 @@ int ManuvrMsg::setPayload(KeyValuePair* payload) {
 * @return 0 on success.
 *        -1 invalid encoding type.
 */
-int ManuvrMsg::encoding(TCode enc) {
+int M2MMsg::encoding(TCode enc) {
   switch (enc) {
     case TCode::BINARY:
     case TCode::CBOR:
@@ -307,7 +307,7 @@ int ManuvrMsg::encoding(TCode enc) {
 }
 
 /*******************************************************************************
-* Exposed member functions for ManuvrLink's use.                               *
+* Exposed member functions for M2MLink's use.                               *
 *******************************************************************************/
 
 /**
@@ -319,9 +319,9 @@ int ManuvrMsg::encoding(TCode enc) {
 *
 * @return 0 on success, nonzero on failure.
 */
-int ManuvrMsg::serialize(StringBuilder* buf) {
+int M2MMsg::serialize(StringBuilder* buf) {
   int ret = -1;
-  if (_class_flag(MANUVRMSG_FLAG_ACCUMULATOR_COMPLETE)) {
+  if (_class_flag(M2MMSG_FLAG_ACCUMULATOR_COMPLETE)) {
     buf->concat(_accumulator.string(), _accumulator.length());
     ret = 0;
   }
@@ -343,7 +343,7 @@ int ManuvrMsg::serialize(StringBuilder* buf) {
         if (!payload.isEmpty()) {
           buf->concatHandoff(&payload);
         }
-        _class_set_flag(MANUVRMSG_FLAG_ACCUMULATOR_COMPLETE);
+        _class_set_flag(M2MMSG_FLAG_ACCUMULATOR_COMPLETE);
         ret = 0;
       }
     }
@@ -362,7 +362,7 @@ int ManuvrMsg::serialize(StringBuilder* buf) {
 *         0 on accumulation without completion.
 *        -1 on unserializer error.
 */
-int ManuvrMsg::accumulate(StringBuilder* buf) {
+int M2MMsg::accumulate(StringBuilder* buf) {
   int ret = 1;
   int bytes_remaining = _header.payload_length() - _accumulator.length();
   int bytes_incoming  = buf->length();
@@ -392,11 +392,11 @@ int ManuvrMsg::accumulate(StringBuilder* buf) {
 *
 * @param   StringBuilder* The buffer into which this fxn should write its output.
 */
-void ManuvrMsg::printDebug(StringBuilder* output) {
+void M2MMsg::printDebug(StringBuilder* output) {
   output->concatf(
-    "    --- ManuvrMsg [%s: %s], %sid: %u %s\n",
+    "    --- M2MMsg [%s: %s], %sid: %u %s\n",
     BusOp::getOpcodeString(_op),
-    ManuvrLink::manuvMsgCodeStr(_header.msg_code),
+    M2MLink::manuvMsgCodeStr(_header.msg_code),
     (_header.isReply() ? "reply to " : ""),
     _header.msg_id,
     (_header.expectsReply() ? "(need reply)" : "")
