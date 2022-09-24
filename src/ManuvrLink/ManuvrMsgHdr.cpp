@@ -21,7 +21,7 @@ limitations under the License.
 #include "ManuvrLink.h"
 #include "../BusQueue.h"
 
-#if defined(CONFIG_MANUVR_M2M_SUPPORT)
+#if defined(CONFIG_C3P_M2M_SUPPORT)
 
 /*******************************************************************************
 *   ___ _              ___      _ _              _      _
@@ -189,4 +189,4 @@ bool ManuvrMsgHdr::isSync() {
   return ret;
 }
 
-#endif   // CONFIG_MANUVR_M2M_SUPPORT
+#endif   // CONFIG_C3P_M2M_SUPPORT

@@ -56,8 +56,8 @@ SOURCES_CPP += ../../src/Identity/*.cpp
 
 CXXFLAGS  = -fsingle-precision-constant -Wdouble-promotion -fno-rtti -fno-exceptions
 CXXFLAGS += -D_GNU_SOURCE -fprofile-dir=$(COVERAGE_PATH)
-CXXFLAGS += -DCONFIG_MANUVR_CBOR -DCONFIG_MANUVR_M2M_SUPPORT
-CXXFLAGS += -DCONFIG_MANUVR_IMG_SUPPORT
+CXXFLAGS += -DCONFIG_C3P_CBOR -DCONFIG_C3P_M2M_SUPPORT
+CXXFLAGS += -DCONFIG_C3P_IMG_SUPPORT
 
 LIBS  = -L$(OUTPUT_PATH) -lstdc++ -lm
 

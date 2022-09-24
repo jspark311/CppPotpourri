@@ -21,7 +21,7 @@ limitations under the License.
 #include "ManuvrLink.h"
 #include "../BusQueue.h"
 
-#if defined(CONFIG_MANUVR_M2M_SUPPORT)
+#if defined(CONFIG_C3P_M2M_SUPPORT)
 
 /*******************************************************************************
 * Definitions only needed inside this translation unit.
@@ -905,6 +905,8 @@ int8_t ManuvrLink::_churn_outbound() {
         _reclaim_manuvrmsg(temp);
       }
       else {
+        // NOTE: We skip the queue-size check, considering that we just pulled
+        //   this object from this very queue.
         _outbound_messages.insert(temp, new_priority);
       }
     }
@@ -1166,8 +1168,13 @@ int8_t ManuvrLink::_process_input_buffer() {
         _working->accumulate(&_inbound_buf);
         if (_working->rxComplete()) {
           if (_working->isValidMsg()) {
-            _inbound_messages.insert(_working);
             _seq_parse_errs = 0;
+            if (CONFIG_C3PLINK_MAX_QUEUE_DEPTH > _inbound_messages.size()) {
+              _inbound_messages.insert(_working);
+            }
+            else {
+              c3p_log(LOG_LEV_WARN, __PRETTY_FUNCTION__, "Link 0x%08x inbound message queue flood.\n", _session_tag);
+            }
           }
           else {
             _seq_parse_errs++;
@@ -1901,4 +1908,4 @@ int8_t ManuvrLink::console_handler(StringBuilder* text_return, StringBuilder* ar
   return ret;
 }
 
-#endif   // CONFIG_MANUVR_M2M_SUPPORT
+#endif   // CONFIG_C3P_M2M_SUPPORT

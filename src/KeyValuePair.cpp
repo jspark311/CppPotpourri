@@ -23,9 +23,9 @@ limitations under the License.
 #include "KeyValuePair.h"
 
 #include <PriorityQueue.h>
-#if defined(CONFIG_MANUVR_IMG_SUPPORT)
+#if defined(CONFIG_C3P_IMG_SUPPORT)
   #include <Image/Image.h>
-#endif   // CONFIG_MANUVR_IMG_SUPPORT
+#endif   // CONFIG_C3P_IMG_SUPPORT
 
 #include <Identity/Identity.h>
 
@@ -185,9 +185,9 @@ void KeyValuePair::_set_new_value(void* v) {
       case TCode::STR_BUILDER:  delete (StringBuilder*) _target_mem;  break;
       case TCode::IDENTITY:     delete (Identity*) _target_mem;       break;
 
-      #if defined(CONFIG_MANUVR_IMG_SUPPORT)
+      #if defined(CONFIG_C3P_IMG_SUPPORT)
       case TCode::IMAGE:        delete (Image*) _target_mem;          break;
-      #endif   // CONFIG_MANUVR_IMG_SUPPORT
+      #endif   // CONFIG_C3P_IMG_SUPPORT
 
       // Types that are malloc()'d.
       case TCode::INT64:
@@ -619,13 +619,13 @@ int8_t KeyValuePair::serialize(StringBuilder* out, TCode TC) {
     default:  break;
     case TCode::BINARY:  ret = (0 == _encode_to_bin(out)) ? 0 : -2;     break;
     //case TCode::STR:     ret = (0 == _encode_to_string(out)) ? 0 : -2;  break;
-    #if defined(CONFIG_MANUVR_CBOR)
+    #if defined(CONFIG_C3P_CBOR)
     case TCode::CBOR:    ret = (0 == _encode_to_cbor(out)) ? 0 : -2;    break;
-    #endif  // CONFIG_MANUVR_CBOR
-    #if defined(CONFIG_MANUVR_JSON)
-    #endif  // CONFIG_MANUVR_JSON
-    #if defined(CONFIG_MANUVR_BASE64)
-    #endif  // CONFIG_MANUVR_BASE64
+    #endif  // CONFIG_C3P_CBOR
+    #if defined(CONFIG_C3P_JSON)
+    #endif  // CONFIG_C3P_JSON
+    #if defined(CONFIG_C3P_BASE64)
+    #endif  // CONFIG_C3P_BASE64
   }
   return ret;
 }
@@ -637,7 +637,7 @@ KeyValuePair* KeyValuePair::unserialize(uint8_t* src, unsigned int len, const TC
     default:  break;
     //case TCode::BINARY:  ret = (0 == _encode_to_bin(out)) ? 0 : -2;     break;
     //case TCode::STR:     ret = (0 == _encode_to_string(out)) ? 0 : -2;  break;
-    #if defined(CONFIG_MANUVR_CBOR)
+    #if defined(CONFIG_C3P_CBOR)
     case TCode::CBOR:
       {
         CBORArgListener listener(&ret);
@@ -646,11 +646,11 @@ KeyValuePair* KeyValuePair::unserialize(uint8_t* src, unsigned int len, const TC
         decoder.run();
       }
       break;
-    #endif  // CONFIG_MANUVR_CBOR
-    #if defined(CONFIG_MANUVR_JSON)
-    #endif  // CONFIG_MANUVR_JSON
-    #if defined(CONFIG_MANUVR_BASE64)
-    #endif  // CONFIG_MANUVR_BASE64
+    #endif  // CONFIG_C3P_CBOR
+    #if defined(CONFIG_C3P_JSON)
+    #endif  // CONFIG_C3P_JSON
+    #if defined(CONFIG_C3P_BASE64)
+    #endif  // CONFIG_C3P_BASE64
   }
   return ret;
 }
@@ -733,7 +733,7 @@ int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
       out->concat((StringBuilder*) _target_mem);
       break;
 
-    #if defined(CONFIG_MANUVR_IMG_SUPPORT)
+    #if defined(CONFIG_C3P_IMG_SUPPORT)
     case TCode::IMAGE:      // This is a pointer to an Image.
       {
         Image* img = (Image*) _target_mem;
@@ -745,7 +745,7 @@ int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
         }
       }
       break;
-    #endif   // CONFIG_MANUVR_IMG_SUPPORT
+    #endif   // CONFIG_C3P_IMG_SUPPORT
 
     /* Anything else should be dropped. */
     default:
@@ -764,7 +764,7 @@ int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
 * Parse-Pack: CBOR support
 *******************************************************************************/
 
-#if defined(CONFIG_MANUVR_CBOR)
+#if defined(CONFIG_C3P_CBOR)
 
 int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
   cbor::output_dynamic output;
@@ -889,7 +889,7 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
         // NOTE: This ought to work for any types retaining portability isn't important.
         // TODO: Gradually convert types out of this block. As much as possible should
         //   be portable. VECT_3_FLOAT ought to be an array of floats, for instance.
-        encoder.write_tag(MANUVR_CBOR_VENDOR_TYPE | TcodeToInt(src->typeCode()));
+        encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(src->typeCode()));
         encoder.write_bytes((uint8_t*) src->pointer(), src->length());
         break;
 
@@ -900,7 +900,7 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
             uint16_t i_len = ident->length();
             uint8_t buf[i_len];
             if (ident->toBuffer(buf)) {
-              encoder.write_tag(MANUVR_CBOR_VENDOR_TYPE | TcodeToInt(src->typeCode()));
+              encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(src->typeCode()));
               encoder.write_bytes(buf, i_len);
             }
           }
@@ -913,14 +913,14 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
           if (0 == src->getValueAs(&subj)) {
             // NOTE: Recursion.
             if (0 == subj->_encode_to_cbor(&intermediary)) {
-              encoder.write_tag(MANUVR_CBOR_VENDOR_TYPE | TcodeToInt(src->typeCode()));
+              encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(src->typeCode()));
               encoder.write_bytes(intermediary.string(), intermediary.length());
             }
           }
         }
         break;
       case TCode::IMAGE:
-        #if defined(CONFIG_MANUVR_IMG_SUPPORT)
+        #if defined(CONFIG_C3P_IMG_SUPPORT)
           {
             Image* img;
             if (0 == src->getValueAs(&img)) {
@@ -929,14 +929,14 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
                 uint32_t nb_buf = 0;
                 uint8_t* intermediary = (uint8_t*) alloca(32);
                 if (0 == img->serializeWithoutBuffer(intermediary, &nb_buf)) {
-                  encoder.write_tag(MANUVR_CBOR_VENDOR_TYPE | TcodeToInt(src->typeCode()));
+                  encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(src->typeCode()));
                   encoder.write_bytes(intermediary, nb_buf);   // TODO: This might cause two discrete CBOR objects.
                   //encoder.write_bytes(img->buffer(), sz_buf);
                 }
               }
             }
           }
-        #endif   // CONFIG_MANUVR_IMG_SUPPORT
+        #endif   // CONFIG_C3P_IMG_SUPPORT
         break;
       case TCode::RESERVED:
         // Peacefully ignore the types we can't export.
@@ -1061,7 +1061,7 @@ void CBORArgListener::on_bool(bool x) {  _caaa(new KeyValuePair(x));           }
 // https://www.iana.org/assignments/cbor-tags/cbor-tags.xhtml
 void CBORArgListener::on_tag(unsigned int tag) {
   switch (tag & 0xFFFFFF00) {
-    case MANUVR_CBOR_VENDOR_TYPE:
+    case C3P_CBOR_VENDOR_CODE:
       _pending_manuvr_tag = IntToTcode(tag & 0x000000FF);
       break;
     default:
@@ -1210,4 +1210,4 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
   return ret;
 }
 
-#endif // CONFIG_MANUVR_CBOR
+#endif // CONFIG_C3P_CBOR

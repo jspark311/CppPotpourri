@@ -132,14 +132,14 @@ void AbstractPlatform::printCryptoOverview(StringBuilder* out) {
   #if defined(__HAS_CRYPT_WRAPPER)
     out->concatf("-- Cryptographic support via %s.\n", __CRYPTO_BACKEND);
     int idx = 0;
-    #if defined(CONFIG_MANUVR_MBEDTLS) && defined(MBEDTLS_SSL_TLS_C)
+    #if defined(CONFIG_C3P_MBEDTLS) && defined(MBEDTLS_SSL_TLS_C)
       out->concat("-- Supported TLS ciphersuites:");
       const int* cs_list = mbedtls_ssl_list_ciphersuites();
       while (0 != *(cs_list)) {
         if (0 == idx++ % 2) out->concat("\n--\t");
         out->concatf("\t%-40s", mbedtls_ssl_get_ciphersuite_name(*(cs_list++)));
       }
-    #endif  // CONFIG_MANUVR_MBEDTLS
+    #endif  // CONFIG_C3P_MBEDTLS
 
     out->concat("\n-- Supported ciphers:");
     idx = 0;

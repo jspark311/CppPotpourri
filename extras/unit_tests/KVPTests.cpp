@@ -486,7 +486,7 @@ int test_KeyValuePair_Key_Abuse() {
 
 
 
-#if defined(CONFIG_MANUVR_CBOR)
+#if defined(CONFIG_C3P_CBOR)
 /**
 * [test_CBOR_KVP description]
 * @return [description]
@@ -656,7 +656,7 @@ int test_CBOR_Problematic_KeyValuePair() {
 
   return return_value;
 }
-#endif  // CONFIG_MANUVR_CBOR
+#endif  // CONFIG_C3P_CBOR
 
 
 /**
@@ -755,7 +755,7 @@ int test_KeyValuePair() {
           if (0 == return_value) {
             //return_value = test_KeyValuePair_Value_Translation();
             if (0 == return_value) {
-            #if defined(CONFIG_MANUVR_CBOR)
+            #if defined(CONFIG_C3P_CBOR)
               return_value = test_CBOR_KeyValuePair();
               if (0 == return_value) {
                 return_value = test_CBOR_Problematic_KeyValuePair();
@@ -765,7 +765,7 @@ int test_KeyValuePair() {
                 else printTestFailure("KVP_CBOR_Problematic_KeyValuePair");
               }
               else printTestFailure("test_CBOR_KeyValuePair");
-              #endif  // CONFIG_MANUVR_CBOR
+              #endif  // CONFIG_C3P_CBOR
             }
             else printTestFailure("test_Value_Translation");
           }

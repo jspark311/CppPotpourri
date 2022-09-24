@@ -44,12 +44,12 @@ TODO: Since this class renders large chains of function calls opaque to the
 #include <Vector3.h>
 #include <StringBuilder.h>
 
-#if defined(CONFIG_MANUVR_CBOR)
+#if defined(CONFIG_C3P_CBOR)
   #include <cbor-cpp/cbor.h>
 #endif
 
 /* Forward declarations of classes that this type will handle. */
-#if defined(CONFIG_MANUVR_IMG_SUPPORT)
+#if defined(CONFIG_C3P_IMG_SUPPORT)
   #include <Image/Image.h>
 #endif
 
@@ -145,10 +145,10 @@ class KeyValuePair {
     inline int8_t setValue(Identity* val) {        return setValue((void*) val, 0,                                TCode::IDENTITY);       };
 
     // Conditional types.
-    #if defined(CONFIG_MANUVR_IMG_SUPPORT)
+    #if defined(CONFIG_C3P_IMG_SUPPORT)
     KeyValuePair(Image* val, char* key = nullptr) : KeyValuePair((void*) val, val->bytesUsed(), TCode::IMAGE, key) {};
     inline KeyValuePair* append(Image* val, char* key = nullptr) {   return link(new KeyValuePair(val, key));   };
-    #endif   // CONFIG_MANUVR_IMG_SUPPORT
+    #endif   // CONFIG_C3P_IMG_SUPPORT
 
 
     /* Accessors for key. */
@@ -225,10 +225,10 @@ class KeyValuePair {
     /* Private parse/pack functions functions. */
     int8_t _encode_to_bin(StringBuilder*);
     KeyValuePair* _decode_from_bin(uint8_t*, unsigned int);
-    #if defined(CONFIG_MANUVR_CBOR)
+    #if defined(CONFIG_C3P_CBOR)
       int8_t _encode_to_cbor(StringBuilder*);
       static KeyValuePair* _decode_from_cbor(uint8_t*, unsigned int);
-    #endif   // CONFIG_MANUVR_CBOR
+    #endif   // CONFIG_C3P_CBOR
 
 
     /* Inlines for altering and reading the flags. */
@@ -243,7 +243,7 @@ class KeyValuePair {
 
 
 /* If we have CBOR support, we define a helper class to assist decomposition. */
-#if defined(CONFIG_MANUVR_CBOR)
+#if defined(CONFIG_C3P_CBOR)
   class CBORArgListener : public cbor::listener {
     public:
       CBORArgListener(KeyValuePair**);
@@ -286,6 +286,6 @@ class KeyValuePair {
 
       KeyValuePair* _inflate_manuvr_type(uint8_t* data, int size, const TCode);
   };
-#endif  // CONFIG_MANUVR_CBOR
+#endif  // CONFIG_C3P_CBOR
 
 #endif  // __MANUVR_DS_ARGUMENT_H

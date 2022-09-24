@@ -76,11 +76,19 @@ NOTE: This has been a mad binge to port over all this work from ManuvrOS. Five
 * Parameters from the build system                                             *
 *******************************************************************************/
 
-//#define CONFIG_MANUVR_M2M_SUPPORT 1   // TODO: Until Rationalizer.h is done.
+//#define CONFIG_C3P_M2M_SUPPORT 1   // TODO: Until Rationalizer.h is done.
 
 //#ifndef CONFIG_MANUVRMSG_PREALLOC_COUNT
 //  #define CONFIG_MANUVRMSG_PREALLOC_COUNT   4
 //#endif
+
+/*
+* We must bound the growth on memory usage, or have our stack be at the mercy
+*   of our counterparty's good behavior.
+*/
+#ifndef CONFIG_C3PLINK_MAX_QUEUE_DEPTH
+  #define CONFIG_C3PLINK_MAX_QUEUE_DEPTH   12
+#endif
 
 
 /*******************************************************************************

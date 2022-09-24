@@ -11,7 +11,7 @@ Date:   2022.06.25
 /*******************************************************************************
 * GfxUIMLink
 *******************************************************************************/
-#if defined(CONFIG_MANUVR_M2M_SUPPORT)
+#if defined(CONFIG_C3P_M2M_SUPPORT)
 
 GfxUIMLink::GfxUIMLink(ManuvrLink* l, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f)
   : GfxUIElement(x, y, w, h, (f | GFXUI_FLAG_ALWAYS_REDRAW)), _link(l),
@@ -91,4 +91,4 @@ bool GfxUIMLink::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
   return ret;
 }
 
-#endif  // CONFIG_MANUVR_M2M_SUPPORT
+#endif  // CONFIG_C3P_M2M_SUPPORT
