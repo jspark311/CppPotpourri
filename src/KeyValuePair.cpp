@@ -1188,19 +1188,21 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
       }
       break;
 
-    // Inflation of Images.
-    case TCode::IMAGE:
-      {
-        Image* tmp = new Image();
-        if (tmp) {
-          tmp->deserialize(data, size);
-          if (tmp->allocated()) {
+    #if defined(CONFIG_C3P_IMG_SUPPORT)
+      // Inflation of Images.
+      case TCode::IMAGE:
+        {
+          Image* tmp = new Image();
+          if (tmp) {
+            tmp->deserialize(data, size);
+            if (tmp->allocated()) {
+            }
+            ret = new KeyValuePair(tmp);
+            if (nullptr != ret) ret->reapValue(true);
           }
-          ret = new KeyValuePair(tmp);
-          if (nullptr != ret) ret->reapValue(true);
         }
-      }
-      break;
+        break;
+    #endif   // CONFIG_C3P_IMG_SUPPORT
 
     // Any other TCodes will either be handled by a CBOR native type, or should
     //   never have been serialized in the first place.
