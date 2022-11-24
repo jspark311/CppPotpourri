@@ -544,7 +544,7 @@ class GfxUI3AxisRender : public GfxUIElement {
 /*******************************************************************************
 * Graphical tools for manipulating filters.
 *******************************************************************************/
-template <typename T> class GfxUISensorFilter : public GfxUIElement {
+template <class T> class GfxUISensorFilter : public GfxUIElement {
   public:
     GfxUISensorFilter(SensorFilter<T>* sf, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f | GFXUI_FLAG_ALWAYS_REDRAW), _color(color), _filter(sf) {};
     ~GfxUISensorFilter() {};

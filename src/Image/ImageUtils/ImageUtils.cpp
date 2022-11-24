@@ -293,7 +293,7 @@ void UIGfxWrapper::drawHeatMap(
 ) {
   const bool lock_range_to_absolute = (flags & GFXUI_FLAG_LOCK_RANGE_V) ? true : false;
   const uint32_t MIN_ELEMENTS = strict_min((uint32_t) filt->windowSize(), (uint32_t) w * h);
-  const uint     PIXEL_SIZE   = strict_min(w, h) / MIN_ELEMENTS;
+  const uint32_t PIXEL_SIZE   = strict_min((uint32_t) w, (uint32_t) h) / MIN_ELEMENTS;
   const float    TEMP_MIN     = (range_lock_low == range_lock_hi) ? filt->minValue() : range_lock_low;
   const float    TEMP_MAX     = (range_lock_low == range_lock_hi) ? filt->maxValue() : range_lock_hi;
   const float    TEMP_RANGE   = TEMP_MAX - TEMP_MIN;

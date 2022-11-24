@@ -87,7 +87,7 @@ class SensorFilterBase {
 /*
 * Filters for linear sequences of scalar values.
 */
-template <typename T> class SensorFilter : public SensorFilterBase {
+template <class T> class SensorFilter : public SensorFilterBase {
   public:
     SensorFilter(uint ws, FilteringStrategy s) : SensorFilterBase(ws, s) {};
     SensorFilter(T* buf, int ws, FilteringStrategy s) : SensorFilter(ws, s) {
@@ -140,7 +140,7 @@ template <typename T> class SensorFilter : public SensorFilterBase {
 /*
 * Filters for linear sequences of vector values.
 */
-template <typename T> class SensorFilter3 : public SensorFilterBase {
+template <class T> class SensorFilter3 : public SensorFilterBase {
   public:
     SensorFilter3(uint ws, FilteringStrategy s) : SensorFilterBase(ws, s) {};
     SensorFilter3(T* buf, int ws, FilteringStrategy s) : SensorFilter3(ws, s) {
@@ -205,7 +205,7 @@ static const char* const FILTER_HEADER_STRING = "\t%s filter\n\t----------------
 /*
 * Base destructor. Free sample memory.
 */
-template <typename T> SensorFilter<T>::~SensorFilter() {
+template <class T> SensorFilter<T>::~SensorFilter() {
   if ((nullptr != samples) & (!_static_alloc)) {
     free(samples);
     samples = nullptr;
@@ -217,7 +217,7 @@ template <typename T> SensorFilter<T>::~SensorFilter() {
 * Mark the filter as having been filled and ready to process. Useful for when
 *   the filter data is populated from the outside via pointer.
 */
-template <typename T> int8_t SensorFilter<T>::feedFilter() {
+template <class T> int8_t SensorFilter<T>::feedFilter() {
   int8_t ret = -1;
   if (initialized()) {
     _window_full = true;
@@ -231,7 +231,7 @@ template <typename T> int8_t SensorFilter<T>::feedFilter() {
 /*
 * This must be called ahead of usage to allocate the needed memory.
 */
-template <typename T> int8_t SensorFilter<T>::init() {
+template <class T> int8_t SensorFilter<T>::init() {
   if (_static_alloc)  {
     _filter_initd = ((nullptr != samples) & (_window_size > 0));
   }
@@ -248,7 +248,7 @@ template <typename T> int8_t SensorFilter<T>::init() {
 * Reallocates the sample memory, freeing the prior allocation if necessary.
 * Returns 0 on success, -1 otherwise.
 */
-template <typename T> int8_t SensorFilter<T>::_reallocate_sample_window(uint win) {
+template <class T> int8_t SensorFilter<T>::_reallocate_sample_window(uint win) {
   int8_t ret = -1;
   if (win != _window_size) {
     if (!_static_alloc) {
@@ -283,7 +283,7 @@ template <typename T> int8_t SensorFilter<T>::_reallocate_sample_window(uint win
 * Zero's the content of the sample memory, whatever that means to this type.
 * Returns 0 on success, -1 otherwise.
 */
-template <typename T> int8_t SensorFilter<T>::_zero_samples() {
+template <class T> int8_t SensorFilter<T>::_zero_samples() {
   int8_t ret = -1;
   last_value = T(0);
   min_value  = T(0);
@@ -305,7 +305,7 @@ template <typename T> int8_t SensorFilter<T>::_zero_samples() {
 }
 
 
-template <typename T> int8_t SensorFilter<T>::setStrategy(FilteringStrategy s) {
+template <class T> int8_t SensorFilter<T>::setStrategy(FilteringStrategy s) {
   int8_t ret = -1;
   if (_strat != s) {
     _strat = s;
@@ -316,7 +316,7 @@ template <typename T> int8_t SensorFilter<T>::setStrategy(FilteringStrategy s) {
 }
 
 
-template <typename T> void SensorFilter<T>::printFilter(StringBuilder* output) {
+template <class T> void SensorFilter<T>::printFilter(StringBuilder* output) {
   output->concatf(FILTER_HEADER_STRING, getFilterStr(strategy()));
   output->concatf("\tInitialized:  %c\n",   initialized() ? 'y':'n');
   output->concatf("\tStatic alloc: %c\n",   _static_alloc ? 'y':'n');
@@ -357,7 +357,7 @@ template <typename T> void SensorFilter<T>::printFilter(StringBuilder* output) {
 * @param val The value to be fed to the filter.
 * @return -1 if filter not initialized, 0 on value acceptance, or 1 one acceptance with new result.
 */
-template <typename T> int8_t SensorFilter<T>::feedFilter(T val) {
+template <class T> int8_t SensorFilter<T>::feedFilter(T val) {
   int8_t ret = -1;
   if (initialized()) {
     if (_window_size > 1) {
@@ -412,7 +412,7 @@ template <typename T> int8_t SensorFilter<T>::feedFilter(T val) {
 *
 * @return The new result.
 */
-template <typename T> T SensorFilter<T>::value() {
+template <class T> T SensorFilter<T>::value() {
   _filter_dirty = false;
   return last_value;
 };
@@ -422,7 +422,7 @@ template <typename T> T SensorFilter<T>::value() {
 * Calulates the min/max over the entire sample window.
 * Updates the private cache variable.
 */
-template <typename T> void SensorFilter<T>::_calculate_minmax() {
+template <class T> void SensorFilter<T>::_calculate_minmax() {
   if (_filter_initd && _window_full) {
     min_value = samples[0];   // Start with a baseline.
     max_value = samples[0];   // Start with a baseline.
@@ -441,7 +441,7 @@ template <typename T> void SensorFilter<T>::_calculate_minmax() {
 *
 * @return the mean of the contents of the filter.
 */
-template <typename T> double SensorFilter<T>::_calculate_mean() {
+template <class T> double SensorFilter<T>::_calculate_mean() {
   if (_filter_initd && _window_full) {
     double summed_samples = 0.0;
     for (uint i = 0; i < _window_size; i++) {
@@ -460,7 +460,7 @@ template <typename T> double SensorFilter<T>::_calculate_mean() {
 *
 * @return the root mean square of the contents of the filter.
 */
-template <typename T> double SensorFilter<T>::_calculate_rms() {
+template <class T> double SensorFilter<T>::_calculate_rms() {
   if ((_window_size > 1) && _filter_initd && _window_full) {
     double squared_samples = 0.0;
     for (uint i = 0; i < _window_size; i++) {
@@ -479,7 +479,7 @@ template <typename T> double SensorFilter<T>::_calculate_rms() {
 *
 * @return the standard deviation of the contents of the filter.
 */
-template <typename T> double SensorFilter<T>::_calculate_stdev() {
+template <class T> double SensorFilter<T>::_calculate_stdev() {
   if ((_window_size > 1) && _filter_initd && _window_full) {
     double deviation_sum = 0.0;
     double cached_mean = mean();
@@ -499,7 +499,7 @@ template <typename T> double SensorFilter<T>::_calculate_stdev() {
 *
 * @return the median of the contents of the filter.
 */
-template <typename T> T SensorFilter<T>::_calculate_median() {
+template <class T> T SensorFilter<T>::_calculate_median() {
   T sorted[_window_size];
   T ret = T(0);
   for (uint i = 0; i < _window_size; i++) {
@@ -541,7 +541,7 @@ template <typename T> T SensorFilter<T>::_calculate_median() {
 /*
 * Base destructor. Free sample memory.
 */
-template <typename T> SensorFilter3<T>::~SensorFilter3() {
+template <class T> SensorFilter3<T>::~SensorFilter3() {
   if ((nullptr != samples) && (!_static_alloc)) {
     free(samples);
     samples = nullptr;
@@ -551,7 +551,7 @@ template <typename T> SensorFilter3<T>::~SensorFilter3() {
 /*
 * This must be called ahead of usage to allocate the needed memory.
 */
-template <typename T> int8_t SensorFilter3<T>::init() {
+template <class T> int8_t SensorFilter3<T>::init() {
   if (_static_alloc)  {
     _filter_initd = ((nullptr != samples) & (_window_size > 0));
   }
@@ -569,7 +569,7 @@ template <typename T> int8_t SensorFilter3<T>::init() {
 * Mark the filter as having been filled and ready to process. Useful for when
 *   the filter data is populated from the outside via pointer.
 */
-template <typename T> int8_t SensorFilter3<T>::feedFilter() {
+template <class T> int8_t SensorFilter3<T>::feedFilter() {
   int8_t ret = -1;
   if (initialized()) {
     _window_full = true;
@@ -585,7 +585,7 @@ template <typename T> int8_t SensorFilter3<T>::feedFilter() {
 * Reallocates the sample memory, freeing the prior allocation if necessary.
 * Returns 0 on success, -1 otherwise.
 */
-template <typename T> int8_t SensorFilter3<T>::_reallocate_sample_window(uint win) {
+template <class T> int8_t SensorFilter3<T>::_reallocate_sample_window(uint win) {
   int8_t ret = -1;
   if (win != _window_size) {
     if (!_static_alloc) {
@@ -620,7 +620,7 @@ template <typename T> int8_t SensorFilter3<T>::_reallocate_sample_window(uint wi
 * Zero's the content of the sample memory, whatever that means to this type.
 * Returns 0 on success, -1 otherwise.
 */
-template <typename T> int8_t SensorFilter3<T>::_zero_samples() {
+template <class T> int8_t SensorFilter3<T>::_zero_samples() {
   int8_t ret = -1;
   last_value(T(0), T(0), T(0));
   _mean(T(0), T(0), T(0));
@@ -638,7 +638,7 @@ template <typename T> int8_t SensorFilter3<T>::_zero_samples() {
 }
 
 
-template <typename T> int8_t SensorFilter3<T>::setStrategy(FilteringStrategy s) {
+template <class T> int8_t SensorFilter3<T>::setStrategy(FilteringStrategy s) {
   int8_t ret = -1;
   if (_strat != s) {
     _strat = s;
@@ -649,7 +649,7 @@ template <typename T> int8_t SensorFilter3<T>::setStrategy(FilteringStrategy s) 
 }
 
 
-template <typename T> void SensorFilter3<T>::printFilter(StringBuilder* output) {
+template <class T> void SensorFilter3<T>::printFilter(StringBuilder* output) {
   output->concatf(FILTER_HEADER_STRING, getFilterStr(strategy()));
   output->concatf("\tInitialized:  %c\n",   initialized() ? 'y':'n');
   output->concatf("\tStatic alloc: %c\n",   _static_alloc ? 'y':'n');
@@ -698,7 +698,7 @@ template <typename T> void SensorFilter3<T>::printFilter(StringBuilder* output) 
 * @param val The value to be fed to the filter.
 * @return -1 if filter not initialized, 0 on value acceptance, or 1 one acceptance with new result.
 */
-template <typename T> int8_t SensorFilter3<T>::feedFilter(Vector3<T>* vect) {
+template <class T> int8_t SensorFilter3<T>::feedFilter(Vector3<T>* vect) {
   return feedFilter(vect->x, vect->y, vect->z);
 }
 
@@ -709,7 +709,7 @@ template <typename T> int8_t SensorFilter3<T>::feedFilter(Vector3<T>* vect) {
 * @param val The value to be fed to the filter.
 * @return -1 if filter not initialized, 0 on value acceptance, or 1 one acceptance with new result.
 */
-template <typename T> int8_t SensorFilter3<T>::feedFilter(T x, T y, T z) {
+template <class T> int8_t SensorFilter3<T>::feedFilter(T x, T y, T z) {
   int8_t ret = -1;
   if (initialized()) {
     ret = 0;
@@ -769,7 +769,7 @@ template <typename T> int8_t SensorFilter3<T>::feedFilter(T x, T y, T z) {
 *
 * @return The new result.
 */
-template <typename T> Vector3<T>* SensorFilter3<T>::value() {
+template <class T> Vector3<T>* SensorFilter3<T>::value() {
   _filter_dirty = false;
   return &last_value;
 }
@@ -779,7 +779,7 @@ template <typename T> Vector3<T>* SensorFilter3<T>::value() {
 * Calulates the min/max vector (by magnitude) over the entire sample window.
 * Updates the private cache variable.
 */
-template <typename T> int8_t SensorFilter3<T>::_calculate_minmax() {
+template <class T> int8_t SensorFilter3<T>::_calculate_minmax() {
   int8_t ret = -1;
   if (_filter_initd && _window_full) {
     Vector3<T> tmp_min(&samples[0]);   // Start with a baseline.
@@ -803,7 +803,7 @@ template <typename T> int8_t SensorFilter3<T>::_calculate_minmax() {
 *
 * @return 0 on success, -1 on failure
 */
-template <typename T> int8_t SensorFilter3<T>::_calculate_mean() {
+template <class T> int8_t SensorFilter3<T>::_calculate_mean() {
   int8_t ret = -1;
   if (_filter_initd && _window_full) {
     Vector3f64 summed_samples;
@@ -830,7 +830,7 @@ template <typename T> int8_t SensorFilter3<T>::_calculate_mean() {
 *
 * @return 0 on success, -1 on failure
 */
-template <typename T> int8_t SensorFilter3<T>::_calculate_rms() {
+template <class T> int8_t SensorFilter3<T>::_calculate_rms() {
   int8_t ret = -1;
   if (windowSize() > 0) {
     Vector3f64 squared_samples;
@@ -861,7 +861,7 @@ template <typename T> int8_t SensorFilter3<T>::_calculate_rms() {
 *
 * @return 0 on success, -1 on failure
 */
-template <typename T> int8_t SensorFilter3<T>::_calculate_stdev() {
+template <class T> int8_t SensorFilter3<T>::_calculate_stdev() {
   int8_t ret = -1;
   if ((_window_size > 1) && (nullptr != samples)) {
     Vector3f64 deviation_sum;
@@ -891,7 +891,7 @@ template <typename T> int8_t SensorFilter3<T>::_calculate_stdev() {
 /*
 * Calulates the median of the samples.
 */
-template <typename T> int8_t SensorFilter3<T>::_calculate_median() {
+template <class T> int8_t SensorFilter3<T>::_calculate_median() {
   double sorted[3][_window_size];
   for (uint i = 0; i < _window_size; i++) {
     sorted[0][i] = samples[i].x;

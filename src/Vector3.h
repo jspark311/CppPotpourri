@@ -71,7 +71,7 @@ enum class GnomonType : uint8_t {
 };
 
 
-template <typename T> class Vector3 {
+template <class T> class Vector3 {
   public:
     T x, y, z;
 
