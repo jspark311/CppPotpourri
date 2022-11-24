@@ -175,7 +175,8 @@ int8_t DataRecord::save(char* name) {
         // If our request for space was granted, we will now have a block list
         //   that we are expected to write to. Get the first block.
         ret--;
-        uint8_t* rec_desc = (uint8_t*) alloca(DESCRIPTOR_SIZE);
+        uint8_t rec_desc[DESCRIPTOR_SIZE] = {0, };
+
         if (nullptr != rec_desc) {
           ret--;
           StorageBlock* first_blk = _blocks.get(0);

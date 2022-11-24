@@ -927,7 +927,7 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
               uint32_t sz_buf = img->bytesUsed();
               if (sz_buf > 0) {
                 uint32_t nb_buf = 0;
-                uint8_t* intermediary = (uint8_t*) alloca(32);
+                uint8_t intermediary[32] = {0, };
                 if (0 == img->serializeWithoutBuffer(intermediary, &nb_buf)) {
                   encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(src->typeCode()));
                   encoder.write_bytes(intermediary, nb_buf);   // TODO: This might cause two discrete CBOR objects.

@@ -53,7 +53,7 @@ void timestampToString(StringBuilder* output, uint64_t ts) {
 * @return 0 on failure, or epoch timestamp otherwise.
 */
 uint64_t stringToTimestamp(const char* str) {
-  char* tmp_buf = (char*) alloca(20);
+  char tmp_buf[20] = {0, };
   memcpy(tmp_buf, str, 20);
   tmp_buf[4]  = '\0';   // Year boundary.
   tmp_buf[7]  = '\0';   // Month

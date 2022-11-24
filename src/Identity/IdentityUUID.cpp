@@ -23,7 +23,6 @@ A simple form of identity. UUID support is cheap, and many other notions of
 */
 
 #include "IdentityUUID.h"
-#include <alloca.h>
 
 
 /*******************************************************************************
@@ -74,8 +73,7 @@ IdentityUUID::~IdentityUUID() {
 *******************************************************************************/
 
 void IdentityUUID::toString(StringBuilder* output) {
-  char* uuid_str = (char*) alloca(40);
-  bzero(uuid_str, 40);
+  char uuid_str[40] = {0, };
   uuid_to_str(&uuid, uuid_str, 40);
   output->concat(uuid_str);
 }

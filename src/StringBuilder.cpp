@@ -20,6 +20,7 @@ limitations under the License.
 
 #include "StringBuilder.h"
 #include "CppPotpourri.h"
+#include <alloca.h>    // TODO: Deprecate over time.
 
 
 /*******************************************************************************
@@ -717,31 +718,24 @@ void StringBuilder::concat(const char *nu) {
 
 
 void StringBuilder::concat(unsigned char nu) {
-  unsigned char* temp = (uint8_t*) alloca(1);
-  *(temp) = nu;
-  this->concat(temp, 1);
+  this->concat(&nu, 1);
 }
 void StringBuilder::concat(char nu) {
-  char* temp = (char *) alloca(2);
-  *(temp) = nu;
-  *(temp+1) = 0;
+  char temp[2] = {nu, 0};
   this->concat(temp);
 }
 void StringBuilder::concat(int nu) {
-  char * temp = (char *) alloca(12);
-  memset(temp, 0x00, 12);
+  char temp[12] = {0, };
   sprintf(temp, "%d", nu);
   this->concat(temp);
 }
 void StringBuilder::concat(unsigned int nu) {
-  char * temp = (char *) alloca(12);
-  memset(temp, 0x00, 12);
+  char temp[12] = {0, };
   sprintf(temp, "%u", nu);
   this->concat(temp);
 }
 void StringBuilder::concat(double nu) {
-  char * temp = (char *) alloca(16);
-  memset(temp, 0x00, 16);
+  char temp[16] = {0, };
   sprintf(temp, "%f", nu);
   this->concat(temp);
 }

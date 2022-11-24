@@ -11,4 +11,5 @@ idf_component_register(
   REQUIRES ManuvrPlatform
 )
 
+#component_compile_options(-std=c++17)
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-ignored-qualifiers -Wno-implicit-fallthrough)
