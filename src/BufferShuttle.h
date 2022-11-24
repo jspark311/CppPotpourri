@@ -17,7 +17,6 @@ TODO: This should turn into a templated class to handle complex types that are
   reducible to buffers.
 */
 
-
 #include "CppPotpourri.h"
 #include "AbstractPlatform.h"
 #include "StringBuilder.h"
@@ -28,7 +27,6 @@ TODO: This should turn into a templated class to handle complex types that are
 #include "SensorFilter.h"
 #include "cbor-cpp/cbor.h"
 #include "Image/Image.h"
-
 
 
 class BufferShuttle {
