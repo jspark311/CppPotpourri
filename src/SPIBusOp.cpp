@@ -124,60 +124,56 @@ uint8_t SPIBusOp::bitsPerFrame() {
 * @param  p1 The second transfer parameter.
 * @param  p2 The third transfer parameter.
 * @param  p3 The fourth transfer parameter.
+* @param  p4 The first transfer parameter.
+* @param  p5 The second transfer parameter.
+* @param  p6 The third transfer parameter.
+* @param  p7 The fourth transfer parameter.
 */
-void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3) {
-  _param_len     = 4;
+void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4, uint8_t p5, uint8_t p6, uint8_t p7) {
   xfer_params[0] = p0;
   xfer_params[1] = p1;
   xfer_params[2] = p2;
   xfer_params[3] = p3;
+  xfer_params[4] = p4;
+  xfer_params[5] = p5;
+  xfer_params[6] = p6;
+  xfer_params[7] = p7;
+  _param_len     = 8;
 }
 
+void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4, uint8_t p5, uint8_t p6) {
+  setParams(p0, p1, p2, p3, p4, p5, p6, 0);
+  _param_len     = 7;
+}
 
-/**
-* Some devices require transfer parameters that are in non-contiguous memory
-*   with-respect-to the payload buffer.
-*
-* @param  p0 The first transfer parameter.
-* @param  p1 The second transfer parameter.
-* @param  p2 The third transfer parameter.
-*/
+void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4, uint8_t p5) {
+  setParams(p0, p1, p2, p3, p4, p5, 0, 0);
+  _param_len     = 6;
+}
+
+void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4) {
+  setParams(p0, p1, p2, p3, p4, 0, 0, 0);
+  _param_len     = 5;
+}
+
+void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3) {
+  setParams(p0, p1, p2, p3, 0, 0, 0, 0);
+  _param_len     = 4;
+}
+
 void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2) {
+  setParams(p0, p1, p2, 0, 0, 0, 0, 0);
   _param_len     = 3;
-  xfer_params[0] = p0;
-  xfer_params[1] = p1;
-  xfer_params[2] = p2;
-  xfer_params[3] = 0;
 }
 
-/**
-* Some devices require transfer parameters that are in non-contiguous memory
-*   with-respect-to the payload buffer.
-*
-* @param  p0 The first transfer parameter.
-* @param  p1 The second transfer parameter.
-*/
 void SPIBusOp::setParams(uint8_t p0, uint8_t p1) {
+  setParams(p0, p1, 0, 0, 0, 0, 0, 0);
   _param_len     = 2;
-  xfer_params[0] = p0;
-  xfer_params[1] = p1;
-  xfer_params[2] = 0;
-  xfer_params[3] = 0;
 }
 
-
-/**
-* Some devices require transfer parameters that are in non-contiguous memory
-*   with-respect-to the payload buffer.
-*
-* @param  p0 The first transfer parameter.
-*/
 void SPIBusOp::setParams(uint8_t p0) {
+  setParams(p0, 0, 0, 0, 0, 0, 0, 0);
   _param_len     = 1;
-  xfer_params[0] = p0;
-  xfer_params[1] = 0;
-  xfer_params[2] = 0;
-  xfer_params[3] = 0;
 }
 
 
@@ -256,6 +252,10 @@ void SPIBusOp::wipe() {
   xfer_params[1] = 0;
   xfer_params[2] = 0;
   xfer_params[3] = 0;
+  xfer_params[4] = 0;
+  xfer_params[5] = 0;
+  xfer_params[6] = 0;
+  xfer_params[7] = 0;
 }
 
 

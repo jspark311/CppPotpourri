@@ -30,7 +30,7 @@ using namespace cbor;
 * output_dynamic
 *******************************************************************************/
 
-void output_dynamic::init(uint initalCapacity) {
+void output_dynamic::init(uint32_t initalCapacity) {
   this->_capacity = initalCapacity;
   this->_buffer = new uint8_t[initalCapacity];
   this->_offset = 0;
@@ -40,7 +40,7 @@ output_dynamic::output_dynamic() {
   init(256);
 }
 
-output_dynamic::output_dynamic(uint inital_capacity) {
+output_dynamic::output_dynamic(uint32_t inital_capacity) {
   init(inital_capacity);
 }
 
@@ -49,7 +49,7 @@ output_dynamic::~output_dynamic() {
 }
 
 uint8_t* output_dynamic::data() {   return _buffer;   }  // Cannot inline due to being virtual.
-uint     output_dynamic::size() {   return _offset;   }  // Cannot inline due to being virtual.
+uint32_t output_dynamic::size() {   return _offset;   }  // Cannot inline due to being virtual.
 
 void output_dynamic::put_byte(uint8_t value) {
   if (_offset < _capacity) {
@@ -76,7 +76,7 @@ void output_dynamic::put_bytes(const uint8_t* data, int size) {
 * output_static
 *******************************************************************************/
 
-output_static::output_static(uint capacity) {
+output_static::output_static(uint32_t capacity) {
   this->_capacity = capacity;
   this->_buffer = new uint8_t[capacity];
   this->_offset = 0;
@@ -106,7 +106,7 @@ void output_static::put_bytes(const uint8_t* data, int size) {
 }
 
 uint8_t* output_static::getData() {  return _buffer;  }  // Cannot inline due to being virtual.
-uint     output_static::getSize() {  return _offset;  }  // Cannot inline due to being virtual.
+uint32_t output_static::getSize() {  return _offset;  }  // Cannot inline due to being virtual.
 
 
 
@@ -132,10 +132,10 @@ uint16_t input::get_short() {
   return value;
 }
 
-uint input::get_int() {
-  uint value = \
-  ((uint) _data[_offset    ] << 24) | ((uint) _data[_offset + 1] << 16) |
-  ((uint) _data[_offset + 2] << 8 ) | ((uint) _data[_offset + 3]);
+uint32_t input::get_int() {
+  uint32_t value = \
+  ((uint32_t) _data[_offset    ] << 24) | ((uint32_t) _data[_offset + 1] << 16) |
+  ((uint32_t) _data[_offset + 2] << 8 ) | ((uint32_t) _data[_offset + 3]);
   _offset += 4;
   return value;
 }
@@ -193,7 +193,7 @@ encoder::encoder(output &out) {
 encoder::~encoder() {}
 
 
-void encoder::write_type_value(int major_type, uint value) {
+void encoder::write_type_value(int major_type, uint32_t value) {
   major_type <<= 5;
   if (value < 24) {
     _out->put_byte((uint8_t) (major_type | value));
@@ -216,7 +216,7 @@ void encoder::write_type_value(int major_type, uint value) {
   }
 }
 
-void encoder::write_type_value(int major_type, uint64_t value) {
+void encoder::write_type_value64(int major_type, uint64_t value) {
   major_type <<= 5;
   if (value < 24ULL) {
     _out->put_byte((uint8_t) (major_type | value));
@@ -261,10 +261,10 @@ void encoder::write_int(int64_t value) {
 
 void encoder::write_int(int value) {
   if(value < 0) {
-    write_type_value(1, (uint) -(value+1));
+    write_type_value(1, (uint32_t) -(value+1));
   }
   else {
-    write_type_value(0, (uint) value);
+    write_type_value(0, (uint32_t) value);
   }
 }
 
@@ -290,19 +290,19 @@ void encoder::write_double(double value) {
   _out->put_byte(*((uint8_t*) punny+0));
 }
 
-void encoder::write_bytes(const uint8_t* data, uint size) {
+void encoder::write_bytes(const uint8_t* data, uint32_t size) {
   write_type_value(2, size);
   _out->put_bytes(data, size);
 }
 
-void encoder::write_string(const char *data, uint size) {
+void encoder::write_string(const char *data, uint32_t size) {
   write_type_value(3, size);
   _out->put_bytes((const uint8_t* ) data, size);
 }
 
 void encoder::write_string(const char* str) {
-  int len = strlen(str);
-  write_type_value(3, (uint) len);
+  uint32_t len = strlen(str);
+  write_type_value(3, len);
   _out->put_bytes((const uint8_t* ) str, len);
 }
 
@@ -330,7 +330,7 @@ void decoder::set_listener(listener &listener_instance) {
 
 
 void decoder::run() {
-  uint temp;
+  uint32_t temp;
   while (1) {  // NOTE: landmine.
     if(STATE_TYPE == _state) {
       if(_in->has_bytes(1)) {

@@ -115,7 +115,7 @@ class StringBuilder {
     void concat(char nu);
     void concat(unsigned char nu);
     void concat(int nu);
-    void concat(uint nu);
+    void concat(unsigned int nu);
     void concat(double nu);
 
     inline void concat(float nu) {  concat((double) nu);    };  // Floats are upgraded to doubles.
@@ -150,9 +150,10 @@ class StringBuilder {
     char*    position(int);             // If the string has been split, get tokens with this.
     char*    position_trimmed(int);     // Same as position(int), but trims whitespace from the return.
     int      position_as_int(int);      // Same as position(int), but uses atoi() to return an integer.
+    uint64_t position_as_uint64(int);   // Same as position(int), but uses atoi() to return an integer.
     double   position_as_double(int);   // Same as position(int), but uses atof() to return a double.
     uint8_t* position(int, int*);       // ...or this, if you need the length and a binary string.
-    bool     drop_position(uint pos);   // And use this to reap the tokens that you've used.
+    bool     drop_position(unsigned int pos);   // And use this to reap the tokens that you've used.
 
     /* Comparison and search. */
     bool contains(char);                // Does the buffer contain the given character?
@@ -164,7 +165,7 @@ class StringBuilder {
     void printDebug(StringBuilder*);
 
     /* Statics */
-    static void printBuffer(StringBuilder* output, uint8_t* buf, uint len, const char* indent = "\t");
+    static void printBuffer(StringBuilder* output, uint8_t* buf, uint32_t len, const char* indent = "\t");
     // Wrapper for high-level string functions that we may or may not have.
     static char* strcasestr(const char* haystack, const char* needle);
     static int   strcasecmp(const char*, const char*);

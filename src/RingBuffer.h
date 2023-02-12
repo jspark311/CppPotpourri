@@ -33,10 +33,13 @@ TODO: Audit for best-practices for a lock-free design.
 
 template <class T> class RingBuffer {
   public:
-    RingBuffer(const unsigned int c);  // Constructor takes the number of slots as its sole argument.
+    /*
+    * Constructor takes the number of slots as its sole argument.
+    */
+    RingBuffer(const unsigned int c) : _CAPAC(c), _E_SIZE(sizeof(T)) {};
     ~RingBuffer();
 
-    inline bool         allocated() {  return (nullptr != _pool);  };
+    bool allocated();
     inline unsigned int capacity() {   return _CAPAC;              };
     inline unsigned int heap_use() {   return (_E_SIZE * _CAPAC);  };
     inline unsigned int vacancy() {    return (_CAPAC - _count);   };
@@ -61,19 +64,6 @@ template <class T> class RingBuffer {
 };
 
 
-
-/*
-* Constructor
-*/
-template <class T> RingBuffer<T>::RingBuffer(const unsigned int c) : _CAPAC(c), _E_SIZE(sizeof(T)) {
-  const unsigned int s = _E_SIZE * _CAPAC;
-  if (0 < s) {
-    _pool = (uint8_t*) malloc(s);
-  }
-  clear();
-}
-
-
 /*
 * Destructor
 */
@@ -81,6 +71,16 @@ template <class T> RingBuffer<T>::~RingBuffer() {
   _count = 0;
   free(_pool);
   _pool = nullptr;
+}
+
+template <class T> bool RingBuffer<T>::allocated() {
+  if (nullptr == _pool) {
+    const unsigned int s = _E_SIZE * _CAPAC;
+    _pool = (uint8_t*) malloc(s);
+    clear();
+    return (nullptr != _pool);
+  }
+  return true;
 }
 
 
@@ -91,7 +91,7 @@ template <class T> void RingBuffer<T>::clear() {
   _w = 0;
   _r = 0;
   _count = 0;
-  if (nullptr != _pool) {
+  if (allocated()) {
     for (unsigned int i = 0; i < (_E_SIZE * _CAPAC); i++) {
       // TODO: We were almost certainly allocated on an alignment we
       // can write longwords over...
@@ -108,7 +108,7 @@ template <class T> void RingBuffer<T>::clear() {
 * @return 0 on success, or negative on error.
 */
 template <class T> int RingBuffer<T>::insert(T d) {
-  if (_count >= _CAPAC) {
+  if (!allocated() || (_count >= _CAPAC)) {
     return -1;
   }
   T* ref = &d;
@@ -130,12 +130,12 @@ template <class T> int RingBuffer<T>::insert(T d) {
 * @return 0 on success, or negative on error.
 */
 template <class T> bool RingBuffer<T>::contains(T d) {
-  if (0 < _count) {
+  if (allocated() && (0 < _count)) {
     unsigned int cur_idx = _r;
     uint8_t* compare = (uint8_t*) &d;
     while (cur_idx != _w) {
       uint8_t* current = (uint8_t*) (_pool + (cur_idx * _E_SIZE));
-      for (uint i = 0; i < _E_SIZE; i++) {
+      for (uint32_t i = 0; i < _E_SIZE; i++) {
         if (*(current + i) != *(compare + i)) {
           return true;
         }
@@ -154,7 +154,7 @@ template <class T> bool RingBuffer<T>::contains(T d) {
 * @return T(0) on failure, or the data at the front of the ring.
 */
 template <class T> T RingBuffer<T>::get() {
-  if (0 == _count) {
+  if (!allocated() || (0 == _count)) {
     return (T)0;
   }
   T *return_value = (T*) (_pool + (_r * _E_SIZE));
@@ -170,10 +170,10 @@ template <class T> T RingBuffer<T>::get() {
 * @return T(0) on failure, or the data at the given index.
 */
 template <class T> T RingBuffer<T>::get(unsigned int idx) {
-  if ((0 == _count) || (idx > _CAPAC)) {
+  if (!allocated() || (0 == _count) || (idx > _CAPAC)) {
     return (T)0;
   }
-  T* return_value = (T*) (_pool + (idx * _E_SIZE));
+  T *return_value = (T*) (_pool + (((_r + idx) % _CAPAC) * _E_SIZE));
   return *return_value;
 }
 

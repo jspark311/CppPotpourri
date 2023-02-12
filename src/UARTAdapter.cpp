@@ -31,7 +31,7 @@ UARTAdapter::~UARTAdapter() {
 int8_t UARTAdapter::init(const UARTOpts* o) {
   _extnd_state = 0;
   _adapter_set_flag(UART_FLAG_PENDING_CONF);
-  for (uint i = 0; i < sizeof(UARTOpts); i++) {
+  for (uint32_t i = 0; i < sizeof(UARTOpts); i++) {
     *((uint8_t*) &_opts + i) = *((uint8_t*) o + i);
   }
   return _pf_init();
@@ -83,7 +83,7 @@ void UARTAdapter::printDebug(StringBuilder* output) {
   if (255 != _TXD_PIN) output->concatf("\tTXD:  %d (%s)\n", _TXD_PIN, (readPin(_TXD_PIN) ? "high" : "low"));
   if (255 != _RXD_PIN) output->concatf("\tRXD:  %d (%s)\n", _RXD_PIN, (readPin(_RXD_PIN) ? "high" : "low"));
   if (255 != _CTS_PIN) output->concatf("\tCTS:  %d (%s)\n", _CTS_PIN, (readPin(_CTS_PIN) ? "high" : "low"));
-  if (255 != _RTS_PIN) output->concatf("\tRTS:  %d (%s)\n", _RTS_PIN, (readPin(_RTS_PIN) ? "high" : "low"));   
+  if (255 != _RTS_PIN) output->concatf("\tRTS:  %d (%s)\n", _RTS_PIN, (readPin(_RTS_PIN) ? "high" : "low"));
 
   output->concat("\tOpts:\n\t------------------------\n");
   output->concatf("\tChar size:\t%u bits\n", _opts.bit_per_word);

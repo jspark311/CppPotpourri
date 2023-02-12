@@ -42,7 +42,7 @@ class WakeLock;  // Forward declaration.
 */
 class WakeLockable {
   public:
-    virtual const WakeLock* getWakeLock()     =0;
+    virtual WakeLock* getWakeLock()     =0;
 
   protected:
     friend class WakeLock;

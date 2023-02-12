@@ -351,7 +351,7 @@ template <class T> class BusAdapter : public BusOpCallback {
     * Call periodically to keep the bus moving.
     * Returns the number of operations cleared.
     */
-    int8_t poll() {
+    inline int8_t poll() {
       return advance_work_queue();
     };
 
@@ -525,7 +525,7 @@ template <class T> class BusAdapter : public BusOpCallback {
     /*
     * Returns a BusOp to the preallocation pool.
     */
-    void return_op_to_pool(T* obj) {
+    inline void return_op_to_pool(T* obj) {
       obj->wipe();
       preallocated.insert(obj);
     };

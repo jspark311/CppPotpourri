@@ -400,7 +400,7 @@ int test_KeyValuePair_Key_Abuse() {
   printf("===< KeyValuePair Key Abuse >=========================\n");
 
   const char* feed_str = "mallocd_key";
-  uint m_str_len = strlen(feed_str);
+  uint32_t m_str_len = strlen(feed_str);
 
   uint32_t val0 = (uint32_t) randomUInt32();
   uint32_t val1 = (uint32_t) randomUInt32();

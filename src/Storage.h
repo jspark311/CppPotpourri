@@ -293,7 +293,7 @@ class Storage {
     inline bool _pl_flag(uint16_t f) {   return ((_pl_flags & f) == f);   };
     inline void _pl_clear_flag(uint16_t _flag) {  _pl_flags &= ~_flag;    };
     inline void _pl_set_flag(uint16_t _flag) {    _pl_flags |= _flag;     };
-    inline void _pl_set_flag(bool nu, uint16_t _flag) {
+    inline void _pl_set_flag(uint16_t _flag, bool nu) {
       _pl_flags = (nu) ? (_pl_flags | _flag) : (_pl_flags & ~_flag);
     };
 };

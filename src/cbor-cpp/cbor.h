@@ -81,8 +81,8 @@ namespace cbor {
       virtual void on_string(char* str)              = 0;
       virtual void on_array(int size)                = 0;
       virtual void on_map(int size)                  = 0;
-      virtual void on_tag(uint tag)                  = 0;
-      virtual void on_special(uint code)             = 0;
+      virtual void on_tag(unsigned int tag)          = 0;
+      virtual void on_special(unsigned int code)     = 0;
       virtual void on_error(const char *error)       = 0;
 
       virtual void on_extra_integer(uint64_t value, int sign) {}
@@ -98,9 +98,9 @@ namespace cbor {
       ~input();
 
       bool     has_bytes(int count);
-      uint8_t get_byte();
+      uint8_t  get_byte();
       uint16_t get_short();
-      uint     get_int();
+      uint32_t get_int();
       float    get_float();
       double   get_double();
       uint64_t get_long();
@@ -118,7 +118,7 @@ namespace cbor {
   class output {
     public:
       virtual uint8_t* data()                             = 0;
-      virtual uint     size()                             = 0;
+      virtual uint32_t size()                             = 0;
       virtual void     put_byte(uint8_t value)            = 0;
       virtual void     put_bytes(const uint8_t* data, int size) = 0;
   };
@@ -151,25 +151,25 @@ namespace cbor {
 
       void write_int(int value);
       void write_int(int64_t value);
-      inline void write_int(uint v) {           write_type_value(0, v);            };
-      inline void write_int(uint64_t v) {       write_type_value(0, v);            };
-      inline void write_tag(const uint tag) {   write_type_value(6, tag);          };
-      inline void write_array(int size) {       write_type_value(4, (uint) size);  };
-      inline void write_map(int size) {         write_type_value(5, (uint) size);  };
-      inline void write_special(int v) {        write_type_value(7, (uint) v);     };
+      inline void write_int(unsigned int v) {      write_type_value(0, v);     }; // TODO: This might be a use-case for type auto.
+      inline void write_int(uint64_t v) {          write_type_value64(0, v);   }; // TODO: This might be a use-case for type auto.
+      inline void write_tag(const uint32_t tag) {  write_type_value(6, tag);   };
+      inline void write_array(uint32_t size) {     write_type_value(4, size);  };
+      inline void write_map(uint32_t size) {       write_type_value(5, size);  };
+      inline void write_special(uint32_t v) {      write_type_value(7, v);     };
 
       void write_float(float value);
       void write_double(double value);
-      void write_bytes(const uint8_t* data, uint size);
-      void write_string(const char* data, uint size);
+      void write_bytes(const uint8_t* data, uint32_t size);
+      void write_string(const char* data, uint32_t size);
       void write_string(const char* str);
 
 
     private:
       output* _out;
 
-      void write_type_value(int major_type, uint value);
-      void write_type_value(int major_type, uint64_t value);
+      void write_type_value(int major_type, uint32_t value);
+      void write_type_value64(int major_type, uint64_t value);
   };
 
 
@@ -177,38 +177,38 @@ namespace cbor {
   class output_dynamic : public output {
     public:
       output_dynamic();
-      output_dynamic(uint inital_capacity);
+      output_dynamic(uint32_t inital_capacity);
       ~output_dynamic();
 
       virtual uint8_t* data();
-      virtual uint size();
+      virtual uint32_t size();
       virtual void put_byte(uint8_t value);
       virtual void put_bytes(const uint8_t* data, int size);
 
     private:
       uint8_t* _buffer;
-      uint     _capacity;
-      uint     _offset;
+      uint32_t _capacity;
+      uint32_t _offset;
 
-      void init(uint initalCapacity);
+      void init(uint32_t initalCapacity);
   };
 
 
 
   class output_static : public output {
     public:
-      output_static(uint capacity);
+      output_static(uint32_t capacity);
       ~output_static();
 
       virtual uint8_t* getData();
-      virtual uint getSize();
+      virtual uint32_t getSize();
       virtual void put_byte(uint8_t value);
       virtual void put_bytes(const uint8_t* data, int size);
 
     private:
       uint8_t* _buffer;
-      uint     _capacity;
-      uint     _offset;
+      uint32_t _capacity;
+      uint32_t _offset;
   };
 }
 

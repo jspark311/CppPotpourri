@@ -90,13 +90,13 @@ class UARTAdapter : public BufferAccepter {
     inline bool rxCapable() {    return _adapter_flag(UART_FLAG_HAS_RX);     };
 
     /* These functions are provided by the platform-specific code. */
-    uint write(uint8_t* buf, uint len);
-    uint write(char c);
-    uint read(uint8_t* buf, uint len);
-    uint read(StringBuilder*);
+    uint32_t write(uint8_t* buf, uint32_t len);
+    uint32_t write(char c);
+    uint32_t read(uint8_t* buf, uint32_t len);
+    uint32_t read(StringBuilder*);
     void irq_handler();
 
-    inline uint write(const char* str) {  return write((uint8_t*) str, strlen(str));  }
+    inline uint32_t write(const char* str) {  return write((uint8_t*) str, strlen(str));  }
     inline void readCallback(BufferAccepter* cb) {   _read_cb_obj = cb;   };
 
     inline int pendingRxBytes() {   return _rx_buffer.length();   };

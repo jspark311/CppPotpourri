@@ -158,6 +158,14 @@ typedef void (*C3PEventCallback)(uint32_t now_us, C3PEvent*);
 *******************************************************************************/
 
 /**
+* Classes that need to be polled should at least extend a uniform pattern that
+*   allows them to be treated consistently, and give consistent responses.
+*/
+class Polla {
+};
+
+
+/**
 * This class represents an singular Event.
 */
 class C3PEvent {

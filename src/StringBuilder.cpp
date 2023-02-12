@@ -102,9 +102,9 @@ int StringBuilder::strcasecmp(const char *a, const char *b) {
 * @param len is how many bytes to print
 * @param indent is a string to prepend to each rendered line.
 */
-void StringBuilder::printBuffer(StringBuilder* output, uint8_t* buf, unsigned int len, const char* indent) {
+void StringBuilder::printBuffer(StringBuilder* output, uint8_t* buf, uint32_t len, const char* indent) {
   if ((nullptr != buf) & (len > 0)) {
-    unsigned int i = 0;
+    uint32_t i = 0;
     while (len >= 16) {
       output->concatf("%s0x%04x: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
         indent, i,
@@ -396,7 +396,7 @@ int StringBuilder::position_as_int(int pos) {
     int len = strlen(temp);
     if ((len > 2) && (*(temp) == '0') && (*(temp + 1) == 'x')) {
       // Possibly dealing with a hex representation. Try to convert....
-      unsigned int result = 0;
+      uint32_t result = 0;
       len -= 2;
       temp += 2;
       // Only so big an int we can handle...
@@ -422,6 +422,51 @@ int StringBuilder::position_as_int(int pos) {
     }
     else {
       return atoi(temp);
+    }
+  }
+  return 0;
+}
+
+
+/**
+* Convenience fxn for accessing a token as an int.
+*
+* @param pos is the index of the desired token.
+* @return atoi()'s attempt at parsing the string at the given pos as an int.
+*/
+uint64_t StringBuilder::position_as_uint64(int pos) {
+  const char* temp = (const char*) position(pos);
+  if (temp != nullptr) {
+    int len = strlen(temp);
+    if ((len > 2) && (*(temp) == '0') && (*(temp + 1) == 'x')) {
+      // Possibly dealing with a hex representation. Try to convert....
+      uint64_t result = 0;
+      len -= 2;
+      temp += 2;
+      // Only so big an int we can handle...
+      int max_bytes = (len > 16) ? 8 : len;
+      for (int i = 0; i < max_bytes; i++) {
+        switch (*(temp + i)) {
+          case '0':  case '1':  case '2':  case '3':  case '4':
+          case '5':  case '6':  case '7':  case '8':  case '9':
+            result = (result << 4) + (*(temp + i) - 0x30);
+            break;
+          case 'a':  case 'b':  case 'c':  case 'd':
+          case 'e':  case 'f':
+            result = (result << 4) + 10 + (*(temp + i) - 0x61);
+            break;
+          case 'A':  case 'B':  case 'C':  case 'D':
+          case 'E':  case 'F':
+            result = (result << 4) + 10 + (*(temp + i) - 0x41);
+            break;
+          default: return result;
+        }
+      }
+      return result;
+    }
+    else {
+      char* end = nullptr;
+      return strtoull(temp, &end, 10);
     }
   }
   return 0;

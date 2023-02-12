@@ -39,7 +39,7 @@ This class makes extensive use of the heap, low-level memory assumptions, and is
 ParsingConsole console(128);   // This is the console object under test.
 
 static bool test_result_array[TOTAL_TEST_COUNT] = {false, };
-static uint test_result_count = 0;
+static uint32_t test_result_count = 0;
 
 
 /*******************************************************************************
@@ -193,7 +193,7 @@ int setup_console(StringBuilder* output) {
 */
 int run_command_tests(StringBuilder* output) {
   int8_t ret = -1;
-  uint idx = 0;
+  uint32_t idx = 0;
   bool continue_testing = true;
   const char* BYTEWISE_TESTS[] = {
     "test6\n",   // Should result in a callback.
@@ -262,7 +262,7 @@ int parsing_console_main() {
     if (0 == run_command_tests(&log)) {
       if (0 == run_history_tests(&log)) {
         bool test_result_union = true;
-        uint idx = 0;
+        uint32_t idx = 0;
         while (test_result_union & (idx < TOTAL_TEST_COUNT)) {
           test_result_union &= test_result_array[idx];
           if (!test_result_union) {

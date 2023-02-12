@@ -89,6 +89,10 @@ class SPIBusOp : public BusOp {
     int8_t  bitsPerFrame(SPIFrameSize);
     uint8_t bitsPerFrame();
 
+    void setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4, uint8_t p5, uint8_t p6, uint8_t p7);
+    void setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4, uint8_t p5, uint8_t p6);
+    void setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4, uint8_t p5);
+    void setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4);
     void setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3);
     void setParams(uint8_t p0, uint8_t p1, uint8_t p2);
     void setParams(uint8_t p0, uint8_t p1);
@@ -97,6 +101,7 @@ class SPIBusOp : public BusOp {
     inline uint8_t transferParamLength() {    return _param_len;     };
 
     inline void setCSPin(uint8_t pin) {      _cs_pin = pin;  };
+    inline uint8_t getCSPin() {              return _cs_pin; };
     inline void setAdapter(SPIAdapter* b) {  _bus = b;       };
     inline SPIAdapter* getAdapter() {        return _bus;    };
 
@@ -137,7 +142,7 @@ class SPIBusOp : public BusOp {
 
   private:
     SPIAdapter* _bus       = nullptr;
-    uint8_t xfer_params[4] = {0, 0, 0, 0};
+    uint8_t xfer_params[8] = {0, 0, 0, 0, 0, 0, 0, 0};
     uint32_t _max_freq     = 0;
     uint8_t  _param_len    = 0;
     uint8_t  _cs_pin       = 255;  // Chip-select pin.

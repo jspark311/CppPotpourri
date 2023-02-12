@@ -18,16 +18,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 #include "CppPotpourri.h"
 #include "SensorFilter.h"
-
 
 
 /******************************************************************************
 * Statics
 ******************************************************************************/
-extern const char* const FILTER_HEADER_STRING;
 
 const char* const getFilterStr(FilteringStrategy x) {
   switch (x) {
