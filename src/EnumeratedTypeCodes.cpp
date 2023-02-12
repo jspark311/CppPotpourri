@@ -272,7 +272,6 @@ void SIUnitToStr(const SIUnit* UC_STR, StringBuilder* output, const bool sym) {
             break;
           case SIUnit::META_LITERAL_TCODE:
             {  // TODO: Assumes an int8 (wrongly, eventually).
-              TCode value_tcode = (TCode) *cur_ptr++;
               int8_t literal_int = (int8_t) *cur_ptr++;
               if (-1 == literal_int) {
                 output->concat('-');
