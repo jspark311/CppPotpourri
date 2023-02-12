@@ -75,6 +75,7 @@ template <class T> class PriorityQueue {
 
     T get(void);                  // Returns the data from the first element.
     T get(int position);          // Returns the data from the element at the given position.
+    T getByPriority(int pri);     // Returns the first data with the given priority, or nullptr if no data with such priority exists.
     int getPosition(T);           // Returns the position in the queue for the given element.
     int getPriority(T);           // Returns the priority in the queue for the given element.
     int getPriority(int pos);     // Returns the priority of the element in the queue with the given position.
@@ -607,6 +608,27 @@ template <class T> T PriorityQueue<T>::get(int pos) {
 #if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
 #pragma GCC diagnostic pop
 #endif
+
+
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+#pragma GCC diagnostic push
+#endif
+#pragma GCC diagnostic ignored "-Wconversion-null"
+template <class T> T PriorityQueue<T>::getByPriority(int pri) {
+  int i = 0;
+  PriorityNode<T>* current = root;
+  while (current != nullptr) {
+    if (pri == current->priority) {
+      return current->data;
+    }
+    current = current->next;
+  }
+  return nullptr;
+}
+#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
+#pragma GCC diagnostic pop
+#endif
+
 
 
 template <class T> bool PriorityQueue<T>::contains(T test_data) {

@@ -203,6 +203,9 @@ class LocationFrame {
     uint32_t altitude    = 0;    // In millimeters.
     uint32_t speed       = 0;    // In millimeters/s.
     uint8_t  sat_count   = 0;    // GPS number of satellites
+    uint8_t  _padding_0  = 0;
+    uint8_t  _padding_1  = 0;
+    uint8_t  _padding_2  = 0;
 
     LocationFrame() {};
     ~LocationFrame() {};
