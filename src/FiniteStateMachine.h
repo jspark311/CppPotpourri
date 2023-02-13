@@ -30,9 +30,8 @@ template <class T> class StateMachine {
       const char* FSM_NAME, const EnumDefList<T>* const EDEFS, const T I_STATE, const unsigned int MAX_DEPTH
     ) :
       _NAME(FSM_NAME), _ENUM_DEFS(EDEFS),
-      _current_state(I_STATE), _prior_state(I_STATE), _fsm_flags(0),
-      _lockout_timer(0), _slowdown_ms(0),
-      _waypoints(MAX_DEPTH) {};
+      _lockout_timer(0), _slowdown_ms(0), _waypoints(MAX_DEPTH),
+      _current_state(I_STATE), _prior_state(I_STATE), _fsm_flags(0) {};
 
     ~StateMachine() {};
 
@@ -61,7 +60,7 @@ template <class T> class StateMachine {
     inline void     _fsm_lockout(uint32_t x) {  _lockout_timer.reset(x);            };
     inline uint32_t _fsm_lockout() {            return _lockout_timer.remaining();  };
     inline bool     _fsm_is_waiting() {         return !_lockout_timer.expired();   };
-    inline T        _fsm_pos_next() {           return _waypoints.get(0);           };
+    inline T        _fsm_pos_next() {           return _waypoints.get(false);       };
     inline bool     _fsm_is_stable() {          return (0 == _waypoints.count());   };
     inline uint32_t _fsm_slowdown() {           return _lockout_timer.period();     };
 
@@ -71,16 +70,15 @@ template <class T> class StateMachine {
     };
 
 
-
   private:
     const char*                 _NAME;
     const EnumDefList<T>* const _ENUM_DEFS;
-    T                           _current_state;
-    T                           _prior_state;
-    uint8_t                     _fsm_flags;
     PeriodicTimeout             _lockout_timer;   // Used to enforce a delay between state transitions.
     uint32_t                    _slowdown_ms;
     RingBuffer<T>               _waypoints;
+    T                           _current_state;
+    T                           _prior_state;
+    uint8_t                     _fsm_flags;
 };
 
 
@@ -100,7 +98,7 @@ template <class T> class StateMachine {
 template <class T> int8_t StateMachine<T>::_fsm_advance() {
   int8_t ret = -1;
   if (0 < _waypoints.count()) {
-    T STACKED_ENUM = _waypoints.get(0);
+    T STACKED_ENUM = _waypoints.get(false);
     if (0 == _fsm_set_position(STACKED_ENUM)) {
       STACKED_ENUM = _waypoints.get();
       ret = 0;
@@ -206,10 +204,11 @@ template <class T> int8_t StateMachine<T>::_fsm_prepend_state(T nxt) {
   int8_t ret = -1;
   if (_ENUM_DEFS->enumValid(nxt)) {
     ret--;
-    uint32_t states_to_cycle = _waypoints.count();
-    if (states_to_cycle < _waypoints.capacity()) {
+    const uint32_t STATES_TO_CYCLE = _waypoints.count();
+    // We need at least enough space for our one addition.
+    if (STATES_TO_CYCLE < _waypoints.capacity()) {
       _waypoints.insert(nxt);
-      for (uint32_t i = 0; i < states_to_cycle; i++) {
+      for (uint32_t i = 0; i < STATES_TO_CYCLE; i++) {
         _waypoints.insert(_waypoints.get());
       }
       ret = 0;

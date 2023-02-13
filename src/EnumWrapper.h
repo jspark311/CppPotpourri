@@ -97,10 +97,10 @@ template <class T> class EnumDefList {
     *   enum list will be returned. In such a case, the `found` parameter will
     *   still be set to 0 to allow the caller to maintain semantic hygiene.
     */
-    const T getEnumByStr(const char* NEEDLE, int8_t* found = nullptr) {
+    const T getEnumByStr(const char* NEEDLE, int8_t* found = nullptr) const {
       uint32_t catchall_idx = 0xFFFFFFFF;
       for (uint32_t i = 0; i < COUNT; i++) {
-        if (0 == StringBuilder::strcasecmp(NEEDLE, *(LIST_PTR + i)->STR)) {
+        if (0 == StringBuilder::strcasecmp(NEEDLE, (LIST_PTR + i)->STR)) {
           if (nullptr != found) {  *found = 1;  }
           return (LIST_PTR + i)->VAL;
         }
@@ -112,13 +112,13 @@ template <class T> class EnumDefList {
       if (nullptr != found) {  *found = 0;  }
 
       if (0xFFFFFFFF != catchall_idx) {
-        return *(LIST_PTR + catchall_idx)->VAL;
+        return (LIST_PTR + catchall_idx)->VAL;
       }
       else {
         // We can't do anything but return a defined enum. So we return the
         //   wrong one on purpose, and hope that the caller is observing the
         //   return-via-parameter.
-        return *(LIST_PTR + (COUNT-1));
+        return (LIST_PTR + (COUNT-1))->VAL;
       }
     };
 

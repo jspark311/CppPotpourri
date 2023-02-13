@@ -138,6 +138,7 @@ void printTestFailure(const char* test) {
 *******************************************************************************/
 
 #include "StringBuilderTest.cpp"
+#include "FSMTests.cpp"
 #include "TestDataStructures.cpp"
 #include "ParsingConsoleTest.cpp"
 #include "IdentityTest.cpp"
@@ -154,11 +155,13 @@ int main(int argc, char *argv[]) {
   printTypeSizes();
 
   if (0 == stringbuilder_main()) {
-    if (0 == data_structure_main()) {
-      if (0 == parsing_console_main()) {
-        if (0 == identity_main()) {
-          if (0 == manuvrlink_main()) {
-            exit_value = 0;
+    if (0 == fsm_test_main()) {
+      if (0 == data_structure_main()) {
+        if (0 == parsing_console_main()) {
+          if (0 == identity_main()) {
+            if (0 == manuvrlink_main()) {
+              exit_value = 0;
+            }
           }
         }
       }

@@ -36,7 +36,9 @@ template <class T> class RingBuffer {
     /*
     * Constructor takes the number of slots as its sole argument.
     */
-    RingBuffer(const unsigned int c) : _CAPAC(c), _E_SIZE(sizeof(T)) {};
+    RingBuffer(const unsigned int c) :
+      _CAPAC(c), _E_SIZE(sizeof(T)),
+      _count(0), _w(0), _r(0), _pool(nullptr) {};
     ~RingBuffer();
 
     bool allocated();
@@ -50,8 +52,9 @@ template <class T> class RingBuffer {
     void clear();       // Wipe the buffer.
     int  insert(T);
     bool contains(T);
-    T    get();
-    T    get(unsigned int idx);
+    T    get(unsigned int idx, bool absolute_index = false);
+    inline T get() {       return _get(true);              };
+    inline T peek() {      return _get(false);             };
 
 
   private:
@@ -61,6 +64,8 @@ template <class T> class RingBuffer {
     unsigned int _w;
     unsigned int _r;
     uint8_t* _pool;
+
+    T _get(bool also_remove);
 };
 
 
@@ -147,19 +152,20 @@ template <class T> bool RingBuffer<T>::contains(T d) {
 }
 
 
-
 /**
 * Remove and return the head of the ring.
 *
 * @return T(0) on failure, or the data at the front of the ring.
 */
-template <class T> T RingBuffer<T>::get() {
+template <class T> T RingBuffer<T>::_get(bool also_remove) {
   if (!allocated() || (0 == _count)) {
     return (T)0;
   }
   T *return_value = (T*) (_pool + (_r * _E_SIZE));
-  _r = (_r % _CAPAC) + 1;   // TODO: Convert to pow(2) later and convert to bitmask.
-  _count--;
+  if (also_remove) {
+    _r = (_r % _CAPAC) + 1;   // TODO: Convert to pow(2) later and convert to bitmask.
+    _count--;
+  }
   return *return_value;
 }
 
@@ -169,11 +175,11 @@ template <class T> T RingBuffer<T>::get() {
 *
 * @return T(0) on failure, or the data at the given index.
 */
-template <class T> T RingBuffer<T>::get(unsigned int idx) {
+template <class T> T RingBuffer<T>::get(unsigned int idx, bool absolute_index) {
   if (!allocated() || (0 == _count) || (idx > _CAPAC)) {
     return (T)0;
   }
-  T *return_value = (T*) (_pool + (((_r + idx) % _CAPAC) * _E_SIZE));
+  T *return_value = (T*) (_pool + ((((absolute_index ? 0 : _r) + idx) % _CAPAC) * _E_SIZE));
   return *return_value;
 }
 

@@ -67,15 +67,15 @@ limitations under the License.
       PeriodicTimeout(uint32_t p = 0) : _period(p), _mark(0) {};
       ~PeriodicTimeout() {};      // Featureless destructor.
 
-      inline void     reset() {             _mark = millis();               };
-      inline void     reset(uint32_t p) {   _mark = millis(); _period = p;  };
+      inline void     reset() {             _mark = (uint32_t) millis();               };
+      inline void     reset(uint32_t p) {   _mark = (uint32_t) millis(); _period = p;  };
       inline void     period(uint32_t p) {  _period = p;     };
       inline uint32_t period() {            return _period;  };
-      inline uint32_t remaining() {  
+      inline uint32_t remaining() {
         return (expired() ? 0 : wrap_accounted_delta(_mark, (uint32_t) millis()));
       };
       inline bool     expired() {
-        return ((0 != _period) && (_period <= wrap_accounted_delta(_mark, (uint32_t) millis())));
+        return ((0 == _period) || (_period <= wrap_accounted_delta(_mark, (uint32_t) millis())));
       };
 
 
