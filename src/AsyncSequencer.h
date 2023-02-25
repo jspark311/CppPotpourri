@@ -63,7 +63,7 @@ class AsyncSequencer {
     void        _mark_step_complete(const uint32_t MASK, const bool PASSED);
     void        _reset_failed_steps(const bool INC_RUNNING = false);
     inline bool _no_steps_running() {        return (0 == _steps_running.raw);    };
-    inline bool _step_passed(uint32_t step_flag) {  return (_steps_passed.raw & step_flag); };
+    inline bool _all_steps_passed(const uint32_t MASK) {  return (MASK == (_steps_passed.raw & MASK)); };
 
     void     _check_dependencies();
     uint32_t _get_dependency_mask(const uint32_t, uint8_t limiter = 0);

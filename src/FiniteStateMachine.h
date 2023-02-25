@@ -98,9 +98,9 @@ template <class T> class StateMachine {
 template <class T> int8_t StateMachine<T>::_fsm_advance() {
   int8_t ret = -1;
   if (0 < _waypoints.count()) {
-    T STACKED_ENUM = _waypoints.get(false);
-    if (0 == _fsm_set_position(STACKED_ENUM)) {
-      STACKED_ENUM = _waypoints.get();
+    if (0 == _fsm_set_position(_waypoints.peek())) {
+      _prior_state   = _current_state;
+      _current_state = _waypoints.get();
       ret = 0;
       if (0 < _slowdown_ms) {
         // Be sure to preserve at least as much margin as the transistion code

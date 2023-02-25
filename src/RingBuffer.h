@@ -122,7 +122,7 @@ template <class T> int RingBuffer<T>::insert(T d) {
   for (unsigned int i = 0; i < _E_SIZE; i++) {
     *((uint8_t*) _pool + offset + i) = *((uint8_t*)ref + i);
   }
-  _w = (_w % _CAPAC) + 1;   // TODO: Convert to pow(2) later and convert to bitmask.
+  _w = ((_w + 1) % _CAPAC);   // TODO: Convert to pow(2) later and convert to bitmask.
   _count++;
   return 0;
 }
@@ -145,7 +145,7 @@ template <class T> bool RingBuffer<T>::contains(T d) {
           return true;
         }
       }
-      cur_idx = (cur_idx % _CAPAC) + 1;   // TODO: Convert to pow(2) later and convert to bitmask.
+      cur_idx = ((cur_idx + 1) % _CAPAC);   // TODO: Convert to pow(2) later and convert to bitmask.
     }
   }
   return false;
@@ -161,9 +161,9 @@ template <class T> T RingBuffer<T>::_get(bool also_remove) {
   if (!allocated() || (0 == _count)) {
     return (T)0;
   }
-  T *return_value = (T*) (_pool + (_r * _E_SIZE));
+  T* return_value = (T*) (_pool + (_r * _E_SIZE));
   if (also_remove) {
-    _r = (_r % _CAPAC) + 1;   // TODO: Convert to pow(2) later and convert to bitmask.
+    _r = ((_r + 1) % _CAPAC);   // TODO: Convert to pow(2) later and convert to bitmask.
     _count--;
   }
   return *return_value;
@@ -179,7 +179,7 @@ template <class T> T RingBuffer<T>::get(unsigned int idx, bool absolute_index) {
   if (!allocated() || (0 == _count) || (idx > _CAPAC)) {
     return (T)0;
   }
-  T *return_value = (T*) (_pool + ((((absolute_index ? 0 : _r) + idx) % _CAPAC) * _E_SIZE));
+  T* return_value = (T*) (_pool + ((((absolute_index ? 0 : _r) + idx) % _CAPAC) * _E_SIZE));
   return *return_value;
 }
 

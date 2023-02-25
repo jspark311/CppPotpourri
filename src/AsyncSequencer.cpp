@@ -9,6 +9,7 @@
 #include "AsyncSequencer.h"
 #include "StringBuilder.h"
 #include "CppPotpourri.h"
+#include "AbstractPlatform.h"
 #include <functional>
 
 
@@ -23,10 +24,6 @@ void AsyncSequencer::printDebug(StringBuilder* output) {
   output->concatf("\tSteps outstanding:    %c\n", all_steps_have_run() ? 'n':'y');
   output->concatf("\tAll steps pass:       %c\n", all_steps_have_passed() ? 'y':'n');
   output->concatf("\tSteps are running:    %c\n", _no_steps_running() ? 'n':'y');
-  //output->concatf("\t_steps_runnable.raw:  0x%08x\n", _steps_runnable.raw);
-  //output->concatf("\t_steps_running.raw:   0x%08x\n", _steps_running.raw);
-  //output->concatf("\t_steps_complete.raw:  0x%08x\n", _steps_complete.raw);
-  //output->concatf("\t_steps_passed.raw:    0x%08x\n\n", _steps_passed.raw);
   output->concat("\tStep                   | Requested | Runnable | Running | Complete | Result\n");
   output->concat("\t-----------------------|-----------|----------|---------|----------|-------\n");
   for (uint32_t i = 0; i < _STEP_COUNT; i++) {
@@ -85,10 +82,10 @@ void AsyncSequencer::_check_dependencies() {
   uint32_t new_runnable_mask = 0;
   for (uint32_t i = 0; i < _STEP_COUNT; i++) {
     const StepSequenceList* STEP = (_STEP_LIST + i);
-    if (!_steps_runnable.value(STEP->FLAG)) {   // If the step isn't already marked runnable...
-      if ((0 == STEP->DEP_MASK) || _step_passed(STEP->DEP_MASK)) {  // ...and all of its dependepcies have passed...
-        if (_steps_requested.value(STEP->FLAG)) {   // ...and it has been requested (even if only implicitly)...
-          new_runnable_mask |= STEP->FLAG;   // ...mark it ready for dispatch.
+    if (!_steps_runnable.value(STEP->FLAG)) {      // If the step isn't already marked runnable...
+      if (_all_steps_passed(STEP->DEP_MASK)) {     // ...and all of its dependepcies have passed...
+        if (_steps_requested.value(STEP->FLAG)) {  // ...and it has been requested (even if only implicitly)...
+          new_runnable_mask |= STEP->FLAG;         // ...mark it ready for dispatch.
         }
       }
     }
