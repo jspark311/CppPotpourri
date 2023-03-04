@@ -160,13 +160,13 @@ int8_t DataRecord::save(char* name) {
       ret--;
       // Craft a descriptor for this record. We will need our overhead region to
       //   be aligned and constant-length.
-      const uint BLOCK_SIZE        = _storage->blockSize();
-      const uint BLOCK_ADDR_SIZE   = _storage->blockAddrSize();
-      const uint DESCRIPTOR_SIZE   = DATARECORD_BASE_SIZE + (BLOCK_ADDR_SIZE << 1);
-      const uint PAYLOAD_SIZE      = _outbound_buf.length();
-      const uint TOTAL_RECORD_SIZE = DESCRIPTOR_SIZE + PAYLOAD_SIZE;
-      const uint ALLOCATED_SIZE    = _derive_allocated_size();
-      const uint BYTES_TO_TRIM     = ALLOCATED_SIZE - TOTAL_RECORD_SIZE;
+      const uint32_t BLOCK_SIZE        = _storage->blockSize();
+      const uint32_t BLOCK_ADDR_SIZE   = _storage->blockAddrSize();
+      const uint32_t DESCRIPTOR_SIZE   = DATARECORD_BASE_SIZE + (BLOCK_ADDR_SIZE << 1);
+      const uint32_t PAYLOAD_SIZE      = _outbound_buf.length();
+      const uint32_t TOTAL_RECORD_SIZE = DESCRIPTOR_SIZE + PAYLOAD_SIZE;
+      //const uint32_t ALLOCATED_SIZE    = _derive_allocated_size();
+      //const uint32_t BYTES_TO_TRIM     = ALLOCATED_SIZE - TOTAL_RECORD_SIZE;
       _data_length = _outbound_buf.length();   // Update the payload length field.
       _mark_clean();  // Finalize the checksum over the data.
 
@@ -184,7 +184,7 @@ int8_t DataRecord::save(char* name) {
           uint32_t _nxt_dat_addr  = first_blk->next_offset;
 
           // All the pieces are present. Start writing the descriptor.
-          uint idx = 0;
+          uint32_t idx = 0;
           *(rec_desc + idx++) = DATARECORD_SERIALIZER_VERSION;
           *(rec_desc + idx++) = 0;   // No flag fields yet.
           *(rec_desc + idx++) = _record_type;
@@ -213,8 +213,8 @@ int8_t DataRecord::save(char* name) {
 
           // Finally, fill in our space-contingent address fields...
           for (uint8_t i = 0; i < BLOCK_ADDR_SIZE; i++) {
-            const uint IDX_CONST   = idx++;
-            const uint SHIFT_CONST = i << 3;
+            const uint32_t IDX_CONST   = idx++;
+            const uint32_t SHIFT_CONST = i << 3;
             *(rec_desc + IDX_CONST + 0)               = (uint8_t) (_nxt_rec_addr >> SHIFT_CONST);
             *(rec_desc + IDX_CONST + BLOCK_ADDR_SIZE) = (uint8_t) (_nxt_dat_addr >> SHIFT_CONST);
           }
@@ -263,10 +263,10 @@ int8_t DataRecord::load(char* name) {
     // To load a record we need a key and a record type.
     if ((_record_type != 0) & (_key[0] != 0) & (nullptr != _storage)) {
       ret--;
-      if (StorageErr::NONE == _storage->persistentRead(nullptr, _storage->blockSize(), 0)) {
-        _dr_set_flag(DATA_RECORD_FLAG_PENDING_IO);
-        ret = 0;
-      }
+      //if (StorageErr::NONE == _storage->persistentRead((DataRecord*) this, _storage->blockSize(), 0)) {
+      //  _dr_set_flag(DATA_RECORD_FLAG_PENDING_IO);
+      //  ret = 0;
+      //}
     }
   }
   return ret;
@@ -288,8 +288,8 @@ int8_t DataRecord::buffer_request_from_storage(uint32_t* addr, uint8_t* buf, uin
   int8_t ret = -1;
   if (0 < _outbound_buf.length()) {
     // There is more to send. Reload the provided buffer with the requested amount of data.
-    const uint BYTES_REQUESTED = *len;
-    const uint BYTES_NEXT_SEND = strict_min((uint32_t) _outbound_buf.length(), (uint32_t) *len);
+    const uint32_t BYTES_REQUESTED = *len;
+    const uint32_t BYTES_NEXT_SEND = strict_min((uint32_t) _outbound_buf.length(), (uint32_t) *len);
     const uint8_t* REM_BUF = _outbound_buf.string();
     const uint8_t BLOCK_ADDR_SIZE_BYTES = _storage->blockAddrSize();
 
@@ -310,13 +310,13 @@ int8_t DataRecord::buffer_request_from_storage(uint32_t* addr, uint8_t* buf, uin
     }
     if (nullptr != assoc_block) {   // This should never fail.
       *addr = assoc_block->next_offset;  // The next address to write.
-      for (uint i = 0; i < BLOCK_ADDR_SIZE_BYTES; i++) {
+      for (uint32_t i = 0; i < BLOCK_ADDR_SIZE_BYTES; i++) {
         // Add the page annotations for StorageBlock data.
         *(buf + i) = (uint8_t) ((assoc_nxt_block >> (i << 3)) & 0xFF);
       }
 
       // Copy over as much payload data as we can to fill the buffer, and zero the rest.
-      for (uint i = 0; i < (BYTES_REQUESTED - BLOCK_ADDR_SIZE_BYTES); i++) {
+      for (uint32_t i = 0; i < (BYTES_REQUESTED - BLOCK_ADDR_SIZE_BYTES); i++) {
         *(buf + i + BLOCK_ADDR_SIZE_BYTES) = (i < BYTES_NEXT_SEND) ? *(REM_BUF + i) : 0;
       }
       _outbound_buf.cull(BYTES_NEXT_SEND);
@@ -344,14 +344,14 @@ int8_t DataRecord::buffer_request_from_storage(uint32_t* addr, uint8_t* buf, uin
 *         -1 to signal transfer termination (I/O complete)
 */
 int8_t DataRecord::buffer_offer_from_storage(uint32_t* addr, uint8_t* buf, uint32_t* len) {
-  const uint BLOCK_ADDR_SIZE   = _storage->blockAddrSize();
-  const uint DESCRIPTOR_SIZE   = DATARECORD_BASE_SIZE + (BLOCK_ADDR_SIZE << 1);
-  const uint BYTES_OFFERED     = *len;
+  const uint32_t BLOCK_ADDR_SIZE   = _storage->blockAddrSize();
+  const uint32_t DESCRIPTOR_SIZE   = DATARECORD_BASE_SIZE + (BLOCK_ADDR_SIZE << 1);
+  const uint32_t BYTES_OFFERED     = *len;
   const uint8_t BLOCK_ADDR_SIZE_BYTES = _storage->blockAddrSize();
   uint32_t bytes_remaining = BYTES_OFFERED;
   uint8_t* buffer_ptr      = buf;
   uint32_t nxt_dat_addr    = 0;
-  uint32_t idx = 0;
+  //uint32_t idx = 0;
   int8_t   ret = -1;
 
   // If this is the first buffer to arrive for an uninitialized record...
@@ -363,13 +363,13 @@ int8_t DataRecord::buffer_offer_from_storage(uint32_t* addr, uint8_t* buf, uint3
       case DATARECORD_SERIALIZER_VERSION:   // Current version of serializer.
         {
           bool key_differs = false;
-          for (uint i = 0; i < sizeof(_key); i++) {
+          for (uint32_t i = 0; i < sizeof(_key); i++) {
             key_differs |= (_key[i] == *(buf + DATARECORD_BASE_SIZE + i));
           }
           if (key_differs | (_record_type != *(buf + 2))) {
             // If the key didn't match, instruct the Storage driver to get the
             //   next record block, rather than the next data block.
-            for (uint i = 0; i < BLOCK_ADDR_SIZE_BYTES; i++) {
+            for (uint32_t i = 0; i < BLOCK_ADDR_SIZE_BYTES; i++) {
               nxt_dat_addr = (nxt_dat_addr << 8) | *(buf + DATARECORD_BASE_SIZE + i);
             }
             *addr = nxt_dat_addr;
@@ -379,7 +379,7 @@ int8_t DataRecord::buffer_offer_from_storage(uint32_t* addr, uint8_t* buf, uint3
             // This is the correct record. Fill the class variables, and ask for
             //   the next block of data (instead of the next record).
             _fill_from_descriptor_block(buf);
-            for (uint i = 0; i < BLOCK_ADDR_SIZE_BYTES; i++) {
+            for (uint32_t i = 0; i < BLOCK_ADDR_SIZE_BYTES; i++) {
               nxt_dat_addr = (nxt_dat_addr << 8) | *(buf + DATARECORD_BASE_SIZE + BLOCK_ADDR_SIZE_BYTES + i);
             }
             buffer_ptr = buf + DESCRIPTOR_SIZE;
@@ -393,7 +393,7 @@ int8_t DataRecord::buffer_offer_from_storage(uint32_t* addr, uint8_t* buf, uint3
     }
   }
   else {
-    for (uint i = 0; i < BLOCK_ADDR_SIZE_BYTES; i++) {
+    for (uint32_t i = 0; i < BLOCK_ADDR_SIZE_BYTES; i++) {
       // Add the page annotations for StorageBlock data.
       nxt_dat_addr = (nxt_dat_addr << 8) + *(buf + i);
     }
@@ -481,9 +481,9 @@ uint32_t DataRecord::_derive_allocated_size() {
 *         -3 on invalid next_record address
 */
 int8_t DataRecord::_fill_from_descriptor_block(uint8_t* buf) {
-  const uint    DEV_BYTES_TOTAL       = _storage->deviceSize();
-  const uint    BLOCK_SIZE            = _storage->blockSize();
-  const uint8_t BLOCK_ADDR_SIZE_BYTES = _storage->blockAddrSize();
+  const uint32_t DEV_BYTES_TOTAL       = _storage->deviceSize();
+  const uint32_t BLOCK_SIZE            = _storage->blockSize();
+  const uint8_t  BLOCK_ADDR_SIZE_BYTES = _storage->blockAddrSize();
   int8_t ret = -1;
 
   _version = DATARECORD_SERIALIZER_VERSION;  // Always migrate old records if possible.
@@ -507,7 +507,7 @@ int8_t DataRecord::_fill_from_descriptor_block(uint8_t* buf) {
     | ((uint64_t) *(buf + 26) << 48)
     | ((uint64_t) *(buf + 27) << 56);
   _nxt_rec_addr = 0;
-  for (uint i = 0; i < BLOCK_ADDR_SIZE_BYTES; i++) {
+  for (uint32_t i = 0; i < BLOCK_ADDR_SIZE_BYTES; i++) {
     _nxt_rec_addr = (_nxt_rec_addr << 8) | *(buf + DATARECORD_BASE_SIZE + i);
   }
   // Simple error checking.

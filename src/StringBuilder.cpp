@@ -867,13 +867,15 @@ void StringBuilder::cull(int offset, int length) {
     //pthread_mutex_lock(&_mutex);
   #elif defined(__BUILD_HAS_FREERTOS)
   #endif
-  if (this->length() >= (length-offset)) {   // Does the given range exist?
-    int remaining_length = length-offset;
+  int remaining_length = (length - offset);
+  if ((remaining_length >= 0) && (this->length() >= (offset + length))) {   // Does the given range exist?
     unsigned char* temp = (unsigned char*) malloc(remaining_length+1);  // + 1 for null-terminator.
     if (temp != nullptr) {
       *(temp + remaining_length) = '\0';
       this->_collapse_into_buffer();   // Room to optimize here...
-      memcpy(temp, this->str, remaining_length);
+      if (remaining_length > 0) {
+        memcpy(temp, (this->str+offset), length);
+      }
       this->clear();         // Throw away all else.
       this->str = temp;      // Replace our ref.
       this->col_length = length;

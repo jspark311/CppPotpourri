@@ -82,4 +82,22 @@ class FlagContainer32 {
     };
 };
 
+
+/* Takes eight bytes of memory. */
+class FlagContainer64 {
+  public:
+    uint64_t raw;   // The raw value of all flags.
+    FlagContainer64(const uint64_t RESET_VALUE = 0) : raw(RESET_VALUE) {};
+
+    /* Flag manipulation inlines */
+    inline bool value(uint64_t _flag) {    return (raw & _flag); };
+    inline void flip(uint64_t _flag) {     raw ^= _flag;         };
+    inline void clear(uint64_t _flag) {    raw &= ~_flag;        };
+    inline void set(uint64_t _flag) {      raw |= _flag;         };
+    inline void set(uint64_t _flag, bool x) {
+      if (x)  raw |= _flag;
+      else    raw &= ~_flag;
+    };
+};
+
 #endif    // __FLAG_CONTAINERS_H__

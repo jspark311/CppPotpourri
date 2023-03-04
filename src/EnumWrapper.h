@@ -13,7 +13,7 @@ This template is being undertaken as an experiment. Mostly for the benefit of
   templating finite state-machines.
 
 NOTE: Use of this mechanism does NOT constrain the specific values of the enums,
-  as assigned in their proper definitions. Th list is null-terminated, and
+  as assigned in their proper definitions. The list is null-terminated, and
   indicies are unimportant.
 
 

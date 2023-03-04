@@ -37,14 +37,18 @@ Templates and types for a small collection of directed acyclic graphs (trees).
   #include <stdlib.h>
 #endif
 
-/* This is the class that holds a datum in the list. */
-template <class T> class TreeNode{
+
+/*
+* An ordered n-tree. Heap-driven.
+* Always copies the underlying type by value, and does no memory management on
+*   the templated type.
+*/
+template <class T> class C3PnTree {
   public:
     T data;
 
-    TreeNode(T d) : data(d) {};
-
-    ~TreeNode() {
+    C3PnTree(T d) : data(d) {};
+    ~C3PnTree() {
       if (branches) {
         for (uint i = 0; i < _weight_allocated; i++) {
           if (nullptr != branches[i]) {
@@ -59,26 +63,8 @@ template <class T> class TreeNode{
       }
     };
 
-
-  private:
-    TreeNode<T>* branches  = nullptr;
-    uint _weight_occupied  = 0;
-    uint _weight_allocated = 0;
-};
-
-
-/*
-* An ordered n-tree. Heap-driven.
-* Always copies the underlying type by value, and does no memroy management on
-*   the templated type.
-*/
-template <class T> class C3PnTree {
-  public:
-    C3PnTree();
-    ~C3PnTree();
-
-    uint add(T);                  // Returns the new weight of this node, or -1 on failure.
-    uint weight();                 // Returns the number of nodes downstrem (including us).
+    int add(T);                  // Returns the new weight of this node, or -1 on failure.
+    int weight();                // Returns the number of nodes downstrem (including us).
 
     // TODO: Need variadic route arguments for some of these.
     /* Functions for removing downstream nodes. All return the number of nodes removed. */
@@ -96,7 +82,10 @@ template <class T> class C3PnTree {
 
 
   private:
-    TreeNode<T>* _root;        // The root of the tree.
+    TreeNode<T>* branches = nullptr;
+    int _weight_occupied  = 0;
+    int _weight_allocated = 0;
+
     #if defined(__MANUVR_LINUX)
       // If we are on linux, we control for concurrency with a mutex...
       pthread_mutex_t _mutex;
@@ -108,6 +97,8 @@ template <class T> class C3PnTree {
     int insert(TreeNode<T>*);    // Returns the index of the new branch, or -1 on failure.
     void _garbage_collect();     // If the tree underwent a large re-arrangement, free any slack space.
 };
+
+
 
 
 // /**

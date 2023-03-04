@@ -217,8 +217,8 @@ enum class SIUnit : uint8_t {
   *   UNITLESS (null-terminated).
   *
   * META_DIMENSIONALITY:
-  *   This is used to distinguish a vector quantity from a list of scalars. It
-  *   is implied to be 1, if omitted in a unit string. It is optional in that
+  *   This is used to distinguish a vector quantity from a list of scalars. If
+  *   omitted in a unit string, it is implied to be 1. It is optional in that
   *   case.
   */
   META_ORDER_OF_MAGNITUDE    = 0xF0, // Takes 1 arg (int8): The OoM of the quantity.
@@ -228,7 +228,7 @@ enum class SIUnit : uint8_t {
   META_RESERVED_1            = 0xF4, // Reserved code.
   META_RESERVED_2            = 0xF5, // Reserved code.
   META_RESERVED_3            = 0xF6, // Reserved code.
-  META_RESERVED_4            = 0xF7, // Reserved code.
+  UNIT_GRAMMAR_MARKER        = 0xF7, // Denotes a multibyte string containing unit grammar.
   OPERATOR_EXPONENT          = 0xF8, // Takes 1 arg (int8): The exponent value.
   OPERATOR_PLUS              = 0xF9, //
   OPERATOR_MINUS             = 0xFA, //
@@ -236,7 +236,7 @@ enum class SIUnit : uint8_t {
   OPERATOR_DIVIDED           = 0xFC, //
   OPERATOR_GROUP_LEFT        = 0xFD, // "("
   OPERATOR_GROUP_RIGHT       = 0xFE, // ")"
-  UNIT_GRAMMAR_MARKER        = 0xFF  // Denotes a multibyte string containing unit grammar.
+  INVALID                    = 0xFF  // An invalid catch-all enum.
 };
 
 
