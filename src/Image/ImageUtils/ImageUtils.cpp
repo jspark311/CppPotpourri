@@ -202,7 +202,6 @@ void UIGfxWrapper::drawProgressBarH(
     int txt_y = y+3;
     StringBuilder temp_str;
     temp_str.concatf("%d%%", (int) (percent*100));
-    _img->setTextSize(0);
     _img->setCursor(txt_x, txt_y);
     _img->setTextColor(fg_color);
     _img->writeString((char*) temp_str.string());
@@ -235,7 +234,6 @@ void UIGfxWrapper::drawProgressBarV(
     int txt_y = (9 < pix_height) ? ((y+2+h)-pix_height) : ((y+h)-(pix_height+8));
     StringBuilder temp_str;
     temp_str.concatf("%d%%", (int) (percent*100));
-    _img->setTextSize(0);
     _img->setCursor(txt_x, txt_y);
     _img->setTextColor(fg_color);
     _img->writeString((char*) temp_str.string());
@@ -413,7 +411,6 @@ void UIGfxWrapper::draw_data_view_selector(
 ) {
   uint offset = 0;
   //_img->setAddrWindow(x, y, w, h);
-  _img->setTextSize(0);
   _img->drawFastVLine(x, y, h, fg_color);
   _img->drawFastHLine(x, y, w, fg_color);
   _img->setCursor(x+2, y+2);

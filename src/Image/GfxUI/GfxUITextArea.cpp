@@ -14,7 +14,7 @@ Date:   2022.06.25
 
 int GfxUITextArea::_render(UIGfxWrapper* ui_gfx) {
   uint next_row   = 0;
-  ui_gfx->img()->setTextSize(1);
+  ui_gfx->img()->setTextSize(_style.text_size);
   ui_gfx->img()->setTextColor(_color_text, 0);  // TODO: Use the correct API when you aren't exhausted.
   uint16_t y_adv = ui_gfx->img()->getFontHeight();
   if (y_adv) _max_rows = _h / y_adv;

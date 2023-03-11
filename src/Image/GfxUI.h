@@ -89,9 +89,8 @@ enum class GfxUIEvent : uint8_t {
 
 
 /*
-* This is a color pallate for an element. Not all elements will use all of it,
-*   but storing a reference to a few pallates is much simpler
-*   than having to hard-code and tweak them individually.
+* This object functions as the styling and color pallate for an element. 
+*   Not all elements will use all of it,
 */
 class GfxUIStyle {
   public:
@@ -113,6 +112,48 @@ class GfxUIStyle {
       color_selected(0xFFFFFF),
       color_unselected(0xFFFFFF),
       text_size(1) {};
+
+    /* Fully-specified constructor. */
+    GfxUIStyle(
+      uint32_t bg,
+      uint32_t border,
+      uint32_t header,
+      uint32_t active,
+      uint32_t inactive,
+      uint32_t selected,
+      uint32_t unselected,
+      uint8_t t_size = 1
+    ) :
+      color_bg(bg),
+      color_border(border),
+      color_header(header),
+      color_active(active),
+      color_inactive(inactive),
+      color_selected(selected),
+      color_unselected(unselected),
+      text_size(t_size) {};
+
+    /* Copy constructor. */
+    GfxUIStyle(const GfxUIStyle &obj) :
+      color_bg(obj.color_bg),
+      color_border(obj.color_border),
+      color_header(obj.color_header),
+      color_active(obj.color_active),
+      color_inactive(obj.color_inactive),
+      color_selected(obj.color_selected),
+      color_unselected(obj.color_unselected),
+      text_size(obj.text_size) {};
+
+    /* Copy constructor. */
+    GfxUIStyle(GfxUIStyle* obj) :
+      color_bg(obj->color_bg),
+      color_border(obj->color_border),
+      color_header(obj->color_header),
+      color_active(obj->color_active),
+      color_inactive(obj->color_inactive),
+      color_selected(obj->color_selected),
+      color_unselected(obj->color_unselected),
+      text_size(obj->text_size) {};
 };
 
 
@@ -145,6 +186,12 @@ class GfxUILayout {
       _x(x), _y(y), _w(w), _h(h),
       _mrgn_t(m_t), _mrgn_b(m_b), _mrgn_l(m_l), _mrgn_r(m_r),
       _bordr_t(m_t), _bordr_b(m_b), _bordr_l(m_l), _bordr_r(m_r) {};
+
+    /* Copy constructor. */
+    GfxUILayout(const GfxUILayout &src) :
+      _x(src._x), _y(src._y), _w(src._w), _h(src._h),
+      _mrgn_t(src._mrgn_t), _mrgn_b(src._mrgn_b), _mrgn_l(src._mrgn_l), _mrgn_r(src._mrgn_r),
+      _bordr_t(src._bordr_t), _bordr_b(src._bordr_b), _bordr_l(src._bordr_l), _bordr_r(src._bordr_r) {};
 
     /* Copy constructor. */
     GfxUILayout(GfxUILayout* src) :
@@ -247,12 +294,13 @@ class GfxUIElement : public GfxUILayout {
 
 
   protected:
-    GfxUIStyle* _style;
+    GfxUIStyle _style;
     PriorityQueue<GfxUIElement*> _children;
 
+    GfxUIElement(const GfxUILayout layout, const GfxUIStyle style, uint32_t f);
     GfxUIElement(GfxUILayout* layout, GfxUIStyle* style, uint32_t f);
-    GfxUIElement(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f);
     GfxUIElement(GfxUILayout* layout, uint32_t f) : GfxUIElement(layout, nullptr, f) {};
+    GfxUIElement(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f);
 
     virtual ~GfxUIElement() {};
 
@@ -546,7 +594,8 @@ class GfxUI3AxisRender : public GfxUIElement {
 *******************************************************************************/
 template <class T> class GfxUISensorFilter : public GfxUIElement {
   public:
-    GfxUISensorFilter(SensorFilter<T>* sf, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f | GFXUI_FLAG_ALWAYS_REDRAW), _color(color), _filter(sf) {};
+    GfxUISensorFilter(const GfxUILayout lay, const GfxUIStyle sty, SensorFilter<T>* sf, uint32_t f = 0) : GfxUIElement(lay, sty, f | GFXUI_FLAG_ALWAYS_REDRAW), _filter(sf) {};
+    GfxUISensorFilter(GfxUILayout* lay, GfxUIStyle* sty, SensorFilter<T>* sf, uint32_t f = 0) : GfxUIElement(lay, sty, f | GFXUI_FLAG_ALWAYS_REDRAW), _filter(sf) {};
     ~GfxUISensorFilter() {};
 
     /* Implementation of GfxUIElement. */
@@ -561,7 +610,6 @@ template <class T> class GfxUISensorFilter : public GfxUIElement {
 
 
   private:
-    uint32_t _color;        // The accent color of the element when active.
     SensorFilter<T>* _filter;
 };
 

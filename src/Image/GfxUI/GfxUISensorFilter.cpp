@@ -14,9 +14,11 @@ Date:   2022.06.25
 
 template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
   int ret = 0;
+  ui_gfx->img()->setTextSize(_style.text_size);
   if (_filter->dirty()) {
     ui_gfx->drawGraph(
-      _x, _y, strict_min((uint16_t) _filter->windowSize(), _w), _h, _color,
+      _x, _y, strict_min((uint16_t) _filter->windowSize(), _w), _h,
+      _style.color_active,
       true, showRange(), showValue(),
       _filter
     );
@@ -26,8 +28,7 @@ template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
     if (!_filter->windowFull()) {
       StringBuilder temp_txt;
       ui_gfx->img()->setCursor(_x + 1, _y + 1);
-      ui_gfx->img()->setTextSize(0);
-      ui_gfx->img()->setTextColor(ui_gfx->img()->convertColor(0x0000FFFF), 0);
+      ui_gfx->img()->setTextColor(ui_gfx->img()->convertColor(_style.color_inactive), 0);
       temp_txt.concatf("%3u / %3u", _filter->lastIndex(), _filter->windowSize());
       ui_gfx->img()->writeString(&temp_txt);
       ret++;
@@ -35,8 +36,7 @@ template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
   }
   else {
     ui_gfx->img()->setCursor(_x + 1, _y + 1);
-    ui_gfx->img()->setTextSize(0);
-    ui_gfx->img()->setTextColor(ui_gfx->img()->convertColor(0x000000FF));
+    ui_gfx->img()->setTextColor(ui_gfx->img()->convertColor(_style.color_active));
     ui_gfx->img()->writeString("Not init'd");
   }
   return ret;
@@ -65,7 +65,9 @@ template <> int GfxUISensorFilter<float>::_render(UIGfxWrapper* ui_gfx) {
   int ret = 0;
   if (_filter->dirty()) {
     ui_gfx->drawGraph(
-      _x, _y, strict_min((uint16_t) _filter->windowSize(), _w), _h, _color,
+      _x, _y,
+      strict_min((uint16_t) _filter->windowSize(), _w), _h,
+      _style.color_active,
       true, showRange(), showValue(),
       _filter
     );
@@ -75,8 +77,8 @@ template <> int GfxUISensorFilter<float>::_render(UIGfxWrapper* ui_gfx) {
     if (!_filter->windowFull()) {
       StringBuilder temp_txt;
       ui_gfx->img()->setCursor(_x + 1, _y + 1);
-      ui_gfx->img()->setTextSize(0);
-      ui_gfx->img()->setTextColor(ui_gfx->img()->convertColor(0x0000FFFF), 0);
+      ui_gfx->img()->setTextSize(_style.text_size);
+      ui_gfx->img()->setTextColor(ui_gfx->img()->convertColor(_style.color_inactive), 0);
       temp_txt.concatf("%3u / %3u", _filter->lastIndex(), _filter->windowSize());
       ui_gfx->img()->writeString(&temp_txt);
       ret++;
@@ -84,8 +86,8 @@ template <> int GfxUISensorFilter<float>::_render(UIGfxWrapper* ui_gfx) {
   }
   else {
     ui_gfx->img()->setCursor(_x + 1, _y + 1);
-    ui_gfx->img()->setTextSize(0);
-    ui_gfx->img()->setTextColor(ui_gfx->img()->convertColor(0x000000FF));
+    ui_gfx->img()->setTextSize(_style.text_size);
+    ui_gfx->img()->setTextColor(ui_gfx->img()->convertColor(_style.color_active));
     ui_gfx->img()->writeString("Not init'd");
   }
   return ret;

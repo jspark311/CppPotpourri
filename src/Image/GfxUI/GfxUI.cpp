@@ -21,7 +21,7 @@ GfxUIElement::GfxUIElement(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint3
     0, 0, 0, 0,
     0, 0, 0, 0
   ),
-  _style(nullptr),
+  _style(),
   _flags(f | GFXUI_FLAG_NEED_RERENDER)
 {
   if (_class_flag(GFXUI_FLAG_DRAW_FRAME_U)) _bordr_t = 1;   // TODO: Temporary hack until styles are in-use.
@@ -30,6 +30,12 @@ GfxUIElement::GfxUIElement(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint3
   if (_class_flag(GFXUI_FLAG_DRAW_FRAME_R)) _bordr_r = 1;   // TODO: Temporary hack until styles are in-use.
 }
 
+
+/* Constructor with fully-specified paramters. */
+GfxUIElement::GfxUIElement(const GfxUILayout layout, const GfxUIStyle style, uint32_t f) :
+  GfxUILayout(layout),
+  _style(style),
+  _flags(f | GFXUI_FLAG_NEED_RERENDER) {}
 
 /* Constructor with fully-specified paramters. */
 GfxUIElement::GfxUIElement(GfxUILayout* layout, GfxUIStyle* style, uint32_t f) :
@@ -105,7 +111,7 @@ int GfxUIElement::render(UIGfxWrapper* ui_gfx, bool force) {
     ret += _render_children(ui_gfx, force);
     if (_need_redraw() | force) {
       ret += _render(ui_gfx);
-      const uint32_t COLOR = (_style) ? _style->color_border : 0xFFFFFF;
+      const uint32_t COLOR = _style.color_border;
       if (_class_flags() & GFXUI_FLAG_DRAW_FRAME_U) {
         for (uint8_t i = 0; i < _bordr_t; i++) {
           ui_gfx->img()->drawFastHLine(_x, (_y+i), _w, COLOR);
