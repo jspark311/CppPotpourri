@@ -209,9 +209,14 @@ uint32_t SimpleDataRecord::_calculate_hash() {
   uint32_t ret = 0;
   StringBuilder _record_bin;
   if (0 == serialize(&_record_bin, _format)) {
-    // TODO: Would be better to use a crc32 or proper hash fxn.
-    // https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
-    ret = crc16(_record_bin.string(), _record_bin.length());
+    #if defined(__HAS_CRYPT_WRAPPER)
+      // We'd prefer a cryptographic hash...
+      ret = -1;  // TODO
+    #else
+      // But we'll fall back to something simple if we don't have one.
+      // https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+      ret = -1;  // TODO
+    #endif  // __HAS_CRYPT_WRAPPER
   }
   return ret;
 }
