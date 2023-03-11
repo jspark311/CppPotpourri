@@ -447,7 +447,7 @@ template <class T> bool PriorityQueue<T>::decrementPriority(T test_data) {
 #endif
 #pragma GCC diagnostic ignored "-Wconversion-null"
 template <class T> T PriorityQueue<T>::dequeue() {
-  T return_value = nullptr;
+  T return_value = T(0);
   #ifdef __MANUVR_LINUX
     pthread_mutex_lock(&_mutex);
   #elif defined(__BUILD_HAS_FREERTOS)
