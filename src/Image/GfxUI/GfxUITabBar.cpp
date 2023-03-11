@@ -30,7 +30,7 @@ int GfxUITabBar::_render(UIGfxWrapper* ui_gfx) {
 }
 
 
-bool GfxUITabBar::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
+bool GfxUITabBar::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   switch (GFX_EVNT) {
     default:
@@ -154,7 +154,7 @@ int GfxUITabBarWithContent::_render(UIGfxWrapper* ui_gfx) {
 }
 
 
-bool GfxUITabBarWithContent::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
+bool GfxUITabBarWithContent::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
   // If the event was directed at the nav pane, it will be handled by the natural
   //   flow that comes from its addition as a child object.
   return false;

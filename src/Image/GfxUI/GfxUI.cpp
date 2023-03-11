@@ -78,25 +78,34 @@ int GfxUIElement::_add_child(GfxUIElement* chld) {
 }
 
 
-bool GfxUIElement::notify(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y) {
+bool GfxUIElement::notify(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
-  if (includesPoint(x, y) && elementActive()) {
-    ret = _notify(GFX_EVNT, x, y);
-    if (!ret) {
-      ret = _notify_children(GFX_EVNT, x, y);
+  if (includesPoint(x, y)) {
+    if (GFX_EVNT == GfxUIEvent::IDENTIFY) {
+      ret = _notify_children(GFX_EVNT, x, y, change_log);
+      if (!ret) {
+        // No children claimed the IDENTIFY event. It must be us.
+        change_log->insert(this, (int) GfxUIEvent::IDENTIFY);
+      }
+    }
+    else if (elementActive()) {
+      ret = _notify(GFX_EVNT, x, y, change_log);
+      if (!ret) {
+        ret = _notify_children(GFX_EVNT, x, y, change_log);
+      }
     }
   }
   return ret;
 }
 
 
-bool GfxUIElement::_notify_children(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y) {
+bool GfxUIElement::_notify_children(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
   if (_children.hasNext()) {
     // There are child objects to notify.
     const uint32_t QUEUE_SIZE = _children.size();
     for (uint32_t n = 0; n < QUEUE_SIZE; n++) {
       GfxUIElement* ui_obj = _children.get(n);
-      if (ui_obj->notify(GFX_EVNT, x, y)) {
+      if (ui_obj->notify(GFX_EVNT, x, y, change_log)) {
         return true;
       }
     }

@@ -35,29 +35,53 @@ int GfxUISlider::_render(UIGfxWrapper* ui_gfx) {
 }
 
 
-bool GfxUISlider::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
+bool GfxUISlider::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+  bool ret = false;
+  float tmp_percentage = PI;  // Something clearly too big to be valid.
+
   switch (GFX_EVNT) {
     case GfxUIEvent::TOUCH:
+      change_log->insert(this, (int) GfxUIEvent::DRAG_START);
+      // NOTE: No break;
+    case GfxUIEvent::DRAG_START:
       if (_class_flag(GFXUI_SLIDER_FLAG_VERTICAL)) {
         const float PIX_POS_REL = y - _y;
-        _percentage = 1.0f - strict_min(1.0f, strict_max(0.0f, (PIX_POS_REL / (float)_h)));
+        tmp_percentage = 1.0f - strict_min(1.0f, strict_max(0.0f, (PIX_POS_REL / (float)_h)));
       }
       else {
         const float PIX_POS_REL = x - _x;
-        _percentage = strict_min(1.0f, strict_max(0.0f, (PIX_POS_REL / (float)_w)));
+        tmp_percentage = strict_min(1.0f, strict_max(0.0f, (PIX_POS_REL / (float)_w)));
       }
+      ret = true;
+      break;
+
     case GfxUIEvent::RELEASE:
-      return true;
+      change_log->insert(this, (int) GfxUIEvent::DRAG_STOP);
+      ret = true;
+      break;
 
     case GfxUIEvent::MOVE_UP:
-      _percentage = strict_min(1.0, (_percentage + 0.01));
-      return true;
+      tmp_percentage = strict_min(1.0, (_percentage + 0.01));
+      change_log->insert(this, (int) GFX_EVNT);
+      ret = true;
+      break;
 
     case GfxUIEvent::MOVE_DOWN:
-      _percentage = strict_max(0.0, (_percentage - 0.01));
-      return true;
+      tmp_percentage = strict_max(0.0, (_percentage - 0.01));
+      change_log->insert(this, (int) GFX_EVNT);
+      ret = true;
+      break;
 
     default:
       return false;
   }
+
+  if ((1.0 >= tmp_percentage) && (_percentage != tmp_percentage)) {
+    _percentage = tmp_percentage;
+    change_log->insert(this, (int) GfxUIEvent::VALUE_CHANGE);
+  }
+  if (ret) {
+    _need_redraw(true);
+  }
+  return ret;
 }

@@ -23,7 +23,7 @@ int GfxUIButton::_render(UIGfxWrapper* ui_gfx) {
   return 1;
 }
 
-bool GfxUIButton::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
+bool GfxUIButton::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   switch (GFX_EVNT) {
     case GfxUIEvent::TOUCH:
@@ -41,6 +41,7 @@ bool GfxUIButton::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
       return false;
   }
   if (ret) {
+    change_log->insert(this, (int) GFX_EVNT);
     _need_redraw(true);
   }
   return ret;

@@ -15,7 +15,7 @@ int GfxUIKeyValuePair::_render(UIGfxWrapper* ui_gfx) {
   return 1;
 }
 
-bool GfxUIKeyValuePair::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
+bool GfxUIKeyValuePair::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   switch (GFX_EVNT) {
     default:

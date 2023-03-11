@@ -20,7 +20,7 @@ int GfxUIStorage::_render(UIGfxWrapper* ui_gfx) {
   return 1;
 }
 
-bool GfxUIStorage::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
+bool GfxUIStorage::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   switch (GFX_EVNT) {
     default:
@@ -72,7 +72,7 @@ int GfxUIDataRecord::_render(UIGfxWrapper* ui_gfx) {
   return 1;
 }
 
-bool GfxUIDataRecord::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y) {
+bool GfxUIDataRecord::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   switch (GFX_EVNT) {
     default:
