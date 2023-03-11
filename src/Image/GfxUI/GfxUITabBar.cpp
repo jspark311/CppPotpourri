@@ -18,7 +18,7 @@ GfxUITabBar::GfxUITabBar(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_
 int GfxUITabBar::_render(UIGfxWrapper* ui_gfx) {
   int8_t ret = 0;
   const uint32_t BTN_COUNT = (uint32_t) _children.size();
-  for (uint btn_idx = 0; btn_idx < BTN_COUNT; btn_idx++) {
+  for (uint32_t btn_idx = 0; btn_idx < BTN_COUNT; btn_idx++) {
     GfxUIButton* btn_cur = (GfxUIButton*) _children.get(btn_idx);
     if (btn_cur->pressed()) {
       if (1 == _set_active_tab(btn_idx)) {
@@ -64,7 +64,7 @@ int8_t GfxUITabBar::addTab(const char* txt, bool selected) {
     if (0 <= _add_child(n_btn)) {
       n_btn->setMargins(0, 2, 0, 0);
       uint32_t x_pix_accum = 0;
-      for (uint btn_idx = 0; btn_idx < (BTN_COUNT-1); btn_idx++) {
+      for (uint32_t btn_idx = 0; btn_idx < (BTN_COUNT-1); btn_idx++) {
         GfxUIElement* chld = _children.get(btn_idx);
         chld->reposition(INTRNL_X + x_pix_accum, INTRNL_Y);
         chld->resize(NEW_UNIT_W, INTRNL_H);
@@ -88,7 +88,7 @@ int8_t GfxUITabBar::_set_active_tab(uint8_t tab_idx) {
     GfxUIButton* btn_n_act = (GfxUIButton*) _children.get(tab_idx);
     if (nullptr != btn_n_act) {
       const uint32_t BTN_COUNT = (uint32_t) _children.size();
-      for (uint btn_idx = 0; btn_idx < BTN_COUNT; btn_idx++) {
+      for (uint32_t btn_idx = 0; btn_idx < BTN_COUNT; btn_idx++) {
         GfxUIButton* btn_p_act = (GfxUIButton*) _children.get(btn_idx);
         if (tab_idx == btn_idx) {
           btn_p_act->buttonState(true);
@@ -130,7 +130,7 @@ int GfxUITabBarWithContent::_render(UIGfxWrapper* ui_gfx) {
     ret--;
     _active_tab = _tab_bar.activeTab();
     const uint32_t TAB_COUNT = (uint32_t) _tab_bar.tabCount();
-    for (uint i = 0; i < TAB_COUNT; i++) {
+    for (uint32_t i = 0; i < TAB_COUNT; i++) {
       // TODO: Fragile. Assumes tab_bar is the only other direct child, and that it
       //   was added first, and the order never altered.
       GfxUIElement* content = _children.get(i+1);

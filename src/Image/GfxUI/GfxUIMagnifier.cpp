@@ -33,10 +33,10 @@ int GfxUIMagnifier::_render(UIGfxWrapper* ui_gfx) {
   const int   INSET_FEED_SIZE_Y = (_internal_Height() / _scale);
   const int   INSET_FEED_OFFSET_X = (INSET_FEED_SIZE_X/2) + 1;
   const int   INSET_FEED_OFFSET_Y = (INSET_FEED_SIZE_Y/2) + 1;
-  const uint  INSET_X_POS = (ui_gfx->img()->x() - elementWidth()) - 1;
-  const uint  INSET_Y_POS = (ui_gfx->img()->y() - elementHeight()) - 1;
-  const uint  INSET_FEED_X_POS  = (uint) range_bind((int) _pointer_x, INSET_FEED_OFFSET_X, (int) (ui_gfx->img()->x() - INSET_FEED_OFFSET_X)) - INSET_FEED_OFFSET_X;
-  const uint  INSET_FEED_Y_POS  = (uint) range_bind((int) _pointer_y, INSET_FEED_OFFSET_Y, (int) (ui_gfx->img()->y() - INSET_FEED_OFFSET_Y)) - INSET_FEED_OFFSET_Y;
+  const uint32_t INSET_X_POS = (ui_gfx->img()->x() - elementWidth()) - 1;
+  const uint32_t INSET_Y_POS = (ui_gfx->img()->y() - elementHeight()) - 1;
+  const uint32_t INSET_FEED_X_POS  = (uint) range_bind((int) _pointer_x, INSET_FEED_OFFSET_X, (int) (ui_gfx->img()->x() - INSET_FEED_OFFSET_X)) - INSET_FEED_OFFSET_X;
+  const uint32_t INSET_FEED_Y_POS  = (uint) range_bind((int) _pointer_y, INSET_FEED_OFFSET_Y, (int) (ui_gfx->img()->y() - INSET_FEED_OFFSET_Y)) - INSET_FEED_OFFSET_Y;
   reposition(INSET_X_POS, INSET_Y_POS);
 
   // Scale from the source image.

@@ -57,8 +57,8 @@ void GfxUIElement::reposition(uint32_t x, uint32_t y) {
   _y += shift_y;
   if (_children.hasNext()) {
     // There are child objects to relocate.
-    const uint QUEUE_SIZE = _children.size();
-    for (uint n = 0; n < QUEUE_SIZE; n++) {
+    const uint32_t QUEUE_SIZE = _children.size();
+    for (uint32_t n = 0; n < QUEUE_SIZE; n++) {
       GfxUIElement* ui_obj = _children.get(n);
       ui_obj->reposition(ui_obj->elementPosX() + shift_x, ui_obj->elementPosY() + shift_y);
     }
@@ -87,8 +87,8 @@ bool GfxUIElement::notify(const GfxUIEvent GFX_EVNT, const uint32_t x, const uin
 bool GfxUIElement::_notify_children(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y) {
   if (_children.hasNext()) {
     // There are child objects to notify.
-    const uint QUEUE_SIZE = _children.size();
-    for (uint n = 0; n < QUEUE_SIZE; n++) {
+    const uint32_t QUEUE_SIZE = _children.size();
+    for (uint32_t n = 0; n < QUEUE_SIZE; n++) {
       GfxUIElement* ui_obj = _children.get(n);
       if (ui_obj->notify(GFX_EVNT, x, y)) {
         return true;
@@ -138,8 +138,8 @@ int GfxUIElement::_render_children(UIGfxWrapper* ui_gfx, bool force) {
   int ret = 0;
   if (_children.hasNext()) {
     // There are child objects to render.
-    const uint QUEUE_SIZE = _children.size();
-    for (uint n = 0; n < QUEUE_SIZE; n++) {
+    const uint32_t QUEUE_SIZE = _children.size();
+    for (uint32_t n = 0; n < QUEUE_SIZE; n++) {
       GfxUIElement* ui_obj = _children.get(n);
       ret += ui_obj->render(ui_gfx, force);
     }

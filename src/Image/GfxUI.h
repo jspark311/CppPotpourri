@@ -165,8 +165,8 @@ class GfxUILayout {
 
 
     /* Static utility methods for automating flows during view construction. */
-    static bool flowRight(GfxUILayout*, uint spacing = 0);
-    static bool flowDown(GfxUILayout*, uint spacing = 0);
+    static bool flowRight(GfxUILayout*, uint32_t spacing = 0);
+    static bool flowDown(GfxUILayout*, uint32_t spacing = 0);
 
 
   protected:
