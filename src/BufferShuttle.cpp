@@ -40,7 +40,7 @@ int BufferShuttle::poll(uint32_t increment) {
   int ret = 0;
   if (0 < pendingBytes()) {
     if (0 < increment) {
-      const uint32_t TXFR_SIZE = strict_min(increment, (uint32_t) pendingBytes());
+      //const uint32_t TXFR_SIZE = strict_min(increment, (uint32_t) pendingBytes());
       StringBuilder tmp;
       ret = 1;
     }

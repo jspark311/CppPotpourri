@@ -5,7 +5,7 @@ Date:   2022.06.25
 
 */
 
-#include "../GfxUI.h"
+#include "GfxUIKit.h"
 
 
 /*******************************************************************************
@@ -53,16 +53,20 @@ int8_t GfxUITabBar::addTab(const char* txt, bool selected) {
   const uint32_t INTRNL_H = _internal_Height();
   const uint32_t NEW_UNIT_W = (_internal_Width()/BTN_COUNT);
 
-  GfxUIButton* n_btn = new GfxUITextButton(txt,
-    INTRNL_X + (NEW_UNIT_W * (BTN_COUNT-1)), INTRNL_Y,
-    NEW_UNIT_W, INTRNL_H,
-    _color,
+  GfxUIButton* n_btn = new GfxUITextButton(
+    GfxUILayout(
+      INTRNL_X + (NEW_UNIT_W * (BTN_COUNT-1)), INTRNL_Y,
+      NEW_UNIT_W, INTRNL_H,
+      0, 2, 0, 0,
+      0, 0, 0, 0               // Border_px(t, b, l, r)
+    ),
+    (const GfxUIStyle) _style,
+    txt,
     ((GFXUI_FLAG_FREE_THIS_ELEMENT | GFXUI_FLAG_NEED_RERENDER) | (selected ? flgs_act : flgs_inact))
   );
   if (n_btn) {
     ret--;
     if (0 <= _add_child(n_btn)) {
-      n_btn->setMargins(0, 2, 0, 0);
       uint32_t x_pix_accum = 0;
       for (uint32_t btn_idx = 0; btn_idx < (BTN_COUNT-1); btn_idx++) {
         GfxUIElement* chld = _children.get(btn_idx);

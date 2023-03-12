@@ -15,6 +15,8 @@ This source file was never part of Adafruit's library. They are small graphics
   utilities that help implement simple UIs.
 */
 
+#include "EnumWrapper.h"
+#include "FlagContainer.h"
 #include "Image.h"
 #include "ImageUtils.h"
 #include "GfxUI/GfxUIKit.h"
@@ -36,6 +38,11 @@ This source file was never part of Adafruit's library. They are small graphics
 #define GFXUI_FLAG_INACTIVE                   0x00000040   // Used to prevent suprious input at a class's discretion.
 #define GFXUI_FLAG_MUTE_RENDER                0x00000080   // Used to suspend rendering that would otherwise happen.
 #define GFXUI_FLAG_FREE_THIS_ELEMENT          0x00000100   // This object ought to be freed when no longer needed.
+#define GFXUI_FLAG_CURRENT_FOCUS              0x00000200   // This is the element that is the focus of the pointer.
+#define GFXUI_FLAG_CURRENT_SELECTION          0x00000400   // This is the element that was last selected (possibly not focused).
+#define GFXUI_FLAG_UNDER_POINTER              0x00000800   // This element is underneath the pointer.
+#define GFXUI_FLAG_DRAGGABLE                  0x00001000   // This element is draggable.
+#define GFXUI_FLAG_DRAGGING                   0x00002000   // This element is undergoing a drag.
 
 #define GFXUI_BUTTON_FLAG_STATE               0x01000000   // Button state
 #define GFXUI_BUTTON_FLAG_MOMENTARY           0x02000000   // Button reverts to off when released.
@@ -67,31 +74,33 @@ class GfxUIElement;
 /*
 * These are the possible meanings of signals that might come in
 *   from the user's plane.
-*
-* TODO: This is not going to port well to restricted input interfaces.
 */
 enum class GfxUIEvent : uint8_t {
   NONE         = 0x00,  //
+  /* Direct results of user input */
   TOUCH        = 0x01,  // Usually a left-click initiate on a PC.
   RELEASE      = 0x02,  // Usually a left-click release on a PC.
   PRESSURE     = 0x03,  //
   DRAG         = 0x04,  // Usually a middle-click on a PC.
-  HOVER        = 0x05,  // "Mouseover"
-  SELECT       = 0x06,  // Usually a right-click on a PC.
-  MOVE_UP      = 0x07,  // Usually a scrollwheel on a PC.
-  MOVE_DOWN    = 0x08,  // Usually a scrollwheel on a PC.
-  MOVE_LEFT    = 0x09,  // Usually a scrollwheel on a PC.
-  MOVE_RIGHT   = 0x0A,  // Usually a scrollwheel on a PC.
-  MOVE_IN      = 0x0B,  //
-  MOVE_OUT     = 0x0C,  //
+  HOVER_IN     = 0x05,  // "Mouseover" enters the element boundaries.
+  HOVER_OUT    = 0x06,  // "Mouseover" exits the element boundaries.
+  SELECT       = 0x07,  // Usually a right-click on a PC.
+  UNSELECT     = 0x08,  // May be emulated or not.
+  MOVE_UP      = 0x09,  // Usually a scrollwheel on a PC.
+  MOVE_DOWN    = 0x0A,  // Usually a scrollwheel on a PC.
+  MOVE_LEFT    = 0x0B,  // Usually a scrollwheel on a PC.
+  MOVE_RIGHT   = 0x0C,  // Usually a scrollwheel on a PC.
+  MOVE_IN      = 0x0D,  //
+  MOVE_OUT     = 0x0E,  //
+  KEY_PRESS    = 0x0F,  // Usually from a keyboard.
+
+  /* Return path for notify() */
   IDENTIFY     = 0x1C,  // Uses the notify() API to get the inner-most element at given location.
   DRAG_START   = 0x1D,  // Subscribes an object to drag notification.
   DRAG_STOP    = 0x1E,  // Subscribes an object from drag notification.
   VALUE_CHANGE = 0x1F,  // A value-bearing UI element was updated by user action.
   INVALID      = 0x20   // We are bound by architecture to a maximum of 32 types of events.
 };
-
-
 
 
 /*
@@ -270,13 +279,21 @@ class GfxUIElement : public GfxUILayout {
       _need_redraw(true);
     };
 
-    inline void shouldReap(bool x) {     _class_set_flag(GFXUI_FLAG_FREE_THIS_ELEMENT, x);  };
-    inline bool shouldReap() {           return _class_flag(GFXUI_FLAG_FREE_THIS_ELEMENT);  };
-    inline void elementActive(bool x) {  _class_set_flag(GFXUI_FLAG_INACTIVE, !x);          };
-    inline bool elementActive() {        return !_class_flag(GFXUI_FLAG_INACTIVE);          };
     void muteRender(bool x);
-    inline bool muteRender() {           return _class_flag(GFXUI_FLAG_MUTE_RENDER);        };
-
+    inline bool muteRender() {           return _flags.value(GFXUI_FLAG_MUTE_RENDER);        };
+    inline void shouldReap(bool x) {     _flags.set(GFXUI_FLAG_FREE_THIS_ELEMENT, x);        };
+    inline bool shouldReap() {           return _flags.value(GFXUI_FLAG_FREE_THIS_ELEMENT);  };
+    inline void elementActive(bool x) {  _flags.set(GFXUI_FLAG_INACTIVE, !x);                };
+    inline bool elementActive() {        return !_flags.value(GFXUI_FLAG_INACTIVE);          };
+    inline void isFocused(bool x) {      _flags.set(GFXUI_FLAG_CURRENT_FOCUS, x);            };
+    inline bool isFocused() {            return _flags.value(GFXUI_FLAG_CURRENT_FOCUS);      };
+    inline void isSelected(bool x) {     _flags.set(GFXUI_FLAG_CURRENT_SELECTION, x);        };
+    inline bool isSelected() {           return _flags.value(GFXUI_FLAG_CURRENT_SELECTION);  };
+    inline bool underPointer() {         return _flags.value(GFXUI_FLAG_UNDER_POINTER);      };
+    inline void isDraggable(bool x) {    _flags.set(GFXUI_FLAG_DRAGGABLE, x);                };
+    inline bool isDraggable() {          return _flags.value(GFXUI_FLAG_DRAGGABLE);          };
+    inline void isDragging(bool x) {     _flags.set(GFXUI_FLAG_DRAGGING, x);                 };
+    inline bool isDragging() {           return _flags.value(GFXUI_FLAG_DRAGGING);           };
 
     inline void setMargins(uint8_t t, uint8_t b, uint8_t l, uint8_t r) {
       _mrgn_t = t;
@@ -331,18 +348,15 @@ class GfxUIElement : public GfxUILayout {
     inline void _need_redraw(bool x) {  _class_set_flag(GFXUI_FLAG_NEED_RERENDER, x);   };
     inline bool _need_redraw() {        return _class_flag(GFXUI_FLAG_NEED_RERENDER | GFXUI_FLAG_ALWAYS_REDRAW);   };
 
-    inline uint32_t _class_flags() {                return _flags;            };
-    inline bool _class_flag(uint32_t _flag) {       return (_flags & _flag);  };
-    inline void _class_flip_flag(uint32_t _flag) {  _flags ^= _flag;          };
-    inline void _class_clear_flag(uint32_t _flag) { _flags &= ~_flag;         };
-    inline void _class_set_flag(uint32_t _flag) {   _flags |= _flag;          };
-    inline void _class_set_flag(uint32_t _flag, bool nu) {
-      if (nu) _flags |= _flag;
-      else    _flags &= ~_flag;
-    };
+    inline uint32_t _class_flags() {                   return _flags.raw;       };
+    inline bool _class_flag(uint32_t f) {              return _flags.value(f);  };
+    inline void _class_clear_flag(uint32_t f) {        _flags.clear(f);         };
+    inline void _class_set_flag(uint32_t f) {          _flags.set(f);           };
+    inline void _class_set_flag(uint32_t f, bool x) {  _flags.set(f, x);        };
+    inline void _class_flip_flag(uint32_t f) {         _flags.set(f, _flags.value(f));  };
 
   private:
-    uint32_t _flags; // FlagContainer32 _flags;
+    FlagContainer32 _flags;  // If set, the step has been done.
 
     bool   _notify_children(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
     int    _render_children(UIGfxWrapper*, bool force);

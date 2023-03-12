@@ -23,7 +23,8 @@ template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
     ui_gfx->drawGraph(
       i_x, i_y, strict_min((uint16_t) _filter->windowSize(), i_w), i_h,
       _style.color_active,
-      true, showRange(), showValue(),
+      true, showRange(), underPointer(),
+      //true, showRange(), showValue(),
       _filter
     );
     ret++;
@@ -81,12 +82,14 @@ template <> int GfxUISensorFilter<float>::_render(UIGfxWrapper* ui_gfx) {
   uint32_t i_y = _internal_PosY();
   uint16_t i_w = _internal_Width();
   uint16_t i_h = _internal_Height();
+  ui_gfx->img()->setTextSize(_style.text_size);
   if (_filter->dirty()) {
     ui_gfx->drawGraph(
       i_x, i_y,
       strict_min((uint16_t) _filter->windowSize(), i_w), i_h,
       _style.color_active,
-      true, showRange(), showValue(),
+      true, showRange(), underPointer(),
+      //true, showRange(), showValue(),
       _filter
     );
     ret++;
@@ -116,8 +119,18 @@ template <> bool GfxUISensorFilter<float>::_notify(const GfxUIEvent GFX_EVNT, ui
   bool ret = false;
   switch (GFX_EVNT) {
     case GfxUIEvent::TOUCH:
+      //change_log->insert(this, (int) GfxUIEvent::DRAG_START);
+      ret = true;
+      break;
+
+    case GfxUIEvent::DRAG_START:
+      //reposition(x, y);
+      ret = true;
+      break;
+
     case GfxUIEvent::RELEASE:
-      showValue(GfxUIEvent::TOUCH == GFX_EVNT);
+      //showValue(GfxUIEvent::TOUCH == GFX_EVNT);  // TODO: Implement with a button.
+      //change_log->insert(this, (int) GfxUIEvent::DRAG_STOP);
       ret = true;
       break;
     default:

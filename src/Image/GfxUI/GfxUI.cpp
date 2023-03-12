@@ -9,6 +9,36 @@ This file contains the base implementation of GfxUIElement. All classes in the
 
 #include "../GfxUI.h"
 
+/*******************************************************************************
+* Const enum support
+*******************************************************************************/
+
+const EnumDef<GfxUIEvent> _ENUM_LIST[] = {
+  { GfxUIEvent::NONE,          "NONE"},
+  { GfxUIEvent::TOUCH,         "TOUCH"},
+  { GfxUIEvent::RELEASE,       "RELEASE"},
+  { GfxUIEvent::PRESSURE,      "PRESSURE"},
+  { GfxUIEvent::DRAG,          "DRAG"},
+  { GfxUIEvent::HOVER_IN,      "HOVER_IN"},
+  { GfxUIEvent::HOVER_OUT,     "HOVER_OUT"},
+  { GfxUIEvent::SELECT,        "SELECT"},
+  { GfxUIEvent::UNSELECT,      "UNSELECT"},
+  { GfxUIEvent::MOVE_UP,       "MOVE_UP"},
+  { GfxUIEvent::MOVE_DOWN,     "MOVE_DOWN"},
+  { GfxUIEvent::MOVE_LEFT,     "MOVE_LEFT"},
+  { GfxUIEvent::MOVE_RIGHT,    "MOVE_RIGHT"},
+  { GfxUIEvent::MOVE_IN,       "MOVE_IN"},
+  { GfxUIEvent::MOVE_OUT,      "MOVE_OUT"},
+  { GfxUIEvent::KEY_PRESS,     "KEY_PRESS"},
+  { GfxUIEvent::IDENTIFY,      "IDENTIFY"},
+  { GfxUIEvent::DRAG_START,    "DRAG_START"},
+  { GfxUIEvent::DRAG_STOP,     "DRAG_STOP"},
+  { GfxUIEvent::VALUE_CHANGE,  "VALUE_CHANGE"},
+  { GfxUIEvent::INVALID,       "INVALID", (ENUM_WRAPPER_FLAG_CATCHALL)}
+};
+const EnumDefList<GfxUIEvent> GFXUI_EVENT_LIST(&_ENUM_LIST[0], (sizeof(_ENUM_LIST) / sizeof(_ENUM_LIST[0])));
+
+
 
 /*******************************************************************************
 * GfxUIElement Base Class
@@ -80,19 +110,71 @@ int GfxUIElement::_add_child(GfxUIElement* chld) {
 
 bool GfxUIElement::notify(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
-  if (includesPoint(x, y)) {
-    if (GFX_EVNT == GfxUIEvent::IDENTIFY) {
-      ret = _notify_children(GFX_EVNT, x, y, change_log);
-      if (!ret) {
-        // No children claimed the IDENTIFY event. It must be us.
-        change_log->insert(this, (int) GfxUIEvent::IDENTIFY);
-      }
-    }
-    else if (elementActive()) {
-      ret = _notify(GFX_EVNT, x, y, change_log);
-      if (!ret) {
-        ret = _notify_children(GFX_EVNT, x, y, change_log);
-      }
+  const bool INCLUDES_POINT = includesPoint(x, y);
+  _flags.set(GFXUI_FLAG_UNDER_POINTER, INCLUDES_POINT);
+  if (INCLUDES_POINT) {
+    switch (GFX_EVNT) {
+      // These events we process depth-first, and in the abstraction.
+      case GfxUIEvent::HOVER_IN:
+      case GfxUIEvent::HOVER_OUT:
+      case GfxUIEvent::SELECT:
+      case GfxUIEvent::UNSELECT:
+      case GfxUIEvent::IDENTIFY:
+      case GfxUIEvent::DRAG_START:
+      case GfxUIEvent::DRAG_STOP:
+        if (!_notify_children(GFX_EVNT, x, y, change_log)) {
+          // No children claimed the event. It must be for us.
+          switch (GFX_EVNT) {
+            case GfxUIEvent::HOVER_IN:
+            case GfxUIEvent::HOVER_OUT:
+              // Propagate HOVER to child class.
+              isFocused(GFX_EVNT == GfxUIEvent::HOVER_IN);
+              //c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "%p is focused: %c \t underPointer(): %c", this, (isFocused()?'y':'n'), (underPointer()?'y':'n'));
+              _notify(GFX_EVNT, x, y, change_log);
+              break;
+            case GfxUIEvent::SELECT:
+            case GfxUIEvent::UNSELECT:
+              // Propagate SELECT to child class.
+              isSelected((GfxUIEvent::UNSELECT == GFX_EVNT) ^ _notify(GFX_EVNT, x, y, change_log));
+              break;
+
+            case GfxUIEvent::DRAG_START:
+            case GfxUIEvent::DRAG_STOP:
+              if (isDraggable()) {
+                // If the element is draggable, move it.
+                if (isDragging()) {
+                  reposition(x, y);
+                }
+                else {
+                  isDragging(GfxUIEvent::DRAG_START == GFX_EVNT);
+                }
+              }
+              else {
+                // If the element isn't draggable, propagate the event.
+                _notify(GFX_EVNT, x, y, change_log);
+              }
+              break;
+
+            default:
+              break;
+          }
+          change_log->insert(this, (int) GFX_EVNT);
+          if (GFX_EVNT != GfxUIEvent::IDENTIFY) {
+            // Propagate HOVER to child class. We are returning true, in any case.
+            _notify(GFX_EVNT, x, y, change_log);
+          }
+        }
+        ret = true;
+        break;
+
+      default:
+        if (elementActive()) {
+          ret = _notify(GFX_EVNT, x, y, change_log);
+          if (!ret) {
+            ret = _notify_children(GFX_EVNT, x, y, change_log);
+          }
+        }
+        break;
     }
   }
   return ret;

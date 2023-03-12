@@ -72,7 +72,7 @@ class GfxUIRoot : public GfxUIGroup {
 *******************************************************************************/
 class GfxUIButton : public GfxUIElement {
   public:
-    GfxUIButton(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f), _color_active_on(color) {};
+    GfxUIButton(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0) : GfxUIElement(lay, sty, f) {};
     ~GfxUIButton() {};
 
     inline void buttonState(bool x) {  _class_set_flag(GFXUI_BUTTON_FLAG_STATE, x);  };
@@ -90,15 +90,12 @@ class GfxUIButton : public GfxUIElement {
 
 
   protected:
-    uint32_t _color_active_on;   // The accent color of the element when active.
-    uint32_t _color_active_off;  // The accent color of the element when active.
-    uint32_t _color_inactive;    // The accent color of the element when inactive.
 };
 
 
 class GfxUITextButton : public GfxUIButton {
   public:
-    GfxUITextButton(const char* T, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIButton(x, y, w, h, color, f), _TXT(T) {};
+    GfxUITextButton(const GfxUILayout lay, const GfxUIStyle sty, const char* T, uint32_t f = 0) : GfxUIButton(lay, sty, f), _TXT(T) {};
     ~GfxUITextButton() {};
 
     /* Implementation of GfxUIElement. */
@@ -161,7 +158,7 @@ class GfxUITabBarWithContent : public GfxUIElement {
 *******************************************************************************/
 class GfxUISlider : public GfxUIElement {
   public:
-    GfxUISlider(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0);
+    GfxUISlider(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0) : GfxUIElement(lay, sty, f), _percentage(0.0f) {};
     ~GfxUISlider() {};
 
     inline float value() {         return _percentage;    };
@@ -174,7 +171,6 @@ class GfxUISlider : public GfxUIElement {
 
   protected:
     float    _percentage;        // The current position of the mark, as a fraction.
-    uint32_t _color_marker;      // The accent color of the position mark.
 };
 
 
@@ -282,7 +278,6 @@ class GfxUI3AxisRender : public GfxUIElement {
 template <class T> class GfxUISensorFilter : public GfxUIElement {
   public:
     GfxUISensorFilter(const GfxUILayout lay, const GfxUIStyle sty, SensorFilter<T>* sf, uint32_t f = 0) : GfxUIElement(lay, sty, f | GFXUI_FLAG_ALWAYS_REDRAW), _filter(sf) {};
-    GfxUISensorFilter(GfxUILayout* lay, GfxUIStyle* sty, SensorFilter<T>* sf, uint32_t f = 0) : GfxUIElement(lay, sty, f | GFXUI_FLAG_ALWAYS_REDRAW), _filter(sf) {};
     ~GfxUISensorFilter() {};
 
     /* Implementation of GfxUIElement. */
