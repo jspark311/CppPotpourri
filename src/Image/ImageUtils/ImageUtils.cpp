@@ -43,29 +43,29 @@ UIGfxWrapper::UIGfxWrapper(Image* i) : _img(i) {
 *   display.
 */
 void UIGfxWrapper::drawGraph(
-  int x, int y, int w, int h, uint color0, uint color1, uint color2,
+  int x, int y, int w, int h, uint32_t color0, uint32_t color1, uint32_t color2,
   bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
   SensorFilter<float>* filt0, SensorFilter<float>* filt1, SensorFilter<float>* filt2
 ) {
-  const uint     DATA_SIZE_0 = filt0->windowSize();
-  const uint     LAST_SIDX_0 = filt0->lastIndex();
-  const uint     DATA_SIZE_1 = filt1->windowSize();
-  const uint     LAST_SIDX_1 = filt1->lastIndex();
-  const uint     DATA_SIZE_2 = filt2->windowSize();
-  const uint     LAST_SIDX_2 = filt2->lastIndex();
+  const uint32_t DATA_SIZE_0 = filt0->windowSize();
+  const uint32_t LAST_SIDX_0 = filt0->lastIndex();
+  const uint32_t DATA_SIZE_1 = filt1->windowSize();
+  const uint32_t LAST_SIDX_1 = filt1->lastIndex();
+  const uint32_t DATA_SIZE_2 = filt2->windowSize();
+  const uint32_t LAST_SIDX_2 = filt2->lastIndex();
   const float*   F_MEM_0     = filt0->memPtr();
   const float*   F_MEM_1     = filt1->memPtr();
   const float*   F_MEM_2     = filt2->memPtr();
   float tmp_data_0[DATA_SIZE_0];
   float tmp_data_1[DATA_SIZE_1];
   float tmp_data_2[DATA_SIZE_2];
-  for (uint i = 0; i < DATA_SIZE_0; i++) {
+  for (uint32_t i = 0; i < DATA_SIZE_0; i++) {
     tmp_data_0[i] = *(F_MEM_0 + ((i + LAST_SIDX_0) % DATA_SIZE_0));
   }
-  for (uint i = 0; i < DATA_SIZE_1; i++) {
+  for (uint32_t i = 0; i < DATA_SIZE_1; i++) {
     tmp_data_1[i] = *(F_MEM_1 + ((i + LAST_SIDX_1) % DATA_SIZE_1));
   }
-  for (uint i = 0; i < DATA_SIZE_2; i++) {
+  for (uint32_t i = 0; i < DATA_SIZE_2; i++) {
     tmp_data_2[i] = *(F_MEM_2 + ((i + LAST_SIDX_2) % DATA_SIZE_2));
   }
 
@@ -86,22 +86,22 @@ void UIGfxWrapper::drawGraph(
 *   display.
 */
 void UIGfxWrapper::drawGraph(
-  int x, int y, int w, int h, uint color0, uint color1,
+  int x, int y, int w, int h, uint32_t color0, uint32_t color1,
   bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
   SensorFilter<float>* filt0, SensorFilter<float>* filt1
 ) {
-  const uint DATA_SIZE_0 = filt0->windowSize();
-  const uint LAST_SIDX_0 = filt0->lastIndex();
-  const uint DATA_SIZE_1 = filt1->windowSize();
-  const uint LAST_SIDX_1 = filt1->lastIndex();
+  const uint32_t DATA_SIZE_0 = filt0->windowSize();
+  const uint32_t LAST_SIDX_0 = filt0->lastIndex();
+  const uint32_t DATA_SIZE_1 = filt1->windowSize();
+  const uint32_t LAST_SIDX_1 = filt1->lastIndex();
   const float*   F_MEM_0     = filt0->memPtr();
   const float*   F_MEM_1     = filt1->memPtr();
   float tmp_data_0[DATA_SIZE_0];
   float tmp_data_1[DATA_SIZE_1];
-  for (uint i = 0; i < DATA_SIZE_0; i++) {
+  for (uint32_t i = 0; i < DATA_SIZE_0; i++) {
     tmp_data_0[i] = *(F_MEM_0 + ((i + LAST_SIDX_0) % DATA_SIZE_0));
   }
-  for (uint i = 0; i < DATA_SIZE_1; i++) {
+  for (uint32_t i = 0; i < DATA_SIZE_1; i++) {
     tmp_data_1[i] = *(F_MEM_1 + ((i + LAST_SIDX_1) % DATA_SIZE_1));
   }
 
@@ -121,15 +121,15 @@ void UIGfxWrapper::drawGraph(
 *   display.
 */
 void UIGfxWrapper::drawGraph(
-  int x, int y, int w, int h, uint color,
+  int x, int y, int w, int h, uint32_t color,
   bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
   SensorFilter<float>* filt
 ) {
-  const uint DATA_SIZE = filt->windowSize();
-  const uint LAST_SIDX = filt->lastIndex();
+  const uint32_t DATA_SIZE = filt->windowSize();
+  const uint32_t LAST_SIDX = filt->lastIndex();
   const float*   F_MEM_PTR = filt->memPtr();
   float tmp_data[DATA_SIZE];
-  for (uint i = 0; i < DATA_SIZE; i++) {
+  for (uint32_t i = 0; i < DATA_SIZE; i++) {
     tmp_data[i] = *(F_MEM_PTR + ((i + LAST_SIDX) % DATA_SIZE));
   }
 
@@ -145,15 +145,15 @@ void UIGfxWrapper::drawGraph(
 *   display.
 */
 void UIGfxWrapper::drawGraph(
-  int x, int y, int w, int h, uint color,
+  int x, int y, int w, int h, uint32_t color,
   bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
   SensorFilter<uint32_t>* filt
 ) {
-  const uint  DATA_SIZE = filt->windowSize();
-  const uint  LAST_SIDX = filt->lastIndex();
+  const uint32_t  DATA_SIZE = filt->windowSize();
+  const uint32_t  LAST_SIDX = filt->lastIndex();
   const uint32_t* F_MEM_PTR = filt->memPtr();
   float tmp_data[DATA_SIZE];
-  for (uint i = 0; i < DATA_SIZE; i++) {
+  for (uint32_t i = 0; i < DATA_SIZE; i++) {
     tmp_data[i] = *(F_MEM_PTR + ((i + LAST_SIDX) % DATA_SIZE));
   }
   uint32_t flags = (draw_base ? GFXUI_FLAG_FULL_REDRAW : 0);
@@ -161,13 +161,6 @@ void UIGfxWrapper::drawGraph(
   flags |= (draw_h_ticks ? GFXUI_FLAG_TEXT_VALUE : 0);
   _draw_graph_dataset(x, y, w, h, color, flags, tmp_data, (uint32_t) DATA_SIZE);
 }
-
-
-
-
-
-
-
 
 
 
@@ -181,13 +174,13 @@ void UIGfxWrapper::drawGraph(
 * @param percent is in the range [0.0, 1.0]
 */
 void UIGfxWrapper::drawProgressBarH(
-  int x, int y, int w, int h, uint color,
+  int x, int y, int w, int h, uint32_t color,
   bool draw_base, bool draw_val, float percent
 ) {
   if (draw_base) {   // Clear the way.
     _img->fillRect(x, y, w, h, bg_color);
   }
-  uint8_t pix_width = percent * (w-2);
+  uint32_t pix_width = percent * (w-2);
   int blackout_x = x+1+pix_width;
   int blackout_w = (w+2)-pix_width;
 
@@ -214,13 +207,13 @@ void UIGfxWrapper::drawProgressBarH(
 * @param percent is in the range [0.0, 1.0]
 */
 void UIGfxWrapper::drawProgressBarV(
-  int x, int y, int w, int h, uint color,
+  int x, int y, int w, int h, uint32_t color,
   bool draw_base, bool draw_val, float percent
 ) {
   if (draw_base) {   // Clear the way.
     _img->fillRect(x, y, w, h, bg_color);
   }
-  uint8_t pix_height = percent * (h-2);
+  uint32_t pix_height = percent * (h-2);
   int blackout_h = y+(h-1)-pix_height;
   _img->fillRoundRect(x+1, y+1, w-2, blackout_h, 3, bg_color);
   _img->fillRoundRect(x+1, (y+h-1)-pix_height, w-2, pix_height, 3, color);
@@ -284,7 +277,7 @@ void UIGfxWrapper::drawCompass(
 * Draw the given data as a plane.
 */
 void UIGfxWrapper::drawHeatMap(
-  uint x, uint y, uint w, uint h,
+  uint32_t x, uint32_t y, uint32_t w, uint32_t h,
   SensorFilter<float>* filt,
   uint32_t flags,
   float range_lock_low, float range_lock_hi
@@ -316,11 +309,11 @@ void UIGfxWrapper::drawHeatMap(
 
   //_img->setAddrWindow(x, y, w, h);
   for (uint32_t i = 0; i < MIN_ELEMENTS; i++) {
-    uint x = (i & 0x07) * PIXEL_SIZE;
-    uint y = (i >> 3) * PIXEL_SIZE;
+    uint32_t x = (i & 0x07) * PIXEL_SIZE;
+    uint32_t y = (i >> 3) * PIXEL_SIZE;
     float pix_deviation = abs(MIDPOINT_T - dataset[i]);
     uint8_t pix_intensity = BINSIZE_T * (pix_deviation / (TEMP_MAX - MIDPOINT_T));
-    uint color = (dataset[i] <= MIDPOINT_T) ? pix_intensity : (pix_intensity << 11);
+    uint32_t color = (dataset[i] <= MIDPOINT_T) ? pix_intensity : (pix_intensity << 11);
     _img->fillRect(x, y, PIXEL_SIZE, PIXEL_SIZE, color);
   }
   //_img->endWrite();
@@ -338,7 +331,7 @@ void UIGfxWrapper::drawHeatMap(
 *   display. The given vector must be normalized.
 */
 void UIGfxWrapper::drawVector(
-  int x, int y, int w, int h, uint color,
+  int x, int y, int w, int h, uint32_t color,
   bool draw_axes, bool draw_val, float vx, float vy, float vz
 ) {
   const int PERSPECTIVE_SCALE = 1;
@@ -371,8 +364,8 @@ void UIGfxWrapper::drawVector(
 * Functions for rendering common UI elements
 *******************************************************************************/
 
-void UIGfxWrapper::drawButton(int x, int y, int w, int h, uint color, bool pressed) {
-  const uint ELEMENT_RADIUS = 4;
+void UIGfxWrapper::drawButton(int x, int y, int w, int h, uint32_t color, bool pressed) {
+  const uint32_t ELEMENT_RADIUS = 4;
   if (pressed) {
     _img->fillRoundRect(x, y, w, h, ELEMENT_RADIUS, color);
     _img->drawRoundRect(x, y, w, h, ELEMENT_RADIUS, fg_color);
@@ -384,16 +377,16 @@ void UIGfxWrapper::drawButton(int x, int y, int w, int h, uint color, bool press
 }
 
 
-void UIGfxWrapper::drawScrollbarH(int x, int y, int w, int h, uint color, float pos) {
-  //uint slider_pix = 2 + (((1+sval) / 61.0f) * (_img->x()-5));
+void UIGfxWrapper::drawScrollbarH(int x, int y, int w, int h, uint32_t color, float pos) {
+  //uint32_t slider_pix = 2 + (((1+sval) / 61.0f) * (_img->x()-5));
   //_img->fillRect(0, 55, _img->x()-1, 7, 0x0000);
   //_img->drawRoundRect(0, 54, _img->x(), 9, 3, 0xFFFF);
   //_img->fillRect(slider_pix-1, 55, 3, 7, 0xF800);
 }
 
 
-void UIGfxWrapper::drawScrollbarV(int x, int y, int w, int h, uint color, float pos) {
-  //uint slider_pix = 2 + (((1+sval) / 61.0f) * (_img->x()-5));
+void UIGfxWrapper::drawScrollbarV(int x, int y, int w, int h, uint32_t color, float pos) {
+  //uint32_t slider_pix = 2 + (((1+sval) / 61.0f) * (_img->x()-5));
   //_img->fillRect(0, 55, _img->x()-1, 7, 0x0000);
   //_img->drawRoundRect(0, 54, _img->x(), 9, 3, 0xFFFF);
   //_img->fillRect(slider_pix-1, 55, 3, 7, 0xF800);
@@ -409,7 +402,7 @@ void UIGfxWrapper::draw_data_view_selector(
   DataVis opt0, DataVis opt1, DataVis opt2, DataVis opt3, DataVis opt4, DataVis opt5,
   DataVis selected
 ) {
-  uint offset = 0;
+  uint32_t offset = 0;
   //_img->setAddrWindow(x, y, w, h);
   _img->drawFastVLine(x, y, h, fg_color);
   _img->drawFastHLine(x, y, w, fg_color);
@@ -503,7 +496,7 @@ void UIGfxWrapper::draw_data_view_selector(
 * Draws the frame of graph, and returns inlay size via parameters.
 */
 void UIGfxWrapper::_draw_graph_frame(
-  int* x, int* y, int* w, int* h, uint color, uint32_t flags
+  int* x, int* y, int* w, int* h, uint32_t color, uint32_t flags
 ) {
   const int INSET_X = (flags & GFXUI_FLAG_DRAW_TICKS_V) ? 3 : 1;
   const int INSET_Y = (flags & GFXUI_FLAG_DRAW_TICKS_H) ? 3 : 1;
@@ -525,22 +518,23 @@ void UIGfxWrapper::_draw_graph_frame(
 *
 */
 void UIGfxWrapper::_draw_graph_text_overlay(
-  int x, int y, int w, int h, uint color, uint32_t flags,
+  int x, int y, int w, int h, uint32_t color, uint32_t flags,
   float v_max, float v_min, float v_scale, float last_datum
 ) {
   StringBuilder tmp_val_str;
   if (flags & GFXUI_FLAG_TEXT_RANGE_V) {
+    uint16_t y_adv = _img->getFontHeight();
     _img->setCursor(x+1, y);
     _img->setTextColor(fg_color, bg_color);
     tmp_val_str.concatf("%.2f", (double) v_max);
     _img->writeString(&tmp_val_str);
     tmp_val_str.clear();
-    _img->setCursor(x+1, (y+h) - 8);
+    _img->setCursor(x+1, (y+h) - y_adv);
     tmp_val_str.concatf("%.2f", (double) v_min);
     _img->writeString(&tmp_val_str);
   }
   if (flags & GFXUI_FLAG_TEXT_VALUE) {
-    uint8_t tmp = last_datum / v_scale;
+    uint32_t tmp = last_datum / v_scale;
     //_img->fillCircle(x+w, tmp+y, 1, color);
     _img->setCursor(x, strict_min((uint32_t) ((y+h)-tmp), (uint32_t) (h-1)));
     _img->setTextColor(color, bg_color);
@@ -556,7 +550,7 @@ void UIGfxWrapper::_draw_graph_text_overlay(
 *   display.
 */
 void UIGfxWrapper::_draw_graph_dataset(
-  int x, int y, int w, int h, uint color, uint32_t flags,
+  int x, int y, int w, int h, uint32_t color, uint32_t flags,
   float* dataset, uint32_t data_len
 ) {
   //_img->setAddrWindow(x, y, w, h);
@@ -587,7 +581,7 @@ void UIGfxWrapper::_draw_graph_dataset(
   }
 
   for (uint32_t i = 0; i < data_len; i++) {
-    uint8_t tmp = *(dataset + i) / v_scale;
+    uint32_t tmp = *(dataset + i) / v_scale;
     _img->setPixel(i + x, (y+h)-tmp, color);
   }
 

@@ -159,11 +159,11 @@ GfxUITabbedContentPane::GfxUITabbedContentPane(const GfxUILayout lay, const GfxU
   _tab_bar(
     GfxUILayout(
       _internal_PosX(), _internal_PosY(),
-      _internal_Width(), ((sty.text_size * 8) + 8),  // TODO: Better, but still arbitrary.
+      _internal_Width(), ((sty.text_size * 8) + 12),  // TODO: Better, but still arbitrary.
       1, 1, 1, 0,
       0, 1, 0, 0               // Border_px(t, b, l, r)
     ),
-    (const GfxUIStyle) _style,
+    sty,
     (GFXUI_FLAG_DRAW_FRAME_D | GFXUI_TABBAR_FLAG_SCROLL_CYCLES_TABS)
   ),
   _active_tab(0)

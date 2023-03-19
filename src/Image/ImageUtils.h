@@ -61,37 +61,37 @@ class UIGfxWrapper {
     inline Image* img() {   return _img;   };
 
     void drawGraph(
-      int x, int y, int w, int h, uint color0, uint color1, uint color2,
+      int x, int y, int w, int h, uint32_t color0, uint32_t color1, uint32_t color2,
       bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
       SensorFilter<float>* filt0, SensorFilter<float>* filt1, SensorFilter<float>* filt2
     );
 
     void drawGraph(
-      int x, int y, int w, int h, uint color0, uint color1,
+      int x, int y, int w, int h, uint32_t color0, uint32_t color1,
       bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
       SensorFilter<float>* filt0, SensorFilter<float>* filt1
     );
 
     void drawGraph(
-      int x, int y, int w, int h, uint color,
+      int x, int y, int w, int h, uint32_t color,
       bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
       SensorFilter<float>* filt
     );
 
     void drawGraph(
-      int x, int y, int w, int h, uint color,
+      int x, int y, int w, int h, uint32_t color,
       bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
       SensorFilter<uint32_t>* filt
     );
 
 
     void drawProgressBarH(
-      int x, int y, int w, int h, uint color,
+      int x, int y, int w, int h, uint32_t color,
       bool draw_base, bool draw_val, float percent
     );
 
     void drawProgressBarV(
-      int x, int y, int w, int h, uint color,
+      int x, int y, int w, int h, uint32_t color,
       bool draw_base, bool draw_val, float percent
     );
 
@@ -101,14 +101,14 @@ class UIGfxWrapper {
     );
 
     void drawHeatMap(
-      uint x, uint y, uint w, uint h,
+      uint32_t x, uint32_t y, uint32_t w, uint32_t h,
       SensorFilter<float>* filt,
       uint32_t flags,
       float range_lock_low = 0.0f, float range_lock_hi = 0.0f
     );
 
     void drawVector(
-      int x, int y, int w, int h, uint color,
+      int x, int y, int w, int h, uint32_t color,
       bool draw_axes, bool draw_val, float vx, float vy, float vz
     );
 
@@ -125,18 +125,18 @@ class UIGfxWrapper {
       DataVis selected
     );
 
-    void drawButton(int x, int y, int w, int h, uint color, bool pressed);
-    void drawScrollbarH(int x, int y, int w, int h, uint color, float pos);
-    void drawScrollbarV(int x, int y, int w, int h, uint color, float pos);
+    void drawButton(int x, int y, int w, int h, uint32_t color, bool pressed);
+    void drawScrollbarH(int x, int y, int w, int h, uint32_t color, float pos);
+    void drawScrollbarV(int x, int y, int w, int h, uint32_t color, float pos);
 
 
   private:
     Image* _img;
     //FlagContainer32  _flags;
 
-    void _draw_graph_frame(int* x, int* y, int* w, int* h, uint color, uint32_t flags);
-    void _draw_graph_text_overlay(int x, int y, int w, int h, uint color, uint32_t flags, float v_max, float v_min, float v_scale, float last_datum);
-    void _draw_graph_dataset(int x, int y, int w, int h, uint color, uint32_t flags, float* dataset, uint32_t data_len);
+    void _draw_graph_frame(int* x, int* y, int* w, int* h, uint32_t color, uint32_t flags);
+    void _draw_graph_text_overlay(int x, int y, int w, int h, uint32_t color, uint32_t flags, float v_max, float v_min, float v_scale, float last_datum);
+    void _draw_graph_dataset(int x, int y, int w, int h, uint32_t color, uint32_t flags, float* dataset, uint32_t data_len);
 
     void _apply_color_map();
 };
