@@ -14,6 +14,8 @@ Date:   2022.06.25
 
 int GfxUITextArea::_render(UIGfxWrapper* ui_gfx) {
   uint32_t next_row   = 0;
+  uint32_t i_x = _internal_PosX();
+  uint32_t i_y = _internal_PosY();
   uint16_t i_w = _internal_Width();
   uint16_t i_h = _internal_Height();
   ui_gfx->img()->setTextSize(_style.text_size);
@@ -32,7 +34,7 @@ int GfxUITextArea::_render(UIGfxWrapper* ui_gfx) {
   }
 
   if ((0 < _max_cols) & (0 < _max_rows)) {
-    ui_gfx->img()->fillRect(_x, _y, _w, _h, _style.color_bg);
+    ui_gfx->img()->fillRect(i_x, i_y, i_w, i_h, _style.color_bg);
     uint16_t line_count = _scrollback.count();
     uint16_t line_idx   = 0;
     if (line_count > _max_rows) {

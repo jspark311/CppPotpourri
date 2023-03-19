@@ -141,3 +141,9 @@ template <> bool GfxUISensorFilter<float>::_notify(const GfxUIEvent GFX_EVNT, ui
   }
   return ret;
 }
+
+
+
+/*******************************************************************************
+* GfxUITimeSeriesDetail
+*******************************************************************************/

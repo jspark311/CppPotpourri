@@ -152,9 +152,9 @@ int8_t GfxUITabBar::_set_active_tab(uint8_t tab_idx) {
 
 
 /*******************************************************************************
-* GfxUITabBarWithContent
+* GfxUITabbedContentPane
 *******************************************************************************/
-GfxUITabBarWithContent::GfxUITabBarWithContent(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f) :
+GfxUITabbedContentPane::GfxUITabbedContentPane(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f) :
   GfxUIElement(lay, sty, f),
   _tab_bar(
     GfxUILayout(
@@ -174,7 +174,7 @@ GfxUITabBarWithContent::GfxUITabBarWithContent(const GfxUILayout lay, const GfxU
 
 
 
-int GfxUITabBarWithContent::_render(UIGfxWrapper* ui_gfx) {
+int GfxUITabbedContentPane::_render(UIGfxWrapper* ui_gfx) {
   int8_t ret = 0;
   if (_active_tab != _tab_bar.activeTab()) {
     ret--;
@@ -204,14 +204,14 @@ int GfxUITabBarWithContent::_render(UIGfxWrapper* ui_gfx) {
 }
 
 
-bool GfxUITabBarWithContent::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+bool GfxUITabbedContentPane::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
   // If the event was directed at the nav pane, it will be handled by the natural
   //   flow that comes from its addition as a child object.
   return false;
 }
 
 
-int8_t GfxUITabBarWithContent::addTab(const char* txt, GfxUIElement* content, bool selected) {
+int8_t GfxUITabbedContentPane::addTab(const char* txt, GfxUIElement* content, bool selected) {
   int8_t ret = -1;
   if (0 == _tab_bar.addTab(txt, selected)) {
     const uint32_t INTRNL_X = _internal_PosX();

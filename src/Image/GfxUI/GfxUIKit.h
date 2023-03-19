@@ -17,7 +17,7 @@ These classes are built on top of the GfxUI classes, and implement higher-level
 #include "../../Identity/Identity.h"
 #include "../../SensorFilter.h"
 #include "../../Storage.h"
-
+#include "../../TripleAxisPipe/TripleAxisPipe.h"
 
 /*******************************************************************************
 * Pure UI modules.
@@ -109,6 +109,7 @@ class GfxUITextButton : public GfxUIButton {
 /*******************************************************************************
 * A graphical tab bar
 *******************************************************************************/
+/* A button container with logic for acting as a single-selection tab bar. */
 class GfxUITabBar : public GfxUIElement {
   public:
     GfxUITabBar(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0) : GfxUIElement(lay, sty, f), _active_tab(0) {};
@@ -133,11 +134,11 @@ class GfxUITabBar : public GfxUIElement {
 };
 
 
-
-class GfxUITabBarWithContent : public GfxUIElement {
+/* A tabbed content pane. */
+class GfxUITabbedContentPane : public GfxUIElement {
   public:
-    GfxUITabBarWithContent(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
-    ~GfxUITabBarWithContent() {};
+    GfxUITabbedContentPane(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
+    ~GfxUITabbedContentPane() {};
 
     //inline uint8_t activeTab() {     return _tab_bar.activeTab();    };
     inline uint8_t activeTab() {     return _active_tab;    };
@@ -158,6 +159,7 @@ class GfxUITabBarWithContent : public GfxUIElement {
 /*******************************************************************************
 * A graphical slider
 *******************************************************************************/
+/* A graphical single-axis slider. */
 class GfxUISlider : public GfxUIElement {
   public:
     GfxUISlider(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0) : GfxUIElement(lay, sty, f), _percentage(0.0f) {};
@@ -252,18 +254,17 @@ class GfxUITextArea : public GfxUIElement, public BufferAccepter {
 /*******************************************************************************
 * A graphical text area that acts as a TripleAxisPipe terminus
 *******************************************************************************/
-class GfxUI3AxisRender : public GfxUIElement {
+class GfxUI3AxisRender : public GfxUIElement, public TripleAxisPipe {
   public:
-    GfxUI3AxisRender(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f), _color_accent(color) {};
+    GfxUI3AxisRender(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f) {};
     ~GfxUI3AxisRender() {};
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
     virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
 
-
-  private:
-    uint32_t _color_accent;        // The accent color of the element when active.
+    virtual int8_t pushVector(SpatialSense, Vector3f* data, Vector3f* error = nullptr);
+    virtual void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 };
 
 
@@ -276,6 +277,8 @@ class GfxUI3AxisRender : public GfxUIElement {
 /*******************************************************************************
 * Graphical tools for manipulating filters.
 *******************************************************************************/
+
+/* A basic pane that shows an annotated graph of a given SensorFilter. */
 template <class T> class GfxUISensorFilter : public GfxUIElement {
   public:
     GfxUISensorFilter(const GfxUILayout lay, const GfxUIStyle sty, SensorFilter<T>* sf, uint32_t f = 0) : GfxUIElement(lay, sty, f | GFXUI_FLAG_ALWAYS_REDRAW), _filter(sf) {};
@@ -294,6 +297,58 @@ template <class T> class GfxUISensorFilter : public GfxUIElement {
 
   private:
     SensorFilter<T>* _filter;
+};
+
+
+/* A high-cost pane for detailed examination and control over a SensorFilter. */
+template <class T> class GfxUITimeSeriesDetail : public GfxUITabbedContentPane {
+  public:
+    GfxUITimeSeriesDetail(const GfxUILayout lay, const GfxUIStyle sty, SensorFilter<T>* sf, uint32_t f = 0) :
+      GfxUITabbedContentPane(lay, sty, f),
+      _pane_date(
+        GfxUILayout(
+          _internal_PosX(), (_internal_PosY() + _tab_bar.elementHeight()),
+          _internal_Width(), (_internal_Height() - _tab_bar.elementHeight()),
+          1, 0, 0, 0,   // Margins_px(t, b, l, r)
+          0, 0, 0, 0               // Border_px(t, b, l, r)
+        ),
+        sty,
+        sf,
+        (GFXUI_SENFILT_FLAG_SHOW_RANGE | GFXUI_SENFILT_FLAG_SHOW_VALUE | GFXUI_FLAG_ALWAYS_REDRAW)
+      ),
+      _pane_stats(0, 0, 0, 0),
+      _pane_config(0, 0, 0, 0),
+
+      _filter(sf)
+    {
+      // Note our subordinate objects...
+      //_pane_stats.add_child(&_txt0);
+      //_pane_config.add_child(&_txt1);
+      addTab("Data", &_pane_date, true);
+      addTab("Stats", &_pane_stats);
+      addTab("Config", &_pane_config);
+    };
+    ~GfxUITimeSeriesDetail() {};
+
+    /* Implementation of GfxUIElement. */
+    //virtual int  _render(UIGfxWrapper* ui_gfx);
+    //virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+
+    inline void showValue(bool x) {  _class_set_flag(GFXUI_SENFILT_FLAG_SHOW_VALUE, x); };
+    inline bool showValue() {        return _class_flag(GFXUI_SENFILT_FLAG_SHOW_VALUE); };
+
+    inline void showRange(bool x) {  _class_set_flag(GFXUI_SENFILT_FLAG_SHOW_RANGE, x); };
+    inline bool showRange() {        return _class_flag(GFXUI_SENFILT_FLAG_SHOW_RANGE); };
+
+
+  private:
+    GfxUISensorFilter<T> _pane_date;
+    GfxUIGroup    _pane_stats;
+    GfxUIGroup    _pane_config;
+    SensorFilter<T>* _filter;
+    // SensorFilter<T>  _running_stdev;
+    // SensorFilter<T>  _running_mean;
+    // SensorFilter<T>  _running_max;
 };
 
 
@@ -332,7 +387,7 @@ class GfxUIIdentity : public GfxUIElement {
   private:
     uint32_t _color;        // The accent color of the element when active.
     Identity* _ident;
-    GfxUITabBarWithContent _tab_bar;
+    GfxUITabbedContentPane _tab_bar;
     GfxUIGroup    _content_0;
     GfxUIGroup    _content_1;
     GfxUIGroup    _content_2;
@@ -359,7 +414,7 @@ class GfxUIMLink : public GfxUIElement {
 
   private:
     M2MLink* _link;
-    GfxUITabBarWithContent _tab_bar;
+    GfxUITabbedContentPane _tab_bar;
     GfxUIGroup    _content_info;
     GfxUIGroup    _content_conf;
     GfxUIGroup    _content_msg;
