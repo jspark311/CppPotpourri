@@ -11,9 +11,6 @@ Date:   2022.06.25
 /*******************************************************************************
 * GfxUITabBar
 *******************************************************************************/
-GfxUITabBar::GfxUITabBar(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f) :
-  GfxUIElement(x, y, w, h, f), _color(color), _active_tab(0) {}
-
 
 int GfxUITabBar::_render(UIGfxWrapper* ui_gfx) {
   int8_t ret = 0;
@@ -30,9 +27,48 @@ int GfxUITabBar::_render(UIGfxWrapper* ui_gfx) {
 }
 
 
+/*
+* GfxUITabBar is a container for buttons with special logic. It does not itself
+*   respond to _notify().
+*/
 bool GfxUITabBar::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   switch (GFX_EVNT) {
+
+
+    case GfxUIEvent::TOUCH:
+    case GfxUIEvent::RELEASE:
+      if (_children.hasNext()) {
+        // There are child objects to notify.
+        const uint32_t BTN_COUNT = (uint32_t) _children.size();
+        for (uint32_t btn_idx = 0; btn_idx < BTN_COUNT; btn_idx++) {
+          GfxUIElement* ui_obj = _children.get(btn_idx);
+          if (ui_obj->notify(GFX_EVNT, x, y, change_log)) {
+            if (GfxUIEvent::TOUCH == GFX_EVNT) {
+              ret = (1 == _set_active_tab(btn_idx));
+            }
+          }
+        }
+      }
+      break;
+
+    case GfxUIEvent::MOVE_UP:
+    case GfxUIEvent::MOVE_DOWN:
+      if (scrollCycle()) {
+        const uint32_t BTN_COUNT = (uint32_t) _children.size();
+        int8_t movement_dir = (GfxUIEvent::MOVE_UP == GFX_EVNT) ? 1 : -1;
+        for (uint32_t btn_idx = 0; btn_idx < BTN_COUNT; btn_idx++) {
+          GfxUIButton* btn_cur = (GfxUIButton*) _children.get(btn_idx);
+          if (btn_cur->pressed()) {
+            if (1 == _set_active_tab((btn_idx + movement_dir) % BTN_COUNT)) {
+              break;   // Break from the loop.
+            }
+          }
+        }
+        ret = true;
+      }
+      break;
+
     default:
       return false;
   }
@@ -118,14 +154,24 @@ int8_t GfxUITabBar::_set_active_tab(uint8_t tab_idx) {
 /*******************************************************************************
 * GfxUITabBarWithContent
 *******************************************************************************/
-GfxUITabBarWithContent::GfxUITabBarWithContent(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f) :
-  GfxUIElement(x, y, w, h, f),
-  _tab_bar(_internal_PosX(), _internal_PosY(), _internal_Width(), 20, color, GFXUI_FLAG_DRAW_FRAME_D),
+GfxUITabBarWithContent::GfxUITabBarWithContent(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f) :
+  GfxUIElement(lay, sty, f),
+  _tab_bar(
+    GfxUILayout(
+      _internal_PosX(), _internal_PosY(),
+      _internal_Width(), ((sty.text_size * 8) + 8),  // TODO: Better, but still arbitrary.
+      1, 1, 1, 0,
+      0, 1, 0, 0               // Border_px(t, b, l, r)
+    ),
+    (const GfxUIStyle) _style,
+    (GFXUI_FLAG_DRAW_FRAME_D | GFXUI_TABBAR_FLAG_SCROLL_CYCLES_TABS)
+  ),
   _active_tab(0)
 {
   // Note our subordinate objects...
   _add_child(&_tab_bar);
 }
+
 
 
 int GfxUITabBarWithContent::_render(UIGfxWrapper* ui_gfx) {
@@ -142,7 +188,7 @@ int GfxUITabBarWithContent::_render(UIGfxWrapper* ui_gfx) {
         if (_active_tab == i) {
           content->elementActive(true);
           content->muteRender(false);
-          content->fill(ui_gfx, 0);
+          content->fill(ui_gfx, _style.color_bg);
           content->render(ui_gfx, true);  // Force a re-render of the newly-active tab content.
         }
         else {

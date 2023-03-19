@@ -111,13 +111,15 @@ class GfxUITextButton : public GfxUIButton {
 *******************************************************************************/
 class GfxUITabBar : public GfxUIElement {
   public:
-    GfxUITabBar(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0);
+    GfxUITabBar(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0) : GfxUIElement(lay, sty, f), _active_tab(0) {};
     ~GfxUITabBar() {};
 
     inline uint8_t activeTab() {     return _active_tab;    };
     inline uint8_t tabCount() {      return _children.size();    };
     int8_t addTab(const char* txt, bool selected = false);
 
+    inline void scrollCycle(bool x) {  _class_set_flag(GFXUI_TABBAR_FLAG_SCROLL_CYCLES_TABS, x);   };
+    inline bool scrollCycle() {        return _class_flag(GFXUI_TABBAR_FLAG_SCROLL_CYCLES_TABS);   };
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
@@ -125,8 +127,7 @@ class GfxUITabBar : public GfxUIElement {
 
 
   protected:
-    uint32_t _color;             //
-    uint8_t  _active_tab;        //
+    uint8_t  _active_tab;
 
     int8_t _set_active_tab(uint8_t tab_idx);
 };
@@ -135,9 +136,10 @@ class GfxUITabBar : public GfxUIElement {
 
 class GfxUITabBarWithContent : public GfxUIElement {
   public:
-    GfxUITabBarWithContent(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0);
+    GfxUITabBarWithContent(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
     ~GfxUITabBarWithContent() {};
 
+    //inline uint8_t activeTab() {     return _tab_bar.activeTab();    };
     inline uint8_t activeTab() {     return _active_tab;    };
     int8_t addTab(const char* txt, GfxUIElement* content, bool selected = false);
 
@@ -217,7 +219,7 @@ class GfxUIMagnifier : public GfxUIElement {
 *******************************************************************************/
 class GfxUITextArea : public GfxUIElement, public BufferAccepter {
   public:
-    GfxUITextArea(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f), _color_text(color) {};
+    GfxUITextArea(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0) : GfxUIElement(lay, sty, f) {};
     ~GfxUITextArea() {};
 
     /* Implementation of GfxUIElement. */
@@ -237,7 +239,6 @@ class GfxUITextArea : public GfxUIElement, public BufferAccepter {
 
 
   private:
-    uint32_t _color_text;        // The accent color of the element when active.
     uint32_t _cursor_x = 0;  // Location of the next character.
     uint32_t _cursor_y = 0;  // Location of the next character.
     uint32_t _max_scrollback_bytes = 600;   // Tokenized strings

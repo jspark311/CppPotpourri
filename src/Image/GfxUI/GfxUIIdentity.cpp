@@ -14,13 +14,73 @@ Date:   2022.06.25
 
 GfxUIIdentity::GfxUIIdentity(Identity* id, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f)
   : GfxUIElement(x, y, w, h, f), _color(color), _ident(id),
-  _tab_bar(_internal_PosX(), _internal_PosY(), _internal_Width(), _internal_Height(), color),
+  _tab_bar(
+    GfxUILayout(
+      _internal_PosX(), _internal_PosY(), _internal_Width(), _internal_Height(),
+      1, 1, 1, 1,
+      0, 0, 0, 0               // Border_px(t, b, l, r)
+    ),
+    GfxUIStyle(0, // bg
+      0xFFFFFF,   // border
+      0xFFFFFF,   // header
+      color,
+      0xA0A0A0,   // inactive
+      0xFFFFFF,   // selected
+      0x202020,   // unselected
+      _style.text_size
+    )
+  ),
   _content_0(0, 0, 0, 0),
   _content_1(0, 0, 0, 0),
   _content_2(0, 0, 0, 0),
-  _txt0(0, 0, _internal_Width(), _internal_Height(), color),
-  _txt1(0, 0, _internal_Width(), _internal_Height(), color),
-  _txt2(0, 0, _internal_Width(), _internal_Height(), color)
+  _txt0(
+    GfxUILayout(
+      0, 0, _internal_Width(), _internal_Height(),
+      1, 1, 1, 1,
+      0, 0, 0, 0               // Border_px(t, b, l, r)
+    ),
+    GfxUIStyle(0, // bg
+      0xFFFFFF,   // border
+      0xFFFFFF,   // header
+      _style.color_active,
+      0xA0A0A0,   // inactive
+      0xFFFFFF,   // selected
+      0x202020,   // unselected
+      _style.text_size
+    )
+  ),
+  _txt1(
+    GfxUILayout(
+      0, 0, _internal_Width(), _internal_Height(),
+      1, 1, 1, 1,
+      0, 0, 0, 0               // Border_px(t, b, l, r)
+    ),
+    GfxUIStyle(0, // bg
+      0xFFFFFF,   // border
+      0xFFFFFF,   // header
+      _style.color_active,
+      0xA0A0A0,   // inactive
+      0xFFFFFF,   // selected
+      0x202020,   // unselected
+      _style.text_size
+    )
+  ),
+  _txt2(
+    GfxUILayout(
+      0, 0, _internal_Width(), _internal_Height(),
+      1, 1, 1, 1,
+      0, 0, 0, 0               // Border_px(t, b, l, r)
+    ),
+    GfxUIStyle(0, // bg
+      0xFFFFFF,   // border
+      0xFFFFFF,   // header
+      _style.color_active,
+      0xA0A0A0,   // inactive
+      0xFFFFFF,   // selected
+      0x202020,   // unselected
+      _style.text_size
+    )
+  )
 {
   // Note our subordinate objects...
   _content_0.add_child(&_txt0);

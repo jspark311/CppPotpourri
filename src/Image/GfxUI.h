@@ -57,10 +57,12 @@ This source file was never part of Adafruit's library. They are small graphics
 #define GFXUI_TXTAREA_FLAG_WORD_WRAP          0x02000000   //
 #define GFXUI_TXTAREA_FLAG_SCROLLABLE         0x04000000   //
 
-
 #define GFXUI_SLIDER_FLAG_VERTICAL            0x01000000   // This slider is vertical.
 #define GFXUI_SLIDER_FLAG_RENDER_VALUE        0x02000000   // Overlay the value on the slider bar.
 #define GFXUI_SLIDER_FLAG_MARK_ONLY           0x04000000   // Do not fill the space under the mark.
+
+#define GFXUI_TABBAR_FLAG_VERTICAL_TABS       0x01000000   // The tabs are stacked veritcally.
+#define GFXUI_TABBAR_FLAG_SCROLL_CYCLES_TABS  0x02000000   // Scroll wheel cycles tabs.
 
 
 #define GFXUI_FLAG_DRAW_FRAME_MASK  (GFXUI_FLAG_DRAW_FRAME_U | GFXUI_FLAG_DRAW_FRAME_D | GFXUI_FLAG_DRAW_FRAME_L | GFXUI_FLAG_DRAW_FRAME_R)
@@ -340,6 +342,7 @@ class GfxUIElement : public GfxUILayout {
     virtual ~GfxUIElement() {};
 
     int _add_child(GfxUIElement*);
+    //int8_t _reflow(GfxUILayout);   // TODO: Now that laytouts are working well, automate their flows.
 
     /* These are the obligate overrides. */
     virtual bool _notify(const GfxUIEvent, const uint32_t x, const uint32_t y, PriorityQueue<GfxUIElement*>* change_log) =0;
@@ -351,9 +354,8 @@ class GfxUIElement : public GfxUILayout {
     inline uint32_t _class_flags() {                   return _flags.raw;       };
     inline bool _class_flag(uint32_t f) {              return _flags.value(f);  };
     inline void _class_clear_flag(uint32_t f) {        _flags.clear(f);         };
-    inline void _class_set_flag(uint32_t f) {          _flags.set(f);           };
-    inline void _class_set_flag(uint32_t f, bool x) {  _flags.set(f, x);        };
     inline void _class_flip_flag(uint32_t f) {         _flags.set(f, _flags.value(f));  };
+    inline void _class_set_flag(uint32_t f, bool x = true) {  _flags.set(f, x);        };
 
   private:
     FlagContainer32 _flags;  // If set, the step has been done.

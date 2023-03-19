@@ -13,11 +13,13 @@ Date:   2022.06.25
 *******************************************************************************/
 
 int GfxUITextArea::_render(UIGfxWrapper* ui_gfx) {
-  uint next_row   = 0;
+  uint32_t next_row   = 0;
+  uint16_t i_w = _internal_Width();
+  uint16_t i_h = _internal_Height();
   ui_gfx->img()->setTextSize(_style.text_size);
-  ui_gfx->img()->setTextColor(_color_text, 0);  // TODO: Use the correct API when you aren't exhausted.
+  ui_gfx->img()->setTextColor(_style.color_active, 0);
   uint16_t y_adv = ui_gfx->img()->getFontHeight();
-  if (y_adv) _max_rows = _h / y_adv;
+  if (y_adv) _max_rows = i_h / y_adv;
 
   if (0 == _max_cols) {
     // This probably means the object hasn't been rendered yet.
@@ -26,11 +28,11 @@ int GfxUITextArea::_render(UIGfxWrapper* ui_gfx) {
     // void getTextBounds(const uint8_t* s, uint32_t x, uint32_t y, uint32_t* x1, uint32_t* y1, uint32_t* w, uint32_t* h);
     // void getTextBounds(StringBuilder*, uint32_t x, uint32_t y, uint32_t* x1, uint32_t* y1, uint32_t* w, uint32_t* h);
     uint16_t x_adv = ui_gfx->img()->getFontWidth();
-    if (x_adv) _max_cols = _w / x_adv;
+    if (x_adv) _max_cols = i_w / x_adv;
   }
 
   if ((0 < _max_cols) & (0 < _max_rows)) {
-    ui_gfx->img()->fillRect(_x, _y, _w, _h, 0);   // TODO: Use the correct API when you aren't exhausted.
+    ui_gfx->img()->fillRect(_x, _y, _w, _h, _style.color_bg);
     uint16_t line_count = _scrollback.count();
     uint16_t line_idx   = 0;
     if (line_count > _max_rows) {

@@ -13,6 +13,7 @@ Template for a (very) finite state machine with enum controlled states.
 #include "EnumWrapper.h"
 #include "RingBuffer.h"
 #include "StringBuilder.h"
+#include "StopWatch.h"
 #include "AbstractPlatform.h"
 
 
@@ -53,16 +54,19 @@ template <class T> class StateMachine {
     /* State machine functions usable by the extending class. */
     int8_t   _fsm_set_route(int count, ...);
     int8_t   _fsm_append_route(int count, ...);
+    //int8_t   _fsm_append_state(T);
     int8_t   _fsm_prepend_state(T);
 
     int8_t   _fsm_advance();
+    void     _fsm_reset(T);
 
     inline void     _fsm_lockout(uint32_t x) {  _lockout_timer.reset(x);            };
     inline uint32_t _fsm_lockout() {            return _lockout_timer.remaining();  };
     inline bool     _fsm_is_waiting() {         return !_lockout_timer.expired();   };
     inline T        _fsm_pos_next() {           return _waypoints.get(false);       };
     inline bool     _fsm_is_stable() {          return (0 == _waypoints.count());   };
-    inline uint32_t _fsm_slowdown() {           return _lockout_timer.period();     };
+    inline void     _fsm_slowdown(uint32_t x) { _slowdown_ms = x;                   };
+    inline uint32_t _fsm_slowdown() {           return _slowdown_ms;                };
 
     void   _fsm_mark_current_state(T new_state) {
       _prior_state   = _current_state;
@@ -111,6 +115,19 @@ template <class T> int8_t StateMachine<T>::_fsm_advance() {
   }
   return ret;
 }
+
+
+/*
+* Internal function responsible for resetting the state machine.
+*
+*/
+template <class T> void StateMachine<T>::_fsm_reset(T new_state) {
+  _prior_state   = _current_state;
+  _current_state = new_state;
+  _lockout_timer.reset();
+  _waypoints.clear();
+}
+
 
 
 /**
@@ -195,6 +212,29 @@ template <class T> int8_t StateMachine<T>::_fsm_append_route(int arg_count, ...)
 * This function checks the state code for validity, but does not error-check
 *   the validity of the FSM traversal route specified in the argument. It just
 *   adds it to the list if it corresponds to a valid state code.
+* This function will accept a single state code and will append it to the
+*   contents of the state traversal list.
+*
+* @return 0 on success, -1 on no params, -2 on invalid FSM code.
+*/
+//template <class T> int8_t StateMachine<T>::_fsm_append_state(T final) {
+//  int8_t ret = -1;
+//  if (_ENUM_DEFS->enumValid(final)) {
+//    ret--;
+//    // We need at least enough space for our one addition.
+//    if (_waypoints.count() > _waypoints.capacity()) {
+//      _waypoints.insert(final);
+//      ret = 0;
+//    }
+//  }
+//  return ret;
+//}
+
+
+/**
+* This function checks the state code for validity, but does not error-check
+*   the validity of the FSM traversal route specified in the argument. It just
+*   adds it to the list if it corresponds to a valid state code.
 * This function will accept a single state code and will prepend it to the
 *   contents of the state traversal list.
 *
@@ -239,6 +279,9 @@ template <class T> void StateMachine<T>::printFSM(StringBuilder* output) {
     }
     i++;
   }
+  if (_slowdown_ms != 0) {
+    output->concatf("\tFSM slowdown:  %ums\n", _slowdown_ms);
+  }
   if (_fsm_is_waiting()) {
     output->concatf("\tFSM locked for another %ums\n", _lockout_timer.remaining());
   }
@@ -269,6 +312,7 @@ template <class T> int8_t StateMachine<T>::fsm_console_handler(StringBuilder* te
   else if (0 == StringBuilder::strcasecmp(cmd, "slowdown")) {
     if (1 < args->count()) {
       _slowdown_ms = args->position_as_int(1);
+      _lockout_timer.period(_slowdown_ms);
     }
     text_return->concatf("%s slowdown is %u.\n", _NAME, _slowdown_ms);
   }
