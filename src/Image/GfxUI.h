@@ -43,6 +43,7 @@ This source file was never part of Adafruit's library. They are small graphics
 #define GFXUI_FLAG_UNDER_POINTER              0x00000800   // This element is underneath the pointer.
 #define GFXUI_FLAG_DRAGGABLE                  0x00001000   // This element is draggable.
 #define GFXUI_FLAG_DRAGGING                   0x00002000   // This element is undergoing a drag.
+#define GFXUI_FLAG_TRACK_POINTER              0x00004000   // 
 
 #define GFXUI_BUTTON_FLAG_STATE               0x01000000   // Button state
 #define GFXUI_BUTTON_FLAG_MOMENTARY           0x02000000   // Button reverts to off when released.
@@ -296,6 +297,8 @@ class GfxUIElement : public GfxUILayout {
     inline bool isDraggable() {          return _flags.value(GFXUI_FLAG_DRAGGABLE);          };
     inline void isDragging(bool x) {     _flags.set(GFXUI_FLAG_DRAGGING, x);                 };
     inline bool isDragging() {           return _flags.value(GFXUI_FLAG_DRAGGING);           };
+    inline void trackPointer(bool x) {   _flags.set(GFXUI_FLAG_TRACK_POINTER, x);             };
+    inline bool trackPointer() {         return _flags.value(GFXUI_FLAG_TRACK_POINTER);       };
 
     inline void setMargins(uint8_t t, uint8_t b, uint8_t l, uint8_t r) {
       _mrgn_t = t;
@@ -333,6 +336,8 @@ class GfxUIElement : public GfxUILayout {
   protected:
     GfxUIStyle _style;
     PriorityQueue<GfxUIElement*> _children;
+    uint32_t _pointer_x;
+    uint32_t _pointer_y;
 
     GfxUIElement(const GfxUILayout layout, const GfxUIStyle style, uint32_t f);
     GfxUIElement(GfxUILayout* layout, GfxUIStyle* style, uint32_t f);

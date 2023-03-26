@@ -281,7 +281,7 @@ class GfxUI3AxisRender : public GfxUIElement, public TripleAxisPipe {
 /* A basic pane that shows an annotated graph of a given SensorFilter. */
 template <class T> class GfxUISensorFilter : public GfxUIElement {
   public:
-    GfxUISensorFilter(const GfxUILayout lay, const GfxUIStyle sty, SensorFilter<T>* sf, uint32_t f = 0) : GfxUIElement(lay, sty, f | GFXUI_FLAG_ALWAYS_REDRAW), _filter(sf) {};
+    GfxUISensorFilter(const GfxUILayout lay, const GfxUIStyle sty, SensorFilter<T>* sf, uint32_t f = 0) : GfxUIElement(lay, sty, f | GFXUI_FLAG_ALWAYS_REDRAW  | GFXUI_FLAG_TRACK_POINTER), _filter(sf) {};
     ~GfxUISensorFilter() {};
 
     /* Implementation of GfxUIElement. */

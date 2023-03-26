@@ -126,6 +126,8 @@ bool GfxUIElement::notify(const GfxUIEvent GFX_EVNT, const uint32_t x, const uin
           // No children claimed the event. It must be for us.
           switch (GFX_EVNT) {
             case GfxUIEvent::HOVER_IN:
+              _pointer_x = x;
+              _pointer_y = y;
             case GfxUIEvent::HOVER_OUT:
               // Propagate HOVER to child class.
               isFocused(GFX_EVNT == GfxUIEvent::HOVER_IN);

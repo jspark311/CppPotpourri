@@ -410,6 +410,25 @@ int test_StringBuilder() {
 
 
 
+// int test_StringBuilderCull() {
+//   int return_value = -1;
+//   StringBuilder obj_0("0-1-2-3-4-5-6-7-8-9-10");
+//   StringBuilder obj_1((char*) obj_0.string());
+//   StringBuilder obj_2((char*) obj_0.string());
+//
+//   printf("Before culling:   %s\n", obj_0.string());
+//   obj_0.cull(0, 12);
+//   obj_1.cull(2, 12);
+//   obj_2.cull(4, 12);
+//
+//   printf("obj_0 after culling:   %s\n", obj_0.string());
+//   printf("obj_1 after culling:   %s\n", obj_1.string());
+//   printf("obj_2 after culling:   %s\n", obj_2.string());
+//
+//   return return_value;
+// }
+
+
 int test_StringBuilderHeapVersusStack() {
   int return_value = -1;
   StringBuilder *heap_obj = new StringBuilder("This is datas we want to transfer.");

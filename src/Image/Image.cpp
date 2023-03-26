@@ -1353,8 +1353,8 @@ void Image::getTextBounds(const char* str, uint32_t x, uint32_t y, uint32_t* x1,
 
   uint32_t minx = _x;
   uint32_t miny = _y;
-  uint32_t maxx = -1;
-  uint32_t maxy = -1;
+  uint32_t maxx = 0;
+  uint32_t maxy = 0;
 
   while((c = *str++)) {
     charBounds(c, &x, &y, &minx, &miny, &maxx, &maxy);
