@@ -15,14 +15,13 @@ This source file was never part of Adafruit's library. They are small graphics
   utilities that help implement simple UIs.
 */
 
+#ifndef __C3P_GFXUI_H
+#define __C3P_GFXUI_H
+
 #include "EnumWrapper.h"
 #include "FlagContainer.h"
 #include "Image.h"
 #include "ImageUtils.h"
-#include "GfxUI/GfxUIKit.h"
-
-#ifndef __MANUVR_GFXUI_H
-#define __MANUVR_GFXUI_H
 
 /*******************************************************************************
 * UIGfxWrapper flags
@@ -43,7 +42,7 @@ This source file was never part of Adafruit's library. They are small graphics
 #define GFXUI_FLAG_UNDER_POINTER              0x00000800   // This element is underneath the pointer.
 #define GFXUI_FLAG_DRAGGABLE                  0x00001000   // This element is draggable.
 #define GFXUI_FLAG_DRAGGING                   0x00002000   // This element is undergoing a drag.
-#define GFXUI_FLAG_TRACK_POINTER              0x00004000   // 
+#define GFXUI_FLAG_TRACK_POINTER              0x00004000   //
 
 #define GFXUI_BUTTON_FLAG_STATE               0x01000000   // Button state
 #define GFXUI_BUTTON_FLAG_MOMENTARY           0x02000000   // Button reverts to off when released.
@@ -370,4 +369,12 @@ class GfxUIElement : public GfxUILayout {
 };
 
 
-#endif  // __MANUVR_GFXUI_H
+
+/*******************************************************************************
+* Tail-inclusions to bring in the specific modules written around the API above.
+*******************************************************************************/
+#include "GfxUI/GfxUIKit.h"
+#include "GfxUI/GfxUIGraphing.h"
+
+
+#endif  // __C3P_GFXUI_H

@@ -49,6 +49,8 @@ class SensorFilterBase {
     inline uint32_t windowSize() {         return (_filter_initd ? _window_size : 0); };
     inline uint32_t windowFull() {         return _window_full;                       };
     inline uint32_t lastIndex() {          return _sample_idx;                        };
+    inline uint32_t totalSamples() {       return _samples_total;                     };
+
     inline bool dirty() {                  return _filter_dirty;                      };
     inline bool initialized() {            return _filter_initd;                      };
     inline FilteringStrategy strategy() {  return _strat;                             };
@@ -65,6 +67,7 @@ class SensorFilterBase {
 
 
   protected:
+    uint32_t _samples_total  = 0;
     uint32_t _sample_idx     = 0;
     uint32_t _window_size    = 0;
     FilteringStrategy _strat = FilteringStrategy::RAW;
@@ -222,6 +225,7 @@ template <class T> int8_t SensorFilter<T>::feedFilter() {
   if (initialized()) {
     _window_full = true;
     _sample_idx = 0;
+    _samples_total += _window_size;
     invalidateStats();
     ret = 0;
   }
@@ -285,6 +289,7 @@ template <class T> int8_t SensorFilter<T>::_reallocate_sample_window(uint32_t wi
 */
 template <class T> int8_t SensorFilter<T>::_zero_samples() {
   int8_t ret = -1;
+  _samples_total = 0;
   last_value = T(0);
   min_value  = T(0);
   max_value  = T(0);
@@ -362,6 +367,7 @@ template <class T> int8_t SensorFilter<T>::feedFilter(T val) {
   if (initialized()) {
     if (_window_size > 1) {
       samples[_sample_idx++] = val;
+      _samples_total++;
       if (_sample_idx >= _window_size) {
         // NOTE: Will run only on index overflow.
         _window_full = true;
@@ -574,6 +580,7 @@ template <class T> int8_t SensorFilter3<T>::feedFilter() {
   if (initialized()) {
     _window_full = true;
     _sample_idx = 0;
+    _samples_total += _window_size;
     invalidateStats();
     ret = 0;
   }
@@ -622,6 +629,7 @@ template <class T> int8_t SensorFilter3<T>::_reallocate_sample_window(uint32_t w
 */
 template <class T> int8_t SensorFilter3<T>::_zero_samples() {
   int8_t ret = -1;
+  _samples_total = 0;
   last_value(T(0), T(0), T(0));
   _mean(T(0), T(0), T(0));
   _rms(T(0), T(0), T(0));
@@ -715,6 +723,7 @@ template <class T> int8_t SensorFilter3<T>::feedFilter(T x, T y, T z) {
     ret = 0;
     if (_window_size > 1) {
       samples[_sample_idx++](x, y, z);
+      _samples_total++;
       if (_sample_idx >= _window_size) {
         _window_full = true;
         _sample_idx = 0;

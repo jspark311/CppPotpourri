@@ -27,6 +27,7 @@ TODO: Finish conversion to RingBuffer, and put constraints on BusAdapter's init
 
 #include "CppPotpourri.h"
 #include "PriorityQueue.h"
+#include "RingBuffer.h"
 #include "AbstractPlatform.h"
 #include "C3PLogger.h"
 
@@ -334,7 +335,7 @@ template <class T> class BusAdapter : public BusOpCallback {
     * @return an BusOp to be used. Only NULL if out-of-mem.
     */
     T* new_op(BusOpcode _op, BusOpCallback* _req) {
-      T* ret = preallocated.dequeue();
+      T* ret = preallocated.get();
       if (nullptr == ret) {
         _prealloc_misses++;
         ret = new T();
@@ -468,7 +469,7 @@ template <class T> class BusAdapter : public BusOpCallback {
       output->concatf("-- Adapter #%u\n", ADAPTER_NUM);
       output->concatf("-- Xfers (fail/total)  %u/%u\n", _failed_xfers, _total_xfers);
       output->concat("-- Prealloc:\n");
-      output->concatf("--\tavailable        %d\n",  preallocated.size());
+      output->concatf("--\tavailable        %d\n",  preallocated.count());
       output->concatf("--\tmisses/frees     %u/%u\n", _prealloc_misses, _heap_frees);
       output->concat("-- Work queue:\n");
       output->concatf("--\tdepth/max        %u/%u\n", work_queue.size(), MAX_Q_DEPTH);
@@ -506,19 +507,21 @@ template <class T> class BusAdapter : public BusOpCallback {
     uint16_t _heap_frees      = 0;  // How many times have we freed a BusOp?
     T*       current_job      = nullptr;
     PriorityQueue<T*> work_queue;   // A work queue to keep transactions in order.
-    PriorityQueue<T*> preallocated; // TODO: Convert to ring buffer. This is the whole reason you embarked on this madness.
-    T preallocated_bus_jobs[8];
+    RingBuffer<T*> preallocated;    //
+    T preallocated_bus_jobs[14];
 
 
-    BusAdapter(uint8_t anum, uint8_t maxq) : ADAPTER_NUM(anum), MAX_Q_DEPTH(maxq) {};
+    BusAdapter(uint8_t anum, uint8_t maxq) : ADAPTER_NUM(anum), MAX_Q_DEPTH(maxq), preallocated(8) {};
 
     /*
     * Wipe all of our preallocated BusOps and pass them into the prealloc queue.
     */
     void _memory_init() {
-      for (uint8_t i = 0; i < (sizeof(preallocated_bus_jobs) / sizeof(preallocated_bus_jobs[0])); i++) {
-        preallocated_bus_jobs[i].wipe();
-        preallocated.insert(&preallocated_bus_jobs[i]);
+      if (preallocated.allocated()) {
+        for (uint8_t i = 0; i < (sizeof(preallocated_bus_jobs) / sizeof(preallocated_bus_jobs[0])); i++) {
+          preallocated_bus_jobs[i].wipe();
+          preallocated.insert(&preallocated_bus_jobs[i]);
+        }
       }
     };
 

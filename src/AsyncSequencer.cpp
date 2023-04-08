@@ -205,6 +205,24 @@ void AsyncSequencer::requestSteps(const uint32_t STEP_MASK) {
 }
 
 
+void AsyncSequencer::setState(const uint32_t REQ, const uint32_t RUNABLE, const uint32_t RUNNING, const uint32_t COMPLETE, const uint32_t PASSED) {
+  _steps_requested.raw = REQ;
+  _steps_runnable.raw  = RUNABLE;
+  _steps_running.raw   = RUNNING;
+  _steps_complete.raw  = COMPLETE;
+  _steps_passed.raw    = PASSED;
+}
+
+
+void AsyncSequencer::getState(uint32_t* REQ, uint32_t* RUNABLE, uint32_t* RUNNING, uint32_t* COMPLETE, uint32_t* PASSED) {
+  if (nullptr != REQ) {       *REQ      = _steps_requested.raw;  }
+  if (nullptr != RUNABLE) {   *RUNABLE  = _steps_runnable.raw;   }
+  if (nullptr != RUNNING) {   *RUNNING  = _steps_running.raw;    }
+  if (nullptr != COMPLETE) {  *COMPLETE = _steps_complete.raw;   }
+  if (nullptr != PASSED) {    *PASSED   = _steps_passed.raw;     }
+}
+
+
 
 uint32_t AsyncSequencer::failed_steps(const bool INC_RUNNING) {
   const uint32_t SCOPE_MASK = (INC_RUNNING ? _steps_runnable.raw : _steps_complete.raw);

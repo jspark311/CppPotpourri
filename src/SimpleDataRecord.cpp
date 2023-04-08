@@ -154,7 +154,7 @@ int8_t SimpleDataRecord::save(uint32_t storage_tag, const char* name, StringBuil
 *         -1 on bad descriptor
 *         -2 on wrong storage tag
 *         -3 on hash mismatch
-*         -3 on failure to deserialize
+*         -4 on failure to deserialize
 */
 int8_t SimpleDataRecord::load(uint32_t storage_tag, StringBuilder* inbound_buf) {
   int8_t ret = -1;
@@ -164,7 +164,7 @@ int8_t SimpleDataRecord::load(uint32_t storage_tag, StringBuilder* inbound_buf) 
       ret--;
       if (_hash == crc16((inbound_buf->string()+DATARECORD_BASE_SIZE), _data_length)) {
         // Hash matches. Cull the useless edges of the buffer...
-        inbound_buf->cull(DATARECORD_BASE_SIZE, _data_length);
+        inbound_buf->cull(DATARECORD_BASE_SIZE);
         ret--;
         if (0 == deserialize(inbound_buf, _format)) {
           ret = 0;

@@ -41,6 +41,8 @@ class AsyncSequencer {
     void     resetSequencer();
     void     resetSteps(const uint32_t STEP_MASK);
     void     requestSteps(const uint32_t STEP_MASK);
+    void     setState(const uint32_t REQ, const uint32_t RUNABLE, const uint32_t RUNNING, const uint32_t COMPLETE, const uint32_t PASSED);
+    void     getState(uint32_t* REQ, uint32_t* RUNABLE, uint32_t* RUNNING, uint32_t* COMPLETE, uint32_t* PASSED);
     uint32_t failed_steps(const bool INC_RUNNING);
 
     inline bool steps_running() {           return (0 != _steps_running.raw);  };

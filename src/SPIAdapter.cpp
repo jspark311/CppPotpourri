@@ -261,6 +261,8 @@ int8_t SPIAdapter::service_callback_queue() {
 * ----------- | ----------- | --------------------
 * `purge`     | Flush the current job. | None
 * `ragepurge` | Flush the current job, as well as anything in the queue. | None
+* `init`      | Manually calls the bus init function. | None
+* `deinit`    | Manually calls the bus deinit function. | None
 * `poll`      | Manually invoke the driver's `poll()` function. | None
 * `queue`     | Render the current job queue to the console. | None
 * `verbosity` | Print or limit how chatty the driver is. | [log-level]
@@ -272,6 +274,12 @@ int8_t SPIAdapter::console_handler(StringBuilder* text_return, StringBuilder* ar
     if (0 == StringBuilder::strcasecmp(cmd, "poll")) {
       text_return->concatf("SP%u advance_work_queue() returns: %d\n", adapterNumber(), advance_work_queue());
       text_return->concatf("SP%u service_callback_queue() returns: %d\n", adapterNumber(), service_callback_queue());
+    }
+    else if (0 == StringBuilder::strcasecmp(cmd, "init")) {
+      text_return->concatf("SPI%u init() returns %d\n", adapterNumber(), init());
+    }
+    else if (0 == StringBuilder::strcasecmp(cmd, "deinit")) {
+      text_return->concatf("SPI%u deinit() returns %d\n", adapterNumber(), bus_deinit());
     }
     else if (0 == StringBuilder::strcasecmp(cmd, "queue")) {
       uint8_t arg1 = (uint8_t) args->position_as_int(1);

@@ -3,20 +3,25 @@ File:   ImageUtils.h
 Author: J. Ian Lindsay
 Date:   2022.05.27
 
-This source file was never part of Adafruit's library. They are small graphics
-  utilities that help implement simple UIs.
+These classes are tools built on top of the Image class. This source file was
+  never part of Adafruit's library. They are small graphics utilities that help
+  implement simple UIs.
 
-TODO: UIGfxWrapper is somewhat vestigial. It should be subsumed into other classes.
+NOTE: This header file should evolve into little more than a collection
+  of #includes, and possibly a small number of shared types.
+
+TODOING: UIGfxWrapper is somewhat vestigial. It should be subsumed (or divided)
+  into other classes.
 */
+
+#ifndef __C3P_IMG_UTILS_H
+#define __C3P_IMG_UTILS_H
 
 #include "Image.h"
 #include "../M2MLink/M2MLink.h"
 #include "../Identity/Identity.h"
-#include "../SensorFilter.h"
+#include "ImageUtils/ImageGraph.h"
 
-
-#ifndef __MANUVR_IMG_UTILS_H
-#define __MANUVR_IMG_UTILS_H
 
 /*******************************************************************************
 * UIGfxWrapper flags
@@ -60,6 +65,7 @@ class UIGfxWrapper {
 
     inline Image* img() {   return _img;   };
 
+
     void drawGraph(
       int x, int y, int w, int h, uint32_t color0, uint32_t color1, uint32_t color2,
       bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
@@ -83,7 +89,6 @@ class UIGfxWrapper {
       bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
       SensorFilter<uint32_t>* filt
     );
-
 
     void drawProgressBarH(
       int x, int y, int w, int h, uint32_t color,
@@ -132,13 +137,11 @@ class UIGfxWrapper {
 
   private:
     Image* _img;
-    //FlagContainer32  _flags;
 
+    void _apply_color_map();
     void _draw_graph_frame(int* x, int* y, int* w, int* h, uint32_t color, uint32_t flags);
     void _draw_graph_text_overlay(int x, int y, int w, int h, uint32_t color, uint32_t flags, float v_max, float v_min, float v_scale, float last_datum);
     void _draw_graph_dataset(int x, int y, int w, int h, uint32_t color, uint32_t flags, float* dataset, uint32_t data_len);
-
-    void _apply_color_map();
 };
 
 
@@ -380,4 +383,4 @@ class ImageHeatMap {
 };
 
 
-#endif  // __MANUVR_IMG_UTILS_H
+#endif  // __C3P_IMG_UTILS_H

@@ -3,19 +3,19 @@ File:   GfxUIKit.h
 Author: J. Ian Lindsay
 Date:   2023.03.11
 
+NOTE: Do not include this file directly. Only via GfxUI.h.
+
 These classes are built on top of the GfxUI classes, and implement higher-level
   functional elements of a UI.
 */
 
-#ifndef __MANUVR_GFXUI_KIT_H
-#define __MANUVR_GFXUI_KIT_H
+#ifndef __C3P_GFXUI_KIT_H
+#define __C3P_GFXUI_KIT_H
 
 #include "../Image.h"
 #include "../ImageUtils.h"
-#include "../GfxUI.h"
 #include "../../M2MLink/M2MLink.h"
 #include "../../Identity/Identity.h"
-#include "../../SensorFilter.h"
 #include "../../Storage.h"
 #include "../../TripleAxisPipe/TripleAxisPipe.h"
 
@@ -274,83 +274,6 @@ class GfxUI3AxisRender : public GfxUIElement, public TripleAxisPipe {
 * These act as state and control breakouts for specific kinds of objects in C3P.
 *******************************************************************************/
 
-/*******************************************************************************
-* Graphical tools for manipulating filters.
-*******************************************************************************/
-
-/* A basic pane that shows an annotated graph of a given SensorFilter. */
-template <class T> class GfxUISensorFilter : public GfxUIElement {
-  public:
-    GfxUISensorFilter(const GfxUILayout lay, const GfxUIStyle sty, SensorFilter<T>* sf, uint32_t f = 0) : GfxUIElement(lay, sty, f | GFXUI_FLAG_ALWAYS_REDRAW  | GFXUI_FLAG_TRACK_POINTER), _filter(sf) {};
-    ~GfxUISensorFilter() {};
-
-    /* Implementation of GfxUIElement. */
-    virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
-
-    inline void showValue(bool x) {  _class_set_flag(GFXUI_SENFILT_FLAG_SHOW_VALUE, x); };
-    inline bool showValue() {        return _class_flag(GFXUI_SENFILT_FLAG_SHOW_VALUE); };
-
-    inline void showRange(bool x) {  _class_set_flag(GFXUI_SENFILT_FLAG_SHOW_RANGE, x); };
-    inline bool showRange() {        return _class_flag(GFXUI_SENFILT_FLAG_SHOW_RANGE); };
-
-
-  private:
-    SensorFilter<T>* _filter;
-};
-
-
-/* A high-cost pane for detailed examination and control over a SensorFilter. */
-template <class T> class GfxUITimeSeriesDetail : public GfxUITabbedContentPane {
-  public:
-    GfxUITimeSeriesDetail(const GfxUILayout lay, const GfxUIStyle sty, SensorFilter<T>* sf, uint32_t f = 0) :
-      GfxUITabbedContentPane(lay, sty, f),
-      _pane_date(
-        GfxUILayout(
-          _internal_PosX(), (_internal_PosY() + _tab_bar.elementHeight()),
-          _internal_Width(), (_internal_Height() - _tab_bar.elementHeight()),
-          1, 0, 0, 0,   // Margins_px(t, b, l, r)
-          0, 0, 0, 0               // Border_px(t, b, l, r)
-        ),
-        sty,
-        sf,
-        (GFXUI_SENFILT_FLAG_SHOW_RANGE | GFXUI_SENFILT_FLAG_SHOW_VALUE | GFXUI_FLAG_ALWAYS_REDRAW)
-      ),
-      _pane_stats(0, 0, 0, 0),
-      _pane_config(0, 0, 0, 0),
-
-      _filter(sf)
-    {
-      // Note our subordinate objects...
-      //_pane_stats.add_child(&_txt0);
-      //_pane_config.add_child(&_txt1);
-      addTab("Data", &_pane_date, true);
-      addTab("Stats", &_pane_stats);
-      addTab("Config", &_pane_config);
-    };
-    ~GfxUITimeSeriesDetail() {};
-
-    /* Implementation of GfxUIElement. */
-    //virtual int  _render(UIGfxWrapper* ui_gfx);
-    //virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
-
-    inline void showValue(bool x) {  _class_set_flag(GFXUI_SENFILT_FLAG_SHOW_VALUE, x); };
-    inline bool showValue() {        return _class_flag(GFXUI_SENFILT_FLAG_SHOW_VALUE); };
-
-    inline void showRange(bool x) {  _class_set_flag(GFXUI_SENFILT_FLAG_SHOW_RANGE, x); };
-    inline bool showRange() {        return _class_flag(GFXUI_SENFILT_FLAG_SHOW_RANGE); };
-
-
-  private:
-    GfxUISensorFilter<T> _pane_date;
-    GfxUIGroup    _pane_stats;
-    GfxUIGroup    _pane_config;
-    SensorFilter<T>* _filter;
-    // SensorFilter<T>  _running_stdev;
-    // SensorFilter<T>  _running_mean;
-    // SensorFilter<T>  _running_max;
-};
-
 
 /*******************************************************************************
 * Graphical tool for looking at KVP data.
@@ -469,4 +392,4 @@ class GfxUIDataRecord : public GfxUIElement {
 
 
 
-#endif  // __MANUVR_GFXUI_KIT_H
+#endif  // __C3P_GFXUI_KIT_H
