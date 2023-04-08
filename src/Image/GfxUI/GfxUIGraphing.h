@@ -80,8 +80,8 @@ template <class T> class GfxUITimeSeriesDetail : public GfxUITabbedContentPane {
     {
       // Note our subordinate objects...
       //_pane_config.add_child(&_txt1);
-      addTab("Data", &_pane_data, true);
       addTab("Stats", &_pane_stats);
+      addTab("Data", &_pane_data, true);
       addTab("Config", &_pane_config);
     };
 

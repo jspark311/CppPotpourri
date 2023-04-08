@@ -35,7 +35,7 @@ This source file was never part of Adafruit's library. They are small graphics
 #define GFXUI_FLAG_DRAW_FRAME_L               0x00000010   // Easy way for the application to select framing.
 #define GFXUI_FLAG_DRAW_FRAME_R               0x00000020   // Easy way for the application to select framing.
 #define GFXUI_FLAG_INACTIVE                   0x00000040   // Used to prevent suprious input at a class's discretion.
-#define GFXUI_FLAG_MUTE_RENDER                0x00000080   // Used to suspend rendering that would otherwise happen.
+#define GFXUI_FLAG_MUTE_RENDER                0x00000080   // Used to suspend rendering that would otherwise happen. Makes element insensitive to notify().
 #define GFXUI_FLAG_FREE_THIS_ELEMENT          0x00000100   // This object ought to be freed when no longer needed.
 #define GFXUI_FLAG_CURRENT_FOCUS              0x00000200   // This is the element that is the focus of the pointer.
 #define GFXUI_FLAG_CURRENT_SELECTION          0x00000400   // This is the element that was last selected (possibly not focused).

@@ -112,7 +112,7 @@ bool GfxUIElement::notify(const GfxUIEvent GFX_EVNT, const uint32_t x, const uin
   bool ret = false;
   const bool INCLUDES_POINT = includesPoint(x, y);
   _flags.set(GFXUI_FLAG_UNDER_POINTER, INCLUDES_POINT);
-  if (INCLUDES_POINT) {
+  if (INCLUDES_POINT & !muteRender()) {
     switch (GFX_EVNT) {
       // These events we process depth-first, and in the abstraction.
       case GfxUIEvent::HOVER_IN:

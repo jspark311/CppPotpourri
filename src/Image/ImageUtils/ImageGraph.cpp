@@ -23,44 +23,10 @@ template <> void ImageGraph<uint32_t>::drawGraph(Image* img, const uint32_t POS_
   const uint32_t FRUS_H  = frustum_height();
   const uint32_t INSET_X = (_w - FRUS_W);
   const uint32_t INSET_Y = (_h - FRUS_H);
-  const uint32_t GRAPH_X = POS_X + INSET_X;
-  const uint32_t GRAPH_Y = POS_Y + INSET_Y;
-  uint32_t v_max = 0;
-  uint32_t v_min = 0;
-
-  if (trace0.enabled) {
-    uint32_t  tmp_len = trace0.data_len;
-    uint32_t* tmp_ptr = trace0.dataset;
-    if (FRUS_W < trace0.data_len) {
-      // TODO: X-axis autoscaling.
-      // Without X-axis auto-scaling, just show the tail of the array if the
-      //   frustum isn't wide enough for all of it.
-      trace0.rend_offset_x = (trace0.data_len - FRUS_W);
-      tmp_ptr += trace0.rend_offset_x;
-      tmp_len = FRUS_W;
-    }
-    // Re-locate the bounds of the range within this frustum.
-    trace0.max_value = *tmp_ptr;
-    trace0.min_value = 0; //*tmp_ptr;
-
-    for (uint32_t i = 0; i < tmp_len; i++) {
-      uint32_t tmp = *(tmp_ptr + i);
-      if (tmp > trace0.max_value) {
-        trace0.max_value = tmp;
-      }
-      if (tmp < trace0.min_value) {
-        trace0.min_value = tmp;
-      }
-      //c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "v_max \t %u", trace0.max_value);
-    }
-    trace0.v_scale   = (float) (trace0.max_value - trace0.min_value) / (float) FRUS_H;
-    //float h_scale = data_len / w;
-    //v_max = strict_max(v_max, trace0.max_value);  // TODO: Implies global graph scaling.
-    v_max = trace0.max_value;
-    //v_min = strict_min(v_min, trace0.min_value);  // TODO: Implies global graph scaling.
-    v_min = trace0.min_value;
-  }
-
+  const uint32_t GRAPH_X = (POS_X  + INSET_X);
+  const uint32_t GRAPH_Y = (POS_Y  + INSET_Y);
+  const uint32_t GRAPH_W = (FRUS_W - INSET_X);
+  const uint32_t GRAPH_H = (FRUS_H - INSET_Y);
 
   if ((img->x() >= (POS_X + _w)) && (img->y() >= (POS_Y + _h))) {
     // Blank the space and draw the basic frame and axes.
@@ -69,11 +35,81 @@ template <> void ImageGraph<uint32_t>::drawGraph(Image* img, const uint32_t POS_
     img->drawFastHLine((GRAPH_X - 1), (GRAPH_Y + (FRUS_H - 1)), FRUS_W, fg_color);
 
     if (trace0.enabled) {
-      uint32_t  tmp_len = (trace0.data_len - trace0.rend_offset_x);
+      trace0.findBounds((FRUS_W - INSET_X), (FRUS_H - INSET_Y));
       uint32_t* tmp_ptr = (trace0.dataset + trace0.rend_offset_x);
+      uint32_t  tmp_len = (trace0.data_len - trace0.rend_offset_x);
       for (uint32_t i = 0; i < tmp_len; i++) {
-        uint32_t tmp = *(tmp_ptr + i) / trace0.v_scale;
-        img->setPixel((GRAPH_X + i), ((GRAPH_Y + FRUS_H) - tmp), trace0.color);
+        const uint32_t DATA_VALUE = *(tmp_ptr + i);
+        const uint32_t DELTA_Y    = (DATA_VALUE / trace0.v_scale);
+        const uint32_t PNT_X_POS  = (GRAPH_X + i);
+        const uint32_t PNT_Y_POS  = ((GRAPH_Y + FRUS_H) - DELTA_Y);
+        if ((int32_t) i != trace0.accented_idx) {
+          // Draw a normal point on the curve.
+          img->setPixel(PNT_X_POS, PNT_Y_POS, trace0.color);
+        }
+        else {
+          // Draw an accented point on the curve.
+          const uint32_t POINT_SIZE = 3;
+          uint32_t point_x = (PNT_X_POS - POINT_SIZE);
+          uint32_t point_y = (PNT_Y_POS - POINT_SIZE);
+          uint32_t point_h = ((POINT_SIZE << 1) + 1);  // Ensure an odd number.
+          uint32_t point_w = ((POINT_SIZE << 1) + 1);  // Ensure an odd number.
+
+          if (point_x < GRAPH_X) {
+            // Point overflowing the left-hand element boundary?
+            point_w = point_w - (GRAPH_X - point_x);
+            point_x = GRAPH_X;
+          }
+          else if ((point_x + point_w) > (GRAPH_X + GRAPH_W)) {
+            // Point overflowing the right-hand element boundary?
+            point_w = (GRAPH_X + GRAPH_W) - point_x;
+          }
+          if (point_y < GRAPH_Y) {
+            // Point overflowing the upper element boundary?
+            point_h = point_h - (GRAPH_Y - point_y);
+            point_y = GRAPH_Y;
+          }
+          else if ((point_y + point_h) > (GRAPH_Y + GRAPH_H)) {
+            // Point overflowing the lower element boundary?
+            point_h = point_h - ((point_y + point_h) - (GRAPH_Y + GRAPH_H));
+          }
+          img->fillRect(point_x, point_y, point_w, point_h, trace0.color);
+          img->drawFastVLine(PNT_X_POS, GRAPH_Y, GRAPH_H, trace0.color);   // Vertical rule crossing accented point.
+
+          const uint16_t TXT_PIXEL_HEIGHT = img->getFontHeight();
+          StringBuilder temp_txt;
+          uint32_t txt_x = (point_x + point_w + 1);
+          uint32_t txt_y = ((point_y - GRAPH_Y) > TXT_PIXEL_HEIGHT) ? (point_y - TXT_PIXEL_HEIGHT) : GRAPH_Y;
+          uint32_t txt_w = 0;
+          uint32_t txt_h = 0;
+          temp_txt.concatf("%u: %u", (trace0.offset_x + trace0.rend_offset_x + i), DATA_VALUE);
+          img->getTextBounds(&temp_txt, txt_x, txt_y, &txt_x, &txt_y, &txt_w, &txt_h);
+          if ((txt_w + txt_x) > (GRAPH_X + GRAPH_W)) {
+            // If the string would overflow the element's right-hand boundary,
+            //   render it on the left-hand side of the indicator line.
+            txt_x = point_x - txt_w;
+            if (txt_x < GRAPH_X) {
+              // If we adjusted the text offset, and it now lies outside the
+              //   left-hand boundary of the element, set the text to be at the
+              //   boundary, and what happens happens.
+              txt_x = GRAPH_X;
+            }
+          }
+
+          if (txt_y < GRAPH_Y) {
+            // If the string would overflow the element's upper boundary,
+            //   render it on the element's ceiling.
+            txt_y = GRAPH_Y;
+          }
+          else if ((txt_h + txt_y) > (GRAPH_Y + GRAPH_H)) {
+            // If the string would overflow the element's lower boundary,
+            //   render it on the element's floor.
+            txt_y = ((GRAPH_Y + GRAPH_H) - TXT_PIXEL_HEIGHT);
+          }
+
+          img->setCursor(txt_x, txt_y);
+          img->writeString(&temp_txt);
+        }
       }
 
       StringBuilder tmp_val_str;
@@ -81,11 +117,11 @@ template <> void ImageGraph<uint32_t>::drawGraph(Image* img, const uint32_t POS_
         uint16_t y_adv = img->getFontHeight();
         img->setCursor(GRAPH_X+1, GRAPH_Y);
         img->setTextColor(fg_color, bg_color);
-        tmp_val_str.concatf("%u", v_max);
+        tmp_val_str.concatf("%u", trace0.maxValue());
         img->writeString(&tmp_val_str);
         tmp_val_str.clear();
         img->setCursor(GRAPH_X+1, (GRAPH_Y+FRUS_H) - y_adv);
-        tmp_val_str.concatf("%u", v_min);
+        tmp_val_str.concatf("%u", trace0.minValue());
         img->writeString(&tmp_val_str);
         tmp_val_str.clear();
       }
@@ -104,6 +140,7 @@ template <> void ImageGraph<uint32_t>::drawGraph(Image* img, const uint32_t POS_
 }
 
 
+
 /**
 *
 */
@@ -112,44 +149,10 @@ template <> void ImageGraph<float>::drawGraph(Image* img, const uint32_t POS_X, 
   const uint32_t FRUS_H  = frustum_height();
   const uint32_t INSET_X = (_w - FRUS_W);
   const uint32_t INSET_Y = (_h - FRUS_H);
-  const uint32_t GRAPH_X = POS_X + INSET_X;
-  const uint32_t GRAPH_Y = POS_Y + INSET_Y;
-  uint32_t v_max = 0;
-  uint32_t v_min = 0;
-
-  if (trace0.enabled) {
-    uint32_t  tmp_len = trace0.data_len;
-    float*    tmp_ptr = trace0.dataset;
-    if (FRUS_W < trace0.data_len) {
-      // TODO: X-axis autoscaling.
-      // Without X-axis auto-scaling, just show the tail of the array if the
-      //   frustum isn't wide enough for all of it.
-      trace0.rend_offset_x = (trace0.data_len - FRUS_W);
-      tmp_ptr += trace0.rend_offset_x;
-      tmp_len = FRUS_W;
-    }
-    // Re-locate the bounds of the range within this frustum.
-    trace0.max_value = *tmp_ptr;
-    trace0.min_value = 0; //*tmp_ptr;
-
-    for (uint32_t i = 0; i < tmp_len; i++) {
-      float tmp = *(tmp_ptr + i);
-      if (tmp > trace0.max_value) {
-        trace0.max_value = tmp;
-      }
-      if (tmp < trace0.min_value) {
-        trace0.min_value = tmp;
-      }
-      //c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "v_max \t %u", trace0.max_value);
-    }
-    trace0.v_scale   = (float) (trace0.max_value - trace0.min_value) / (float) FRUS_H;
-    //float h_scale = data_len / w;
-    //v_max = strict_max(v_max, trace0.max_value);  // TODO: Implies global graph scaling.
-    v_max = trace0.max_value;
-    //v_min = strict_min(v_min, trace0.min_value);  // TODO: Implies global graph scaling.
-    v_min = trace0.min_value;
-  }
-
+  const uint32_t GRAPH_X = (POS_X  + INSET_X);
+  const uint32_t GRAPH_Y = (POS_Y  + INSET_Y);
+  const uint32_t GRAPH_W = (FRUS_W - INSET_X);
+  const uint32_t GRAPH_H = (FRUS_H - INSET_Y);
 
   if ((img->x() >= (POS_X + _w)) && (img->y() >= (POS_Y + _h))) {
     // Blank the space and draw the basic frame and axes.
@@ -158,11 +161,81 @@ template <> void ImageGraph<float>::drawGraph(Image* img, const uint32_t POS_X, 
     img->drawFastHLine((GRAPH_X - 1), (GRAPH_Y + (FRUS_H - 1)), FRUS_W, fg_color);
 
     if (trace0.enabled) {
-      uint32_t  tmp_len = (trace0.data_len - trace0.rend_offset_x);
+      trace0.findBounds((FRUS_W - INSET_X), (FRUS_H - INSET_Y));
       float*    tmp_ptr = (trace0.dataset + trace0.rend_offset_x);
+      uint32_t  tmp_len = (trace0.data_len - trace0.rend_offset_x);
       for (uint32_t i = 0; i < tmp_len; i++) {
-        float tmp = *(tmp_ptr + i) / trace0.v_scale;
-        img->setPixel((GRAPH_X + i), ((GRAPH_Y + FRUS_H) - tmp), trace0.color);
+        const float    DATA_VALUE = *(tmp_ptr + i);
+        const uint32_t DELTA_Y    = (DATA_VALUE / trace0.v_scale);
+        const uint32_t PNT_X_POS  = (GRAPH_X + i);
+        const uint32_t PNT_Y_POS  = ((GRAPH_Y + FRUS_H) - DELTA_Y);
+        if ((int32_t) i != trace0.accented_idx) {
+          // Draw a normal point on the curve.
+          img->setPixel(PNT_X_POS, PNT_Y_POS, trace0.color);
+        }
+        else {
+          // Draw an accented point on the curve.
+          const uint32_t POINT_SIZE = 3;
+          uint32_t point_x = (PNT_X_POS - POINT_SIZE);
+          uint32_t point_y = (PNT_Y_POS - POINT_SIZE);
+          uint32_t point_h = ((POINT_SIZE << 1) + 1);  // Ensure an odd number.
+          uint32_t point_w = ((POINT_SIZE << 1) + 1);  // Ensure an odd number.
+
+          if (point_x < GRAPH_X) {
+            // Point overflowing the left-hand element boundary?
+            point_w = point_w - (GRAPH_X - point_x);
+            point_x = GRAPH_X;
+          }
+          else if ((point_x + point_w) > (GRAPH_X + GRAPH_W)) {
+            // Point overflowing the right-hand element boundary?
+            point_w = (GRAPH_X + GRAPH_W) - point_x;
+          }
+          if (point_y < GRAPH_Y) {
+            // Point overflowing the upper element boundary?
+            point_h = point_h - (GRAPH_Y - point_y);
+            point_y = GRAPH_Y;
+          }
+          else if ((point_y + point_h) > (GRAPH_Y + GRAPH_H)) {
+            // Point overflowing the lower element boundary?
+            point_h = point_h - ((point_y + point_h) - (GRAPH_Y + GRAPH_H));
+          }
+          img->fillRect(point_x, point_y, point_w, point_h, trace0.color);
+          img->drawFastVLine(PNT_X_POS, GRAPH_Y, GRAPH_H, trace0.color);   // Vertical rule crossing accented point.
+
+          const uint16_t TXT_PIXEL_HEIGHT = img->getFontHeight();
+          StringBuilder temp_txt;
+          uint32_t txt_x = (point_x + point_w + 1);
+          uint32_t txt_y = ((point_y - GRAPH_Y) > TXT_PIXEL_HEIGHT) ? (point_y - TXT_PIXEL_HEIGHT) : GRAPH_Y;
+          uint32_t txt_w = 0;
+          uint32_t txt_h = 0;
+          temp_txt.concatf("%u: %.3f", (trace0.offset_x + trace0.rend_offset_x + i), DATA_VALUE);
+          img->getTextBounds(&temp_txt, txt_x, txt_y, &txt_x, &txt_y, &txt_w, &txt_h);
+          if ((txt_w + txt_x) > (GRAPH_X + GRAPH_W)) {
+            // If the string would overflow the element's right-hand boundary,
+            //   render it on the left-hand side of the indicator line.
+            txt_x = point_x - txt_w;
+            if (txt_x < GRAPH_X) {
+              // If we adjusted the text offset, and it now lies outside the
+              //   left-hand boundary of the element, set the text to be at the
+              //   boundary, and what happens happens.
+              txt_x = GRAPH_X;
+            }
+          }
+
+          if (txt_y < GRAPH_Y) {
+            // If the string would overflow the element's upper boundary,
+            //   render it on the element's ceiling.
+            txt_y = GRAPH_Y;
+          }
+          else if ((txt_h + txt_y) > (GRAPH_Y + GRAPH_H)) {
+            // If the string would overflow the element's lower boundary,
+            //   render it on the element's floor.
+            txt_y = ((GRAPH_Y + GRAPH_H) - TXT_PIXEL_HEIGHT);
+          }
+
+          img->setCursor(txt_x, txt_y);
+          img->writeString(&temp_txt);
+        }
       }
 
       StringBuilder tmp_val_str;
@@ -170,21 +243,21 @@ template <> void ImageGraph<float>::drawGraph(Image* img, const uint32_t POS_X, 
         uint16_t y_adv = img->getFontHeight();
         img->setCursor(GRAPH_X+1, GRAPH_Y);
         img->setTextColor(fg_color, bg_color);
-        tmp_val_str.concatf("%.2f", v_max);
+        tmp_val_str.concatf("%.2f", trace0.maxValue());
         img->writeString(&tmp_val_str);
         tmp_val_str.clear();
         img->setCursor(GRAPH_X+1, (GRAPH_Y+FRUS_H) - y_adv);
-        tmp_val_str.concatf(".2f", v_min);
+        tmp_val_str.concatf("%.2f", trace0.minValue());
         img->writeString(&tmp_val_str);
         tmp_val_str.clear();
       }
       if (trace0.show_value) {
-        const uint32_t FINAL_DATUM = *(tmp_ptr + (tmp_len-1));
-        uint32_t tmp = (FINAL_DATUM / trace0.v_scale);
+        const float FINAL_DATUM = *(tmp_ptr + (tmp_len-1));
+        float tmp = (FINAL_DATUM / trace0.v_scale);
         //img->fillCircle(x+w, tmp+y, 1, color);
         img->setCursor(GRAPH_X, strict_min((uint32_t) ((GRAPH_Y+FRUS_H)-tmp), (uint32_t) (FRUS_H-1)));
         img->setTextColor(trace0.color, bg_color);
-        tmp_val_str.concatf(".3f", FINAL_DATUM);
+        tmp_val_str.concatf("%.3f", FINAL_DATUM);
         img->writeString(&tmp_val_str);
         tmp_val_str.clear();
       }
