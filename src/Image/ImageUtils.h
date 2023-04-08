@@ -65,31 +65,6 @@ class UIGfxWrapper {
 
     inline Image* img() {   return _img;   };
 
-
-    void drawGraph(
-      int x, int y, int w, int h, uint32_t color0, uint32_t color1, uint32_t color2,
-      bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
-      SensorFilter<float>* filt0, SensorFilter<float>* filt1, SensorFilter<float>* filt2
-    );
-
-    void drawGraph(
-      int x, int y, int w, int h, uint32_t color0, uint32_t color1,
-      bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
-      SensorFilter<float>* filt0, SensorFilter<float>* filt1
-    );
-
-    void drawGraph(
-      int x, int y, int w, int h, uint32_t color,
-      bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
-      SensorFilter<float>* filt
-    );
-
-    void drawGraph(
-      int x, int y, int w, int h, uint32_t color,
-      bool draw_base, bool draw_v_ticks, bool draw_h_ticks,
-      SensorFilter<uint32_t>* filt
-    );
-
     void drawProgressBarH(
       int x, int y, int w, int h, uint32_t color,
       bool draw_base, bool draw_val, float percent
@@ -139,9 +114,6 @@ class UIGfxWrapper {
     Image* _img;
 
     void _apply_color_map();
-    void _draw_graph_frame(int* x, int* y, int* w, int* h, uint32_t color, uint32_t flags);
-    void _draw_graph_text_overlay(int x, int y, int w, int h, uint32_t color, uint32_t flags, float v_max, float v_min, float v_scale, float last_datum);
-    void _draw_graph_dataset(int x, int y, int w, int h, uint32_t color, uint32_t flags, float* dataset, uint32_t data_len);
 };
 
 

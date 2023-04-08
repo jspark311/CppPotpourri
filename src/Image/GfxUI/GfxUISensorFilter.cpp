@@ -139,13 +139,25 @@ template <> int GfxUISensorFilter<float>::_render(UIGfxWrapper* ui_gfx) {
   uint16_t i_h = _internal_Height();
   ui_gfx->img()->setTextSize(_style.text_size);
   if ((_filter->dirty() | underPointer()) && _filter->windowFull()) {
-    ui_gfx->drawGraph(
-      i_x, i_y, strict_min((uint16_t) _filter->windowSize(), i_w), i_h,
-      _style.color_active,
-      true, showRange(), underPointer(),
-      //true, showRange(), showValue(),
-      _filter
-    );
+    const uint32_t  DATA_SIZE = _filter->windowSize();
+    const uint32_t  LAST_SIDX = _filter->lastIndex();
+    const float*    F_MEM_PTR = _filter->memPtr();
+
+    float tmp_data[DATA_SIZE];
+    for (uint32_t i = 0; i < DATA_SIZE; i++) {
+      tmp_data[i] = *(F_MEM_PTR + ((i + LAST_SIDX) % DATA_SIZE));
+    }
+
+    ImageGraph<float> graph(i_w, i_h);
+    graph.fg_color            = 0xFFFFFFFF;
+    graph.trace0.color        = _style.color_active;
+    graph.trace0.show_y_range = showRange();
+    graph.trace0.show_value   = underPointer();
+    graph.trace0.dataset      = tmp_data;
+    graph.trace0.data_len     = DATA_SIZE;
+    graph.trace0.enabled      = true;
+    graph.drawGraph(ui_gfx->img(), i_x, i_y);
+
     if (underPointer()) {
       const uint32_t DATA_SIZE = _filter->windowSize();
       const uint32_t LAST_SIDX = _filter->lastIndex();
