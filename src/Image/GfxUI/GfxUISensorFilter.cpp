@@ -28,7 +28,7 @@ template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
       tmp_data[i] = *(F_MEM_PTR + ((i + LAST_SIDX) % DATA_SIZE));
     }
 
-    ImageGraph graph(i_w, i_h);
+    ImageGraph<uint32_t> graph(i_w, i_h);
     graph.fg_color            = 0xFFFFFFFF;
     graph.trace0.color        = _style.color_active;
     graph.trace0.show_y_range = showRange();

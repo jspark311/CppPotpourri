@@ -6,7 +6,7 @@ Date:   2023.04.07
 These classes are built on top of the GfxUI classes, and implement data graphing
   elements of a UI.
 
-Tewmplates for abstracted rendering of cartesian graphs.
+Templates for abstracted rendering of cartesian graphs.
 */
 
 #include "ImageGraph.h"
@@ -15,12 +15,10 @@ Tewmplates for abstracted rendering of cartesian graphs.
 /*******************************************************************************
 * ImageGraph
 *******************************************************************************/
-
-ImageGraph::ImageGraph(uint32_t w, uint32_t h) : fg_color(0), bg_color(0), _w(w), _h(h) {}
-
-
-
-void ImageGraph::drawGraph(Image* img, const uint32_t POS_X, const uint32_t POS_Y) {
+/**
+*
+*/
+template <> void ImageGraph<uint32_t>::drawGraph(Image* img, const uint32_t POS_X, const uint32_t POS_Y) {
   const uint32_t FRUS_W  = frustum_width();
   const uint32_t FRUS_H  = frustum_height();
   const uint32_t INSET_X = (_w - FRUS_W);
@@ -103,28 +101,4 @@ void ImageGraph::drawGraph(Image* img, const uint32_t POS_X, const uint32_t POS_
       }
     }
   }
-}
-
-
-uint32_t ImageGraph::frustum_width() {
-  uint32_t ret = _w;
-  uint32_t tmp = _w;
-  const uint32_t INSET_X = (draw_ticks_x ? 3 : 1);
-  if (tmp > INSET_X) {
-    tmp -= INSET_X;   // Apply size of axis.
-    ret = tmp;
-  }
-  return ret;
-}
-
-
-uint32_t ImageGraph::frustum_height() {
-  uint32_t ret = _h;
-  uint32_t tmp = _h;
-  const uint32_t INSET_Y = (draw_ticks_y ? 3 : 1);
-  if (tmp > INSET_Y) {
-    tmp -= INSET_Y;   // Apply size of axis.
-    ret = tmp;
-  }
-  return ret;
 }
