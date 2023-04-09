@@ -375,6 +375,7 @@ class GfxUIElement : public GfxUILayout {
 *******************************************************************************/
 #include "GfxUI/GfxUIKit.h"
 #include "GfxUI/GfxUIGraphing.h"
+#include "GfxUI/GfxUICryptoBurrito.h"
 
 
 #endif  // __C3P_GFXUI_H
