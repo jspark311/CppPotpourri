@@ -12,30 +12,12 @@ Date:   2022.06.25
 * GfxUIIdentity
 *******************************************************************************/
 
-GfxUIIdentity::GfxUIIdentity(Identity* id, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f)
-  : GfxUIElement(x, y, w, h, f), _color(color), _ident(id),
-  _tab_bar(
+GfxUIIdentity::GfxUIIdentity(const GfxUILayout lay, const GfxUIStyle sty, Identity* id, uint32_t f) :
+  GfxUIElement(lay, sty, f), _ident(id),
+  _txt_handle(
     GfxUILayout(
-      _internal_PosX(), _internal_PosY(), _internal_Width(), _internal_Height(),
-      1, 1, 1, 1,
-      0, 0, 0, 0               // Border_px(t, b, l, r)
-    ),
-    GfxUIStyle(0, // bg
-      0xFFFFFF,   // border
-      0xFFFFFF,   // header
-      color,
-      0xA0A0A0,   // inactive
-      0xFFFFFF,   // selected
-      0x202020,   // unselected
-      _style.text_size
-    )
-  ),
-  _content_0(0, 0, 0, 0),
-  _content_1(0, 0, 0, 0),
-  _content_2(0, 0, 0, 0),
-  _txt0(
-    GfxUILayout(
-      0, 0, _internal_Width(), _internal_Height(),
+      _internal_PosX(), _internal_PosY(),
+      _internal_Width(), (sty.text_size * 8),  // TODO: Better, but still arbitrary.
       1, 1, 1, 1,
       0, 0, 0, 0               // Border_px(t, b, l, r)
     ),
@@ -49,9 +31,10 @@ GfxUIIdentity::GfxUIIdentity(Identity* id, uint32_t x, uint32_t y, uint16_t w, u
       _style.text_size
     )
   ),
-  _txt1(
+  _txt_format(
     GfxUILayout(
-      0, 0, _internal_Width(), _internal_Height(),
+      _internal_PosX(), (_txt_handle.elementPosY() + _txt_handle.elementHeight()),
+      _internal_Width(), (sty.text_size * 8),  // TODO: Better, but still arbitrary.
       1, 1, 1, 1,
       0, 0, 0, 0               // Border_px(t, b, l, r)
     ),
@@ -65,9 +48,12 @@ GfxUIIdentity::GfxUIIdentity(Identity* id, uint32_t x, uint32_t y, uint16_t w, u
       _style.text_size
     )
   ),
-  _txt2(
+  _txt_meta(
     GfxUILayout(
-      0, 0, _internal_Width(), _internal_Height(),
+      _txt_format.elementPosX(), (_txt_format.elementPosY() + _txt_format.elementHeight()),
+      _internal_Width(), (sty.text_size * 8),  // TODO: Better, but still arbitrary.
+      //(_txt_format.elementPosX() + _txt_format.elementWidth()), (_txt_format.elementPosY() + _txt_format.elementHeight()),
+      //(_internal_Width()-30), (sty.text_size * 8),  // TODO: Better, but still arbitrary.
       1, 1, 1, 1,
       0, 0, 0, 0               // Border_px(t, b, l, r)
     ),
@@ -80,40 +66,31 @@ GfxUIIdentity::GfxUIIdentity(Identity* id, uint32_t x, uint32_t y, uint16_t w, u
       0x202020,   // unselected
       _style.text_size
     )
-  )
+  ),
+  _flag_render(0, 0, 0, 0)
 {
   // Note our subordinate objects...
-  _content_0.add_child(&_txt0);
-  _content_1.add_child(&_txt1);
-  _content_2.add_child(&_txt2);
-  _tab_bar.addTab("String", &_content_0, true);
-  _tab_bar.addTab("Flags", &_content_1);
-  _tab_bar.addTab("Conf", &_content_2);
-  _add_child(&_tab_bar);
+  _add_child(&_txt_handle);
+  _add_child(&_txt_format);
+  _add_child(&_txt_meta);
+  _add_child(&_flag_render);
 }
 
 
 int GfxUIIdentity::_render(UIGfxWrapper* ui_gfx) {
-  StringBuilder _tmp_sbldr;
-  switch (_tab_bar.activeTab()) {
-    case 0:
-      _txt0.clear();
-      _tmp_sbldr.concatf("%s\n", _ident->getHandle());
-      _ident->toString(&_tmp_sbldr);
-      _txt0.provideBuffer(&_tmp_sbldr);
-      break;
-    case 1:
-      _txt1.clear();
-      _tmp_sbldr.concat("Flags\n");
-      _txt1.provideBuffer(&_tmp_sbldr);
-      break;
-    case 2:
-      _txt2.clear();
-      _tmp_sbldr.concat("Conf\n");
-      _txt2.provideBuffer(&_tmp_sbldr);
-      break;
-    default:
-      break;
+  _txt_handle.clear();
+  _txt_format.clear();
+  _txt_meta.clear();
+  if (nullptr != _ident) {
+    StringBuilder _tmp_sbldr;
+    _tmp_sbldr.concatf("%s\n", _ident->getHandle());
+    _txt_handle.provideBuffer(&_tmp_sbldr);
+
+    _tmp_sbldr.concatf("%s\n", Identity::identityTypeString(_ident->identityType()));
+    _txt_format.provideBuffer(&_tmp_sbldr);
+
+    _ident->toString(&_tmp_sbldr);
+    _txt_meta.provideBuffer(&_tmp_sbldr);
   }
   return 1;
 }

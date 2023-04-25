@@ -12,9 +12,9 @@ These classes are built on top of the GfxUI classes, and implement a toolkit
 #ifndef _C3P_GFXUI_KIT_CRYPTOBURRITO_H
 #define __C3P_GFXUI_KIT_CRYPTOBURRITO_H
 
+#include "../../AbstractPlatform.h"
 #include "../Image.h"
 #include "../ImageUtils.h"
-#include "../../AbstractPlatform.h"
 
 //#if (!defined(__C3P_GFXUI_KIT_CRYPTOBURRITO_H) & defined(__HAS_CRYPT_WRAPPER))
 

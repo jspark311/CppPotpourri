@@ -297,9 +297,11 @@ class GfxUIKeyValuePair : public GfxUIElement {
 /*******************************************************************************
 * Graphical representations for identities
 *******************************************************************************/
+
+/* A single-pane summary of an Identity. */
 class GfxUIIdentity : public GfxUIElement {
   public:
-    GfxUIIdentity(Identity* id, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0);
+    GfxUIIdentity(const GfxUILayout lay, const GfxUIStyle sty, Identity* id, uint32_t f = 0);
     ~GfxUIIdentity() {};
 
     /* Implementation of GfxUIElement. */
@@ -308,15 +310,11 @@ class GfxUIIdentity : public GfxUIElement {
 
 
   private:
-    uint32_t _color;        // The accent color of the element when active.
     Identity* _ident;
-    GfxUITabbedContentPane _tab_bar;
-    GfxUIGroup    _content_0;
-    GfxUIGroup    _content_1;
-    GfxUIGroup    _content_2;
-    GfxUITextArea _txt0;
-    GfxUITextArea _txt1;
-    GfxUITextArea _txt2;
+    GfxUITextArea _txt_handle;
+    GfxUITextArea _txt_format;
+    GfxUITextArea _txt_meta;
+    GfxUIGroup    _flag_render;
 };
 
 
@@ -325,9 +323,9 @@ class GfxUIIdentity : public GfxUIElement {
 * Graphical tools for using MLinks.
 *******************************************************************************/
 
-class GfxUIMLink : public GfxUIElement {
+class GfxUIMLink : public GfxUITabbedContentPane {
   public:
-    GfxUIMLink(M2MLink* l, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0);
+    GfxUIMLink(const GfxUILayout lay, const GfxUIStyle sty, M2MLink* l, uint32_t f = 0);
     ~GfxUIMLink() {};
 
     /* Implementation of GfxUIElement. */
@@ -337,7 +335,6 @@ class GfxUIMLink : public GfxUIElement {
 
   private:
     M2MLink* _link;
-    GfxUITabbedContentPane _tab_bar;
     GfxUIGroup    _content_info;
     GfxUIGroup    _content_conf;
     GfxUIGroup    _content_msg;
@@ -346,6 +343,7 @@ class GfxUIMLink : public GfxUIElement {
     GfxUITextButton   _btn_msg_send_sync;
     GfxUITextButton   _btn_ses_hangup;
     GfxUITextArea     _txt;
+    //GfxUIIdentity     _iden_self;
 };
 
 

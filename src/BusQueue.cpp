@@ -34,6 +34,82 @@ limitations under the License.
 * Static members and initializers should be located here.
 *******************************************************************************/
 
+// const EnumDef<XferState> _ENUM_LIST_XFER_STATES[] = {
+//   { XferState::IDLE,      "IDLE" },
+//   { XferState::QUEUED,    "QUEUED" },
+//   { XferState::INITIATE,  "INITIATE" },
+//   { XferState::ADDR,      "ADDR" },
+//   { XferState::RX_WAIT,   "RX-WAIT" },
+//   { XferState::TX_WAIT,   "TX-WAIT" },
+//   { XferState::STOP,      "STOP" },
+//   { XferState::COMPLETE,  "COMPLETE" },
+//   { XferState::FAULT,     "FAULT" },
+//   { XferState::UNDEF,     "<UNDEF>", (ENUM_WRAPPER_FLAG_CATCHALL)}
+// };
+// const EnumDefList<XferState> FSM_STATE_LIST(&_ENUM_LIST_XFER_STATES[0], (sizeof(_ENUM_LIST_XFER_STATES) / sizeof(_ENUM_LIST_XFER_STATES[0])));
+//
+//
+// const EnumDef<BusOpcode> _ENUM_LIST_OPCODES[] = {
+//   { BusOpcode::RX,              "RX"},
+//   { BusOpcode::TX,              "TX"},
+//   { BusOpcode::TX_WAIT_RX,      "TX/RX"},
+//   { BusOpcode::TX_CMD,          "TX_CMD"},
+//   { BusOpcode::TX_CMD_WAIT_RX,  "TX_CMD/RX"},
+//   { BusOpcode::UNDEF,           "<UNDEF>", (ENUM_WRAPPER_FLAG_CATCHALL)}
+// };
+// const EnumDefList<BusOpcode> OPCODE_LIST(&_ENUM_LIST_OPCODES[0], (sizeof(_ENUM_LIST_OPCODES) / sizeof(_ENUM_LIST_OPCODES[0])));
+//
+//
+// const EnumDef<XferFault> _ENUM_LIST_FAULTS[] = {
+//   { XferFault::NONE,            "NONE"},
+//   { XferFault::NO_REASON,       "NO_REASON", (ENUM_WRAPPER_FLAG_CATCHALL)},
+//   { XferFault::TIMEOUT,         "TIMEOUT"},
+//   { XferFault::BAD_PARAM,       "BAD_PARAM"},
+//   { XferFault::ILLEGAL_STATE,   "ILLEGAL_STATE"},
+//   { XferFault::BUS_BUSY,        "BUS_BUSY"},
+//   { XferFault::BUS_FAULT,       "BUS_FAULT"},
+//   { XferFault::DEV_FAULT,       "DEV_FAULT"},
+//   { XferFault::HUNG_IRQ,        "HUNG_IRQ"},
+//   { XferFault::DMA_FAULT,       "DMA_FAULT"},
+//   { XferFault::DEV_NOT_FOUND,   "DEV_NOT_FOUND"},
+//   { XferFault::RO_REGISTER,     "RO_REGISTER"},
+//   { XferFault::UNDEFD_REGISTER, "UNDEFD_REGISTER"},
+//   { XferFault::IO_RECALL,       "IO_RECALL"},
+//   { XferFault::QUEUE_FLUSH,     "QUEUE_FLUSH"}
+// };
+// const EnumDefList<XferFault> FAULT_CODE_LIST(&_ENUM_LIST_FAULTS[0], (sizeof(_ENUM_LIST_FAULTS) / sizeof(_ENUM_LIST_FAULTS[0])));
+//
+//
+//
+// /**
+// * Debug and logging support.
+// *
+// * @return a const char* containing a human-readable representation of a state.
+// */
+// const char* BusOp::getStateString(XferState state) {
+//   return FSM_STATE_LIST.enumStr(state);
+// }
+//
+// /**
+// * Debug and logging support.
+// *
+// * @return a const char* containing a human-readable representation of an opcode.
+// */
+// const char* BusOp::getOpcodeString(BusOpcode code) {
+//   return OPCODE_LIST.enumStr(code);
+// }
+//
+// /**
+// * Debug and logging support.
+// *
+// * @return a const char* containing a human-readable representation of a fault code.
+// */
+// const char* BusOp::getErrorString(XferFault code) {
+//   return FAULT_CODE_LIST.enumStr(code);
+// }
+
+
+
 /**
 * Debug and logging support.
 *

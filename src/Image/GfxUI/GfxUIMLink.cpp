@@ -13,39 +13,92 @@ Date:   2022.06.25
 *******************************************************************************/
 #if defined(CONFIG_C3P_M2M_SUPPORT)
 
-GfxUIMLink::GfxUIMLink(M2MLink* l, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f)
-  : GfxUIElement(x, y, w, h, (f | GFXUI_FLAG_ALWAYS_REDRAW)), _link(l),
-  _tab_bar(_internal_PosX(), _internal_PosY(), _internal_Width(), _internal_Height(), 0xCC99CC),
+GfxUIMLink::GfxUIMLink(const GfxUILayout lay, const GfxUIStyle sty, M2MLink* l, uint32_t f) :
+  GfxUITabbedContentPane(lay, sty, (f | GFXUI_FLAG_ALWAYS_REDRAW)),
+  _link(l),
   _content_info(0, 0, 0, 0),
   _content_conf(0, 0, 0, 0),
   _content_msg(0, 0, 0, 0),
   _content_ses(0, 0, 0, 0),
-  _btn_conf_syncast("Cast Sync",  0, 0, 60, 22, 0x9932CC, (_link->syncCast() ? GFXUI_BUTTON_FLAG_STATE : 0)),
-  _btn_msg_send_sync("Send Sync", 0, 0, 60, 22, 0x9932CC, GFXUI_BUTTON_FLAG_MOMENTARY),
-  _btn_ses_hangup("Hangup",       0, 0, 40, 22, 0x9932CC, GFXUI_BUTTON_FLAG_MOMENTARY),
-  _txt(0, 0, _internal_Width(), (_internal_Height()-20), 0xCC99CC)
+  _btn_conf_syncast(
+    GfxUILayout(
+      _internal_PosX(), (_internal_PosY() + 30),
+      130, ((sty.text_size * 8) + 12),  // TODO: Better, but still arbitrary.
+      2, 0, 0, 0,   // Margins_px(t, b, l, r)
+      0, 0, 0, 0    // Border_px(t, b, l, r)
+    ),
+    GfxUIStyle(0, // bg
+      0xFFFFFF,   // border
+      0xFFFFFF,   // header
+      0x20B2AA,   // active
+      0xA0A0A0,   // inactive
+      0xFFFFFF,   // selected
+      0x202020,   // unselected
+      2           // t_size
+    ),
+    "Cast Sync", (_link->syncCast() ? GFXUI_BUTTON_FLAG_STATE : 0)
+  ),
+  _btn_msg_send_sync(
+    GfxUILayout(
+      _internal_PosX(), (_btn_conf_syncast.elementPosY() + _btn_conf_syncast.elementHeight()),
+      130, ((sty.text_size * 8) + 12),  // TODO: Better, but still arbitrary.
+      2, 0, 0, 0,   // Margins_px(t, b, l, r)
+      0, 0, 0, 0    // Border_px(t, b, l, r)
+    ),
+    sty, "Send Sync", GFXUI_BUTTON_FLAG_MOMENTARY
+  ),
+  _btn_ses_hangup(
+    GfxUILayout(
+      _internal_PosX(), (_btn_msg_send_sync.elementPosY() + _btn_msg_send_sync.elementHeight()),
+      130, ((sty.text_size * 8) + 12),  // TODO: Better, but still arbitrary.
+      2, 0, 0, 0,   // Margins_px(t, b, l, r)
+      0, 0, 0, 0    // Border_px(t, b, l, r)
+    ),
+    sty, "Hangup", GFXUI_BUTTON_FLAG_MOMENTARY
+  ),
+  _txt(
+    GfxUILayout(
+      _internal_PosX(), _internal_PosY(),
+      _internal_Width(), (_internal_Height() - _tab_bar.elementHeight()),
+      1, 0, 0, 0,   // Margins_px(t, b, l, r)
+      0, 0, 0, 0    // Border_px(t, b, l, r)
+    ),
+    sty
+  )
 {
   // Note our subordinate objects...
   if (nullptr != _link->localIdentity()) {
     _content_conf.add_child(
       new GfxUIIdentity(
+        GfxUILayout(
+          _internal_PosX(), _internal_PosY()+_tab_bar.elementHeight(),
+          _internal_Width(), (_internal_Height() - _tab_bar.elementHeight()),
+          1, 0, 0, 0,   // Margins_px(t, b, l, r)
+          0, 0, 0, 0    // Border_px(t, b, l, r)
+        ),
+        GfxUIStyle(0, // bg
+          0xFFFFFF,   // border
+          0xFFFFFF,   // header
+          0x40B2AA,   // active
+          0xA0A0A0,   // inactive
+          0xFFFFFF,   // selected
+          0x202020,   // unselected
+          1           // t_size
+        ),
         _link->localIdentity(),
-        _internal_Width()-150, 0,
-        150, 80,
-        0x20B2AA,
         (GFXUI_FLAG_FREE_THIS_ELEMENT | GFXUI_FLAG_DRAW_FRAME_L | GFXUI_FLAG_DRAW_FRAME_D)
       )
     );
   }
   _content_info.add_child(&_txt);
-  _content_conf.add_child(&_btn_conf_syncast);
-  _content_msg.add_child(&_btn_msg_send_sync);
+  _content_ses.add_child(&_btn_conf_syncast);
+  _content_ses.add_child(&_btn_msg_send_sync);
   _content_ses.add_child(&_btn_ses_hangup);
-  _tab_bar.addTab("Overview", &_content_info, true);
-  _tab_bar.addTab("Conf", &_content_conf);
-  _tab_bar.addTab("Messages", &_content_msg);
-  _tab_bar.addTab("Counterparty", &_content_ses);
-  _add_child(&_tab_bar);
+
+  addTab("Overview",     &_content_info, true);
+  addTab("Conf",         &_content_conf);
+  addTab("Messages",     &_content_msg);
+  addTab("Counterparty", &_content_ses);
 }
 
 
@@ -58,16 +111,16 @@ int GfxUIMLink::_render(UIGfxWrapper* ui_gfx) {
       _txt.provideBuffer(&_tmp_sbldr);
       break;
     case 1:
+      break;
+    case 2:
+      break;
+    case 3:
       if (_btn_conf_syncast.pressed() ^ _link->syncCast()) {
         _link->syncCast(_btn_conf_syncast.pressed());
         //_btn_conf_syncast.pressed(_link->syncCast());
       }
-      break;
-    case 2:
       if (_btn_msg_send_sync.pressed()) {
       }
-      break;
-    case 3:
       if (_btn_ses_hangup.pressed()) {
         _link->hangup();
       }
@@ -76,8 +129,9 @@ int GfxUIMLink::_render(UIGfxWrapper* ui_gfx) {
     default:
       break;
   }
-  return 1;
+  return GfxUITabbedContentPane::_render(ui_gfx);
 }
+
 
 bool GfxUIMLink::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
