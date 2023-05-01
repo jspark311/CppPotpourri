@@ -106,3 +106,52 @@ void UARTAdapter::printDebug(StringBuilder* output) {
     }
   }
 }
+
+
+/**
+*
+* @return -1 to reject buffer, 0 to accept without claiming, 1 to accept with claim.
+*/
+int8_t UARTAdapter::provideBuffer(StringBuilder* buf) {
+  int8_t ret = -1;
+  if (txCapable()) {
+    // NOTE: The abstraction will not allow excursions past its declared buffer limit.
+    //   In the event that it is requested, the UART driver will take all that it can,
+    //   free that memory from the arguemnt, and return 0 to inform the caller that
+    //   not all memory was claimed.
+    const int32_t FULL_BUFFER_LEN   = (int32_t) buf->length();
+    //const int32_t LOCAL_BUFFER_FREE = (((int32_t) _BUF_LEN_TX) - ((int32_t) _tx_buffer.length()));
+    // TODO: The line above is the intent. But we need a different scalar in the
+    //   abstraction to cope with the fact that it is also used as the ring buffer size
+    //   by the platform half of this driver. For now, we hard-code it at 8KiB.
+    const int32_t LOCAL_BUFFER_FREE = (8192 - ((int32_t) _tx_buffer.length()));
+
+    if ((LOCAL_BUFFER_FREE > 0) && (FULL_BUFFER_LEN > 0)) {
+      // For this call to make sense, there must be at least some input data,
+      //   and some free buffer to accept it.
+      if (FULL_BUFFER_LEN <= LOCAL_BUFFER_FREE) {
+        // Nominal case. TX buffer has enough space for the entire argument.
+        _tx_buffer.concatHandoff(buf);
+        // Took the entire buffer.
+        ret = 1;
+      }
+      else {
+        // Overflow case. Take as much of the input as possible, and leave the
+        //   remainder so that the caller can decide what to do with it.
+        // Take from the front of the buffer.
+        _tx_buffer.concatHandoffLimit(buf, LOCAL_BUFFER_FREE);
+
+        // TODO: Avoid the peak heap hit from string() by doing something more like...
+        //buf->chunk(LOCAL_BUFFER_FREE);
+        //buf->drop_position(0);
+        ret = 0;
+      }
+    }
+
+    if (!_tx_buffer.isEmpty(true)) {
+      // If the TX buffer has content, it is no longer flushed.
+      _adapter_clear_flag(UART_FLAG_FLUSHED);
+    }
+  }
+  return ret;
+}

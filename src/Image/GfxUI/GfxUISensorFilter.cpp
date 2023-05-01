@@ -32,14 +32,20 @@ template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
     ImageGraph<uint32_t> graph(i_w, i_h);
     graph.fg_color            = 0xFFFFFFFF;
     graph.trace0.color        = _style.color_active;
-    graph.trace0.show_y_range = showRange();
-    graph.trace0.show_value   = underPointer();
     graph.trace0.dataset      = tmp_data;
     graph.trace0.data_len     = DATA_SIZE;
-    graph.trace0.offset_x     = DATA_IDX;
-    graph.trace0.enabled      = true;
 
-    if (underPointer()) {
+    graph.trace0.enabled      = true;
+    graph.trace0.autoscale_x  = false;
+    graph.trace0.autoscale_y  = true;
+    graph.trace0.show_x_range = false;
+    graph.trace0.show_y_range = showRange();
+    graph.trace0.show_value   = underPointer();
+    graph.trace0.grid_lock_x  = false;   // Default is to allow the grid to scroll with the starting offset.
+    graph.trace0.grid_lock_y  = false;   // Default is to allow the grid to scroll with any range shift.
+    graph.trace0.offset_x     = DATA_IDX;
+
+    if (trackPointer() && underPointer()) {
       graph.trace0.accented_idx = (_pointer_x - (i_x + 1));
     }
 

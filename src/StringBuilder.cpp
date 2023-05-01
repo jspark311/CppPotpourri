@@ -601,6 +601,71 @@ void StringBuilder::concatHandoff(StringBuilder* nu) {
 }
 
 
+/**
+* Like concatHandoff(StringBuilder*), but bounded. Will only transfer the given
+*   number of bytes, taking full chunks if possible.
+*/
+void StringBuilder::concatHandoffLimit(StringBuilder* nu, unsigned int len_limit) {
+  #if defined(__BUILD_HAS_PTHREADS)
+    pthread_mutex_lock(&_mutex);
+    pthread_mutex_lock(&nu->_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+    //xSemaphoreTakeRecursive(&_mutex, 0);
+    //xSemaphoreTakeRecursive(&nu->_mutex, 0);
+  #endif
+  if ((nullptr != nu) && (!nu->isEmpty(true))) {
+    nu->_promote_collapsed_into_ll();   // Promote any previously-collapsed string.
+
+    int32_t  buffer_taken  = 0;
+    StrLL*   current       = nu->root;
+    StrLL*   first_overlen = nu->root;
+    uint32_t snip_length   = 0;
+    int      ll_snip_count = 0;
+    // Seek through the input and find the point where we need to snip.
+    while ((nullptr != current) && ((snip_length + current->len) <= len_limit)) {
+      ll_snip_count++;
+      snip_length += current->len;
+      current = current->next;
+      first_overlen = current->next;
+    }
+    // If we can simply move memory references around, do so. All leading StrLL
+    //   that fits within the limit is taken directly.
+    if (0 < snip_length) {
+      StrLL* old_root = nu->root;
+      nu->root = first_overlen;   // Shortens the length of nu.
+      current->next = nullptr;    // Break the links in the items we are taking.
+      this->_stack_str_onto_list(old_root);  // Append the assumed data.
+      buffer_taken += snip_length;           // Note the bytes taken.
+    }
+
+    if (buffer_taken < len_limit) {
+      // We've taken all of the whole allocations that we could, but the limit
+      //   doesn't fall on a convenient boundary. So we'll have to actually
+      //   allocate and shuffle at this point.
+      // For this object, we will create a new StrLL and copy the difference of
+      //   bytes into it. But for the source object, we will just shift all the
+      //   bytes forward that fell outside of the limit, and change the size.
+      //   The memory will be reclaimed on the next string consolidation.
+      const int32_t LEN_DIFFERENCE    = (len_limit - buffer_taken);
+      const int32_t LEN_OUT_OF_BOUNDS = (first_overlen->len - LEN_DIFFERENCE);
+      concat(first_overlen->str, LEN_DIFFERENCE);
+      for (int i = 0; i < LEN_OUT_OF_BOUNDS; i++) {
+        *(first_overlen->str + i) = *(first_overlen->str + i + LEN_DIFFERENCE);
+      }
+      first_overlen->len = LEN_OUT_OF_BOUNDS;
+      buffer_taken += LEN_DIFFERENCE;
+    }
+  }
+  #if defined(__BUILD_HAS_PTHREADS)
+    pthread_mutex_unlock(&nu->_mutex);
+    pthread_mutex_unlock(&_mutex);
+  #elif defined(__BUILD_HAS_FREERTOS)
+    //xSemaphoreGiveRecursive(&nu->_mutex);
+    //xSemaphoreGiveRecursive(&_mutex);
+  #endif
+}
+
+
 /*
 * Thank you N. Gortari for the most excellent tip:
 *   Intention:       if (obj == nullptr)  // Null-checking is a common thing to do...

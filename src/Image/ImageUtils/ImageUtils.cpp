@@ -259,22 +259,6 @@ void UIGfxWrapper::drawButton(int x, int y, int w, int h, uint32_t color, bool p
 }
 
 
-void UIGfxWrapper::drawScrollbarH(int x, int y, int w, int h, uint32_t color, float pos) {
-  //uint32_t slider_pix = 2 + (((1+sval) / 61.0f) * (_img->x()-5));
-  //_img->fillRect(0, 55, _img->x()-1, 7, 0x0000);
-  //_img->drawRoundRect(0, 54, _img->x(), 9, 3, 0xFFFF);
-  //_img->fillRect(slider_pix-1, 55, 3, 7, 0xF800);
-}
-
-
-void UIGfxWrapper::drawScrollbarV(int x, int y, int w, int h, uint32_t color, float pos) {
-  //uint32_t slider_pix = 2 + (((1+sval) / 61.0f) * (_img->x()-5));
-  //_img->fillRect(0, 55, _img->x()-1, 7, 0x0000);
-  //_img->drawRoundRect(0, 54, _img->x(), 9, 3, 0xFFFF);
-  //_img->fillRect(slider_pix-1, 55, 3, 7, 0xF800);
-}
-
-
 
 /*
 * Draw the data view selector widget.

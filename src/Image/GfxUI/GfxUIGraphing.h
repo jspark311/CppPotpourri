@@ -23,7 +23,7 @@ These classes are built on top of the GfxUI classes, and implement data graphing
 /* A basic pane that shows an annotated graph of a given SensorFilter. */
 template <class T> class GfxUISensorFilter : public GfxUIElement {
   public:
-    GfxUISensorFilter(const GfxUILayout lay, const GfxUIStyle sty, SensorFilter<T>* sf, uint32_t f = 0) : GfxUIElement(lay, sty, f | GFXUI_FLAG_ALWAYS_REDRAW  | GFXUI_FLAG_TRACK_POINTER), _filter(sf) {};
+    GfxUISensorFilter(const GfxUILayout lay, const GfxUIStyle sty, SensorFilter<T>* sf, uint32_t f = 0) : GfxUIElement(lay, sty, f | GFXUI_FLAG_ALWAYS_REDRAW), _filter(sf) {};
     ~GfxUISensorFilter() {};
 
     /* Implementation of GfxUIElement. */
@@ -63,7 +63,7 @@ template <class T> class GfxUITimeSeriesDetail : public GfxUITabbedContentPane {
         ),
         sty,
         sf,
-        (GFXUI_SENFILT_FLAG_SHOW_RANGE | GFXUI_SENFILT_FLAG_SHOW_VALUE | GFXUI_FLAG_ALWAYS_REDRAW)
+        (GFXUI_SENFILT_FLAG_SHOW_RANGE | GFXUI_FLAG_TRACK_POINTER | GFXUI_SENFILT_FLAG_SHOW_VALUE | GFXUI_FLAG_ALWAYS_REDRAW)
       ),
       _pane_stats(
         GfxUILayout(
@@ -74,7 +74,7 @@ template <class T> class GfxUITimeSeriesDetail : public GfxUITabbedContentPane {
         ),
         sty,
         &_running_stdev,
-        (GFXUI_SENFILT_FLAG_SHOW_RANGE | GFXUI_SENFILT_FLAG_SHOW_VALUE | GFXUI_FLAG_ALWAYS_REDRAW)
+        (GFXUI_SENFILT_FLAG_SHOW_RANGE | GFXUI_FLAG_TRACK_POINTER | GFXUI_SENFILT_FLAG_SHOW_VALUE | GFXUI_FLAG_ALWAYS_REDRAW)
       ),
       _pane_config(0, 0, 0, 0)
     {

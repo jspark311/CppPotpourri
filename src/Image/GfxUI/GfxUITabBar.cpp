@@ -35,7 +35,6 @@ bool GfxUITabBar::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, Pri
   bool ret = false;
   switch (GFX_EVNT) {
 
-
     case GfxUIEvent::TOUCH:
     case GfxUIEvent::RELEASE:
       if (_children.hasNext()) {

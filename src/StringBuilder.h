@@ -128,6 +128,7 @@ class StringBuilder {
     /* These fxns allow for memory-tight hand-off of StrLL chains. Useful for merging
        StringBuilder instances. */
     void concatHandoff(StringBuilder *nu);
+    void concatHandoffLimit(StringBuilder *nu, unsigned int len_limit);
     void prependHandoff(StringBuilder *nu);
 
     /* Same idea as above, but takes a malloc'd buffer, alleviating the caller

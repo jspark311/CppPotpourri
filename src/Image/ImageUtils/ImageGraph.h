@@ -36,7 +36,7 @@ template <class T> class ImageGraphTrace {
     bool autoscale_x  = false;
     bool autoscale_y  = true;
     bool show_x_range = false;
-    bool show_y_range = true;
+    bool show_y_range = false;
     bool show_value   = false;
     bool grid_lock_x  = false;   // Default is to allow the grid to scroll with the starting offset.
     bool grid_lock_y  = false;   // Default is to allow the grid to scroll with any range shift.

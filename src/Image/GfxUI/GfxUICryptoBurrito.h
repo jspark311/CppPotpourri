@@ -27,7 +27,7 @@ class GfxUICryptoRNG : public GfxUIElement {
   public:
     GfxUICryptoRNG(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0) :
       GfxUIElement(lay, sty, f | GFXUI_FLAG_ALWAYS_REDRAW),
-      _rng_buffer((32*32), FilteringStrategy::RAW),
+      _rng_buffer(_internal_Width(), FilteringStrategy::RAW),
       _vis_0(
         GfxUILayout(
           _internal_PosX(), _internal_PosY(),
@@ -38,14 +38,16 @@ class GfxUICryptoRNG : public GfxUIElement {
         sty,
         &_rng_buffer,
         (GFXUI_FLAG_ALWAYS_REDRAW)
-      ) {};
+      )
+    {
+      _add_child(&_vis_0);
+    };
 
     ~GfxUICryptoRNG() {};
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
     virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
-
 
 
   private:
@@ -90,7 +92,7 @@ class GfxUICryptoBurrito : public GfxUITabbedContentPane {
           0, 0, 0, 0               // Border_px(t, b, l, r)
         ),
         sty,
-        0
+        (GFXUI_FLAG_ALWAYS_REDRAW)
       ),
       _pane_burrito_info(0, 0, 0, 0)
     {

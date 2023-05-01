@@ -106,8 +106,6 @@ class UIGfxWrapper {
     );
 
     void drawButton(int x, int y, int w, int h, uint32_t color, bool pressed);
-    void drawScrollbarH(int x, int y, int w, int h, uint32_t color, float pos);
-    void drawScrollbarV(int x, int y, int w, int h, uint32_t color, float pos);
 
 
   private:

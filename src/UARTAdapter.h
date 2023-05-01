@@ -70,7 +70,7 @@ class UARTAdapter : public BufferAccepter {
     virtual ~UARTAdapter();
 
     /* Implementation of BufferAccepter. */
-    int8_t provideBuffer(StringBuilder* buf) {  _tx_buffer.concatHandoff(buf); return 1;   };
+    int8_t provideBuffer(StringBuilder*);
 
     int8_t init(const UARTOpts*);
     int8_t poll();
