@@ -174,6 +174,8 @@ template <class T> T RingBuffer<T>::_get(bool also_remove) {
 /**
 * Peek at a specific index in the ring without changing anything.
 *
+* @param idx The position in the ring.
+* @param absolute_index Index is from memory offset 0 if true, or the next in line otherwise.
 * @return T(0) on failure, or the data at the given index.
 */
 template <class T> T RingBuffer<T>::get(unsigned int idx, bool absolute_index) {

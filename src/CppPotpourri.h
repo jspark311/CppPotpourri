@@ -117,14 +117,21 @@ int randomArt(uint8_t* dgst_raw, unsigned int dgst_raw_len, const char* title, S
 /*******************************************************************************
 * Interfaces and callback definitions in use throughout this library.
 *******************************************************************************/
-/* Shorthand for a pointer to a "void fxn(void)" */
+/*
+* Shorthand for a pointer to a "void fxn(void)"
+* No contracts. It is just used to make code read better.
+*/
 typedef void  (*FxnPointer)();
 
-/* Callbacks for drivers that provide extra GPI pins. */
+/*
+* Callbacks for drivers that provide extra GPI pins.
+*/
 typedef void (*PinCallback)(uint8_t pin, uint8_t level);
 
 
-/* An interface class for accepting a buffer. */
+/**
+* An interface class for accepting a buffer.
+*/
 class BufferAccepter {
   public:
     /**
@@ -135,11 +142,13 @@ class BufferAccepter {
     *
     * @return -1 to reject buffer, 0 to accept without claiming, 1 to accept with claim.
     */
-    virtual int8_t provideBuffer(StringBuilder* buf) =0;
+    virtual int8_t provideBuffer(StringBuilder*) =0;
 };
 
 
-/* An interface class for accepting a scalar value, with units. */
+/**
+* An interface class for accepting a scalar value, with units and error.
+*/
 class ScalarAccepter {
   public:
     /**
@@ -150,5 +159,30 @@ class ScalarAccepter {
     */
     virtual int8_t provideScalar(SIUnit, double value, double error) =0;
 };
+
+
+/**
+* For simplicity, many classes are writen in such a way as to benefit (or
+*   require) periodic polling for them to update their own states. The more
+*   complicated the class, the more likely it is to require this.
+* To keep that complexity bounded, it is advised that such classes implement the
+*   PollableObj interface to allow themselves to be recomposed into higher-level
+*   logic without complicated APIs or "special treatment".
+*/
+enum class PollingResult : int8_t {
+  /*
+  Code       Value   Semantics
+  ----------------------------------------------------------------------------*/
+  ERROR     = -1,    // Polling resulted in an internal class problem.
+  NO_ACTION =  0,    // No action. No error.
+  ACTION    =  1,    // Polling resulted in an evolution of class state.
+  REPOLL    =  2     // Repoll immediately, subject to caller's descretion.
+};
+
+class PollableObj {
+  public:
+    virtual PollingResult poll() =0;
+};
+
 
 #endif // __CPPPOTPOURRI_H__

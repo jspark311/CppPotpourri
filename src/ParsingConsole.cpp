@@ -196,8 +196,10 @@ int8_t ParsingConsole::_relay_to_output_target() {
     if (LineTerm::LF != _tx_terminator) {
       _log.replace("\n", _get_terminator(_tx_terminator));
     }
+    _log.string();
+    logLen(_log.length());
     switch (_output_target->provideBuffer(&_log)) {
-      case 0:   _log.clear();
+      case 0:   _log.clear();  // Be sure to discard the log if the downstream BufferAcceptor didn't entirely claim it.
       case 1:   ret = 0;
       default:  break;
     }
@@ -522,9 +524,29 @@ int8_t ParsingConsole::console_handler_help(StringBuilder* text_return, StringBu
 }
 
 
-/*
-* This is an optional console handler for the configuration of the console
-*   itself.
+/**
+* @page console-handlers
+* @section parsing-console-tools ParsingConsole tools
+*
+* This is an optional console handler for the configuration of the console itself.
+*
+* @subsection cmd-actions Actions
+*
+* Action         | Description | Additional arguments
+* ------------   | ------------| --------------------
+* `echo`         | Set local echo on or off | [value]
+* `history`      | Control command history retention and logging | [clear, depth, logerrors]
+* `help-on-fail` | Console prints command help on failure. | [value]
+* `prompt`       | Console autoprompt enaabled or disable.| [value]
+* `force`        | Console force-return enable or disable. | [value]
+* `rxterm`       | Set console RX terminator | [ZEROBYTE, CR, LF, CRLF]
+* `txterm`       | Set console TX treminator  | [ZEROBYTE, CR, LF, CRLF]
+*
+* @subsection arguments Arguments
+* Argument    | Purpose   | Required
+* ----------- | --------- | --------
+* value       | Enable or Disable the function (0 = off, 1 = on)| yes
+* terminator  | Set the value of the line termination character | no, Will be enabled if not provided
 */
 int8_t ParsingConsole::console_handler_conf(StringBuilder* text_return, StringBuilder* args) {
   // TODO: Unimplemented breakouts:

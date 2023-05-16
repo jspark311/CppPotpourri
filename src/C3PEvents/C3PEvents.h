@@ -49,7 +49,7 @@ All of these factors contributed to the putrefaction of the code base:
 
 Kernel's API allowed global event broadcasts in addition to the preferred
   pattern of publish-subscribe. But because it was a singleton, and the possible
-  combination of EventReceiver's in a given program couldn't be predicted, the
+  combination of EventReceivers in a given program couldn't be predicted, the
   only reliable practice was often to use global broadcasts. This lead to
   horrendous CPU inefficiencies as the number of EventReceivers increased.
 
@@ -156,13 +156,6 @@ typedef void (*C3PEventCallback)(uint32_t now_us, C3PEvent*);
 /*******************************************************************************
 * Class definitions                                                            *
 *******************************************************************************/
-
-/**
-* Classes that need to be polled should at least extend a uniform pattern that
-*   allows them to be treated consistently, and give consistent responses.
-*/
-class Polla {
-};
 
 
 /**
