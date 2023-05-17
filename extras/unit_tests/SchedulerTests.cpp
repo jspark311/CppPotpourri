@@ -155,6 +155,8 @@ int test_scheduler_run_count_checks() {
   StringBuilder text_return("Schedule count check ");
   if (0 == ret) {
     text_return.concat("passes.\n");
+    text_return.concatf("marker_sch_0:     %5u\n", marker_sch_0);
+    text_return.concatf("marker_sch_1:     %5u\n", marker_sch_1);
   }
   else {
     text_return.concat("failure.\n");
@@ -240,7 +242,7 @@ int scheduler_tests_main() {
             printf("**********************************\n");
             ret = 0;
           }
-          else printTestFailure("Terminal metrics don't match profiler's.");
+          else printTestFailure("Schedule removal.");
         }
         else printTestFailure("Schedules did not execute as expected (n-to-1).");
       }
