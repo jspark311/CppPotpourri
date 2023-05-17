@@ -18,17 +18,14 @@ limitations under the License.
 
 #include "C3PScheduler.h"
 
-
 // Singleton instance
-static C3PScheduler* SCHEDULER_INSTANCE_PTR = nullptr;
+volatile static C3PScheduler* SCHEDULER_INSTANCE_PTR = nullptr;
 
 C3PScheduler* C3PScheduler::getInstance() {
   if (nullptr == SCHEDULER_INSTANCE_PTR) {
     SCHEDULER_INSTANCE_PTR = new C3PScheduler(8);  // TODO: Arbitrary schedule limit.
-    SCHEDULER_INSTANCE_PTR->_active.allocated();
-    SCHEDULER_INSTANCE_PTR->_exec_queue.allocated();
   }
-  return SCHEDULER_INSTANCE_PTR;
+  return (C3PScheduler*) SCHEDULER_INSTANCE_PTR;
 }
 
 
@@ -40,7 +37,7 @@ int8_t C3PSchedule::execute() {
   _executing = true;
   profiler.markStart();
   int8_t ret = _execute();
-  if (willRunAgain()) {
+  if (_enabled & (0 < _recurrances)) {
     _recurrances--;
   }
   else {
@@ -56,7 +53,7 @@ int8_t C3PSchedule::execute() {
 void C3PSchedule::delay(uint32_t by_us) {
   if (!_executing) {
     if (!_enabled) {
-      _exec_at = micros();
+      _exec_at = (uint32_t) micros();
       _enabled = true;
     }
     _exec_at += by_us;
@@ -66,7 +63,7 @@ void C3PSchedule::delay(uint32_t by_us) {
 
 void C3PSchedule::delay() {
   if (!_executing) {
-    _exec_at = (micros() + _period);
+    _exec_at = ((uint32_t) micros() + _period);
     _enabled = true;
   }
 }
@@ -74,6 +71,7 @@ void C3PSchedule::delay() {
 
 bool C3PSchedule::willRunAgain() {
   bool ret = (_enabled & (0 < _recurrances));
+  ret |= (_enabled & (-1 == _recurrances));
   return ret;
 }
 
@@ -81,9 +79,12 @@ bool C3PSchedule::willRunAgain() {
 void C3PSchedule::printSchedule(StringBuilder* output) {
   _print_schedule(output);
   output->concatf("\tPeriod:          %u\n", _period);
-  output->concatf("\tRecurrances:     %d\n", _recurrances);
+  output->concat( "\tRecurrances:     ");
+  if (-1 == _recurrances) {   output->concat("forever\n");            }
+  else {                      output->concatf("%d\n", _recurrances);  }
+
   if (willRunAgain()) {
-    output->concatf("\tNext execution:  %u (%uus from now)\n", _exec_at, wrap_accounted_delta(_exec_at, micros()));
+    output->concatf("\tNext execution:  %u (%uus from now)\n", _exec_at, wrap_accounted_delta(_exec_at, (uint32_t) micros()));
   }
   if (0 > profiler.executions()) {
     output->concatf("\tLast execution:  %u (%uus ago)\n", _last_exec, wrap_accounted_delta(micros(), _last_exec));
@@ -159,7 +160,7 @@ int8_t C3PScheduler::removeSchedule(C3PSchedule* sch) {
 }
 
 
-void C3PScheduler::serviceScheduledEvents() {
+void C3PScheduler::serviceSchedules() {
   if (_isr_count > 0) {
     profiler_deadband.markStop();
     profiler_service.markStart();

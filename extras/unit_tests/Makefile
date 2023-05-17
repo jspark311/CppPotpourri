@@ -50,6 +50,7 @@ SOURCES_CPP += ../../src/Storage.cpp
 SOURCES_CPP += ../../src/AbstractPlatform.cpp
 SOURCES_CPP += ../../src/Image/*.cpp
 SOURCES_CPP += ../../src/cbor-cpp/*.cpp
+SOURCES_CPP += ../../src/C3PEvents/*.cpp
 SOURCES_CPP += ../../src/TripleAxisPipe/*.cpp
 SOURCES_CPP += ../../src/M2MLink/*.cpp
 SOURCES_CPP += ../../src/Identity/*.cpp

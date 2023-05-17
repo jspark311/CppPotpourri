@@ -51,7 +51,7 @@ template <class T> class RingBuffer {
 
     void clear();       // Wipe the buffer.
     int  insert(T);
-    int  insertIfAbsent(T x) {    return (contains(x) ? -1 : insert(x));  };
+    int  insertIfAbsent(T x) {    return (contains(x) ? -2 : insert(x));  };
     bool contains(T);
     T    get(unsigned int idx, bool absolute_index = false);
     inline T get() {       return _get(true);              };
@@ -136,20 +136,22 @@ template <class T> int RingBuffer<T>::insert(T d) {
 * @return 0 on success, or negative on error.
 */
 template <class T> bool RingBuffer<T>::contains(T d) {
+  bool found = false;
   if (allocated() && (0 < _count)) {
     unsigned int cur_idx = _r;
     uint8_t* compare = (uint8_t*) &d;
-    while (cur_idx != _w) {
+    while (!found & (cur_idx != _w)) {
       uint8_t* current = (uint8_t*) (_pool + (cur_idx * _E_SIZE));
+      bool current_is_compare = true;
       for (uint32_t i = 0; i < _E_SIZE; i++) {
-        if (*(current + i) != *(compare + i)) {
-          return true;
-        }
+        current_is_compare &= (*(current + i) == *(compare + i));
       }
+      found |= current_is_compare;
+
       cur_idx = ((cur_idx + 1) % _CAPAC);   // TODO: Convert to pow(2) later and convert to bitmask.
     }
   }
-  return false;
+  return found;
 }
 
 

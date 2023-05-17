@@ -178,9 +178,15 @@ class C3PScheduler {
 
     int8_t addSchedule(C3PSchedule*);
     int8_t removeSchedule(C3PSchedule*);
-    void serviceScheduledEvents();        // Execute any schedules that have come due.
+    void serviceSchedules();              // Execute any schedules that have come due.
     void advanceScheduler();              // Push all enabled schedules forward by one tick.
     void printDebug(StringBuilder*);
+
+    inline uint32_t serviceLoops() {      return profiler_service.executions();    };
+
+    inline bool initialized() {
+      return (_active.allocated() & _exec_queue.allocated());
+    };
 
     static C3PScheduler* getInstance();   // Enforcement of singleton pattern.
 

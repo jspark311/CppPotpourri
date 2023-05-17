@@ -197,7 +197,6 @@ int8_t ParsingConsole::_relay_to_output_target() {
       _log.replace("\n", _get_terminator(_tx_terminator));
     }
     _log.string();
-    logLen(_log.length());
     switch (_output_target->provideBuffer(&_log)) {
       case 0:   _log.clear();  // Be sure to discard the log if the downstream BufferAcceptor didn't entirely claim it.
       case 1:   ret = 0;
