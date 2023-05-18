@@ -50,10 +50,10 @@ int8_t C3PSchedule::execute() {
 }
 
 
-void C3PSchedule::delay(uint32_t by_us) {
+void C3PSchedule::delay(unsigned int by_us) {
   if (!_executing) {
     if (!_enabled) {
-      _exec_at = (uint32_t) micros();
+      _exec_at = (unsigned int) micros();
       _enabled = true;
     }
     _exec_at += by_us;
@@ -63,7 +63,7 @@ void C3PSchedule::delay(uint32_t by_us) {
 
 void C3PSchedule::delay() {
   if (!_executing) {
-    _exec_at = ((uint32_t) micros() + _period);
+    _exec_at = ((unsigned int) micros() + _period);
     _enabled = true;
   }
 }
@@ -84,10 +84,10 @@ void C3PSchedule::printSchedule(StringBuilder* output) {
   else {                      output->concatf("%d\n", _recurrances);  }
 
   if (willRunAgain()) {
-    output->concatf("\tNext execution:  %u (%uus from now)\n", _exec_at, wrap_accounted_delta(_exec_at, (uint32_t) micros()));
+    output->concatf("\tNext execution:  %u (%uus from now)\n", _exec_at, wrap_accounted_delta(_exec_at, (unsigned int) micros()));
   }
   if (0 > profiler.executions()) {
-    output->concatf("\tLast execution:  %u (%uus ago)\n", _last_exec, wrap_accounted_delta(micros(), _last_exec));
+    output->concatf("\tLast execution:  %u (%uus ago)\n", _last_exec, wrap_accounted_delta((unsigned int) micros(), _last_exec));
   }
   StopWatch::printDebugHeader(output);
   profiler.printDebug("execute()", output);
@@ -153,6 +153,10 @@ int8_t C3PScheduler::addSchedule(C3PSchedule* sch) {
 }
 
 
+/*
+* If the schedule to be removed is presently queued for service, it will be
+*   removed if it is not executing. Otherwise, it will be allowed to resolve.
+*/
 int8_t C3PScheduler::removeSchedule(C3PSchedule* sch) {
   int8_t ret = -1;
   // TODO
@@ -160,6 +164,10 @@ int8_t C3PScheduler::removeSchedule(C3PSchedule* sch) {
 }
 
 
+/**
+* This function should be called in the program's idle time, and will remove
+*   schedules from the execution queue.
+*/
 void C3PScheduler::serviceSchedules() {
   if (_isr_count > 0) {
     profiler_deadband.markStop();
@@ -175,11 +183,14 @@ void C3PScheduler::serviceSchedules() {
 }
 
 
+/**
+* This function should be called periodically from a timing source, and will add
+*   schedules to the execution queue.
+*/
 void C3PScheduler::advanceScheduler() {
   for (uint32_t i = 0; i < _active.count(); i++) {
     C3PSchedule* current = _active.get(i, false);
     if ((nullptr != current) && current->enabled()) {
-
       if (current->_exec_at <= micros()) {   // TODO: Wrap handling.
         if (0 != _exec_queue.insertIfAbsent(current)) {
           // TODO: Anomaly tracking...

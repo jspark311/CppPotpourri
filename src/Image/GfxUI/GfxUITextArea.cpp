@@ -19,7 +19,7 @@ int GfxUITextArea::_render(UIGfxWrapper* ui_gfx) {
   uint16_t i_w = _internal_Width();
   uint16_t i_h = _internal_Height();
   ui_gfx->img()->setTextSize(_style.text_size);
-  ui_gfx->img()->setTextColor(_style.color_active, 0);
+  ui_gfx->img()->setTextColor(_style.color_active, _style.color_bg);
   uint16_t y_adv = ui_gfx->img()->getFontHeight();
   if (y_adv) _max_rows = i_h / y_adv;
 

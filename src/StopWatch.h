@@ -40,7 +40,7 @@ limitations under the License.
       inline uint32_t meanTime() {     return _run_time_average;   };
       inline uint32_t totalTime() {    return _run_time_total;     };
       inline uint32_t executions() {   return _executions;         };
-      inline void     markStart() {    _start_micros = micros();   };
+      inline void     markStart() {    _start_micros = (uint32_t) micros();   };
       bool  markStop();
       void  reset();
       void printDebug(const char*, StringBuilder*);

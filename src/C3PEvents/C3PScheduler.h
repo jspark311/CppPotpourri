@@ -40,7 +40,7 @@ limitations under the License.
 *   execution should be confined to extending classes that intend on being
 *   processed (possibly in an ISR stack frame) by the Scheduler singleton.
 *
-* NOTE: If (_recurrances < 0), then the schedule recurs for as long as
+* NOTE: If (_recurrances == -1), then the schedule recurs for as long as
 *   it remains enabled. If the value is zero, the schedule is disabled upon
 *   successful execution. If the value is anything else, the schedule remains
 *   enabled and this value is decremented.
@@ -55,16 +55,16 @@ class C3PSchedule {
 
     virtual ~C3PSchedule() {};
 
-    //inline int8_t executeNow() {       return -1;   };
-    inline bool     enabled() {               return _enabled;      };
-    inline void     enabled(bool x) {         _enabled = x;         };
-    inline int32_t  recurrence() {            return _recurrances;  };
-    inline void     recurrence(int32_t x) {   _recurrances = x;     };
-    inline uint32_t period() {                return _period;       };
-    inline void     period(uint32_t x) {      _period = x;          };
+    //inline int8_t     executeNow() {       return -1;   };
+    inline bool         enabled() {                 return _enabled;      };
+    inline void         enabled(bool x) {           _enabled = x;         };
+    inline int32_t      recurrence() {              return _recurrances;  };
+    inline void         recurrence(int32_t x) {     _recurrances = x;     };
+    inline unsigned int period() {                  return _period;       };
+    inline void         period(unsigned int x) {    _period = x;          };
 
     int8_t execute();
-    void delay(uint32_t by_us);  // Set the schedule's TTW to the given value this execution only.
+    void delay(unsigned int by_us); // Set the schedule's TTW to the given value this execution only.
     void delay();                // Reset the given schedule to its period and enable it.
     bool willRunAgain();         // Returns true if the indicated schedule will fire again.
     void printSchedule(StringBuilder*);
@@ -86,12 +86,12 @@ class C3PSchedule {
 
   private:
     friend class C3PScheduler;  // Scheduler itself is allowed access to all members.
-    uint32_t   _last_exec;      // At what time was the last execution?
-    uint32_t   _exec_at;        // At what time will be the next execution?
-    uint32_t   _period;         // How often does this schedule execute?
-    int32_t    _recurrances;    // How many times will execution occur? See notes.
-    bool       _enabled;        // If true, this schedule will be processed.
-    bool       _executing;      // If true, this schedule is presently executing.
+    unsigned int _last_exec;      // At what time was the last execution?
+    unsigned int _exec_at;        // At what time will be the next execution?
+    unsigned int _period;         // How often does this schedule execute?
+    int32_t      _recurrances;    // How many times will execution occur? See notes.
+    bool         _enabled;        // If true, this schedule will be processed.
+    bool         _executing;      // If true, this schedule is presently executing.
     //bool       _run_in_isr;     // If true, this schedule will be processed in the ISR stack frame. Very dangerous.
     //bool       _autoclear;      // If true, this schedule will be removed after its last execution.
 };
@@ -178,12 +178,15 @@ class C3PScheduler {
 
     int8_t addSchedule(C3PSchedule*);
     int8_t removeSchedule(C3PSchedule*);
+    inline C3PSchedule* getScheduleByIndex(unsigned int idx) {   return _active.get(idx, false);   };
+    inline unsigned int scheduleCount() {    return _active.count();    };
+
     void serviceSchedules();              // Execute any schedules that have come due.
     void advanceScheduler();              // Push all enabled schedules forward by one tick.
+
     void printDebug(StringBuilder*);
 
     inline uint32_t serviceLoops() {      return profiler_service.executions();    };
-
     inline bool initialized() {
       return (_active.allocated() & _exec_queue.allocated());
     };
@@ -197,6 +200,7 @@ class C3PScheduler {
     RingBuffer<C3PSchedule*> _exec_queue;
     //RingBuffer<C3PSchedule*> _inactive;
     uint32_t _isr_count;
+    uint32_t _advance_overruns;
 
     /* Constructor */
     C3PScheduler(const uint32_t MAX_SCHEDULE_COUNT) :

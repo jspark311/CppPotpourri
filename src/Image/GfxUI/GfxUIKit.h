@@ -18,6 +18,7 @@ These classes are built on top of the GfxUI classes, and implement higher-level
 #include "../../Identity/Identity.h"
 #include "../../Storage.h"
 #include "../../TripleAxisPipe/TripleAxisPipe.h"
+#include "../../C3PEvents/C3PScheduler.h"
 
 /*******************************************************************************
 * Pure UI modules.
@@ -70,6 +71,7 @@ class GfxUIRoot : public GfxUIGroup {
 /*******************************************************************************
 * Graphical buttons
 *******************************************************************************/
+/* A button. */
 class GfxUIButton : public GfxUIElement {
   public:
     GfxUIButton(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0) : GfxUIElement(lay, sty, f) {};
@@ -92,7 +94,7 @@ class GfxUIButton : public GfxUIElement {
   protected:
 };
 
-
+/* A button with text. */
 class GfxUITextButton : public GfxUIButton {
   public:
     GfxUITextButton(const GfxUILayout lay, const GfxUIStyle sty, const char* T, uint32_t f = 0) : GfxUIButton(lay, sty, f), _TXT(T) {};
@@ -217,7 +219,7 @@ class GfxUIMagnifier : public GfxUIElement {
 
 
 /*******************************************************************************
-* A graphical text area that acts as a BufferPipe terminus
+* A graphical text area that acts as a generic BufferPipe terminus
 *******************************************************************************/
 class GfxUITextArea : public GfxUIElement, public BufferAccepter {
   public:
@@ -252,6 +254,16 @@ class GfxUITextArea : public GfxUIElement, public BufferAccepter {
 
 
 /*******************************************************************************
+* A graphical text area that is specialized for the logger.
+*******************************************************************************/
+
+/*******************************************************************************
+* A graphical profiling tool
+*******************************************************************************/
+
+
+
+/*******************************************************************************
 * A graphical text area that acts as a TripleAxisPipe terminus
 *******************************************************************************/
 class GfxUI3AxisRender : public GfxUIElement, public TripleAxisPipe {
@@ -273,7 +285,6 @@ class GfxUI3AxisRender : public GfxUIElement, public TripleAxisPipe {
 * Data and module control.
 * These act as state and control breakouts for specific kinds of objects in C3P.
 *******************************************************************************/
-
 
 /*******************************************************************************
 * Graphical tool for looking at KVP data.
@@ -322,7 +333,9 @@ class GfxUIIdentity : public GfxUIElement {
 /*******************************************************************************
 * Graphical tools for using MLinks.
 *******************************************************************************/
-
+/*
+* An MLink top-level representation.
+*/
 class GfxUIMLink : public GfxUITabbedContentPane {
   public:
     GfxUIMLink(const GfxUILayout lay, const GfxUIStyle sty, M2MLink* l, uint32_t f = 0);
@@ -344,6 +357,64 @@ class GfxUIMLink : public GfxUITabbedContentPane {
     GfxUITextButton   _btn_ses_hangup;
     GfxUITextArea     _txt;
     //GfxUIIdentity     _iden_self;
+};
+
+
+/*******************************************************************************
+* Graphical tools for C3PScheduler.
+* This is mostly used to demo the Scheduler and verify features.
+*******************************************************************************/
+/* A graphical representation of the StopWatch class. */
+class GfxUIStopWatch : public GfxUIElement {
+  public:
+    GfxUIStopWatch(const char*, StopWatch*, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
+    ~GfxUIStopWatch() {};
+
+    inline StopWatch* stopwatch() {    return _stopwatch;  };
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+
+
+  private:
+    const char* _name;
+    StopWatch* _stopwatch;
+};
+
+
+/* The Scheduler itself. */
+class GfxUIC3PScheduler : public GfxUITabbedContentPane {
+  public:
+    GfxUIC3PScheduler(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
+    ~GfxUIC3PScheduler() {};
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+
+
+  private:
+    GfxUIGroup    _pane_info;
+    GfxUIGroup    _pane_schedules;
+    GfxUITextArea _txt;
+    GfxUIStopWatch  _sw_svc_loop;
+    GfxUIStopWatch  _sw_deadband;
+};
+
+/* A discrete Schedule. */
+class GfxUIC3PSchedule : public GfxUIElement {
+  public:
+    GfxUIC3PSchedule(const unsigned int ID, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
+    ~GfxUIC3PSchedule() {};
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+
+
+  private:
+    const uint32_t _SID;   // The schedule's ID in the scheduler.
 };
 
 
@@ -388,6 +459,54 @@ class GfxUIDataRecord : public GfxUIElement {
     GfxUITextArea _txt;
 };
 
+
+
+
+/*******************************************************************************
+* SIUnit chooser
+*******************************************************************************/
+class GfxUISIUnitChooser : public GfxUIElement {
+  public:
+    GfxUISIUnitChooser(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0) :
+      GfxUIElement(lay, sty, f),
+      selection(SIUnit::UNITLESS), siu_string(nullptr) {};
+
+    GfxUISIUnitChooser(const SIUnit UNIT, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0) :
+      GfxUIElement(lay, sty, f),
+      selection(UNIT), siu_string(nullptr) {};
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+
+
+  protected:
+    SIUnit selection;
+    SIUnit* siu_string;
+};
+
+
+/*******************************************************************************
+* Tool for viewing profiling data.
+*******************************************************************************/
+
+class GfxUICPUProfiler : public GfxUIElement {
+  public:
+    GfxUICPUProfiler(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
+    ~GfxUICPUProfiler() {};
+
+    int addTimerData(const char* name, StopWatch*);   // Add a source of profiling data.
+    int removeTimerData(const char*);   // Removal by name.
+    int removeTimerData(StopWatch*);    // Removal by reference.
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+
+
+  private:
+    PriorityQueue<StopWatch*> _stopwatches;
+};
 
 
 #endif  // __C3P_GFXUI_KIT_H

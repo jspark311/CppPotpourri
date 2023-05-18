@@ -330,7 +330,7 @@ const char* c3p_log_severity_string(const uint8_t severity) {
 /**
 * This function is a convenience wrapper around the StringBuilder variant of
 *   c3p_log(), which is the root implementation given by platform.
-* It convert variadic form into a discrete parameter list, uses the
+* It converts variadic form into a discrete parameter list, uses the
 *   StringBuilder API to render it, and (if successfully rendered) shunts it to
 *   the root implementaion of c3p_log() that is optionally provided by the
 *   application or platform.

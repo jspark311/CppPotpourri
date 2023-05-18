@@ -130,8 +130,7 @@ template <class T> int RingBuffer<T>::insert(T d) {
 
 
 /**
-* This template makes copies of whatever is passed into it. There is no reason
-*   for the caller to maintain local copies of data (unless T is a pointer).
+* Cycles through the ring and looks for any instances of the argument.
 *
 * @return 0 on success, or negative on error.
 */

@@ -616,7 +616,7 @@ void StringBuilder::concatHandoffLimit(StringBuilder* nu, unsigned int len_limit
   if ((nullptr != nu) && (!nu->isEmpty(true))) {
     nu->_promote_collapsed_into_ll();   // Promote any previously-collapsed string.
 
-    int32_t  buffer_taken  = 0;
+    unsigned int buffer_taken  = 0;
     StrLL*   current       = nu->root;
     StrLL*   first_overlen = nu->root;
     uint32_t snip_length   = 0;
