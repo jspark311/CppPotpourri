@@ -376,7 +376,6 @@ class GfxUIStopWatch : public GfxUIElement {
     virtual int  _render(UIGfxWrapper* ui_gfx);
     virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
 
-
   private:
     const char* _name;
     StopWatch* _stopwatch;

@@ -12,6 +12,37 @@ Date:   2023.04.08
 /*******************************************************************************
 * GfxUICryptoRNG
 *******************************************************************************/
+/*
+* Constructor
+*/
+GfxUICryptoRNG::GfxUICryptoRNG(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f) :
+  GfxUIElement(lay, sty, f),
+  _rng_buffer(_internal_Width(), FilteringStrategy::RAW),
+  _vis_0(
+    GfxUILayout(
+      _internal_PosX(), _internal_PosY(),
+      _internal_Width(), (_internal_Height() >> 1),
+      1, 0, 0, 0,   // Margins_px(t, b, l, r)
+      1, 0, 0, 0    // Border_px(t, b, l, r)
+    ),
+    sty,
+    &_rng_buffer,
+    (GFXUI_FLAG_ALWAYS_REDRAW)
+  ),
+  _schedule_rng_update(55000, -1, true, this)
+{
+  _add_child(&_vis_0);
+  C3PScheduler::getInstance()->addSchedule(&_schedule_rng_update);
+}
+
+
+/*
+* Destructor
+*/
+GfxUICryptoRNG::~GfxUICryptoRNG() {
+  C3PScheduler::getInstance()->removeSchedule(&_schedule_rng_update);
+}
+
 
 int GfxUICryptoRNG::_render(UIGfxWrapper* ui_gfx) {
   int ret = 0;
@@ -19,21 +50,13 @@ int GfxUICryptoRNG::_render(UIGfxWrapper* ui_gfx) {
     _rng_buffer.init();
 
   }
-  if (_rng_buffer.initialized()) {
-    if (_rng_buffer.windowSize() != _internal_Width()) {
-      if (0 == _rng_buffer.windowSize(_internal_Width())) {
-        random_fill((uint8_t*) _rng_buffer.memPtr(), _rng_buffer.memUsed());
-        _rng_buffer.feedFilter();
-      }
-    }
-    ret = _rng_buffer.dirty() ? 1 : 0;
-  }
+  ret = _rng_buffer.dirty() ? 1 : 0;
   return ret;
 }
 
 
 bool GfxUICryptoRNG::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
-  bool ret = false;
+  bool ret = _rng_buffer.dirty();
 
   switch (GFX_EVNT) {
     case GfxUIEvent::TOUCH:
@@ -49,6 +72,22 @@ bool GfxUICryptoRNG::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, 
 
   if (ret) {
     _need_redraw(true);
+  }
+  return ret;
+}
+
+
+PollingResult GfxUICryptoRNG::poll() {
+  PollingResult ret = PollingResult::NO_ACTION;
+  if (_rng_buffer.windowSize() != _internal_Width()) {
+    if (0 != _rng_buffer.windowSize(_internal_Width())) {
+      ret = PollingResult::ERROR;
+    }
+  }
+  if (_rng_buffer.initialized() & (PollingResult::NO_ACTION == ret)) {
+    random_fill((uint8_t*) _rng_buffer.memPtr(), _rng_buffer.memUsed());
+    _rng_buffer.feedFilter();
+    ret = PollingResult::ACTION;
   }
   return ret;
 }

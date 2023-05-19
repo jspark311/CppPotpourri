@@ -208,7 +208,7 @@ template <> void ImageGraph<float>::drawGraph(Image* img, const uint32_t POS_X, 
           uint32_t txt_y = ((point_y - GRAPH_Y) > TXT_PIXEL_HEIGHT) ? (point_y - TXT_PIXEL_HEIGHT) : GRAPH_Y;
           uint32_t txt_w = 0;
           uint32_t txt_h = 0;
-          temp_txt.concatf("%u: %.3f", (trace0.offset_x + trace0.rend_offset_x + i), DATA_VALUE);
+          temp_txt.concatf("%u: %.3f", (trace0.offset_x + trace0.rend_offset_x + i), (double) DATA_VALUE);
           img->getTextBounds(&temp_txt, txt_x, txt_y, &txt_x, &txt_y, &txt_w, &txt_h);
           if ((txt_w + txt_x) > (GRAPH_X + GRAPH_W)) {
             // If the string would overflow the element's right-hand boundary,
@@ -243,11 +243,11 @@ template <> void ImageGraph<float>::drawGraph(Image* img, const uint32_t POS_X, 
         uint16_t y_adv = img->getFontHeight();
         img->setCursor(GRAPH_X+1, GRAPH_Y);
         img->setTextColor(fg_color, bg_color);
-        tmp_val_str.concatf("%.2f", trace0.maxValue());
+        tmp_val_str.concatf("%.2f", (double) trace0.maxValue());
         img->writeString(&tmp_val_str);
         tmp_val_str.clear();
         img->setCursor(GRAPH_X+1, (GRAPH_Y+FRUS_H) - y_adv);
-        tmp_val_str.concatf("%.2f", trace0.minValue());
+        tmp_val_str.concatf("%.2f", (double) trace0.minValue());
         img->writeString(&tmp_val_str);
         tmp_val_str.clear();
       }
@@ -257,7 +257,7 @@ template <> void ImageGraph<float>::drawGraph(Image* img, const uint32_t POS_X, 
         //img->fillCircle(x+w, tmp+y, 1, color);
         img->setCursor(GRAPH_X, strict_min((uint32_t) ((GRAPH_Y+FRUS_H)-tmp), (uint32_t) (FRUS_H-1)));
         img->setTextColor(trace0.color, bg_color);
-        tmp_val_str.concatf("%.3f", FINAL_DATUM);
+        tmp_val_str.concatf("%.3f", (double) FINAL_DATUM);
         img->writeString(&tmp_val_str);
         tmp_val_str.clear();
       }

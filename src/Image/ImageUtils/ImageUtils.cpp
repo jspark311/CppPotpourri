@@ -144,10 +144,10 @@ void UIGfxWrapper::drawCompass(
   int needle_tip_n_y = displacement_y + origin_y;
   int needle_tip_s_x = (displacement_x * -1) + origin_x;
   int needle_tip_s_y = (displacement_y * -1) + origin_y;
-  int needle_x1 = displacement_tri_x + origin_x;
-  int needle_y1 = displacement_tri_y + origin_y;
-  int needle_x2 = (displacement_tri_x * -1) + origin_x;
-  int needle_y2 = (displacement_tri_y * -1) + origin_y;
+  //int needle_x1 = displacement_tri_x + origin_x;
+  //int needle_y1 = displacement_tri_y + origin_y;
+  //int needle_x2 = (displacement_tri_x * -1) + origin_x;
+  //int needle_y2 = (displacement_tri_y * -1) + origin_y;
   _img->drawLine(origin_x, origin_y, needle_tip_s_x, needle_tip_s_y, WHITE);
   _img->drawLine(origin_x, origin_y, needle_tip_n_x, needle_tip_n_y, RED);
   //_img->fillTriangle(needle_tip_s_x, needle_tip_s_y, needle_x1, needle_y1, needle_x2, needle_y2, WHITE);
