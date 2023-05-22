@@ -181,6 +181,9 @@ enum class PollingResult : int8_t {
   REPOLL    =  2     // Repoll immediately, subject to caller's descretion.
 };
 
+/**
+* An interface class for simple state polling.
+*/
 class PollableObj {
   public:
     virtual PollingResult poll() =0;

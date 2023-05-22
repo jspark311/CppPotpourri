@@ -40,6 +40,16 @@ limitations under the License.
 *   execution should be confined to extending classes that intend on being
 *   processed (possibly in an ISR stack frame) by the Scheduler singleton.
 *
+* Concurrency rules:
+*   It was intended that the function invoked by a schedule be free to modify
+*   the schedule directly during execution. However, a few constraints apply:
+*   1) Do not sleep_ms() or sleep_us() within the scheduler's stack frame. Some
+*      platforms might tolerate it within bounds. But you shouldn't be sleeping
+*      in an async schedule regardless.
+*   2) Do not write schedules with periods shorter than their own worst-case
+*      execution times. Insertion into the Scheduler's execution queue is
+*      idempotent until the schedule is service (double-adds are disallowed).
+*
 * NOTE: If (_recurrances == -1), then the schedule recurs for as long as
 *   it remains enabled. If the value is zero, the schedule is disabled upon
 *   successful execution. If the value is anything else, the schedule remains

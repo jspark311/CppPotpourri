@@ -257,10 +257,6 @@ class GfxUITextArea : public GfxUIElement, public BufferAccepter {
 * A graphical text area that is specialized for the logger.
 *******************************************************************************/
 
-/*******************************************************************************
-* A graphical profiling tool
-*******************************************************************************/
-
 
 
 /*******************************************************************************
@@ -291,7 +287,7 @@ class GfxUI3AxisRender : public GfxUIElement, public TripleAxisPipe {
 *******************************************************************************/
 class GfxUIKeyValuePair : public GfxUIElement {
   public:
-    GfxUIKeyValuePair(KeyValuePair* kvp, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f | GFXUI_FLAG_ALWAYS_REDRAW), _color(color), _kvp(kvp) {};
+    GfxUIKeyValuePair(const GfxUILayout lay, const GfxUIStyle sty, GfxUIKeyValuePair* kvp, uint32_t f = 0);
     ~GfxUIKeyValuePair() {};
 
     /* Implementation of GfxUIElement. */
@@ -300,7 +296,6 @@ class GfxUIKeyValuePair : public GfxUIElement {
 
 
   private:
-    uint32_t _color;        // The accent color of the element when active.
     KeyValuePair* _kvp;
 };
 

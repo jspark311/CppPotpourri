@@ -190,7 +190,7 @@ class KeyValuePair {
 
   private:
     /*
-    * Hackery surrounding this member:
+    * Hackery surrounding _target_mem:
     * There is no point to storing a pointer to a heap ref to hold data that is not
     *   bigger than the pointer itself. So rather than malloc()/free() and populate
     *   this slot with things like int32, we will instead cast the value itself to a
