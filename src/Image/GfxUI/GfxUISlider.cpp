@@ -13,10 +13,10 @@ Date:   2022.06.25
 *******************************************************************************/
 
 int GfxUISlider::_render(UIGfxWrapper* ui_gfx) {
-  uint32_t i_x = _internal_PosX();
-  uint32_t i_y = _internal_PosY();
-  uint16_t i_w = _internal_Width();
-  uint16_t i_h = _internal_Height();
+  uint32_t i_x = internalPosX();
+  uint32_t i_y = internalPosY();
+  uint16_t i_w = internalWidth();
+  uint16_t i_h = internalHeight();
   if (_class_flag(GFXUI_SLIDER_FLAG_VERTICAL)) {
     ui_gfx->drawProgressBarV(
       i_x, i_y, i_w, i_h, _style.color_active,
@@ -45,12 +45,12 @@ bool GfxUISlider::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, Pri
       // NOTE: No break;
     case GfxUIEvent::DRAG_START:
       if (_class_flag(GFXUI_SLIDER_FLAG_VERTICAL)) {
-        const float PIX_POS_REL = y - _internal_PosY();
-        tmp_percentage = 1.0f - strict_min(1.0f, strict_max(0.0f, (PIX_POS_REL / (float) _internal_Height())));
+        const float PIX_POS_REL = y - internalPosY();
+        tmp_percentage = 1.0f - strict_min(1.0f, strict_max(0.0f, (PIX_POS_REL / (float) internalHeight())));
       }
       else {
-        const float PIX_POS_REL = x - _internal_PosX();
-        tmp_percentage = strict_min(1.0f, strict_max(0.0f, (PIX_POS_REL / (float) _internal_Width())));
+        const float PIX_POS_REL = x - internalPosX();
+        tmp_percentage = strict_min(1.0f, strict_max(0.0f, (PIX_POS_REL / (float) internalWidth())));
       }
       ret = true;
       break;

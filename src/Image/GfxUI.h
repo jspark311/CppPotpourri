@@ -214,15 +214,40 @@ class GfxUILayout {
       _bordr_t(src->_bordr_t), _bordr_b(src->_bordr_b), _bordr_l(src->_bordr_l), _bordr_r(src->_bordr_r) {};
 
 
-    inline uint16_t elementPosX() {      return _x;    };
-    inline uint16_t elementPosY() {      return _y;    };
+    inline uint32_t elementPosX() {      return _x;    };
+    inline uint32_t elementPosY() {      return _y;    };
     inline uint16_t elementWidth() {     return _w;    };
     inline uint16_t elementHeight() {    return _h;    };
+
+    inline uint32_t xCornerUpperLeft() {     return _x;    };
+    inline uint32_t xCornerUpperRight() {    return (_x + _w);    };
+    inline uint32_t xCornerLowerLeft() {     return _x;    };
+    inline uint32_t xCornerLowerRight() {    return (_x + _w);    };
+    inline uint32_t yCornerUpperLeft() {     return _y;    };
+    inline uint32_t yCornerUpperRight() {    return _y;    };
+    inline uint32_t yCornerLowerLeft() {     return (_y + _h);    };
+    inline uint32_t yCornerLowerRight() {    return (_y + _h);    };
+
+    // These terrible inlines calculate the internal bounds of the renderable
+    //   area after borders and margin have been taken into account.
+    inline uint16_t internalPosX() {     return (_x + _mrgn_l + _bordr_l);  };
+    inline uint16_t internalPosY() {     return (_y + _mrgn_t + _bordr_t);  };
+    inline uint16_t internalWidth() {    return (_w - (_mrgn_r + _bordr_r + _mrgn_l + _bordr_l));   };
+    inline uint16_t internalHeight() {   return (_h - (_mrgn_t + _bordr_t + _mrgn_b + _bordr_b));   };
 
     /* Does the given point fall on this region? */
     bool includesPoint(const uint32_t x, const uint32_t y) {
       return ((x >= _x) && (x < (_x + _w)) && (y >= _y) && (y < (_y + _h)));
     };
+
+    // GfxUILayout flowInternal() {
+    //   return GfxUILayout(
+    //     internalPosX(), internalPosY(),
+    //     internalWidth(), internalHeight(),
+    //     0, 0, 0, 0,
+    //     0, 0, 0, 0               // Border_px(t, b, l, r)
+    //   );
+    // };
 
 
     /* Static utility methods for automating flows during view construction. */
@@ -243,14 +268,6 @@ class GfxUILayout {
     uint8_t  _bordr_b; // How many pixels should be the drawn border?
     uint8_t  _bordr_l; // How many pixels should be the drawn border?
     uint8_t  _bordr_r; // How many pixels should be the drawn border?
-    //FlagContainer32 _flags;
-
-    // These terrible inlines calculate the internal bounds of the renderable
-    //   area after borders and margin have been taken into account.
-    inline uint32_t _internal_PosX() {    return (_x + _mrgn_l + _bordr_l);  };
-    inline uint32_t _internal_PosY() {    return (_y + _mrgn_t + _bordr_t);  };
-    inline uint16_t _internal_Width() {   return (_w - (_mrgn_r + _bordr_r + _mrgn_l + _bordr_l));   };
-    inline uint16_t _internal_Height() {  return (_h - (_mrgn_t + _bordr_t + _mrgn_b + _bordr_b));   };
 };
 
 
@@ -308,7 +325,7 @@ class GfxUIElement : public GfxUILayout {
     };
 
     inline void fill(UIGfxWrapper* ui_gfx, uint32_t color) {
-      ui_gfx->img()->fillRect(_internal_PosX(), _internal_PosY(), _internal_Width(), _internal_Height(), color);
+      ui_gfx->img()->fillRect(internalPosX(), internalPosY(), internalWidth(), internalHeight(), color);
     };
 
     void reposition(uint32_t x, uint32_t y);
@@ -374,6 +391,7 @@ class GfxUIElement : public GfxUILayout {
 * Tail-inclusions to bring in the specific modules written around the API above.
 *******************************************************************************/
 #include "GfxUI/GfxUIKit.h"
+#include "GfxUI/GfxUIKeyValuePair.h"
 #include "GfxUI/GfxUIGraphing.h"
 #include "GfxUI/GfxUICryptoBurrito.h"
 

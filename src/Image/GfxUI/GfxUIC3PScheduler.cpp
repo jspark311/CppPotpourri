@@ -20,8 +20,8 @@ GfxUIC3PScheduler::GfxUIC3PScheduler(const GfxUILayout lay, const GfxUIStyle sty
   _pane_schedules(0, 0, 0, 0),
   _txt(
     GfxUILayout(
-      _internal_PosX(), _internal_PosY(),
-      _internal_Width(), 64,
+      internalPosX(), internalPosY(),
+      internalWidth(), 64,
       1, 0, 0, 0,   // Margins_px(t, b, l, r)
       0, 0, 0, 0    // Border_px(t, b, l, r)
     ),
@@ -31,10 +31,10 @@ GfxUIC3PScheduler::GfxUIC3PScheduler(const GfxUILayout lay, const GfxUIStyle sty
     "Service Loop",
     &(C3PScheduler::getInstance()->profiler_service),
     GfxUILayout(
-      _internal_PosX(), (_txt.elementPosY() + _txt.elementHeight()),
-      _internal_Width(), 32,
+      internalPosX(), (_txt.elementPosY() + _txt.elementHeight()),
+      internalWidth(), 32,
       1, 0, 0, 0,   // Margins_px(t, b, l, r)
-      0, 0, 0, 0    // Border_px(t, b, l, r)
+      0, 0, 0, 1    // Border_px(t, b, l, r)
     ),
     sty
   ),
@@ -42,8 +42,8 @@ GfxUIC3PScheduler::GfxUIC3PScheduler(const GfxUILayout lay, const GfxUIStyle sty
     "Deadband",
     &(C3PScheduler::getInstance()->profiler_service),
     GfxUILayout(
-      _internal_PosX(), (_sw_svc_loop.elementPosY() + _sw_svc_loop.elementHeight()),
-      _internal_Width(), 32,
+      internalPosX(), (_sw_svc_loop.elementPosY() + _sw_svc_loop.elementHeight()),
+      internalWidth(), 32,
       1, 0, 0, 0,   // Margins_px(t, b, l, r)
       0, 0, 0, 0    // Border_px(t, b, l, r)
     ),

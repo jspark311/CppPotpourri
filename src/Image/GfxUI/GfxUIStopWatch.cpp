@@ -22,10 +22,10 @@ GfxUIStopWatch::GfxUIStopWatch(const char* name, StopWatch* sw, const GfxUILayou
 int GfxUIStopWatch::_render(UIGfxWrapper* ui_gfx) {
   const uint32_t MIN_MAX_LR_MARGIN = 4;
 
-  uint32_t i_x = _internal_PosX();
-  uint32_t i_y = _internal_PosY();
-  uint16_t i_w = _internal_Width();
-  uint16_t i_h = _internal_Height();
+  uint32_t i_x = internalPosX();
+  uint32_t i_y = internalPosY();
+  uint16_t i_w = internalWidth();
+  uint16_t i_h = internalHeight();
 
   ui_gfx->img()->fillRect(i_x, i_y, i_w, i_h, _style.color_bg);
 
@@ -42,8 +42,9 @@ int GfxUIStopWatch::_render(UIGfxWrapper* ui_gfx) {
   line.clear();
 
   // Show the tag.
+  ui_gfx->img()->setTextSize(_style.text_size-1);
   ui_gfx->img()->setCursor(i_x, (i_y + 1 + NAME_TXT_H_PIX));
-  ui_gfx->img()->setTextColor(0xFFFFFF);
+  ui_gfx->img()->setTextColor(0xFFFFFF, _style.color_bg);
   line.concatf("Tag: 0x%08x", _stopwatch->tag());
   ui_gfx->img()->writeString(&line);
   line.clear();
@@ -68,7 +69,7 @@ int GfxUIStopWatch::_render(UIGfxWrapper* ui_gfx) {
     // Annotate the bar with the best and worst run times.
     const uint32_t MIN_MAX_Y_POS = i_y + (b_h >> 1) - (SCALE_TXT_H_PIX >> 1);
     ui_gfx->img()->setCursor((b_x + MIN_MAX_LR_MARGIN), MIN_MAX_Y_POS);
-    ui_gfx->img()->setTextColor(0xFFFFFF);
+    ui_gfx->img()->setTextColor(0xFFFFFF, _style.color_bg);
     line.concatf("%u us", _stopwatch->bestTime());
     ui_gfx->img()->writeString(&line);
     line.clear();
@@ -97,7 +98,7 @@ int GfxUIStopWatch::_render(UIGfxWrapper* ui_gfx) {
       const uint32_t SCALE_TXT_WC_X_PIX = (b_x + 1 + (b_w - str_bounds_w));
       const uint32_t CONSTRAINED_CURSOR_X = strict_min((b_x + (uint32_t) (PRCNT_MEAN * (b_w - 2))), SCALE_TXT_WC_X_PIX);
       ui_gfx->img()->setCursor(CONSTRAINED_CURSOR_X, s_y);
-      ui_gfx->img()->setTextColor(0x606060);
+      ui_gfx->img()->setTextColor(0x606060, _style.color_bg);
       ui_gfx->img()->writeString(&line);
       line.clear();
     }
@@ -112,14 +113,14 @@ int GfxUIStopWatch::_render(UIGfxWrapper* ui_gfx) {
       const uint32_t SCALE_TXT_WC_X_PIX = (b_x + (b_w - str_bounds_w));
       const uint32_t CONSTRAINED_CURSOR_X = strict_min((b_x + (uint32_t) (PRCNT_LAST * (b_w - 2))), SCALE_TXT_WC_X_PIX);
       ui_gfx->img()->setCursor(CONSTRAINED_CURSOR_X, s_y);
-      ui_gfx->img()->setTextColor(0xF03030);
+      ui_gfx->img()->setTextColor(0xF03030, _style.color_bg);
       ui_gfx->img()->writeString(&line);
       line.clear();
     }
   }
   else {
     ui_gfx->img()->setCursor(b_x, i_y);
-    ui_gfx->img()->setTextColor(0xFFFFFF);
+    ui_gfx->img()->setTextColor(0xFFFFFF, _style.color_bg);
     line.concat("No data");
     ui_gfx->img()->writeString(&line);
     line.clear();

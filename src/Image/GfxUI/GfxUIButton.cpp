@@ -15,8 +15,8 @@ Date:   2022.06.25
 int GfxUIButton::_render(UIGfxWrapper* ui_gfx) {
   uint32_t current_color = elementActive() ? _style.color_active : _style.color_inactive;
   ui_gfx->drawButton(
-    _internal_PosX(), _internal_PosY(),
-    _internal_Width(), _internal_Height(),
+    internalPosX(), internalPosY(),
+    internalWidth(), internalHeight(),
     current_color,
     pressed()
   );
@@ -61,7 +61,7 @@ int GfxUITextButton::_render(UIGfxWrapper* ui_gfx) {
   GfxUIButton::_render(ui_gfx);
   uint32_t current_color = elementActive() ? _style.color_active : _style.color_inactive;
   ui_gfx->img()->setTextSize(_style.text_size);
-  ui_gfx->img()->setCursor(_internal_PosX()+3, _internal_PosY()+3);   // TODO: Implement better text justification.
+  ui_gfx->img()->setCursor(internalPosX()+3, internalPosY()+3);   // TODO: Implement better text justification.
   ui_gfx->img()->setTextColor(
     (pressed() ? 0 : current_color),
     (pressed() ? current_color : 0)

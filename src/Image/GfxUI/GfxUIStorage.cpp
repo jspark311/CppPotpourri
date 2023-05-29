@@ -42,7 +42,7 @@ GfxUIDataRecord::GfxUIDataRecord(DataRecord* record, uint32_t x, uint32_t y, uin
   : GfxUIElement(x, y, w, h, (f | GFXUI_FLAG_ALWAYS_REDRAW)), _record(record),
   _tab_bar(
     GfxUILayout(
-      _internal_PosX(), _internal_PosY(), _internal_Width(), 20,
+      internalPosX(), internalPosY(), internalWidth(), 20,
       1, 1, 1, 0,
       0, 1, 0, 0               // Border_px(t, b, l, r)
     ),
@@ -59,7 +59,7 @@ GfxUIDataRecord::GfxUIDataRecord(DataRecord* record, uint32_t x, uint32_t y, uin
   ),
   _txt(
     GfxUILayout(
-      _internal_PosX(), (_internal_PosY() + _tab_bar.elementHeight()), _internal_Width(), (_internal_Height() - _tab_bar.elementHeight()),
+      internalPosX(), (internalPosY() + _tab_bar.elementHeight()), internalWidth(), (internalHeight() - _tab_bar.elementHeight()),
       1, 1, 1, 1,
       0, 0, 0, 0               // Border_px(t, b, l, r)
     ),

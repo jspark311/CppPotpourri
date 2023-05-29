@@ -22,7 +22,7 @@ GfxUIMLink::GfxUIMLink(const GfxUILayout lay, const GfxUIStyle sty, M2MLink* l, 
   _content_ses(0, 0, 0, 0),
   _btn_conf_syncast(
     GfxUILayout(
-      _internal_PosX(), (_internal_PosY() + 30),
+      internalPosX(), (internalPosY() + 30),
       130, ((sty.text_size * 8) + 12),  // TODO: Better, but still arbitrary.
       2, 0, 0, 0,   // Margins_px(t, b, l, r)
       0, 0, 0, 0    // Border_px(t, b, l, r)
@@ -40,7 +40,7 @@ GfxUIMLink::GfxUIMLink(const GfxUILayout lay, const GfxUIStyle sty, M2MLink* l, 
   ),
   _btn_msg_send_sync(
     GfxUILayout(
-      _internal_PosX(), (_btn_conf_syncast.elementPosY() + _btn_conf_syncast.elementHeight()),
+      internalPosX(), (_btn_conf_syncast.elementPosY() + _btn_conf_syncast.elementHeight()),
       130, ((sty.text_size * 8) + 12),  // TODO: Better, but still arbitrary.
       2, 0, 0, 0,   // Margins_px(t, b, l, r)
       0, 0, 0, 0    // Border_px(t, b, l, r)
@@ -49,7 +49,7 @@ GfxUIMLink::GfxUIMLink(const GfxUILayout lay, const GfxUIStyle sty, M2MLink* l, 
   ),
   _btn_ses_hangup(
     GfxUILayout(
-      _internal_PosX(), (_btn_msg_send_sync.elementPosY() + _btn_msg_send_sync.elementHeight()),
+      internalPosX(), (_btn_msg_send_sync.elementPosY() + _btn_msg_send_sync.elementHeight()),
       130, ((sty.text_size * 8) + 12),  // TODO: Better, but still arbitrary.
       2, 0, 0, 0,   // Margins_px(t, b, l, r)
       0, 0, 0, 0    // Border_px(t, b, l, r)
@@ -58,8 +58,8 @@ GfxUIMLink::GfxUIMLink(const GfxUILayout lay, const GfxUIStyle sty, M2MLink* l, 
   ),
   _txt(
     GfxUILayout(
-      _internal_PosX(), _internal_PosY(),
-      _internal_Width(), (_internal_Height() - _tab_bar.elementHeight()),
+      internalPosX(), internalPosY(),
+      internalWidth(), (internalHeight() - _tab_bar.elementHeight()),
       1, 0, 0, 0,   // Margins_px(t, b, l, r)
       0, 0, 0, 0    // Border_px(t, b, l, r)
     ),
@@ -71,8 +71,8 @@ GfxUIMLink::GfxUIMLink(const GfxUILayout lay, const GfxUIStyle sty, M2MLink* l, 
     _content_conf.add_child(
       new GfxUIIdentity(
         GfxUILayout(
-          _internal_PosX(), _internal_PosY()+_tab_bar.elementHeight(),
-          _internal_Width(), (_internal_Height() - _tab_bar.elementHeight()),
+          internalPosX(), internalPosY()+_tab_bar.elementHeight(),
+          internalWidth(), (internalHeight() - _tab_bar.elementHeight()),
           1, 0, 0, 0,   // Margins_px(t, b, l, r)
           0, 0, 0, 0    // Border_px(t, b, l, r)
         ),

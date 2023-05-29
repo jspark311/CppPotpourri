@@ -16,8 +16,8 @@ GfxUIIdentity::GfxUIIdentity(const GfxUILayout lay, const GfxUIStyle sty, Identi
   GfxUIElement(lay, sty, f), _ident(id),
   _txt_handle(
     GfxUILayout(
-      _internal_PosX(), _internal_PosY(),
-      _internal_Width(), (sty.text_size * 8),  // TODO: Better, but still arbitrary.
+      internalPosX(), internalPosY(),
+      internalWidth(), (sty.text_size * 8),  // TODO: Better, but still arbitrary.
       1, 1, 1, 1,
       0, 0, 0, 0               // Border_px(t, b, l, r)
     ),
@@ -33,8 +33,8 @@ GfxUIIdentity::GfxUIIdentity(const GfxUILayout lay, const GfxUIStyle sty, Identi
   ),
   _txt_format(
     GfxUILayout(
-      _internal_PosX(), (_txt_handle.elementPosY() + _txt_handle.elementHeight()),
-      _internal_Width(), (sty.text_size * 8),  // TODO: Better, but still arbitrary.
+      internalPosX(), (_txt_handle.elementPosY() + _txt_handle.elementHeight()),
+      internalWidth(), (sty.text_size * 8),  // TODO: Better, but still arbitrary.
       1, 1, 1, 1,
       0, 0, 0, 0               // Border_px(t, b, l, r)
     ),
@@ -51,9 +51,9 @@ GfxUIIdentity::GfxUIIdentity(const GfxUILayout lay, const GfxUIStyle sty, Identi
   _txt_meta(
     GfxUILayout(
       _txt_format.elementPosX(), (_txt_format.elementPosY() + _txt_format.elementHeight()),
-      _internal_Width(), (sty.text_size * 8),  // TODO: Better, but still arbitrary.
+      internalWidth(), (sty.text_size * 8),  // TODO: Better, but still arbitrary.
       //(_txt_format.elementPosX() + _txt_format.elementWidth()), (_txt_format.elementPosY() + _txt_format.elementHeight()),
-      //(_internal_Width()-30), (sty.text_size * 8),  // TODO: Better, but still arbitrary.
+      //(internalWidth()-30), (sty.text_size * 8),  // TODO: Better, but still arbitrary.
       1, 1, 1, 1,
       0, 0, 0, 0               // Border_px(t, b, l, r)
     ),

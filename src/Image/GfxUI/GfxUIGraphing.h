@@ -56,8 +56,8 @@ template <class T> class GfxUITimeSeriesDetail : public GfxUITabbedContentPane {
       _skipped_samples(0),
       _pane_data(
         GfxUILayout(
-          _internal_PosX(), (_internal_PosY() + _tab_bar.elementHeight()),
-          _internal_Width(), (_internal_Height() - _tab_bar.elementHeight()),
+          internalPosX(), (internalPosY() + _tab_bar.elementHeight()),
+          internalWidth(), (internalHeight() - _tab_bar.elementHeight()),
           1, 0, 0, 0,   // Margins_px(t, b, l, r)
           0, 0, 0, 0               // Border_px(t, b, l, r)
         ),
@@ -67,8 +67,8 @@ template <class T> class GfxUITimeSeriesDetail : public GfxUITabbedContentPane {
       ),
       _pane_stats(
         GfxUILayout(
-          _internal_PosX(), (_internal_PosY() + _tab_bar.elementHeight()),
-          _internal_Width(), (_internal_Height() - _tab_bar.elementHeight()),
+          internalPosX(), (internalPosY() + _tab_bar.elementHeight()),
+          internalWidth(), (internalHeight() - _tab_bar.elementHeight()),
           1, 0, 0, 0,   // Margins_px(t, b, l, r)
           0, 0, 0, 0               // Border_px(t, b, l, r)
         ),

@@ -13,10 +13,10 @@ Date:   2022.06.25
 
 template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
   int ret = 0;
-  uint32_t i_x = _internal_PosX();
-  uint32_t i_y = _internal_PosY();
-  uint16_t i_w = _internal_Width();
-  uint16_t i_h = _internal_Height();
+  uint32_t i_x = internalPosX();
+  uint32_t i_y = internalPosY();
+  uint16_t i_w = internalWidth();
+  uint16_t i_h = internalHeight();
   ui_gfx->img()->setTextSize(_style.text_size);
   if ((_filter->dirty() | underPointer()) && _filter->windowFull()) {
     const uint32_t  DATA_SIZE = _filter->windowSize();
@@ -75,10 +75,10 @@ template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
 
 template <> int GfxUISensorFilter<float>::_render(UIGfxWrapper* ui_gfx) {
   int ret = 0;
-  uint32_t i_x = _internal_PosX();
-  uint32_t i_y = _internal_PosY();
-  uint16_t i_w = _internal_Width();
-  uint16_t i_h = _internal_Height();
+  uint32_t i_x = internalPosX();
+  uint32_t i_y = internalPosY();
+  uint16_t i_w = internalWidth();
+  uint16_t i_h = internalHeight();
   ui_gfx->img()->setTextSize(_style.text_size);
   if ((_filter->dirty() | underPointer()) && _filter->windowFull()) {
     const uint32_t  DATA_SIZE = _filter->windowSize();

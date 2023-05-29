@@ -29,8 +29,8 @@ int GfxUIMagnifier::setBoands(float min_mag, float max_mag) {
 
 
 int GfxUIMagnifier::_render(UIGfxWrapper* ui_gfx) {
-  const int   INSET_FEED_SIZE_X = (_internal_Width()  / _scale);
-  const int   INSET_FEED_SIZE_Y = (_internal_Height() / _scale);
+  const int   INSET_FEED_SIZE_X = (internalWidth()  / _scale);
+  const int   INSET_FEED_SIZE_Y = (internalHeight() / _scale);
   const int   INSET_FEED_OFFSET_X = (INSET_FEED_SIZE_X/2) + 1;
   const int   INSET_FEED_OFFSET_Y = (INSET_FEED_SIZE_Y/2) + 1;
   const uint32_t INSET_X_POS = (ui_gfx->img()->x() - elementWidth()) - 1;

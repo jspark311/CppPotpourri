@@ -17,11 +17,11 @@ Date:   2023.04.08
 */
 GfxUICryptoRNG::GfxUICryptoRNG(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f) :
   GfxUIElement(lay, sty, f),
-  _rng_buffer(_internal_Width(), FilteringStrategy::RAW),
+  _rng_buffer(internalWidth(), FilteringStrategy::RAW),
   _vis_0(
     GfxUILayout(
-      _internal_PosX(), _internal_PosY(),
-      _internal_Width(), (_internal_Height() >> 1),
+      internalPosX(), internalPosY(),
+      internalWidth(), (internalHeight() >> 1),
       1, 0, 0, 0,   // Margins_px(t, b, l, r)
       1, 0, 0, 0    // Border_px(t, b, l, r)
     ),
@@ -79,8 +79,8 @@ bool GfxUICryptoRNG::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, 
 
 PollingResult GfxUICryptoRNG::poll() {
   PollingResult ret = PollingResult::NO_ACTION;
-  if (_rng_buffer.windowSize() != _internal_Width()) {
-    if (0 != _rng_buffer.windowSize(_internal_Width())) {
+  if (_rng_buffer.windowSize() != internalWidth()) {
+    if (0 != _rng_buffer.windowSize(internalWidth())) {
       ret = PollingResult::ERROR;
     }
   }
@@ -100,6 +100,8 @@ PollingResult GfxUICryptoRNG::poll() {
 int GfxUICryptoBurrito::_render(UIGfxWrapper* ui_gfx) {
   return GfxUITabbedContentPane::_render(ui_gfx);
 }
+
+
 
 //bool GfxUICryptoBurrito::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
 //  bool ret = false;

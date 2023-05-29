@@ -83,10 +83,10 @@ int8_t GfxUITabBar::addTab(const char* txt, bool selected) {
   const uint32_t flgs_inact = 0;
   const uint32_t flgs_act   = (GFXUI_BUTTON_FLAG_STATE | GFXUI_FLAG_INACTIVE);
   const uint32_t BTN_COUNT = (uint32_t) _children.size() + 1;  // Recalculate width.
-  const uint32_t INTRNL_X = _internal_PosX();
-  const uint32_t INTRNL_Y = _internal_PosY();
-  const uint32_t INTRNL_H = _internal_Height();
-  const uint32_t NEW_UNIT_W = (_internal_Width()/BTN_COUNT);
+  const uint32_t INTRNL_X = internalPosX();
+  const uint32_t INTRNL_Y = internalPosY();
+  const uint32_t INTRNL_H = internalHeight();
+  const uint32_t NEW_UNIT_W = (internalWidth()/BTN_COUNT);
 
   GfxUIButton* n_btn = new GfxUITextButton(
     GfxUILayout(
@@ -157,8 +157,8 @@ GfxUITabbedContentPane::GfxUITabbedContentPane(const GfxUILayout lay, const GfxU
   GfxUIElement(lay, sty, f),
   _tab_bar(
     GfxUILayout(
-      _internal_PosX(), _internal_PosY(),
-      _internal_Width(), ((sty.text_size * 8) + 12),  // TODO: Better, but still arbitrary.
+      internalPosX(), internalPosY(),
+      internalWidth(), ((sty.text_size * 8) + 12),  // TODO: Better, but still arbitrary.
       1, 1, 1, 0,
       0, 1, 0, 0               // Border_px(t, b, l, r)
     ),
@@ -213,10 +213,10 @@ bool GfxUITabbedContentPane::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint
 int8_t GfxUITabbedContentPane::addTab(const char* txt, GfxUIElement* content, bool selected) {
   int8_t ret = -1;
   if (0 == _tab_bar.addTab(txt, selected)) {
-    const uint32_t INTRNL_X = _internal_PosX();
-    const uint32_t INTRNL_Y = _internal_PosY() + _tab_bar.elementHeight();
-    const uint32_t INTRNL_W = _internal_Width();
-    const uint32_t INTRNL_H = _internal_Height() - _tab_bar.elementHeight();
+    const uint32_t INTRNL_X = internalPosX();
+    const uint32_t INTRNL_Y = internalPosY() + _tab_bar.elementHeight();
+    const uint32_t INTRNL_W = internalWidth();
+    const uint32_t INTRNL_H = internalHeight() - _tab_bar.elementHeight();
     content->reposition(INTRNL_X, INTRNL_Y);
     content->resize(INTRNL_W, INTRNL_H);
     content->elementActive(selected);

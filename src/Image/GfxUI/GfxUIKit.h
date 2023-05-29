@@ -94,6 +94,7 @@ class GfxUIButton : public GfxUIElement {
   protected:
 };
 
+
 /* A button with text. */
 class GfxUITextButton : public GfxUIButton {
   public:
@@ -106,6 +107,7 @@ class GfxUITextButton : public GfxUIButton {
   protected:
     const char* _TXT;
 };
+
 
 
 /*******************************************************************************
@@ -239,13 +241,15 @@ class GfxUITextArea : public GfxUIElement, public BufferAccepter {
     inline bool wrapWords() {        return _class_flag(GFXUI_TXTAREA_FLAG_WORD_WRAP);   };
     inline void scrollable(bool x) { _class_set_flag(GFXUI_TXTAREA_FLAG_SCROLLABLE, x);  };
     inline bool scrollable() {       return _class_flag(GFXUI_TXTAREA_FLAG_SCROLLABLE);  };
+    inline void scrollbackLength(uint32_t x) {  _max_scrollback_bytes = x;     };
+    inline bool scrollbackLength() {            return _max_scrollback_bytes;  };
     void clear();
 
 
   private:
     uint32_t _cursor_x = 0;  // Location of the next character.
     uint32_t _cursor_y = 0;  // Location of the next character.
-    uint32_t _max_scrollback_bytes = 600;   // Tokenized strings
+    uint32_t _max_scrollback_bytes = 600;   //
     uint32_t _max_cols = 0;  // Maximum number of columns that will fit in render area.
     uint16_t _max_rows = 0;  // Maximum number of lines that will fit in render area.
     uint16_t _top_line = 0;  // Which line index is at the top of the render?
@@ -281,24 +285,6 @@ class GfxUI3AxisRender : public GfxUIElement, public TripleAxisPipe {
 * Data and module control.
 * These act as state and control breakouts for specific kinds of objects in C3P.
 *******************************************************************************/
-
-/*******************************************************************************
-* Graphical tool for looking at KVP data.
-*******************************************************************************/
-class GfxUIKeyValuePair : public GfxUIElement {
-  public:
-    GfxUIKeyValuePair(const GfxUILayout lay, const GfxUIStyle sty, GfxUIKeyValuePair* kvp, uint32_t f = 0);
-    ~GfxUIKeyValuePair() {};
-
-    /* Implementation of GfxUIElement. */
-    virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
-
-
-  private:
-    KeyValuePair* _kvp;
-};
-
 
 /*******************************************************************************
 * Graphical representations for identities

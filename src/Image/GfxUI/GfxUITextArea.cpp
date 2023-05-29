@@ -14,10 +14,10 @@ Date:   2022.06.25
 
 int GfxUITextArea::_render(UIGfxWrapper* ui_gfx) {
   uint32_t next_row   = 0;
-  uint32_t i_x = _internal_PosX();
-  uint32_t i_y = _internal_PosY();
-  uint16_t i_w = _internal_Width();
-  uint16_t i_h = _internal_Height();
+  uint32_t i_x = internalPosX();
+  uint32_t i_y = internalPosY();
+  uint16_t i_w = internalWidth();
+  uint16_t i_h = internalHeight();
   ui_gfx->img()->setTextSize(_style.text_size);
   ui_gfx->img()->setTextColor(_style.color_active, _style.color_bg);
   uint16_t y_adv = ui_gfx->img()->getFontHeight();
