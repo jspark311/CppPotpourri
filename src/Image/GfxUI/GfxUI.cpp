@@ -107,6 +107,10 @@ int GfxUIElement::_add_child(GfxUIElement* chld) {
   return _children.insert(chld);
 }
 
+int GfxUIElement::_remove_child(GfxUIElement* chld) {
+  return (_children.remove(chld) ? 0 : -1);
+}
+
 
 bool GfxUIElement::notify(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;

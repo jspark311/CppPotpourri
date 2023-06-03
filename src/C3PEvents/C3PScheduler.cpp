@@ -35,15 +35,26 @@ C3PScheduler* C3PScheduler::getInstance() {
 
 int8_t C3PSchedule::execute() {
   _executing = true;
+  const unsigned int NOW = micros();
   profiler.markStart();
   int8_t ret = _execute();
-  if (_enabled & (0 < _recurrances)) {
-    _recurrances--;
+  if (_enabled) {
+    if (0 < _recurrences) {
+      _recurrences--;
+    }
+    if (0 == _recurrences) {
+      _enabled = false;
+    }
+    _last_exec = NOW;
+  }
+
+  if (willRunAgain()) {
+    _exec_at = (_period + NOW);
   }
   else {
-    _enabled = false;
     _exec_at = 0;
   }
+
   profiler.markStop();
   _executing = false;
   return ret;
@@ -70,8 +81,8 @@ void C3PSchedule::delay() {
 
 
 bool C3PSchedule::willRunAgain() {
-  bool ret = (_enabled & (0 < _recurrances));
-  ret |= (_enabled & (-1 == _recurrances));
+  bool ret = (_enabled & (0 < _recurrences));
+  ret |= (_enabled & (-1 == _recurrences));
   return ret;
 }
 
@@ -79,9 +90,9 @@ bool C3PSchedule::willRunAgain() {
 void C3PSchedule::printSchedule(StringBuilder* output) {
   _print_schedule(output);
   output->concatf("\tPeriod:          %u\n", _period);
-  output->concat( "\tRecurrances:     ");
-  if (-1 == _recurrances) {   output->concat("forever\n");            }
-  else {                      output->concatf("%d\n", _recurrances);  }
+  output->concat( "\trecurrences:     ");
+  if (-1 == _recurrences) {   output->concat("forever\n");            }
+  else {                      output->concatf("%d\n", _recurrences);  }
 
   if (willRunAgain()) {
     output->concatf("\tNext execution:  %u (%uus from now)\n", _exec_at, wrap_accounted_delta(_exec_at, (unsigned int) micros()));
@@ -106,7 +117,9 @@ int8_t C3PScheduledPolling::_execute() {
 }
 
 void C3PScheduledPolling::_print_schedule(StringBuilder* output) {
-  StringBuilder::styleHeader1(output, "ScheduledPolling");
+  StringBuilder header_content(_handle);
+  header_content.concat(" (ScheduledPolling)");
+  StringBuilder::styleHeader2(output, (char*) header_content.string());
 }
 
 
@@ -118,7 +131,9 @@ int8_t C3PScheduledLambda::_execute() {
 }
 
 void C3PScheduledLambda::_print_schedule(StringBuilder* output) {
-  StringBuilder::styleHeader1(output, "ScheduledLambda");
+  StringBuilder header_content(_handle);
+  header_content.concat(" (ScheduledLambda)");
+  StringBuilder::styleHeader2(output, (char*) header_content.string());
 }
 
 
@@ -161,6 +176,11 @@ int8_t C3PScheduler::removeSchedule(C3PSchedule* sch) {
   int8_t ret = -1;
   // TODO
   return ret;
+}
+
+
+bool C3PScheduler::containsSchedule(C3PSchedule* sched) {
+  return _active.contains(sched);
 }
 
 

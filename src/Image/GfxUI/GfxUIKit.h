@@ -40,7 +40,8 @@ class GfxUIGroup : public GfxUIElement {
     GfxUIGroup(GfxUILayout* layout, uint32_t f = 0) : GfxUIElement(layout, f) {};
     ~GfxUIGroup() {};
 
-    inline int add_child(GfxUIElement* element) {    return _add_child(element);  };
+    inline int add_child(GfxUIElement* element) {     return _add_child(element);     };
+    inline int remove_child(GfxUIElement* element) {  return _remove_child(element);  };
 
     /* Implementation of GfxUIElement. */
     // This class has no rendering tasks, and doesn't respond to user input.
@@ -363,6 +364,25 @@ class GfxUIStopWatch : public GfxUIElement {
 };
 
 
+/* A discrete Schedule. */
+class GfxUIC3PSchedule : public GfxUIElement {
+  public:
+    GfxUIC3PSchedule(C3PSchedule*, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
+    ~GfxUIC3PSchedule() {};
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+
+    inline C3PSchedule* getSchedule() {    return _sched;  };
+
+
+  private:
+    C3PSchedule*    _sched;
+    GfxUIStopWatch  _gfx_profiler;
+};
+
+
 /* The Scheduler itself. */
 class GfxUIC3PScheduler : public GfxUITabbedContentPane {
   public:
@@ -375,26 +395,12 @@ class GfxUIC3PScheduler : public GfxUITabbedContentPane {
 
 
   private:
+    PriorityQueue<GfxUIC3PSchedule*> _dyn_elements;
     GfxUIGroup    _pane_info;
     GfxUIGroup    _pane_schedules;
     GfxUITextArea _txt;
     GfxUIStopWatch  _sw_svc_loop;
     GfxUIStopWatch  _sw_deadband;
-};
-
-/* A discrete Schedule. */
-class GfxUIC3PSchedule : public GfxUIElement {
-  public:
-    GfxUIC3PSchedule(const unsigned int ID, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
-    ~GfxUIC3PSchedule() {};
-
-    /* Implementation of GfxUIElement. */
-    virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
-
-
-  private:
-    const uint32_t _SID;   // The schedule's ID in the scheduler.
 };
 
 

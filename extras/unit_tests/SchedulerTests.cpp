@@ -45,6 +45,7 @@ unsigned int  marker_sch_1     = 0;
 *******************************************************************************/
 // This schedule runs 5 times exactly.
 C3PScheduledLambda schedule_test_0(
+  "test_0",
   5000, 5, true,
   []() {
     marker_sch_0++;
@@ -54,6 +55,7 @@ C3PScheduledLambda schedule_test_0(
 
 // This schedule runs forever, and is use to check infinite recycle.
 C3PScheduledLambda schedule_test_1(
+  "test_1",
   250000, -1, true,
   []() {
     marker_sch_1++;

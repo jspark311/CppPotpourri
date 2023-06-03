@@ -363,6 +363,7 @@ class GfxUIElement : public GfxUILayout {
     virtual ~GfxUIElement() {};
 
     int _add_child(GfxUIElement*);
+    int _remove_child(GfxUIElement*);
     //int8_t _reflow(GfxUILayout);   // TODO: Now that laytouts are working well, automate their flows.
 
     /* These are the obligate overrides. */

@@ -29,7 +29,7 @@ GfxUICryptoRNG::GfxUICryptoRNG(const GfxUILayout lay, const GfxUIStyle sty, uint
     &_rng_buffer,
     (GFXUI_FLAG_ALWAYS_REDRAW)
   ),
-  _schedule_rng_update(55000, -1, true, this)
+  _schedule_rng_update("rng_update", 55000, -1, true, this)
 {
   _add_child(&_vis_0);
   C3PScheduler::getInstance()->addSchedule(&_schedule_rng_update);

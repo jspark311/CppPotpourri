@@ -48,9 +48,10 @@ limitations under the License.
 *      in an async schedule regardless.
 *   2) Do not write schedules with periods shorter than their own worst-case
 *      execution times. Insertion into the Scheduler's execution queue is
-*      idempotent until the schedule is service (double-adds are disallowed).
+*      idempotent until the schedule is serviced (double-adds are disallowed).
 *
-* NOTE: If (_recurrances == -1), then the schedule recurs for as long as
+*
+* NOTE: If (_recurrences == -1), then the schedule recurs for as long as
 *   it remains enabled. If the value is zero, the schedule is disabled upon
 *   successful execution. If the value is anything else, the schedule remains
 *   enabled and this value is decremented.
@@ -68,10 +69,17 @@ class C3PSchedule {
     //inline int8_t     executeNow() {       return -1;   };
     inline bool         enabled() {                 return _enabled;      };
     inline void         enabled(bool x) {           _enabled = x;         };
-    inline int32_t      recurrence() {              return _recurrances;  };
-    inline void         recurrence(int32_t x) {     _recurrances = x;     };
+    inline int32_t      recurrence() {              return _recurrences;  };
+    inline void         recurrence(int32_t x) {     _recurrences = x;     };
     inline unsigned int period() {                  return _period;       };
     inline void         period(unsigned int x) {    _period = x;          };
+    inline bool         executingNow() {            return _executing;    };
+    inline unsigned int lastExec() {                return _last_exec;    };
+    inline unsigned int nextExec() {                return _exec_at;      };
+    inline const char*  handle() {                  return _handle;       };
+
+    /* A valid schedule has a non-zero period. That is the only criteria. */
+    inline bool valid() {    return (0 != _period);  };
 
     int8_t execute();
     void delay(unsigned int by_us); // Set the schedule's TTW to the given value this execution only.
@@ -81,11 +89,14 @@ class C3PSchedule {
 
 
   protected:
-    C3PSchedule(const uint32_t PERIOD, const int32_t RECURANCES, const bool ENABLED) :
+    const char*  _handle;         // Handle for the task.
+
+    C3PSchedule(const char* HANDLE, const uint32_t PERIOD, const int32_t RECURRENCES, const bool ENABLED) :
+      _handle(HANDLE),
       _last_exec(0),
       _exec_at(0),
       _period(PERIOD),
-      _recurrances(RECURANCES),
+      _recurrences(RECURRENCES),
       _enabled(ENABLED),
       _executing(false) {};
 
@@ -95,13 +106,14 @@ class C3PSchedule {
 
 
   private:
-    friend class C3PScheduler;  // Scheduler itself is allowed access to all members.
+    friend class C3PScheduler;    // Scheduler itself is allowed access to all members.
     unsigned int _last_exec;      // At what time was the last execution?
     unsigned int _exec_at;        // At what time will be the next execution?
     unsigned int _period;         // How often does this schedule execute?
-    int32_t      _recurrances;    // How many times will execution occur? See notes.
+    int32_t      _recurrences;    // How many times will execution occur? See notes.
     bool         _enabled;        // If true, this schedule will be processed.
     bool         _executing;      // If true, this schedule is presently executing.
+    //bool       _wrap_control;   // If true, the next execution time will happen after a timer wrap.
     //bool       _run_in_isr;     // If true, this schedule will be processed in the ISR stack frame. Very dangerous.
     //bool       _autoclear;      // If true, this schedule will be removed after its last execution.
 };
@@ -116,8 +128,8 @@ class C3PSchedule {
 */
 class C3PScheduledPolling : public C3PSchedule {
   public:
-    C3PScheduledPolling(const uint32_t PERIOD, const int32_t RECURANCES, const bool ENABLED, PollableObj* obj) :
-      C3PSchedule(PERIOD, RECURANCES, ENABLED), _pollable_obj(obj) {};
+    C3PScheduledPolling(const char* HANDLE, const uint32_t PERIOD, const int32_t RECURRENCES, const bool ENABLED, PollableObj* obj) :
+      C3PSchedule(HANDLE, PERIOD, RECURRENCES, ENABLED), _pollable_obj(obj) {};
 
     virtual ~C3PScheduledPolling() {};
 
@@ -136,8 +148,8 @@ class C3PScheduledPolling : public C3PSchedule {
 */
 class C3PScheduledLambda : public C3PSchedule {
   public:
-    C3PScheduledLambda(const uint32_t PERIOD, const int32_t RECURANCES, const bool ENABLED, std::function<int8_t(void)> lam) :
-      C3PSchedule(PERIOD, RECURANCES, ENABLED), _fxn_lambda(lam) {};
+    C3PScheduledLambda(const char* HANDLE, const uint32_t PERIOD, const int32_t RECURRENCES, const bool ENABLED, std::function<int8_t(void)> lam) :
+      C3PSchedule(HANDLE, PERIOD, RECURRENCES, ENABLED), _fxn_lambda(lam) {};
 
     virtual ~C3PScheduledLambda() {};
 
@@ -188,6 +200,7 @@ class C3PScheduler {
 
     int8_t addSchedule(C3PSchedule*);
     int8_t removeSchedule(C3PSchedule*);
+    bool   containsSchedule(C3PSchedule*);
     inline C3PSchedule* getScheduleByIndex(unsigned int idx) {   return _active.get(idx, false);   };
     inline unsigned int scheduleCount() {    return _active.count();    };
 
