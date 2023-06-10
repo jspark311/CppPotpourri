@@ -202,7 +202,7 @@ int GfxUIC3PSchedule::_render(UIGfxWrapper* ui_gfx) {
       }
       StringBuilder line;
       ui_gfx->img()->setTextColor(0xe0e0e0, _style.color_bg);
-      line.concatf("Last executed %u us ago", (micros() - _sched->lastExec()));
+      line.concatf("Last executed %u us ago        ", (micros() - _sched->lastExec()));
       ui_gfx->img()->writeString(&line);
       line.clear();
 
@@ -216,7 +216,7 @@ int GfxUIC3PSchedule::_render(UIGfxWrapper* ui_gfx) {
         line.concat("Recurrence: Forever");
       }
       else {
-        line.concatf("Recurrence: %d",    _sched->recurrence());
+        line.concatf("Recurrence: %d      ",    _sched->recurrence());
       }
       ui_gfx->img()->writeString(&line);
       ret = 1;
@@ -245,3 +245,9 @@ bool GfxUIC3PSchedule::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y
   }
   return ret;
 }
+
+
+
+/*******************************************************************************
+* GfxUIC3PSchedule
+*******************************************************************************/

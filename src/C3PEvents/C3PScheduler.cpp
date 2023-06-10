@@ -49,10 +49,13 @@ int8_t C3PSchedule::execute() {
   }
 
   if (willRunAgain()) {
+    const unsigned int OLD_EXEC_AT = _exec_at;
     _exec_at = (_period + NOW);
+    _wrap_control = (_exec_at < OLD_EXEC_AT);
   }
   else {
     _exec_at = 0;
+    _wrap_control = false;
   }
 
   profiler.markStop();
@@ -67,14 +70,18 @@ void C3PSchedule::delay(unsigned int by_us) {
       _exec_at = (unsigned int) micros();
       _enabled = true;
     }
+    const unsigned int OLD_EXEC_AT = _exec_at;
     _exec_at += by_us;
+    _wrap_control = (_exec_at < OLD_EXEC_AT);
   }
 }
 
 
 void C3PSchedule::delay() {
   if (!_executing) {
+    const unsigned int OLD_EXEC_AT = _exec_at;
     _exec_at = ((unsigned int) micros() + _period);
+    _wrap_control = (_exec_at < OLD_EXEC_AT);
     _enabled = true;
   }
 }
@@ -133,6 +140,30 @@ int8_t C3PScheduledLambda::_execute() {
 void C3PScheduledLambda::_print_schedule(StringBuilder* output) {
   StringBuilder header_content(_handle);
   header_content.concat(" (ScheduledLambda)");
+  StringBuilder::styleHeader2(output, (char*) header_content.string());
+}
+
+
+
+int8_t C3PScheduledJitterProbe::_execute() {
+  int8_t ret = 0;
+  if (jitter.initialized()) {
+    const unsigned int NOW = micros();
+    uint32_t wrapped_jitter = (NOW - nextExec());
+    if (nextExec() > NOW) {
+      wrapped_jitter = (nextExec() - NOW);
+    }
+    jitter.feedFilter(wrapped_jitter);
+  }
+  else {
+    jitter.init();
+  }
+  return ret;
+}
+
+void C3PScheduledJitterProbe::_print_schedule(StringBuilder* output) {
+  StringBuilder header_content(_handle);
+  header_content.concat(" (JitterProbe)");
   StringBuilder::styleHeader2(output, (char*) header_content.string());
 }
 

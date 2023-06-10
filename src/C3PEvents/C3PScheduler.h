@@ -28,6 +28,7 @@ limitations under the License.
 #include "../StringBuilder.h"
 #include "../CppPotpourri.h"
 #include "../FlagContainer.h"
+#include "../SensorFilter.h"
 #include "../StopWatch.h"
 #include "../PriorityQueue.h"
 #include "../ElementPool.h"
@@ -113,7 +114,7 @@ class C3PSchedule {
     int32_t      _recurrences;    // How many times will execution occur? See notes.
     bool         _enabled;        // If true, this schedule will be processed.
     bool         _executing;      // If true, this schedule is presently executing.
-    //bool       _wrap_control;   // If true, the next execution time will happen after a timer wrap.
+    bool         _wrap_control;   // If true, the next execution time will happen after a timer wrap.
     //bool       _run_in_isr;     // If true, this schedule will be processed in the ISR stack frame. Very dangerous.
     //bool       _autoclear;      // If true, this schedule will be removed after its last execution.
 };
@@ -182,6 +183,27 @@ class C3PScheduledLambda : public C3PSchedule {
 //    int8_t _execute();
 //    void _print_schedule(StringBuilder*);
 //};
+
+
+/**
+* A concrete type of Schedule used for profiling the Scheduler itself. This is a
+*   test fixture, and has no real purpose in deployed builds.
+*/
+class C3PScheduledJitterProbe : public C3PSchedule {
+  public:
+    SensorFilter<uint32_t>  jitter;
+
+    C3PScheduledJitterProbe(const char* HANDLE, const uint32_t PERIOD, const int32_t RECURRENCES, const bool ENABLED, std::function<int8_t(void)> lam) :
+      C3PSchedule(HANDLE, PERIOD, RECURRENCES, ENABLED), jitter(100, FilteringStrategy::RAW) {};
+
+    virtual ~C3PScheduledJitterProbe() {};
+
+
+  protected:
+    /* Obligate overrides from C3PSchedule... */
+    int8_t _execute();
+    void _print_schedule(StringBuilder*);
+};
 
 
 

@@ -141,6 +141,7 @@ void printTestFailure(const char* test) {
 #include "FSMTests.cpp"
 #include "SchedulerTests.cpp"
 #include "TestDataStructures.cpp"
+#include "SensorFilterTests.cpp"
 #include "ParsingConsoleTest.cpp"
 #include "IdentityTest.cpp"
 #include "M2MLinkTests.cpp"
@@ -159,10 +160,12 @@ int main(int argc, char *argv[]) {
     if (0 == fsm_test_main()) {
       if (0 == data_structure_main()) {
         if (0 == scheduler_tests_main()) {
-          if (0 == parsing_console_main()) {
-            if (0 == identity_main()) {
-              if (0 == manuvrlink_main()) {
-                exit_value = 0;
+          if (0 == sensor_filter_tests_main()) {
+            if (0 == parsing_console_main()) {
+              if (0 == identity_main()) {
+                if (0 == manuvrlink_main()) {
+                  exit_value = 0;
+                }
               }
             }
           }
