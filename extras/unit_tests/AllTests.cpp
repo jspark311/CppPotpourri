@@ -20,6 +20,7 @@
 #include "KeyValuePair.h"
 #include "LightLinkedList.h"
 #include "SensorFilter.h"
+#include "AsyncSequencer.h"
 #include "Vector3.h"
 #include "StopWatch.h"
 #include "uuid.h"
@@ -147,6 +148,81 @@ void printTestFailure(const char* test) {
 #include "M2MLinkTests.cpp"
 
 
+
+/*******************************************************************************
+* Top-level tests are managed using AsyncSequencer.
+* The dependency graph will allow us to order tests in a bottom-up manner, with
+*   more sophisticated pieces being run only if base support passes.
+*******************************************************************************/
+#define CHKLST_STRINGBUILDER_TESTS    0x00000001  // Everything depends on this.
+#define CHKLST_FSM_TESTS              0x00000002  //
+#define CHKLST_SCHEDULER_TESTS        0x00000004  //
+#define CHKLST_DATA_STRUCT_TESTS      0x00000008  //
+#define CHKLST_SENSORFILTER_TESTS     0x00000010  //
+#define CHKLST_IDENTITY_TESTS         0x00000020  //
+#define CHKLST_M2MLINK_TESTS          0x00000040  //
+#define CHKLST_PARSINGCONSOLE_TESTS   0x00000080  //
+
+#define CHKLST_ALL_TESTS ( \
+  CHKLST_STRINGBUILDER_TESTS | CHKLST_FSM_TESTS | CHKLST_SCHEDULER_TESTS | \
+  CHKLST_DATA_STRUCT_TESTS | CHKLST_SENSORFILTER_TESTS | \
+  CHKLST_IDENTITY_TESTS | CHKLST_M2MLINK_TESTS | CHKLST_PARSINGCONSOLE_TESTS)
+
+
+const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
+  { .FLAG         = CHKLST_STRINGBUILDER_TESTS,
+    .LABEL        = "STRINGBUILDER_TESTS",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == stringbuilder_main()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_FSM_TESTS,
+    .LABEL        = "FSM_TESTS",
+    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS | CHKLST_DATA_STRUCT_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == fsm_test_main()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SCHEDULER_TESTS,
+    .LABEL        = "SCHEDULER_TESTS",
+    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS | CHKLST_DATA_STRUCT_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == scheduler_tests_main()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_DATA_STRUCT_TESTS,
+    .LABEL        = "DATA_STRUCT_TESTS",
+    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == data_structure_main()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SENSORFILTER_TESTS,
+    .LABEL        = "SENSORFILTER_TESTS",
+    .DEP_MASK     = (CHKLST_FSM_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == sensor_filter_tests_main()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_IDENTITY_TESTS,
+    .LABEL        = "IDENTITY_TESTS",
+    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == identity_main()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_M2MLINK_TESTS,
+    .LABEL        = "M2MLINK_TESTS",
+    .DEP_MASK     = (CHKLST_IDENTITY_TESTS | CHKLST_FSM_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == manuvrlink_main()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_PARSINGCONSOLE_TESTS,
+    .LABEL        = "PARSINGCONSOLE_TESTS",
+    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == parsing_console_main()) ? 1:-1);  }
+  },
+};
+
+AsyncSequencer checklist_unit_tests(TOP_LEVEL_TEST_LIST, (sizeof(TOP_LEVEL_TEST_LIST) / sizeof(TOP_LEVEL_TEST_LIST[0])));
+
+
 /****************************************************************************************************
 * The main function.                                                                                *
 ****************************************************************************************************/
@@ -156,23 +232,15 @@ int main(int argc, char *argv[]) {
   gettimeofday(&start_micros, nullptr);
   printTypeSizes();
 
-  if (0 == stringbuilder_main()) {
-    if (0 == fsm_test_main()) {
-      if (0 == data_structure_main()) {
-        if (0 == scheduler_tests_main()) {
-          if (0 == sensor_filter_tests_main()) {
-            if (0 == parsing_console_main()) {
-              if (0 == identity_main()) {
-                if (0 == manuvrlink_main()) {
-                  exit_value = 0;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+  checklist_unit_tests.requestSteps(CHKLST_ALL_TESTS);
+  while (!checklist_unit_tests.request_completed()) {
+    checklist_unit_tests.poll();
   }
+  exit_value = (checklist_unit_tests.request_fulfilled() ? 0 : 1);
+
+  StringBuilder report_output;
+  checklist_unit_tests.printDebug(&report_output);
+  printf("%s\n", (char*) report_output.string());
 
   exit(exit_value);
 }

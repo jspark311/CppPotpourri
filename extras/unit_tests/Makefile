@@ -40,6 +40,7 @@ SOURCES_CPP += ../../src/StopWatch.cpp
 SOURCES_CPP += ../../src/StringBuilder.cpp
 SOURCES_CPP += ../../src/EnumeratedTypeCodes.cpp
 SOURCES_CPP += ../../src/KeyValuePair.cpp
+SOURCES_CPP += ../../src/AsyncSequencer.cpp
 SOURCES_CPP += ../../src/uuid.cpp
 SOURCES_CPP += ../../src/WakeLock.cpp
 SOURCES_CPP += ../../src/BusQueue.cpp
