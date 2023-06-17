@@ -27,6 +27,16 @@ using namespace cbor;
 
 
 /*******************************************************************************
+* output_stringbuilder
+*******************************************************************************/
+
+uint8_t* output_stringbuilder::data() {   return _str_bldr->string();   }
+uint32_t output_stringbuilder::size() {   return _str_bldr->length();   }
+void output_stringbuilder::put_byte(uint8_t x) {  _str_bldr->concat(&x, 1); }
+void output_stringbuilder::put_bytes(const uint8_t* buf, int len) {  _str_bldr->concat((uint8_t*) buf, len);  }
+
+
+/*******************************************************************************
 * output_dynamic
 *******************************************************************************/
 
@@ -596,7 +606,7 @@ void decoder::run() {
       } else break;
     } else if(_state == STATE_BYTES_DATA) {
       if(_in->has_bytes(_currentLength)) {
-        uint8_t* data = new uint8_t[_currentLength];
+        uint8_t data[_currentLength] = {0, };
         _in->get_bytes(data, _currentLength);
         _state = STATE_TYPE;
         _listener->on_bytes(data, _currentLength);

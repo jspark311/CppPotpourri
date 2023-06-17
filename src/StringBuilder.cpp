@@ -927,23 +927,27 @@ void StringBuilder::concat(String s) {
 * @param offset The index at which to start culling.
 * @param length The numbers of characters to retain.
 */
-void StringBuilder::cull(int offset, int length) {
+void StringBuilder::cull(int offset, int new_length) {
   #if defined(__BUILD_HAS_PTHREADS)
     //pthread_mutex_lock(&_mutex);
   #elif defined(__BUILD_HAS_FREERTOS)
   #endif
-  int remaining_length = (length - offset);
-  if ((remaining_length >= 0) && (this->length() >= (offset + length))) {   // Does the given range exist?
-    unsigned char* temp = (unsigned char*) malloc(remaining_length+1);  // + 1 for null-terminator.
-    if (temp != nullptr) {
-      *(temp + remaining_length) = '\0';
-      this->_collapse_into_buffer();   // Room to optimize here...
-      if (remaining_length > 0) {
-        memcpy(temp, (this->str+offset), length);
+  const int CURRENT_LENGTH = this->length();
+  if (0 == new_length) {
+    // If this is a complicated way to clear the string, do that instead.
+    this->clear();
+  }
+  if (offset >= 0) {                                // If the offset is positive...
+    if (CURRENT_LENGTH >= (offset + new_length)) {  // ...and the range exists...
+      uint8_t* temp = (uint8_t*) malloc(new_length+1);  // + 1 for null-terminator.
+      if (temp != nullptr) {
+        this->_collapse_into_buffer();   // Room to optimize here...
+        memcpy(temp, (this->str + offset), new_length);
+        *(temp + new_length) = '\0';
+        this->clear();         // Throw away all else.
+        this->str = temp;      // Replace our ref.
+        this->col_length = new_length;
       }
-      this->clear();         // Throw away all else.
-      this->str = temp;      // Replace our ref.
-      this->col_length = length;
     }
   }
   #if defined(__BUILD_HAS_PTHREADS)

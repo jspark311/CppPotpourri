@@ -28,12 +28,12 @@ limitations under the License.
 #include "../StringBuilder.h"
 #include "../CppPotpourri.h"
 #include "../FlagContainer.h"
-#include "../SensorFilter.h"
 #include "../StopWatch.h"
 #include "../PriorityQueue.h"
 #include "../ElementPool.h"
 #include "../AbstractPlatform.h"
 #include "../C3PLogger.h"
+#include "../SensorFilter.h"
 
 
 /*******************************************************************************

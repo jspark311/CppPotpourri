@@ -16,6 +16,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+TODO: This class (and its children) are treading an uncomfortable line between
+  being glorified RingBuffers, and being (as at present) worth a reimplementation).
+  Consider offloading the memory handling and semantics of this class to RingBuffer.
 */
 
 
@@ -26,7 +30,9 @@ limitations under the License.
 #include <stdint.h>
 
 #include "StringBuilder.h"
+#include "EnumeratedTypeCodes.h"
 #include "Vector3.h"
+#include "cbor-cpp/cbor.h"
 
 
 enum class FilteringStrategy : uint8_t {
@@ -40,19 +46,19 @@ enum class FilteringStrategy : uint8_t {
 
 
 /*
-* Pure-virtual base class that handles the basic flags and meta for filters.
+* Virtual base class that handles the basic flags and meta for filters.
 */
 class SensorFilterBase {
   public:
-    inline int  purge() {                  return _zero_samples();                    };
-    inline int  windowSize(uint32_t x) {   return _reallocate_sample_window(x);       };
+    inline int8_t   purge() {                  return _zero_samples();                };
+    inline int8_t   windowSize(uint32_t x) {   return _reallocate_sample_window(x);   };
     inline uint32_t windowSize() {         return (_filter_initd ? _window_size : 0); };
     inline uint32_t windowFull() {         return _window_full;                       };
     inline uint32_t lastIndex() {          return _sample_idx;                        };
     inline uint32_t totalSamples() {       return _samples_total;                     };
-
-    inline bool dirty() {                  return _filter_dirty;                      };
-    inline bool initialized() {            return _filter_initd;                      };
+    inline bool     dirty() {              return _filter_dirty;                      };
+    inline bool     initialized() {        return _filter_initd;                      };
+    inline const char* name() {            return (_name ? (const char*) _name : ""); };
     inline FilteringStrategy strategy() {  return _strat;                             };
 
     /**
@@ -65,25 +71,38 @@ class SensorFilterBase {
       _stale_stdev  = true;
     };
 
+    int8_t name(char*);
+    int8_t serialize(StringBuilder*, TCode);
+    int8_t deserialize(StringBuilder*, TCode);
+
 
   protected:
-    uint32_t _samples_total  = 0;
+    uint32_t _samples_total  = 0;      // The total number of samples that have passed through.
     uint32_t _sample_idx     = 0;
     uint32_t _window_size    = 0;
     FilteringStrategy _strat = FilteringStrategy::RAW;
-    bool     _window_full    = false;
-    bool     _filter_dirty   = false;
-    bool     _filter_initd   = false;
-    bool     _static_alloc   = false;
+    bool     _window_full    = false;  // The window is filled, and the filter may begin operation.
+    bool     _filter_dirty   = false;  // The filter has been fed since it was last checked.
+    bool     _filter_initd   = false;  // The filter is initialized and ready to be fed.
+    bool     _static_alloc   = false;  // Memory holding the filter values is not owned by this class.
     bool     _stale_minmax   = false;  // Statistical measurement is stale.
     bool     _stale_mean     = false;  // Statistical measurement is stale.
     bool     _stale_rms      = false;  // Statistical measurement is stale.
     bool     _stale_stdev    = false;  // Statistical measurement is stale.
 
     SensorFilterBase(int ws, FilteringStrategy s) : _window_size(ws), _strat(s) {};
+    ~SensorFilterBase();
 
-    virtual int8_t  _reallocate_sample_window(uint32_t) =0;
-    virtual int8_t  _zero_samples() =0;
+    virtual int8_t _reallocate_sample_window(uint32_t) =0;
+    virtual int8_t _zero_samples() =0;
+    virtual void   _serialize_value(cbor::encoder*, uint32_t idx)    =0;
+    virtual void   _deserialize_value(cbor::encoder*, uint32_t idx)  =0;
+    virtual TCode  _value_tcode() =0;
+
+    void _print_filter_base(StringBuilder*);
+
+  private:
+    char* _name = nullptr;
 };
 
 
@@ -130,6 +149,9 @@ template <class T> class SensorFilter : public SensorFilterBase {
 
     int8_t  _reallocate_sample_window(uint32_t);
     int8_t  _zero_samples();
+    void    _serialize_value(cbor::encoder*, uint32_t idx);
+    void    _deserialize_value(cbor::encoder*, uint32_t idx);
+    TCode   _value_tcode();
 
     void    _calculate_minmax();
     double  _calculate_mean();
@@ -184,6 +206,10 @@ template <class T> class SensorFilter3 : public SensorFilterBase {
 
     int8_t  _reallocate_sample_window(uint32_t);
     int8_t  _zero_samples();
+    void    _serialize_value(cbor::encoder*, uint32_t idx);
+    void    _deserialize_value(cbor::encoder*, uint32_t idx);
+    virtual TCode  _value_tcode() =0;
+
     int8_t  _calculate_minmax();
     int8_t  _calculate_mean();
     int8_t  _calculate_rms();
@@ -198,7 +224,6 @@ template <class T> class SensorFilter3 : public SensorFilterBase {
 * Statics and externs
 *******************************************************************************/
 extern const char* const getFilterStr(FilteringStrategy);
-static const char* const FILTER_HEADER_STRING = "\t%s filter\n\t-----------------------------\n";
 
 
 /*******************************************************************************
@@ -322,14 +347,9 @@ template <class T> int8_t SensorFilter<T>::setStrategy(FilteringStrategy s) {
 
 
 template <class T> void SensorFilter<T>::printFilter(StringBuilder* output) {
-  output->concatf(FILTER_HEADER_STRING, getFilterStr(strategy()));
-  output->concatf("\tInitialized:  %c\n",   initialized() ? 'y':'n');
-  output->concatf("\tStatic alloc: %c\n",   _static_alloc ? 'y':'n');
-  output->concatf("\tDirty:        %c\n",   _filter_dirty ? 'y':'n');
-  output->concatf("\tWindow full:  %c\n",   _window_full  ? 'y':'n');
+  _print_filter_base(output);
   output->concatf("\tMin             = %.8f\n", (double) minValue());
   output->concatf("\tMax             = %.8f\n", (double) maxValue());
-  output->concatf("\tSample window   = %u\n",   _window_size);
   switch (_strat) {
     case FilteringStrategy::RAW:
       output->concatf("\tValue           = %.8f\n", (double) last_value);
@@ -397,6 +417,7 @@ template <class T> int8_t SensorFilter<T>::feedFilter(T val) {
     }
     else {   // This is a null filter with extra steps.
       last_value = val;
+      _window_full = true;
       ret = 1;
     }
 
@@ -658,11 +679,7 @@ template <class T> int8_t SensorFilter3<T>::setStrategy(FilteringStrategy s) {
 
 
 template <class T> void SensorFilter3<T>::printFilter(StringBuilder* output) {
-  output->concatf(FILTER_HEADER_STRING, getFilterStr(strategy()));
-  output->concatf("\tInitialized:  %c\n",   initialized() ? 'y':'n');
-  output->concatf("\tStatic alloc: %c\n",   _static_alloc ? 'y':'n');
-  output->concatf("\tDirty:        %c\n",   _filter_dirty ? 'y':'n');
-  output->concatf("\tWindow full:  %c\n",   _window_full  ? 'y':'n');
+  _print_filter_base(output);
 
   if (_stale_minmax) _calculate_minmax();
   if (_stale_mean)   _calculate_mean();

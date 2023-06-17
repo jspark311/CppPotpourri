@@ -1102,17 +1102,17 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
   }
 
   switch (TC) {
-    case TCode::NONE:
+    case TCode::NONE:            break;
     case TCode::INT8:            ret = new KeyValuePair(*((int8_t*)data));    break;
     case TCode::INT16:           ret = new KeyValuePair(*((int16_t*)data));   break;
     case TCode::INT32:           ret = new KeyValuePair(*((int32_t*)data));   break;
     case TCode::UINT8:           ret = new KeyValuePair(*((uint8_t*)data));   break;
     case TCode::UINT16:          ret = new KeyValuePair(*((uint16_t*)data));  break;
     case TCode::UINT32:          ret = new KeyValuePair(*((uint32_t*)data));  break;
-    case TCode::INT64:
-    case TCode::INT128:
-    case TCode::UINT64:
-    case TCode::UINT128:
+    case TCode::INT64:           break;   
+    case TCode::INT128:          break;    
+    case TCode::UINT64:          break;    
+    case TCode::UINT128:         break;              
     case TCode::BOOLEAN:         ret = new KeyValuePair((0 != *data));  break;
     case TCode::FLOAT:           ret = new KeyValuePair(*((float*)data));   break;
     case TCode::DOUBLE:          ret = new KeyValuePair(*((double*)data));  break;

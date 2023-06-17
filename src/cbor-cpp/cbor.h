@@ -30,18 +30,13 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "StringBuilder.h"
+
 // NOTE: For some typecodes, we benefit from the context of having the type
 //   spelled out with a TCode, rather than using the built-in CBOR types.
 // We will be using a tag from the IANA 'unassigned' space to avoid confusion.
 //   The first byte after the tag is the native Manuvr TCode.
 #define C3P_CBOR_VENDOR_CODE 0x00E97800
-
-// TODO: Everything inside this block is almost certainly garbage. Remove it.
-#ifdef ARDUINO
-  #include <Arduino.h>
-#else
-  #include <stdlib.h>
-#endif
 
 
 #include <stdio.h>
@@ -172,6 +167,21 @@ namespace cbor {
       void write_type_value64(int major_type, uint64_t value);
   };
 
+
+
+  class output_stringbuilder : public output {
+    public:
+      output_stringbuilder(StringBuilder* sb) : _str_bldr(sb) {};
+      ~output_stringbuilder() {};
+
+      uint8_t* data();
+      uint32_t size();
+      void put_byte(uint8_t value);
+      void put_bytes(const uint8_t* data, int size);
+
+    private:
+      StringBuilder* _str_bldr;
+  };
 
 
   class output_dynamic : public output {

@@ -37,11 +37,20 @@ SensorFilter<float>    filt_test_2_m(TEST_FILTER_DEPTH, FilteringStrategy::RAW);
 SensorFilter<float>    filt_test_2_0(TEST_FILTER_DEPTH, FilteringStrategy::RAW);
 SensorFilter<float>    filt_test_2_1(TEST_FILTER_DEPTH, FilteringStrategy::RAW);
 
-SensorFilter<float>    filt_stats_test_0(TEST_FILTER_DEPTH, FilteringStrategy::RAW);
-SensorFilter<float>    filt_stats_test_1(TEST_FILTER_DEPTH, FilteringStrategy::RAW);
+// These values are knwon-answer test cases to check stats operation.
+SensorFilter<int32_t> filt_stats_test_0(TEST_FILTER_DEPTH, FilteringStrategy::RAW);
+SensorFilter<int32_t> filt_stats_test_1(TEST_FILTER_DEPTH, FilteringStrategy::MOVING_AVG);
+const int32_t KAT_FILT_0_MIN   = -126000;
+const int32_t KAT_FILT_0_MAX   = 127000;
+const double  KAT_FILT_0_MEAN  = 0.0;
+const double  KAT_FILT_0_STDEV = 0.0;
+const double  KAT_FILT_0_SNR   = 0.0;
 
-// These values are hand-verified test cases to check stats operation.
-// TODO
+const int32_t KAT_FILT_1_MIN   = 0;
+const int32_t KAT_FILT_1_MAX   = 0;
+const double  KAT_FILT_1_MEAN  = 0.0;
+const double  KAT_FILT_1_STDEV = 0.0;
+const double  KAT_FILT_1_SNR   = 0.0;
 
 /*******************************************************************************
 * Scheduler test routines
@@ -50,17 +59,22 @@ SensorFilter<float>    filt_stats_test_1(TEST_FILTER_DEPTH, FilteringStrategy::R
 *
 */
 int sensor_filter_init() {
-  int ret = filt_stats_test_0.init();
-  if (0 == ret) {     ret = filt_stats_test_1.init();    }
-  if (0 == ret) {     ret = filt_test_0_m.init();        }
-  if (0 == ret) {     ret = filt_test_0_0.init();        }
-  if (0 == ret) {     ret = filt_test_0_1.init();        }
-  if (0 == ret) {     ret = filt_test_1_m.init();        }
-  if (0 == ret) {     ret = filt_test_1_0.init();        }
-  if (0 == ret) {     ret = filt_test_1_1.init();        }
-  if (0 == ret) {     ret = filt_test_2_m.init();        }
-  if (0 == ret) {     ret = filt_test_2_0.init();        }
-  if (0 == ret) {     ret = filt_test_2_1.init();        }
+  int ret = 0;
+
+  if (0 == ret) {   ret = filt_stats_test_0.name("stats_0");   }
+  if (0 == ret) {   ret = filt_stats_test_1.name("stats_1");   }
+
+  if (0 == ret) {   ret = filt_stats_test_0.init();    }
+  if (0 == ret) {   ret = filt_stats_test_1.init();    }
+  if (0 == ret) {   ret = filt_test_0_m.init();        }
+  if (0 == ret) {   ret = filt_test_0_0.init();        }
+  if (0 == ret) {   ret = filt_test_0_1.init();        }
+  if (0 == ret) {   ret = filt_test_1_m.init();        }
+  if (0 == ret) {   ret = filt_test_1_0.init();        }
+  if (0 == ret) {   ret = filt_test_1_1.init();        }
+  if (0 == ret) {   ret = filt_test_2_m.init();        }
+  if (0 == ret) {   ret = filt_test_2_0.init();        }
+  if (0 == ret) {   ret = filt_test_2_1.init();        }
   if (0 != ret) {
     printf("SensorFilter::init() returns (%d).\n", ret);
   }
@@ -82,6 +96,13 @@ int sensor_filter_initial_conditions() {
     feed_failure |= (0 > filt_test_0_m.feedFilter(randomUInt32()));
     feed_failure |= (0 > filt_test_1_m.feedFilter(randomUInt32()));
     feed_failure |= (0 > filt_test_2_m.feedFilter(TVAL_0));
+
+    // For the stats filters, we build a test pattern and send it through a
+    //   filter configured for each mode we care to test.
+    const int32_t TVAL_C = (int32_t) (1000*i*((i%2)?1:-1));
+    feed_failure |= (0 > filt_stats_test_0.feedFilter(TVAL_C));
+    feed_failure |= (0 > filt_stats_test_1.feedFilter(TVAL_C));
+
     if (feed_failure) {
       printf("SensorFilter failed to feed at index %d.", i);
       return -1;
@@ -102,11 +123,19 @@ int sensor_filter_initial_conditions() {
 
 
 /*
-*
+* TODO
 */
 int sensor_filter_stats_tests() {
-  int ret = 0;
-  // TODO
+  int ret = -1;
+  StringBuilder output;
+  filt_stats_test_0.printFilter(&output);  // This should force stats calculation.
+  filt_stats_test_1.printFilter(&output);  // This should force stats calculation.
+  printf("%s\n", output.string());
+  if (filt_stats_test_0.minValue() == KAT_FILT_0_MIN) {
+    if (filt_stats_test_0.maxValue() == KAT_FILT_0_MAX) {
+      ret = 0;
+    }
+  }
   return ret;
 }
 
@@ -152,6 +181,39 @@ int sensor_filter_nominal_operation_2() {
 
 
 /*
+* Test the transfer of an entire package of timeseries data all at once.
+*/
+int sensor_filter_data_sharing_0() {
+  int ret = -1;
+  // Serialize the source.
+  StringBuilder serialized;
+  if (0 == filt_stats_test_0.serialize(&serialized, TCode::CBOR)) {
+    // StringBuilder txt_output;
+    // serialized.printDebug(&txt_output);
+    // printf("%s\n", txt_output.string());
+    // Deserialize into the target.
+    SensorFilter<int32_t> filt_copy_test(0, FilteringStrategy::RAW);
+    if (0 == filt_copy_test.deserialize(&serialized, TCode::CBOR)) {
+      ret = 0;
+    }
+    // TODO: test for equality.
+  }
+  ret = 0;  // TODO: Wrong
+  return ret;
+}
+
+
+/*
+*
+*/
+int sensor_filter_data_sharing_1() {
+  int ret = 0;
+  // TODO
+  return ret;
+}
+
+
+/*
 *
 */
 int sensor_filter_teardown() {
@@ -174,13 +236,19 @@ int sensor_filter_tests_main() {
           if (0 == sensor_filter_nominal_operation_0()) {
             if (0 == sensor_filter_nominal_operation_1()) {
               if (0 == sensor_filter_nominal_operation_2()) {
-                if (0 == sensor_filter_teardown()) {
-                  printf("**********************************\n");
-                  printf("*  SensorFilter tests all pass   *\n");
-                  printf("**********************************\n");
-                  ret = 0;
+                if (0 == sensor_filter_data_sharing_0()) {
+                  if (0 == sensor_filter_data_sharing_1()) {
+                    if (0 == sensor_filter_teardown()) {
+                      printf("**********************************\n");
+                      printf("*  SensorFilter tests all pass   *\n");
+                      printf("**********************************\n");
+                      ret = 0;
+                    }
+                    else printTestFailure("SensorFilter failed teardown.");
+                  }
+                  else printTestFailure("SensorFilter failed advanced pack and parse.");
                 }
-                else printTestFailure("SensorFilter failed teardown.");
+                else printTestFailure("SensorFilter failed basic pack and parse.");
               }
               else printTestFailure("SensorFilter failed nominal operations battery-2.");
             }

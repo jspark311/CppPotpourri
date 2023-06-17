@@ -410,23 +410,61 @@ int test_StringBuilder() {
 
 
 
-// int test_StringBuilderCull() {
-//   int return_value = -1;
-//   StringBuilder obj_0("0-1-2-3-4-5-6-7-8-9-10");
-//   StringBuilder obj_1((char*) obj_0.string());
-//   StringBuilder obj_2((char*) obj_0.string());
-//
-//   printf("Before culling:   %s\n", obj_0.string());
-//   obj_0.cull(0, 12);
-//   obj_1.cull(2, 12);
-//   obj_2.cull(4, 12);
-//
-//   printf("obj_0 after culling:   %s\n", obj_0.string());
-//   printf("obj_1 after culling:   %s\n", obj_1.string());
-//   printf("obj_2 after culling:   %s\n", obj_2.string());
-//
-//   return return_value;
-// }
+int test_StringBuilderCull() {
+  int ret = -1;
+  const char* BASE_STRING = "0-1-2-3-4-5-6-7-8-9-10-11-12-13-14-15";  // 37 characters
+  const uint32_t MASTER_LENGTH = strlen(BASE_STRING);
+  StringBuilder obj_0((char*) BASE_STRING);
+  StringBuilder obj_1((char*) BASE_STRING);
+  StringBuilder obj_2((char*) BASE_STRING);
+  StringBuilder obj_3((char*) BASE_STRING);
+  StringBuilder obj_4((char*) BASE_STRING);
+  StringBuilder obj_5((char*) BASE_STRING);
+
+  obj_0.cull(0, MASTER_LENGTH);   // No operation.
+  obj_1.cull(14, MASTER_LENGTH);  // Impossible request. String will not be that long.
+  obj_2.cull(MASTER_LENGTH, 0);   // Should clear the string.
+  obj_3.cull(0, 11);              // Should be the head of the string.
+  obj_4.cull(14, (MASTER_LENGTH - 14));  // Should be the tail of the string.
+  obj_5.cull(14, 11);             // Taking from the middle.
+
+  // The null and failure cases ought to still match the base string.
+  if (0 == StringBuilder::strcasecmp((char*) obj_0.string(), BASE_STRING)) {
+    if (0 == StringBuilder::strcasecmp((char*) obj_1.string(), BASE_STRING)) {
+      // The full-cull case ought to be an empty string.
+      if (obj_2.isEmpty()) {
+        const char* KAT_3 = "0-1-2-3-4-5";
+        const char* KAT_4 = "7-8-9-10-11-12-13-14-15";
+        const char* KAT_5 = "7-8-9-10-11";
+        if (0 == StringBuilder::strcasecmp((char*) obj_3.string(), KAT_3)) {
+          if (0 == StringBuilder::strcasecmp((char*) obj_4.string(), KAT_4)) {
+            if (0 == StringBuilder::strcasecmp((char*) obj_5.string(), KAT_5)) {
+              ret = 0;
+            }
+            else printf("obj_5 does not match.\n");
+          }
+          else printf("obj_4 does not match.\n");
+        }
+        else printf("obj_3 does not match.\n");
+      }
+      else printf("obj_2 is not empty, as it should be.\n");
+    }
+    else printf("obj_1 does not match.\n");
+  }
+  else printf("obj_0 does not match.\n");
+
+
+  printf("obj_0:    %s\n", obj_0.string());
+  printf("obj_1:    %s\n", obj_1.string());
+  printf("obj_2:    %s\n", obj_2.string());
+  printf("obj_3:    %s\n", obj_3.string());
+  printf("obj_4:    %s\n", obj_4.string());
+  printf("obj_5:    %s\n", obj_5.string());
+
+  return ret;
+}
+
+
 
 
 int test_StringBuilderHeapVersusStack() {
@@ -567,13 +605,16 @@ int stringbuilder_main() {
           if (0 == test_Implode()) {
             if (0 == test_replace()) {
               if (0 == test_stringbuilder_isempty()) {
-                if (0 == test_misuse_cases()) {
-                  printf("**********************************\n");
-                  printf("*  StringBuilder tests all pass  *\n");
-                  printf("**********************************\n");
-                  ret = 0;
+                if (0 == test_StringBuilderCull()) {
+                  if (0 == test_misuse_cases()) {
+                    printf("**********************************\n");
+                    printf("*  StringBuilder tests all pass  *\n");
+                    printf("**********************************\n");
+                    ret = 0;
+                  }
+                  else printTestFailure("Hardening against mis-use");
                 }
-                else printTestFailure("Hardening against mis-use");
+                else printTestFailure("cull(int, int)");
               }
               else printTestFailure("isEmpty");
             }
