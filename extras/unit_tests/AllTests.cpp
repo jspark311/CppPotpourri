@@ -138,6 +138,7 @@ void printTestFailure(const char* test) {
 * Something terrible.
 *******************************************************************************/
 
+#include "AsyncSequencerTests.cpp"
 #include "StringBuilderTest.cpp"
 #include "FSMTests.cpp"
 #include "SchedulerTests.cpp"
@@ -162,17 +163,25 @@ void printTestFailure(const char* test) {
 #define CHKLST_IDENTITY_TESTS         0x00000020  //
 #define CHKLST_M2MLINK_TESTS          0x00000040  //
 #define CHKLST_PARSINGCONSOLE_TESTS   0x00000080  //
+#define CHKLST_ASYNC_SEQUENCER_TESTS  0x80000000  // Everything depends on this.
 
 #define CHKLST_ALL_TESTS ( \
   CHKLST_STRINGBUILDER_TESTS | CHKLST_FSM_TESTS | CHKLST_SCHEDULER_TESTS | \
   CHKLST_DATA_STRUCT_TESTS | CHKLST_SENSORFILTER_TESTS | \
-  CHKLST_IDENTITY_TESTS | CHKLST_M2MLINK_TESTS | CHKLST_PARSINGCONSOLE_TESTS)
+  CHKLST_IDENTITY_TESTS | CHKLST_M2MLINK_TESTS | CHKLST_PARSINGCONSOLE_TESTS | \
+  CHKLST_ASYNC_SEQUENCER_TESTS)
 
 
 const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
+  { .FLAG         = CHKLST_ASYNC_SEQUENCER_TESTS,
+    .LABEL        = "ASYNC_SEQUENCER_TESTS",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == async_seq_test_main()) ? 1:-1);  }
+  },
   { .FLAG         = CHKLST_STRINGBUILDER_TESTS,
     .LABEL        = "STRINGBUILDER_TESTS",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_ASYNC_SEQUENCER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == stringbuilder_main()) ? 1:-1);  }
   },
@@ -190,7 +199,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_DATA_STRUCT_TESTS,
     .LABEL        = "DATA_STRUCT_TESTS",
-    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
+    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS | CHKLST_ASYNC_SEQUENCER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == data_structure_main()) ? 1:-1);  }
   },
@@ -233,7 +242,7 @@ int main(int argc, char *argv[]) {
   printTypeSizes();
 
   checklist_unit_tests.requestSteps(CHKLST_ALL_TESTS);
-  while (!checklist_unit_tests.request_completed()) {
+  while (!checklist_unit_tests.request_completed() && (0 == checklist_unit_tests.failed_steps(false))) {
     checklist_unit_tests.poll();
   }
   exit_value = (checklist_unit_tests.request_fulfilled() ? 0 : 1);
