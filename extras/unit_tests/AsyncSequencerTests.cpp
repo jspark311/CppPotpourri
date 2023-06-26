@@ -59,7 +59,6 @@ This program tests AsyncSequencer.
 
 
 
-
 /*******************************************************************************
 * Now for lambdas and conditionals that form the logical basis of the sequence.
 *******************************************************************************/
@@ -213,6 +212,18 @@ int async_seq_impose_initial_state() {
   if (!async_seq_unit_tests.steps_running()) {
     ret--;
     if (async_seq_unit_tests.request_fulfilled()) {
+      async_04_dispatch = 0;
+      async_04_poll     = 0;
+      async_09_dispatch = 0;
+      async_09_poll     = 0;
+      async_13_dispatch = 0;
+      async_13_poll     = 0;
+      async_04_d_count  = 0;
+      async_04_p_count  = 0;
+      async_09_d_count  = 0;
+      async_09_p_count  = 0;
+      async_13_d_count  = 0;
+      async_13_p_count  = 0;
       ret = 0;
     }
     else printf("request_fulfilled() should return true at this point.\n");
@@ -236,7 +247,7 @@ int async_seq_test_simple_advancement() {
   ret_local = async_seq_run_until_stagnant();
   ret_local += async_seq_run_until_stagnant();
   if (0 <= ret_local) {
-    printf("Sequence mask 0x%08x polled to stagantion after %d state transitions.\n", ASYNC_SEQ_TEST_NO_HOLD_FLAGS, ret_local);
+    printf("Sequence mask 0x%08x polled to stagnation after %d state transitions.\n", ASYNC_SEQ_TEST_NO_HOLD_FLAGS, ret_local);
     ret--;
     if (async_seq_unit_tests.request_completed()) {
       ret--;
@@ -320,17 +331,66 @@ int async_seq_test_simple_advancement() {
 
 int async_seq_test_simple_failures() {
   int ret = -1;
-  ret = 0; // TODO: Test behavior when lambdas return a failure case.
   int ret_local = 0;
+  if (0 == async_seq_impose_initial_state()) {
+    // FLAG_14 ultimately has all manipulated steps as dependencies. So if any
+    //   of these values is some value other than 1 (success), or 0 (defer), the
+    //   sequence will fail to complete.
+    async_04_dispatch = 1;   // FLAG_04 will dispatch, but fail to poll.
+    async_04_poll     = -1;
+    async_09_dispatch = -1;  // FLAG_09 will fail to dispatch, but will poll successfully.
+    async_09_poll     = 1;
+    async_13_dispatch = -1;  // FLAG_13 will fail to dispatch and poll.
+    async_13_poll     = -1;
+    async_seq_unit_tests.requestSteps(ASYNC_SEQ_TEST_FLAG_14);
+
+    ret = 0;
+  }
+  else printf("Failed to impose the initial state prior to test.\n");
   return ret;
 }
 
 
 
+
 int async_seq_test_full_execution() {
   int ret = -1;
-  ret = 0; // TODO: Test full execution with no failures or blockages.
   int ret_local = 0;
+  if (0 == async_seq_impose_initial_state()) {
+    async_04_dispatch = 1;
+    async_04_poll     = 1;
+    async_09_dispatch = 1;
+    async_09_poll     = 1;
+    async_13_dispatch = 1;
+    async_13_poll     = 1;
+    async_seq_unit_tests.requestSteps(ASYNC_SEQ_TEST_ALL_FLAGS);
+    ret_local += async_seq_run_until_stagnant();
+    if (0 <= ret_local) {
+      printf("Sequence mask 0x%08x polled to stagnation after %d state transitions.\n", ASYNC_SEQ_TEST_ALL_FLAGS, ret_local);
+      bool final_state_chk = async_seq_unit_tests.request_completed();
+      final_state_chk &= async_seq_unit_tests.request_fulfilled();
+      final_state_chk &= !async_seq_unit_tests.steps_running();
+      if (final_state_chk) {
+        if (async_seq_unit_tests.all_steps_have_passed()) {
+          bool final_count_chk = (1 == async_04_d_count);
+          final_count_chk &= (1 == async_04_p_count);
+          final_count_chk &= (1 == async_09_d_count);
+          final_count_chk &= (1 == async_09_p_count);
+          final_count_chk &= (1 == async_13_d_count);
+          final_count_chk &= (1 == async_13_p_count);
+          if (final_count_chk) {
+            ret = 0;
+          }
+          else printf("final_count_chk fails Some dispatch/poll fxns did not run exactly once.\n");
+        }
+        else printf("Not all sequence steps report back as passed.\n");
+      }
+      else printf("Final state report is not as expected.\n");
+    }
+    else printf("Failed to run the entire set of valid sequences.\n");
+  }
+  else printf("Failed to impose the initial state prior to test.\n");
+
   return ret;
 }
 

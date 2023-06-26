@@ -30,7 +30,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "StringBuilder.h"
+#include "../StringBuilder.h"
 
 // NOTE: For some typecodes, we benefit from the context of having the type
 //   spelled out with a TCode, rather than using the built-in CBOR types.
