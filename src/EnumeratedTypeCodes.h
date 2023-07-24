@@ -40,7 +40,7 @@ class StringBuilder;
 /*
 * Constants related to differentials in systems of time-keeping and other units.
 */
-#define  LEAP_SECONDS_SINCE_EPOCH    27
+#define  LEAP_SECONDS_SINCE_EPOCH    27        // Last checked: 2023.07.22
 #define  CELCIUS_KELVIN_REBASE       273.15f
 
 
@@ -149,6 +149,25 @@ const bool typeIsFixedLength(const TCode);
 const int typeIsPointerPunned(const TCode);
 const int sizeOfType(const TCode);
 
+
+/*******************************************************************************
+* An abstract typeless data container class. This is used to support type      *
+*   abstraction of our internal types, and cuts down on templating elsewhere.  *
+*******************************************************************************/
+// TODO: This needs to eat all of the type polymorphism in KeyValuePair.
+class C3PValue {
+  public:
+    const TCode TCODE;
+
+    C3PValue(const TCode TC) : TCODE(TC) {};
+    ~C3PValue() {};
+
+    int8_t serialize(StringBuilder*, TCode);
+    int8_t deserialize(StringBuilder*, TCode);
+
+
+  private:
+};
 
 
 /*******************************************************************************

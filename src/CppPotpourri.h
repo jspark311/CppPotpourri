@@ -123,7 +123,7 @@ int randomArt(uint8_t* dgst_raw, unsigned int dgst_raw_len, const char* title, S
 * Shorthand for a pointer to a "void fxn(void)"
 * No contracts. It is just used to make code read better.
 */
-typedef void  (*FxnPointer)();
+typedef void (*FxnPointer)();
 
 /*
 * Callbacks for drivers that provide extra GPI pins.

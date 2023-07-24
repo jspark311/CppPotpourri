@@ -18,58 +18,35 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 
-This class is a generic interface to a sensor. That sensor might measure many things.
+This class contains machinery for abstracting and collecting sensor data,
+  usually as preparation for sharing over an MLink, but it may also be used in a
+  connectionless application for easy management of various data in the program.
 
+The simplest use of this header is to use the SensorCallBack function
 */
 
 
 #ifndef __SENSOR_WRAPPER_INCLUDE_H
 #define __SENSOR_WRAPPER_INCLUDE_H
 
-#include <inttypes.h>
-#include <string.h>
-
 #include "StringBuilder.h"
-#include "cbor-cpp/cbor.h"
 #include "CppPotpourri.h"
-#include "AbstractPlatform.h"
 #include "EnumeratedTypeCodes.h"
+#include "AbstractPlatform.h"
 
-class SensorWrapper;
+class C3PSensor;
+class SensorDatum;
 
 /*
-* We have the option of directing a datum to autoreport under certain conditions.
-* When such a datum becomes dirty, the SensorWrapper class can call a provided
-*   callback with the entire sensor wrapper as an argument.
+* Flags for the sensor itself. These may not be fully-leveraged by drivers
+*   extending C3PSensor, but all drivers must supply workable status for
+*   these flags.
 */
-typedef void (*SensorCallBack) (SensorWrapper*);
-
-/* Flags for an individual piece of data from a sensor. */
-#define SENSE_DATUM_FLAG_HARDWARE      0x8000  // The proximate basis of the data is hardware.
-#define SENSE_DATUM_FLAG_IS_PROXIED    0x4000  // This datum belongs to another sensor.
-#define SENSE_DATUM_FLAG_REPORT_MASK   0x3800  // Reporting behavior bits.
-#define SENSE_DATUM_FLAG_DIRTY         0x0004  // This data was updated since it was last read.
-#define SENSE_DATUM_FLAG_MEM_ALLOC     0x0002  // Any memory needed for this datum is allocated.
-#define SENSE_DATUM_FLAG_IS_ACTIVE     0x0001  // Do we care to collect data?
-
-#define SENSE_DATUM_FLAG_PRELOAD_MASK  0xC000  // What flags are blown away by preload.
-
-
-/* Flags for the sensor itself. */
-#define MANUVR_SENSOR_FLAG_DEVICE_PRESENT   0x0001  // Part was found.
-#define MANUVR_SENSOR_FLAG_PINS_CONFIGURED  0x0002  // Low-level pin setup is complete.
-#define MANUVR_SENSOR_FLAG_INITIALIZED      0x0004  // Registers are initialized.
-#define MANUVR_SENSOR_FLAG_ENABLED          0x0008  // Device is measuring.
-#define MANUVR_SENSOR_FLAG_CALIBRATED       0x1000
-
-
-/* Sensors can automatically report their values. */
-enum class SensorParameter : uint8_t {
-  UNDEFINED          = 0,
-  AUTOGAIN           = 1,   // 0 or 1
-  SAMPLE_PERIOD      = 7    // milliseconds
-};
-
+#define C3P_SENSOR_FLAG_DEVICE_PRESENT   0x01  // Part was found.
+#define C3P_SENSOR_FLAG_PINS_CONFIGURED  0x02  // Low-level pin setup is complete.
+#define C3P_SENSOR_FLAG_INITIALIZED      0x04  // Registers are initialized.
+#define C3P_SENSOR_FLAG_ENABLED          0x08  // Device is measuring.
+#define C3P_SENSOR_FLAG_CALIBRATED       0x10
 
 /* Sensors can automatically report their values. */
 enum class SensorReporting : uint8_t {
@@ -84,136 +61,138 @@ enum class SensorReporting : uint8_t {
 };
 
 
-/* These are possible error codes. */
-enum class SensorError : int8_t {
-  DATA_UPDATED       =    1,   // There was no error, and fresh data.
-  NO_ERROR           =    0,   // There was no error.
-  ABSENT             =   -1,   // We failed to talk to the sensor.
-  OUT_OF_MEMORY      =   -2,   // Couldn't allocate memory for some sensor-related task.
-  WRONG_IDENTITY     =   -3,   // Some sensors come with ID markers in them. If we get one wrong, this happens.
-  NOT_LOCAL          =   -4,   // If we try to read or change parameters of a sensor that isn't attached to us.
-  INVALID_PARAM_ID   =   -5,   // If we try to read or change a sensor parameter that isn't supported.
-  INVALID_PARAM      =   -6,   // If we try to set a sensor parameter to something invalid for an existing register.
-  NOT_CALIBRATED     =   -7,   // If we try to read a sensor that is uncalibrated. Not all sensors require this.
-  INVALID_DATUM      =   -8,   // If we try to do an operation on a datum that doesn't exist for this sensor.
-  UNHANDLED_TYPE     =   -9,   // Issued when we ask for a string conversion that we don't support.
-  NULL_POINTER       =  -10,   // What happens when we try to do I/O on a null pointer.
-  BUS_ERROR          =  -11,   // If there was some generic bus error that we otherwise can't pinpoint.
-  BUS_ABSENT         =  -12,   // If the requested bus is not accessible.
-  REG_NOT_WRITABLE   =  -13,   // If we try to write to a read-only register.
-  REG_NOT_DEFINED    =  -14,   // If we try to do I/O on a non-existent register.
-  DATA_EXHAUSTED     =  -15,   // If we try to poll sensor data faster than the sensor can produce it.
-  BAD_TYPE_CONVERT   =  -16,   // If we ask the class to convert types in a way that isn't possible.
-  MISSING_CONF       =  -17,   // If we ask the sensor class to perform an operation on parameters that it doesn't have.
-  NOT_INITIALIZED    =  -18,   // Tried to do something that requires an initialization that hasn't happened.
-  UNIMPLEMENTED      =  -19,   // The requested action was valid, but unimplemented.
-  UNDEFINED_ERR      = -128,   //
+/*
+* These are possible reasons for a callback to happen.
+* TODO: Rigidly define contract here.
+*/
+enum class SensorCallbackCode : int8_t {
+  UNSPECIFIED = 0,  // This should never happen.
+  SAY_HELLO,        // A SensorDatum might be explicitly announced.
+  DATA_UPDATED,     // SensorDatum might announce that it was freshly-updated with a new reading.
+  CONF_CHANGE,      // Notice of a change in sensor state.
+  SAY_GOODBYE,      // A SensorDatum might withdraw itself from use.
+  HARDWARE_FAULT    // Callback is used to relay news of a fault.
 };
-
-
-/* This struct allows us to not replicate const data in precious memory. */
-typedef struct sense_datum_def_t {
-  const char* const desc;     // A brief description of the datum for humans.
-  const TCode       type_id;  // The type of the data member.
-  const SIUnit      units;    // Real-world units that this datum measures.
-  const uint16_t    flgs;     // Flags to preload into the datum.
-} DatumDef;
 
 
 /*
-* This class helps us present and manage the unique data that comes out of each sensor.
-* Every instance of SensorWrapper should have at least one of these defined for it.
+* We have the option of directing a SensorDatum to autoreport under certain
+*   conditions. When such a datum becomes dirty, the SensorDatum class can call
+*   an optional provided callback.
+* NOTE: If your application uses SensorManager, that class will monopolize the
+*   use of this function. Any application-provided callbacks should be set in
+*   the SensorManager class in such cases.
+*/
+typedef int8_t (*SensorCallBack) (const SensorCallbackCode, C3PSensor*, SensorDatum*);
+
+
+/*
+* This class describes a single type of data produced by a sensor. A single
+*   sensor may define several of these, which will be returned to the
+*   application on request, and will annotate any data callbacks.
+* Every instance of C3PSensor should defined at least one of these.
+* These objects are to be owned by the sensor that instantiates them. They can
+*   be declared as compositional elements of a sensor driver, or new them from
+*   the heap. But in either case, it should be done once, and expected that the
+*   reference to this class might be held elsewhere. See notes on the
+*   callback contract.
 */
 class SensorDatum {
   public:
-    const DatumDef* def;                  // A brief description of the datum for humans.
+    const SIUnit* const units;  // Real-world units that this datum measures.
+    const char* const   desc;   // A brief description of the datum for humans.
+    C3PValue value;             // Conceals true type.
+    C3PValue error;             // Conceals true type.
+    C3PValue threshold_high;    // Conceals true type.
+    C3PValue threshold_low;     // Conceals true type.
 
-    /* Declaration of obligatory overrides. */
-    virtual void        printDebug(StringBuilder*)        =0;
-    virtual SensorError printValue(StringBuilder*)        =0;
-    virtual SensorError serializeCBOR(StringBuilder*)     =0;
-    virtual SensorError serializeRaw(uint8_t*, uint32_t)  =0;
+    SensorDatum(const TCode TYPE, const SIUnit* const UNITS, const char* const DESC);
+    ~SensorDatum();
+
+    void        printDebug(StringBuilder*);
+    int8_t      serialize(StringBuilder*, TCode);
+    int8_t      deserialize(StringBuilder*, TCode);
 
     /* Inline accessors */
-    inline uint32_t lastUpdate() { return _last_update;  };
-    inline bool isProxied() {    return (_flags & SENSE_DATUM_FLAG_IS_PROXIED);  };
-    inline bool mem_ready() {    return (_flags & SENSE_DATUM_FLAG_MEM_ALLOC);   };
-    inline bool hardware() {     return (_flags & SENSE_DATUM_FLAG_HARDWARE);    };
-    inline bool dirty() {        return (_flags & SENSE_DATUM_FLAG_DIRTY);       };
-    inline SensorReporting autoreport() {
-      return ((SensorReporting) (_flags & SENSE_DATUM_FLAG_REPORT_MASK));
-    };
-
-
-  protected:
-    SensorDatum(const DatumDef* DEF) : def(DEF) {};
-    //~SensorDatum();
-
-    inline void dirty(bool x) {
-      _flags = (x) ? (_flags | SENSE_DATUM_FLAG_DIRTY) : (_flags & ~SENSE_DATUM_FLAG_DIRTY);
-      if (x) _last_update = millis();
-    };
+    inline bool            dirty() {           return _dirty;          };
+    inline bool            isProxied() {       return _is_proxied;     };
+    inline bool            mem_ready() {       return _mem_ready;      };
+    inline bool            hardware() {        return _is_hardware;    };
+    inline uint32_t        lastUpdate() {      return _last_update;    };
+    inline SensorReporting autoreport() {      return _reporting;      };
+    inline C3PSensor*      owner() {           return _owner;          };
 
 
   private:
-    uint16_t   _flags        = 0;
-    uint32_t   _last_update  = 0;
+    friend C3PSensor;                                     // C3PSensor can directly manipulate this class.
+    C3PSensor*      _owner       = nullptr;               // The sensor that owns this datum.
+    unsigned int    _last_update = 0;                     // System time of last new data.
+    bool            _is_hardware = false;                 // True if this object directly represents hardware.
+    bool            _is_proxied  = false;                 // True if this data source is local to firmware.
+    bool            _dirty       = false;                 // True if the value is fresh.
+    bool            _mem_ready   = false;                 // True if the memory holding the data is initialized.
+    SensorReporting _reporting   = SensorReporting::OFF;  // Autoreporting behavior.
+
+    void        dirty(bool x);
 };
 
 
-
-class SensorWrapper {
+/*
+* C3PSensor is a pure virtual wrapper class that should be implemented by
+*   any sensor that wants to use the SensorDatum abstraction.
+*/
+class C3PSensor {
   public:
+    const char* const name;      // This is the name of the sensor.
+
     /* Declaration of obligatory overrides. */
-    virtual SensorError init()                        =0;   // Initialize the sensor.
-    virtual SensorError poll()                        =0;   // Polls the class.
-    virtual SensorError reset()                       =0;   // Reset the sensor.
-    virtual SensorError enable(bool)                  =0;   // Should the sensor be enabled?
-    virtual void        printDebug(StringBuilder*)    =0;
-    virtual SensorError serialize(cbor::encoder*)     =0;
-    virtual SensorError serialize(uint8_t*, uint32_t) =0;
+    virtual uint32_t     datumCount()       =0;
+    virtual SensorDatum* getDatum(uint32_t) =0;
 
     /* Inline accessors */
-    inline bool pinsConfigured() {  return _sensor_flag(MANUVR_SENSOR_FLAG_PINS_CONFIGURED); };
-    inline bool devFound() {        return _sensor_flag(MANUVR_SENSOR_FLAG_DEVICE_PRESENT);  };
-    inline bool isInitialized() {   return _sensor_flag(MANUVR_SENSOR_FLAG_INITIALIZED);     };
-    inline bool isEnabled() {       return _sensor_flag(MANUVR_SENSOR_FLAG_ENABLED);         };
-    inline bool isCalibrated() {    return _sensor_flag(MANUVR_SENSOR_FLAG_CALIBRATED);      };
-    inline const char* sensorName() {   return _name;   };
+    inline bool pinsConfigured() {      return _sensor_flag(C3P_SENSOR_FLAG_PINS_CONFIGURED); };
+    inline bool devFound() {            return _sensor_flag(C3P_SENSOR_FLAG_DEVICE_PRESENT);  };
+    inline bool sensor_initialized() {  return _sensor_flag(C3P_SENSOR_FLAG_INITIALIZED);     };
+    inline bool sensor_enabled() {      return _sensor_flag(C3P_SENSOR_FLAG_ENABLED);         };
+    inline bool sensor_calibrated() {   return _sensor_flag(C3P_SENSOR_FLAG_CALIBRATED);      };
 
-    /* Static functions */
-    static const char* errorString(SensorError);
-    static void printSensorBasicInfo(SensorWrapper*, StringBuilder*);
+    inline void setCallback(SensorCallBack x) {    _sensor_cb = x;   };
+
+    static const char* const callbackCodeStr(const SensorCallbackCode);
 
 
   protected:
-    //SensorCallBack ar_callback = nullptr; // The pointer to the callback function used for autoreporting.
+    C3PSensor(const char* const N) : name(N), _sensor_cb(nullptr), _flags(0) {};
+    ~C3PSensor();
 
-    SensorWrapper(const char*);
-    SensorWrapper(const char*, const char*);
-    ~SensorWrapper();
+    inline void _sensor_pinsConfigured(bool x) {  _sensor_set_flag(C3P_SENSOR_FLAG_PINS_CONFIGURED, x); };
+    inline void _sensor_devFound(bool x) {        _sensor_set_flag(C3P_SENSOR_FLAG_DEVICE_PRESENT, x);  };
+    inline void _sensor_initialized(bool x) {     _sensor_set_flag(C3P_SENSOR_FLAG_INITIALIZED, x);     };
+    inline void _sensor_enabled(bool x) {         _sensor_set_flag(C3P_SENSOR_FLAG_ENABLED, x);         };
+    inline void _sensor_calibrated(bool x) {      _sensor_set_flag(C3P_SENSOR_FLAG_CALIBRATED, x);      };
 
-    /* Inline accessors */
-    inline void pinsConfigured(bool x) {  _sensor_set_flag(MANUVR_SENSOR_FLAG_PINS_CONFIGURED, x); };
-    inline void devFound(bool x) {        _sensor_set_flag(MANUVR_SENSOR_FLAG_DEVICE_PRESENT, x);  };
-    inline void isInitialized(bool x) {   _sensor_set_flag(MANUVR_SENSOR_FLAG_INITIALIZED, x);     };
-    inline void isEnabled(bool x) {       _sensor_set_flag(MANUVR_SENSOR_FLAG_ENABLED, x);         };
-    inline void isCalibrated(bool x) {    _sensor_set_flag(MANUVR_SENSOR_FLAG_CALIBRATED, x);      };
-
-    /* Flag manipulation inlines */
-    inline uint16_t _sensor_flags() {                return _flags;           };
-    inline bool _sensor_flag(uint16_t _flag) {       return (_flags & _flag); };
-    inline void _sensor_clear_flag(uint16_t _flag) { _flags &= ~_flag;        };
-    inline void _sensor_set_flag(uint16_t _flag) {   _flags |= _flag;         };
-    inline void _sensor_set_flag(uint16_t _flag, bool nu) {
-      if (nu) _flags |= _flag;
-      else    _flags &= ~_flag;
+    inline int8_t _datum_callback(SensorDatum* datum) {
+      return _sensor_cb_general(SensorCallbackCode::DATA_UPDATED, datum);
     };
+
+    void _print_c3p_sensor(StringBuilder*);
 
 
   private:
-    const char*    _name;     // This is the name of the sensor.
-    uint16_t       _flags   = 0;       // Holds elementary state and capability info.
+    SensorCallBack _sensor_cb;  // The optional callback function used for autoreporting.
+    uint8_t        _flags;      // Holds elementary binary state for sensor.
+
+    // Callback usage...
+    inline int8_t _sensor_cb_general(const SensorCallbackCode CODE, SensorDatum* datum) {
+      return ((nullptr != _sensor_cb) ? _sensor_cb(CODE, this, datum) : -1);
+    };
+
+    /* Flag manipulation inlines */
+    inline bool _sensor_flag(uint8_t _flag) {       return (_flags & _flag); };
+    inline void _sensor_set_flag(uint8_t _flag, bool nu) {
+      if (nu) _flags |= _flag;
+      else    _flags &= ~_flag;
+    };
 };
 
 #endif   // __SENSOR_WRAPPER_INCLUDE_H
