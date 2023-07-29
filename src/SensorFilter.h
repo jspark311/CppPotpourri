@@ -58,7 +58,8 @@ class SensorFilterBase {
     inline uint32_t totalSamples() {       return _samples_total;                     };
     inline bool     dirty() {              return _filter_dirty;                      };
     inline bool     initialized() {        return _filter_initd;                      };
-    inline const char* name() {            return (_name ? (const char*) _name : ""); };
+    inline char*    name() {               return (_name ? _name : (char*) "");       };
+    inline SIUnit*  units() {              return (_units ? _units : nullptr);        };
     inline FilteringStrategy strategy() {  return _strat;                             };
 
     /**
@@ -72,6 +73,7 @@ class SensorFilterBase {
     };
 
     int8_t name(char*);
+    int8_t units(SIUnit*);
     int8_t serialize(StringBuilder*, TCode);
     int8_t deserialize(StringBuilder*, TCode);
 
@@ -102,7 +104,8 @@ class SensorFilterBase {
     void _print_filter_base(StringBuilder*);
 
   private:
-    char* _name = nullptr;
+    char*   _name     = nullptr;
+    SIUnit* _units    = nullptr;
 };
 
 
@@ -208,7 +211,7 @@ template <class T> class SensorFilter3 : public SensorFilterBase {
     int8_t  _zero_samples();
     void    _serialize_value(cbor::encoder*, uint32_t idx);
     void    _deserialize_value(cbor::encoder*, uint32_t idx);
-    virtual TCode  _value_tcode() =0;
+    TCode   _value_tcode();
 
     int8_t  _calculate_minmax();
     int8_t  _calculate_mean();
