@@ -151,26 +151,6 @@ const int sizeOfType(const TCode);
 
 
 /*******************************************************************************
-* An abstract typeless data container class. This is used to support type      *
-*   abstraction of our internal types, and cuts down on templating elsewhere.  *
-*******************************************************************************/
-// TODO: This needs to eat all of the type polymorphism in KeyValuePair.
-class C3PValue {
-  public:
-    const TCode TCODE;
-
-    C3PValue(const TCode TC) : TCODE(TC) {};
-    ~C3PValue() {};
-
-    int8_t serialize(StringBuilder*, TCode);
-    int8_t deserialize(StringBuilder*, TCode);
-
-
-  private:
-};
-
-
-/*******************************************************************************
 * Support functions for dealing with SI unit codes (AKA: UCodes)               *
 *******************************************************************************/
 
