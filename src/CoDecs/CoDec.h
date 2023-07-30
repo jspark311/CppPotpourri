@@ -20,3 +20,26 @@ limitations under the License.
 
 An abstract interface for CoDecs.
 */
+
+#include "../StringBuilder.h"
+#include "../EnumeratedTypeCodes.h"
+#include "../CppPotpourri.h"
+
+/*
+* A half-duplex interface built on BufferAccepter.
+*/
+class C3PCoDec : public BufferAccepter {
+  public:
+    /* Implementation of BufferAccepter. This is how we accept input. */
+    int8_t provideBuffer(StringBuilder*);
+
+    inline void setEfferant(BufferAccepter* cb) {   _efferant = cb;  };
+
+
+  protected:
+    C3PCoDec(BufferAccepter* target) : _efferant(target) {};
+    C3PCoDec() : C3PCoDec(nullptr) {};
+    ~C3PCoDec() {};
+
+    BufferAccepter* _efferant;
+};

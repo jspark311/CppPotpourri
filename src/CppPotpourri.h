@@ -137,11 +137,14 @@ typedef void (*PinCallback)(uint8_t pin, uint8_t level);
 class BufferAccepter {
   public:
     /**
-    * A class would implement this class to provide an interface for accepting a
-    *   formless buffer from another class.
+    * A class would implement this function to provide an interface for
+    *   accepting a formless buffer from another class.
     * NOTE: This idea was the fundamental idea behind Manuvr's BufferPipe class,
     *   which was not pure virtual, and carried far more implementation burden.
+    * NOTE: Return semantics should be sufficient to handle memory safety,
+    *   provided all involved implementations conform to them.
     *
+    * @param The buffer containing the data to handle. Its content may or may not be taken.
     * @return -1 to reject buffer, 0 to accept without claiming, 1 to accept with claim.
     */
     virtual int8_t provideBuffer(StringBuilder*) =0;

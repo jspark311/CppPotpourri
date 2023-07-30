@@ -4,6 +4,14 @@ Author: J. Ian Lindsay
 Date:   2021.05.03
 
 Template for a (very) finite state machine with enum controlled states.
+
+TODO: For the sake of controlling needless template bloat, we funnel all true
+  enum types into uint8 for the sake of not replicating RingBuffer<T> needlessly.
+  The only downside is that the entire FSM state map needs to be 256 entries or
+  less. And this is not being checked by the compiler...
+  I would prefer use some metaprogramming technique to do this sort of
+  condensation automatically, because this class would benefit from such
+  knowledge in other ways. Cpp-14 is a given, and Cpp-17 is probably fine.
 */
 
 #ifndef __C3P_FINITE_STATE_MACHINE

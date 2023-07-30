@@ -20,12 +20,3 @@ limitations under the License.
 
 A CoDec for the Base64 transform.
 */
-
-
-//class Base64Encoder {
-//};
-
-
-
-//class Base64Decoder {
-//};
