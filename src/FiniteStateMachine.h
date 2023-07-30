@@ -40,7 +40,7 @@ template <class T> class StateMachine {
     ) :
       _NAME(FSM_NAME), _ENUM_DEFS(EDEFS),
       _lockout_timer(0), _slowdown_ms(0), _waypoints(MAX_DEPTH),
-      _current_state(I_STATE), _prior_state(I_STATE), _fsm_flags(0) {};
+      _current_state(I_STATE), _prior_state(I_STATE) {};
 
     ~StateMachine() {};
 
@@ -71,7 +71,7 @@ template <class T> class StateMachine {
     inline void     _fsm_lockout(uint32_t x) {  _lockout_timer.reset(x);            };
     inline uint32_t _fsm_lockout() {            return _lockout_timer.remaining();  };
     inline bool     _fsm_is_waiting() {         return !_lockout_timer.expired();   };
-    inline T        _fsm_pos_next() {           return _waypoints.get(false);       };
+    inline T        _fsm_pos_next() {           return (T) _waypoints.get(false);   };
     inline bool     _fsm_is_stable() {          return (0 == _waypoints.count());   };
     inline void     _fsm_slowdown(uint32_t x) { _slowdown_ms = x;                   };
     inline uint32_t _fsm_slowdown() {           return _slowdown_ms;                };
@@ -87,12 +87,10 @@ template <class T> class StateMachine {
     const EnumDefList<T>* const _ENUM_DEFS;
     PeriodicTimeout             _lockout_timer;   // Used to enforce a delay between state transitions.
     uint32_t                    _slowdown_ms;
-    RingBuffer<T>               _waypoints;
+    RingBuffer<uint8_t>         _waypoints;
     T                           _current_state;
     T                           _prior_state;
-    uint8_t                     _fsm_flags;
 };
-
 
 
 
@@ -110,9 +108,9 @@ template <class T> class StateMachine {
 template <class T> int8_t StateMachine<T>::_fsm_advance() {
   int8_t ret = -1;
   if (0 < _waypoints.count()) {
-    if (0 == _fsm_set_position(_waypoints.peek())) {
+    if (0 == _fsm_set_position((T) _waypoints.peek())) {
       _prior_state   = _current_state;
-      _current_state = _waypoints.get();
+      _current_state = (T) _waypoints.get();
       ret = 0;
       if (0 < _slowdown_ms) {
         // Be sure to preserve at least as much margin as the transistion code
@@ -135,7 +133,6 @@ template <class T> void StateMachine<T>::_fsm_reset(T new_state) {
   _lockout_timer.reset();
   _waypoints.clear();
 }
-
 
 
 /**
@@ -170,7 +167,7 @@ template <class T> int8_t StateMachine<T>::_fsm_set_route(int arg_count, ...) {
       //   new route to it.
       _waypoints.clear();
       for (int i = 0; i < PARAM_COUNT; i++) {
-        _waypoints.insert(test_values[i]);
+        _waypoints.insert((uint8_t) test_values[i]);
       }
     }
   }
@@ -208,7 +205,7 @@ template <class T> int8_t StateMachine<T>::_fsm_append_route(int arg_count, ...)
     if (0 == ret) {
       // If everything looks good, append the new route to the state traversal list.
       for (int i = 0; i < PARAM_COUNT; i++) {
-        _waypoints.insert(test_values[i]);
+        _waypoints.insert((uint8_t) test_values[i]);
       }
     }
   }
@@ -231,7 +228,7 @@ template <class T> int8_t StateMachine<T>::_fsm_append_route(int arg_count, ...)
 //    ret--;
 //    // We need at least enough space for our one addition.
 //    if (_waypoints.count() > _waypoints.capacity()) {
-//      _waypoints.insert(final);
+//      _waypoints.insert((uint8_t) final);
 //      ret = 0;
 //    }
 //  }
@@ -255,9 +252,9 @@ template <class T> int8_t StateMachine<T>::_fsm_prepend_state(T nxt) {
     const uint32_t STATES_TO_CYCLE = _waypoints.count();
     // We need at least enough space for our one addition.
     if (STATES_TO_CYCLE < _waypoints.capacity()) {
-      _waypoints.insert(nxt);
+      _waypoints.insert((uint8_t) nxt);
       for (uint32_t i = 0; i < STATES_TO_CYCLE; i++) {
-        _waypoints.insert(_waypoints.get());
+        _waypoints.insert((uint8_t) _waypoints.get());
       }
       ret = 0;
     }
@@ -283,7 +280,7 @@ template <class T> void StateMachine<T>::printFSM(StringBuilder* output) {
       keep_looping = false;
     }
     else {
-      output->concatf("%s, ", _ENUM_DEFS->enumStr(_waypoints.get(i)));
+      output->concatf("%s, ", _ENUM_DEFS->enumStr((T) _waypoints.get(i)));
     }
     i++;
   }
