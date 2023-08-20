@@ -231,6 +231,17 @@ int8_t M2MLink::provideBuffer(StringBuilder* buf) {
 }
 
 
+/**
+* This function is called by a transport driver trying to feed incoming data to
+*   the session. Thus we consider _inbound_buf.
+*
+* @return the number of bytes available in the TX ring.
+*/
+int32_t M2MLink::bufferAvailable() {
+  return (_opts.mtu - _inbound_buf.length());
+}
+
+
 /*******************************************************************************
 * Exposed member functions.                                                    *
 *******************************************************************************/

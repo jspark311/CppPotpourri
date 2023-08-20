@@ -71,6 +71,11 @@ inline void strict_swap(int8_t*   a, int8_t*   b) {  int8_t   t = *a; *a = *b; *
 
 /*
 * Given two values, gives the difference between them after accounting for wrap.
+*
+* TODO: Poor-naming, or poor implementation. Can't tell. But there are bugs
+*   surrounding these inlines. Should use the GCC macro for the type's maximum
+*   value? In any case, audit the entire lib's use of these inlines, and maybe
+*   doc and unit-test them.
 */
 inline double   wrap_accounted_delta(double   a, double   b) {   return (a > b) ? (a - b) : (b - a);   };
 inline float    wrap_accounted_delta(float    a, float    b) {   return (a > b) ? (a - b) : (b - a);   };
@@ -131,30 +136,78 @@ typedef void (*FxnPointer)();
 typedef void (*PinCallback)(uint8_t pin, uint8_t level);
 
 
-/**
-* An interface class for accepting a buffer.
-*/
+/*******************************************************************************
+* Interfaces for moving buffers in a predictable fashion. Also, some optional
+*   helper classes built on that capability.
+*
+* A class would implement BufferAccepter to expose a means of accepting a
+*   formless buffer from a source that doesn't need to know the specifics of
+*   what is to be done with the buffer, nor how.
+* NOTE: This idea was the fundamental idea behind Manuvr's BufferPipe class,
+*   which was not pure virtual, and carried far more implementation burden.
+*
+* TODO: Migrate elsewhere.
+*******************************************************************************/
+
+/* An interface class for accepting a buffer. */
+// TODO: Doc and unit-testing to spell out contract for this interface.
+//   Points to cover... Synchronicity, ownership transfer (in heap case).
 class BufferAccepter {
   public:
     /**
-    * A class would implement this function to provide an interface for
-    *   accepting a formless buffer from another class.
-    * NOTE: This idea was the fundamental idea behind Manuvr's BufferPipe class,
-    *   which was not pure virtual, and carried far more implementation burden.
-    * NOTE: Return semantics should be sufficient to handle memory safety,
-    *   provided all involved implementations conform to them.
+    * Provides a heap-based buffer with fully-realized ownership management.
     *
-    * @param The buffer containing the data to handle. Its content may or may not be taken.
-    * @return -1 to reject buffer, 0 to accept without claiming, 1 to accept with claim.
+    * @param is the pointer to the managed container for the content.
+    * @return -1 to reject buffer, 0 to accept with partial claim, 1 to accept with full claim.
     */
     virtual int8_t provideBuffer(StringBuilder*) =0;
+
+    /**
+    * @return the number of bytes available in the next stage of buffering.
+    */
+    virtual int32_t bufferAvailable() =0;
 };
 
 
-/**
-* An interface class for accepting a scalar value, with units and error.
-*/
-class ScalarAccepter {
+/* A class to fork string in a safe way. */
+// TODO: Migrate elsewhere.
+class BufferAccepterFork : public BufferAccepter {
+  public:
+    BufferAccepterFork(BufferAccepter* lh, BufferAccepter* rh) : _left_hand(lh), _right_hand(rh) {};
+    BufferAccepterFork(BufferAccepter* lh) : BufferAccepterFork(lh, nullptr) {};
+    BufferAccepterFork() : BufferAccepterFork(nullptr, nullptr) {};
+    ~BufferAccepterFork() {};
+
+    /* Implementation of BufferAccepter. */
+    int8_t provideBuffer(StringBuilder* buf);
+    int32_t bufferAvailable();
+
+    inline BufferAccepter* leftHand() {          return _left_hand;   };
+    inline BufferAccepter* rightHand() {         return _right_hand;  };
+    inline void leftHand(BufferAccepter* x) {    _left_hand = x;      };
+    inline void rightHand(BufferAccepter* x) {   _right_hand = x;     };
+
+  private:
+    BufferAccepter* _left_hand;
+    BufferAccepter* _right_hand;
+};
+
+// TODO: Write proper CoDec transform objects: CBOR, Delta97, Base64.
+
+
+//
+// TODO: End of migration block
+//////////////////////////////////////////////////
+
+/*******************************************************************************
+* ScalarAccepter is the same composable pipeline idea as BufferAccepter, but
+*   applied to data that is controlled for both error and units.
+*
+* TODO: Nothing has been written against this. It should probably be a template,
+*   rather than up-scaling a numeric type.
+*******************************************************************************/
+
+class SIValueAccepter {
   public:
     /**
     * A class would implement this class to provide an interface for accepting a
@@ -162,7 +215,7 @@ class ScalarAccepter {
     *
     * @return -1 to reject value, 0 to accept.
     */
-    virtual int8_t provideScalar(SIUnit, double value, double error) =0;
+    virtual int8_t provideSIValue(SIUnit*, double value, double error) =0;
 };
 
 

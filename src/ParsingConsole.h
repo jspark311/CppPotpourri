@@ -47,15 +47,6 @@ limitations under the License.
 typedef int (*consoleCallback)(StringBuilder* log, StringBuilder* args);
 
 /* Error conditions that this class might report. */
-enum class LineTerm : uint8_t {
-  ZEROBYTE = 0x00,
-  CR       = 0x01,
-  LF       = 0x02,
-  CRLF     = 0x03
-};
-
-
-/* Error conditions that this class might report. */
 enum class ConsoleErr : uint8_t {
   NONE          = 0x00,    // Reserved. Denotes end-of-list.
   NO_MEM        = 0x01,    // Class ran out of memory.
@@ -120,7 +111,8 @@ class ParsingConsole : public BufferAccepter {
     int8_t init();
 
     /* Implementation of BufferAccepter. */
-    int8_t provideBuffer(StringBuilder* buf);
+    int8_t  provideBuffer(StringBuilder*);
+    int32_t bufferAvailable();
 
     void   fetchLog(StringBuilder*);
     void   printToLog(StringBuilder*);

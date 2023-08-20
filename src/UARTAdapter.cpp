@@ -16,8 +16,8 @@ UARTAdapter::UARTAdapter(
   const uint8_t rts_pin,
   const uint16_t tx_buf_len,
   const uint16_t rx_buf_len
-) : _BUF_LEN_TX(tx_buf_len), _BUF_LEN_RX(rx_buf_len), ADAPTER_NUM(adapter), _TXD_PIN(txd_pin), _RXD_PIN(rxd_pin), _CTS_PIN(cts_pin), _RTS_PIN(rts_pin) {
-}
+) : ADAPTER_NUM(adapter), _TXD_PIN(txd_pin), _RXD_PIN(rxd_pin), _CTS_PIN(cts_pin), _RTS_PIN(rts_pin),
+  _tx_buffer(tx_buf_len), _rx_buffer(rx_buf_len) {}
 
 
 /**
@@ -30,6 +30,8 @@ UARTAdapter::~UARTAdapter() {
 
 int8_t UARTAdapter::init(const UARTOpts* o) {
   _extnd_state = 0;
+  _tx_buffer.allocated();    // Enforce ring allocation.
+  _rx_buffer.allocated();    // Enforce ring allocation.
   _adapter_set_flag(UART_FLAG_PENDING_CONF);
   for (uint32_t i = 0; i < sizeof(UARTOpts); i++) {
     *((uint8_t*) &_opts + i) = *((uint8_t*) o + i);
@@ -94,14 +96,12 @@ void UARTAdapter::printDebug(StringBuilder* output) {
 
   if (initialized()) {
     if (rxCapable()) {
-      output->concatf("\tRX: (%u bytes waiting)\n\t------------------------\n", pendingRxBytes());
-      output->concatf("\tRing len:\t%u\n", _BUF_LEN_RX);
+      output->concatf("\tRX ring: %u bytes waiting (max %u)\n\t------------------------\n", pendingRxBytes(), _rx_buffer.capacity());
       output->concatf("\tLast RX: \t%u ms\n", last_byte_rx_time);
       output->concatf("\tTimeout: \t%u ms\n\n", rxTimeout());
     }
     if (txCapable()) {
-      output->concatf("\tTX: (%u bytes waiting)\n\t------------------------\n", pendingTxBytes());
-      output->concatf("\tRing len:\t%u\n", _BUF_LEN_TX);
+      output->concatf("\tTX ring: %u bytes waiting (max %u)\n\t------------------------\n", pendingTxBytes(), _tx_buffer.capacity());
       output->concatf("\tFlushed: \t%c\n", (flushed()?'y':'n'));
     }
   }
@@ -110,48 +110,49 @@ void UARTAdapter::printDebug(StringBuilder* output) {
 
 /**
 *
-* @return -1 to reject buffer, 0 to accept without claiming, 1 to accept with claim.
+* @param is the pointer to the managed container for the content.
+* @return -1 to reject buffer, 0 to accept with partial claim, 1 to accept with full claim.
 */
 int8_t UARTAdapter::provideBuffer(StringBuilder* buf) {
   int8_t ret = -1;
-  if (txCapable()) {
-    // NOTE: The abstraction will not allow excursions past its declared buffer limit.
-    //   In the event that it is requested, the UART driver will take all that it can,
-    //   free that memory from the arguemnt, and return 0 to inform the caller that
-    //   not all memory was claimed.
-    const int32_t FULL_BUFFER_LEN   = (int32_t) buf->length();
-    //const int32_t LOCAL_BUFFER_FREE = (((int32_t) _BUF_LEN_TX) - ((int32_t) _tx_buffer.length()));
-    // TODO: The line above is the intent. But we need a different scalar in the
-    //   abstraction to cope with the fact that it is also used as the ring buffer size
-    //   by the platform half of this driver. For now, we hard-code it at 8KiB.
-    const int32_t LOCAL_BUFFER_FREE = (8192 - ((int32_t) _tx_buffer.length()));
-
-    if ((LOCAL_BUFFER_FREE > 0) && (FULL_BUFFER_LEN > 0)) {
+  if (buf) {
+    const int32_t FULL_BUFFER_LEN = (int32_t) buf->length();
+    if (0 < FULL_BUFFER_LEN) {
+      // NOTE: The abstraction will not allow excursions past its declared buffer limit.
+      //   In the event that it is requested, the UART driver will take all that it can,
+      //   free that memory from the arguemnt, and return 0 to inform the caller that
+      //   not all memory was claimed.
+      // TODO: It would be much better to iterate through each chunk of the
+      //   StringBuilder and copy and free that way, versus this expedient. By
+      //   calling StringBuilder::string(), we might force a reallocation. We
+      //   should use the tokenizer API to consume it in-situ.
+      const int32_t TXBUF_AVAILBLE = bufferAvailable();
       // For this call to make sense, there must be at least some input data,
       //   and some free buffer to accept it.
-      if (FULL_BUFFER_LEN <= LOCAL_BUFFER_FREE) {
-        // Nominal case. TX buffer has enough space for the entire argument.
-        _tx_buffer.concatHandoff(buf);
-        // Took the entire buffer.
-        ret = 1;
-      }
-      else {
-        // Overflow case. Take as much of the input as possible, and leave the
-        //   remainder so that the caller can decide what to do with it.
-        // Take from the front of the buffer.
-        _tx_buffer.concatHandoffLimit(buf, LOCAL_BUFFER_FREE);
-
-        // TODO: Avoid the peak heap hit from string() by doing something more like...
-        //buf->chunk(LOCAL_BUFFER_FREE);
-        //buf->drop_position(0);
-        ret = 0;
+      if (txCapable() && (0 < TXBUF_AVAILBLE) && (0 < BYTES_TO_TAKE)) {
+        const int32_t BYTES_TAKEN = _tx_buffer.insert(buf->string(), FULL_BUFFER_LEN);
+        if (0 < BYTES_TAKEN) {
+          buf->cull(BYTES_TAKEN);
+          ret = (FULL_BUFFER_LEN > BYTES_TAKEN) ? 0 : 1;
+        }
       }
     }
+  }
+  return ret;
+}
 
-    if (!_tx_buffer.isEmpty(true)) {
-      // If the TX buffer has content, it is no longer flushed.
-      _adapter_clear_flag(UART_FLAG_FLUSHED);
-    }
+
+/**
+* TODO: For minimum confusion, we need a bi-directional analog of BufferAccepter.
+* This function is called by a client class trying to send data over the UART.
+*   Thus we consider the TX ring.
+*
+* @return the number of bytes available in the TX ring.
+*/
+int32_t UARTAdapter::bufferAvailable() {
+  int32_t ret = -1;
+  if (_tx_buffer.allocated()) {
+    ret = (_tx_buffer.capacity() - _tx_buffer.count());
   }
   return ret;
 }

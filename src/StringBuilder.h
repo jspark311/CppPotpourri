@@ -47,25 +47,41 @@ TODO: This API badly needs return codes in the memory-allocating functions.
 int strcasestr(char *a, const char *b);
 #endif
 
+
+/*
+* TODO: Retrospective (meta edition)
+*
+* It might be desirable to break StringBuilder apart along one (or more) lines.
+* Namely....
+*   1) Memory model per-instance. Presently, this is a linked-list on the heap.
+*      but it might be good to have avaialble the option of assigning a
+*      pre-existing flat buffer space and only operating within it.
+*   2) Formatting and tokenizing handled as seperate pieces?
+*   3) Static styling methods have always felt wrong here...
+*/
+
 /*
 * This is a linked-list that is castable as a string.
 *
-* TODO: Retrospective.
-*   The reap member is probably costing more memory (by way of alignmnet and
-*   padding) than it is saving us in non-replication of const char* const.
-*   The investment of complexity probably has a batter RoI if we packed data
-*   into the pointer member in lieu of heap allocation and reference for
-*   payloads with (len < sizeof(intptr_t)) on a given platform.
-* That said, we might retain the reap/no-reap distinction by making StrLL a
+* NOTE: Retrospective.
+*   The reap member costs more memory (by way of alignmnet and padding) than it
+*   was saving in non-replication of const char* const. Under almost all usage
+*   patterns, and certainly the most common of them.
+*
+* TODO: That said, we might retain the reap/no-reap distinction by making StrLL a
 *   proper polymorphic class with differential destructors. But the vtable costs
 *   would almost certainly be worse than the padding imposition of a single bool.
-* Dig.
+*   Dig.
+*
+* NOTE: Direct-castablity to a string ended up being a non-value.
+* TODO: The investment of complexity probably has a batter RoI if we merge the
+*   memory allocations for the StrLL, as well as its content.
 */
 typedef struct str_ll_t {
   unsigned char    *str;   // The string.
   struct str_ll_t  *next;  // The next element.
   int              len;    // The length of this element.
-  bool             reap;   // Should this position be reaped?
+  //bool           reap;   // Should this position be reaped?
 } StrLL;
 
 
@@ -100,11 +116,10 @@ class StringBuilder {
     /**
     * Overrides to cleanly support C-style strings..
     */
-    inline void concat(char* nu) {  concat((uint8_t*) nu, strlen(nu));  };
-    inline void prepend(char* nu) { prepend((uint8_t*) nu, strlen(nu)); };
-
-    void prepend(const char* nu);
-    void concat(const char* nu);
+    inline void concat(char* nu) {         concat((uint8_t*) nu, strlen(nu));   };
+    inline void concat(const char* nu) {   concat((uint8_t*) nu, strlen(nu));   };
+    inline void prepend(char* nu) {        prepend((uint8_t*) nu, strlen(nu));  };
+    inline void prepend(const char* nu) {  prepend((uint8_t*) nu, strlen(nu));  };
 
     /* Variadic concat. Semantics are the same as printf. */
     int concatf(const char* format, ...);

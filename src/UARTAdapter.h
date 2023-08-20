@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "BusQueue.h"
 #include "StringBuilder.h"
+#include "RingBuffer.h"
 #include "AbstractPlatform.h"
 
 #ifndef __ABSTRACT_UART_QUEUE_TEMPLATE_H__
@@ -10,12 +11,11 @@
 /*
 * Adapter flag defs.
 */
-#define UART_FLAG_UART_READY    0x0001    // Is the UART initialized?
-#define UART_FLAG_FLUSHED       0x0002    // Is the TX FIFO flushed?
-#define UART_FLAG_PENDING_RESET 0x0004    // Peripheral is waiting on a reset.
-#define UART_FLAG_PENDING_CONF  0x0008    // Peripheral is waiting on a reconf.
-#define UART_FLAG_HAS_TX        0x0010    // Bus configuration details.
-#define UART_FLAG_HAS_RX        0x0020    // Bus configuration details.
+#define UART_FLAG_UART_READY    0x01    // Is the UART initialized?
+#define UART_FLAG_PENDING_RESET 0x04    // Peripheral is waiting on a reset.
+#define UART_FLAG_PENDING_CONF  0x08    // Peripheral is waiting on a reconf.
+#define UART_FLAG_HAS_TX        0x10    // Bus configuration details.
+#define UART_FLAG_HAS_RX        0x20    // Bus configuration details.
 
 
 /* Flow-control strategies. */
@@ -60,7 +60,6 @@ typedef struct {
 } UARTOpts;
 
 
-
 /*
 * The UART driver class.
 */
@@ -70,7 +69,8 @@ class UARTAdapter : public BufferAccepter {
     virtual ~UARTAdapter();
 
     /* Implementation of BufferAccepter. */
-    int8_t provideBuffer(StringBuilder*);
+    int8_t  provideBuffer(StringBuilder*);
+    int32_t bufferAvailable();
 
     int8_t init(const UARTOpts*);
     int8_t poll();
@@ -85,7 +85,7 @@ class UARTAdapter : public BufferAccepter {
     inline uint32_t bitrate() {     return _opts.bitrate;  };
 
     inline bool initialized() {  return _adapter_flag(UART_FLAG_UART_READY); };
-    inline bool flushed() {      return _adapter_flag(UART_FLAG_FLUSHED);    };
+    inline bool flushed() {      return _flushed;                            };
     inline bool txCapable() {    return _adapter_flag(UART_FLAG_HAS_TX);     };
     inline bool rxCapable() {    return _adapter_flag(UART_FLAG_HAS_RX);     };
 
@@ -99,8 +99,8 @@ class UARTAdapter : public BufferAccepter {
     inline uint32_t write(const char* str) {  return write((uint8_t*) str, strlen(str));  }
     inline void readCallback(BufferAccepter* cb) {   _read_cb_obj = cb;   };
 
-    inline int pendingRxBytes() {   return _rx_buffer.length();   };
-    inline int pendingTxBytes() {   return _tx_buffer.length();   };
+    inline int pendingRxBytes() {   return _rx_buffer.count();    };
+    inline int pendingTxBytes() {   return _tx_buffer.count();    };
     inline uint32_t rxTimeout() {   return bus_timeout_millis;    };
     inline uint32_t lastRXTime() {  return last_byte_rx_time;     };
 
@@ -111,31 +111,29 @@ class UARTAdapter : public BufferAccepter {
 
 
   protected:
-    const uint16_t  _BUF_LEN_TX;
-    const uint16_t  _BUF_LEN_RX;
     const uint8_t   ADAPTER_NUM;              // The platform-relatable index of the adapter.
     const uint8_t   _TXD_PIN;                 // Pin assignment for TXD.
     const uint8_t   _RXD_PIN;                 // Pin assignment for RXD.
     const uint8_t   _CTS_PIN;                 // Pin assignment for CTS.
     const uint8_t   _RTS_PIN;                 // Pin assignment for RTS.
-    uint16_t        _extnd_state       = 0;   // Flags for the concrete class to use.
+    uint8_t         _extnd_state       = 0;   // Flags for the concrete class to use.
+    bool            _flushed           = true;   // Assumed to be set by ISR.
     UARTOpts        _opts;
     uint32_t        bus_timeout_millis = 50;  // How long is a temporal break;
     uint32_t        last_byte_rx_time  = 0;   // Time of last character RX.
     BufferAccepter* _read_cb_obj       = nullptr;
-    StringBuilder   _tx_buffer;
-    StringBuilder   _rx_buffer;
+    RingBuffer<uint8_t> _tx_buffer;
+    RingBuffer<uint8_t> _rx_buffer;
 
     /* These functions are provided by the platform-specific code. */
     int8_t _pf_init();
     int8_t _pf_deinit();
 
-    inline uint16_t _adapter_flags() {                 return _extnd_state;            };
-    inline bool _adapter_flag(uint16_t _flag) {        return (_extnd_state & _flag);  };
-    inline void _adapter_flip_flag(uint16_t _flag) {   _extnd_state ^= _flag;          };
-    inline void _adapter_clear_flag(uint16_t _flag) {  _extnd_state &= ~_flag;         };
-    inline void _adapter_set_flag(uint16_t _flag) {    _extnd_state |= _flag;          };
-    inline void _adapter_set_flag(uint16_t _flag, bool nu) {
+    inline uint8_t _adapter_flags() {                 return _extnd_state;            };
+    inline bool _adapter_flag(uint8_t _flag) {        return (_extnd_state & _flag);  };
+    inline void _adapter_clear_flag(uint8_t _flag) {  _extnd_state &= ~_flag;         };
+    inline void _adapter_set_flag(uint8_t _flag) {    _extnd_state |= _flag;          };
+    inline void _adapter_set_flag(uint8_t _flag, bool nu) {
       if (nu) _extnd_state |= _flag;
       else    _extnd_state &= ~_flag;
     };

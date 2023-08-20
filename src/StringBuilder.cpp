@@ -720,7 +720,7 @@ void StringBuilder::concatHandoff(uint8_t* buf, int len) {
     #endif
     StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
     if (nu_element) {
-      nu_element->reap = true;
+      //nu_element->reap = true;
       nu_element->next = nullptr;
       nu_element->len  = len;
       nu_element->str  = buf;
@@ -742,7 +742,7 @@ void StringBuilder::prepend(uint8_t* nu, int len) {
 
     StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
     if (nullptr == nu_element) return;   // O no.
-    nu_element->reap = true;
+    //nu_element->reap = true;
     nu_element->len  = len;
     nu_element->str  = (uint8_t*) malloc(len+1);
     if (nu_element->str != nullptr) {
@@ -761,15 +761,6 @@ void StringBuilder::prepend(uint8_t* nu, int len) {
 }
 
 
-/*
-* TODO: Mark as non-reapable and store the pointer. The blocker is "reapable"
-*   of this->str at the time of promotion.
-*/
-void StringBuilder::prepend(const char *nu) {
-  this->prepend((uint8_t*) nu, strlen(nu));
-}
-
-
 void StringBuilder::concat(uint8_t* nu, int len) {
   if ((nu != nullptr) && (len > 0)) {
     #if defined(__BUILD_HAS_PTHREADS)
@@ -778,7 +769,7 @@ void StringBuilder::concat(uint8_t* nu, int len) {
     #endif
     StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
     if (nu_element != nullptr) {
-      nu_element->reap = true;
+      //nu_element->reap = true;
       nu_element->next = nullptr;
       nu_element->len  = len;
       nu_element->str  = (uint8_t*) malloc(len+1);
@@ -801,30 +792,32 @@ void StringBuilder::concat(uint8_t* nu, int len) {
 *
 * Crash warning: Any const char* concat'd to a StringBuilder will not be copied
 *   until it is manipulated somehow. So be very careful if you cast to (const char*).
+*
+* NOTE: Provisionally shunted into concat(char*)
 */
-void StringBuilder::concat(const char *nu) {
-  if (nu != nullptr) {
-    int len = strlen(nu);
-    if (len > 0) {
-      #if defined(__BUILD_HAS_PTHREADS)
-        //pthread_mutex_lock(&_mutex);
-      #elif defined(__BUILD_HAS_FREERTOS)
-      #endif
-      StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
-      if (nu_element != nullptr) {
-        nu_element->reap = false;
-        nu_element->next = nullptr;
-        nu_element->len  = len;
-        nu_element->str  = (uint8_t*) nu;
-        this->_stack_str_onto_list(nu_element);
-      }
-      #if defined(__BUILD_HAS_PTHREADS)
-        //pthread_mutex_unlock(&_mutex);
-      #elif defined(__BUILD_HAS_FREERTOS)
-      #endif
-    }
-  }
-}
+//void StringBuilder::concat(const char *nu) {
+//  if (nu != nullptr) {
+//    int len = strlen(nu);
+//    if (len > 0) {
+//      #if defined(__BUILD_HAS_PTHREADS)
+//        //pthread_mutex_lock(&_mutex);
+//      #elif defined(__BUILD_HAS_FREERTOS)
+//      #endif
+//      StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
+//      if (nu_element != nullptr) {
+//        nu_element->reap = false;
+//        nu_element->next = nullptr;
+//        nu_element->len  = len;
+//        nu_element->str  = (uint8_t*) nu;
+//        this->_stack_str_onto_list(nu_element);
+//      }
+//      #if defined(__BUILD_HAS_PTHREADS)
+//        //pthread_mutex_unlock(&_mutex);
+//      #elif defined(__BUILD_HAS_FREERTOS)
+//      #endif
+//    }
+//  }
+//}
 
 
 void StringBuilder::concat(unsigned char nu) {
@@ -1128,7 +1121,7 @@ int StringBuilder::replace(const char* needle, const char* replace) {
 
         StrLL* nu_element = (StrLL*) malloc(sizeof(StrLL));
         if (nu_element != nullptr) {
-          nu_element->reap = true;
+          //nu_element->reap = true;
           nu_element->next = nullptr;
           nu_element->len  = len_total;
           nu_element->str  = (uint8_t*) malloc(len_total+1);
@@ -1249,7 +1242,7 @@ int StringBuilder::chunk(int csize) {
         int remaining_len = this->col_length;
         while ((-1 != ret) && (current)) {
           const int LL_BUF_LEN = strict_min((int32_t) csize, (int32_t) remaining_len);
-          current->reap = true;
+          //current->reap = true;
           current->next = nullptr;
           current->len  = LL_BUF_LEN;
           current->str  = (uint8_t*) malloc(LL_BUF_LEN);
@@ -1422,7 +1415,8 @@ void StringBuilder::_destroy_str_ll(StrLL* r_node) {
       _destroy_str_ll(r_node->next);
       r_node->next  = nullptr;
     }
-    if (r_node->reap) free(r_node->str);
+    //if (r_node->reap) free(r_node->str);
+    if (r_node->str) free(r_node->str);
     free(r_node);
     if (r_node == this->root) this->root = nullptr;
   }
@@ -1445,7 +1439,7 @@ StrLL* StringBuilder::_promote_collapsed_into_ll() {
   if ((nullptr != str) && (col_length > 0)) {
     StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
     if (nullptr != nu_element) {   // This is going to grief us later...
-      nu_element->reap = true;
+      //nu_element->reap = true;
       nu_element->next = this->root;
       this->root = nu_element;
       nu_element->str = this->str;

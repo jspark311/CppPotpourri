@@ -142,6 +142,16 @@ int8_t ParsingConsole::provideBuffer(StringBuilder* incoming) {
 }
 
 
+// TODO: For minimum confusion, we need a bi-directional analog of BufferAccepter.
+int32_t ParsingConsole::bufferAvailable() {
+  int32_t  ret = -1;
+  if (nullptr != _output_target) {
+    ret = _output_target->bufferAvailable();
+  }
+  return ret;
+}
+
+
 /**
 *
 * @return 1 on command execution,

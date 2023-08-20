@@ -32,6 +32,7 @@ class C3PCoDec : public BufferAccepter {
   public:
     /* Implementation of BufferAccepter. This is how we accept input. */
     int8_t provideBuffer(StringBuilder*);
+    int32_t bufferAvailable();
 
     inline void setEfferant(BufferAccepter* cb) {   _efferant = cb;  };
 
@@ -42,4 +43,39 @@ class C3PCoDec : public BufferAccepter {
     ~C3PCoDec() {};
 
     BufferAccepter* _efferant;
+};
+
+
+
+
+/*
+* A class to enforce conformity of line-endings via simple search-and-replace.
+*
+* NOTE: This class is the gateway between definitions of what defines a "line"
+*   of text for internal firmware versus any external system.
+*
+* NOTE: This class can be used to signal the accumulation of text only until a
+*   complete line is received.
+*/
+class LineEndingCoDec : public BufferAccepter {
+  public:
+    LineEndingCoDec(BufferAccepter* targ = nullptr, LineTerm t = LineTerm::ZEROBYTE) : _output_target(targ), _term_seq(t) {};
+    ~LineEndingCoDec() {};
+
+    /* Implementation of BufferAccepter. */
+    int8_t  provideBuffer(StringBuilder*);
+    int32_t bufferAvailable();
+
+    inline BufferAccepter* outputTarget() {          return _output_target;   };
+    inline void outputTarget(BufferAccepter* x) {    _output_target = x;      };
+
+    // Input data will be searched for all line-endings that do NOT match this
+    //   specified value, and replace them when found.
+    inline void setTerminator(LineTerm x) {  _term_seq = x;      };
+    inline LineTerm getTerminator() {        return _term_seq;   };
+
+
+  private:
+    BufferAccepter* _output_target;
+    LineTerm _term_seq;
 };

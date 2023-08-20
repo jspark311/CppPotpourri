@@ -401,7 +401,8 @@ class M2MLink : public BufferAccepter {
     virtual ~M2MLink();
 
     /* Implementation of BufferAccepter. Accepts data from a transport. */
-    int8_t provideBuffer(StringBuilder*);
+    int8_t  provideBuffer(StringBuilder*);
+    int32_t bufferAvailable();
 
     /* Application glue */
     int8_t poll(StringBuilder* log = nullptr);
@@ -471,7 +472,7 @@ class M2MLink : public BufferAccepter {
     BufferAccepter* _output_target  = nullptr;  // A pointer to the transport for outbound bytes.
     M2MLinkCB       _lnk_callback   = nullptr;  // The application-provided callback for state changes.
     M2MMsgCB        _msg_callback   = nullptr;  // The application-provided callback for incoming messages.
-    StringBuilder   _inbound_buf;
+    StringBuilder   _inbound_buf;   // TODO: Replace with a RingBuffer<uint8_t> and finally resolve the MTU feature.
     StringBuilder   _remote_log;
 
     /* Message queue management */

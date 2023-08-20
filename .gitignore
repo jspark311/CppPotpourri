@@ -1,3 +1,4 @@
+# General
 .directory
 *.gch
 *.gcno
@@ -15,3 +16,6 @@ CMakeFiles/
 # Generated doc
 extras/doc/doxygen/
 extras/unit_tests/build/
+
+# Editor cruft
+*.bak

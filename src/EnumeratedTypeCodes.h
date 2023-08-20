@@ -53,7 +53,7 @@ class StringBuilder;
 #ifndef PI
   #define PI 3.14159265358979323846264338327950288419716939937510
 #endif
-
+#define COFACTOR_RADIAN_TO_DEGREE  (180/PI)
 
 
 /*******************************************************************************
@@ -148,6 +148,7 @@ const char* const typecodeToStr(const TCode);
 const bool typeIsFixedLength(const TCode);
 const int typeIsPointerPunned(const TCode);
 const int sizeOfType(const TCode);
+
 
 
 /*******************************************************************************
@@ -246,5 +247,18 @@ inline SIUnit IntToSIUnit(const uint8_t code) {  return (const SIUnit) code;  };
 const char* const metricPrefixStr(const int8_t OOM, const bool sym = false);
 const char* const SIUnitToStr(const SIUnit, const bool sym = false);
 void SIUnitToStr(const SIUnit*, StringBuilder*, const bool sym);
+
+
+
+/*
+* Line-termination identifiers.
+* LF ("\n") is the firmware's internal standard for string representation.
+*/
+enum class LineTerm : uint8_t {
+  ZEROBYTE = 0x00,
+  CR       = 0x01,
+  LF       = 0x02,
+  CRLF     = 0x03
+};
 
 #endif // __ENUMERATED_TYPE_CODES_H__
