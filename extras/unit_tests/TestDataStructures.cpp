@@ -32,7 +32,6 @@ StopWatch stopwatch_0;
 StopWatch stopwatch_1;
 StopWatch stopwatch_2;
 StopWatch stopwatch_3;
-StopWatch stopwatch_4;
 StopWatch stopwatch_99;
 
 
@@ -189,83 +188,6 @@ int vector3_float_test() {
 
 
 /*******************************************************************************
-* RingBuffer test routines
-*******************************************************************************/
-
-int test_RingBuffer() {
-  int return_value = -1;
-  StringBuilder log("===< RingBuffer >=======================================\n");
-  const int TEST_SIZE = 18;
-  RingBuffer<uint32_t> a(TEST_SIZE);
-  if (a.allocated()) {
-    log.concatf("RingBuffer under test is using %u bytes of heap to hold %u elements.\n", a.heap_use(), a.capacity());
-    if (0 == a.count()) {
-      unsigned int test_num = TEST_SIZE/3;
-      uint32_t val;
-      log.concat("\tInserting:");
-      for (unsigned int i = 0; i < test_num; i++) {
-        val = randomUInt32();
-        if (a.insert(val)) {
-          log.concat("\nFailed to insert.\n");
-          printf("%s\n\n", (const char*) log.string());
-          return -1;
-        }
-        log.concatf(" (%u: %08x)", a.count(), val);
-      }
-      if (test_num == a.count()) {
-        log.concat("\n\tGetting:  ");
-        for (unsigned int i = 0; i < test_num/2; i++) {
-          unsigned int count = a.count();
-          val = a.get();
-          log.concatf(" (%u: %08x)", count, val);
-        }
-        unsigned int n = TEST_SIZE - a.count();
-        log.concatf("\n\tRingBuffer should have space for %u more elements... ", n);
-        for (unsigned int i = 0; i < n; i++) {
-          if (a.insert(randomUInt32())) {
-            log.concatf("Falsified. Count is %u\n", a.count());
-            printf("%s\n\n", (const char*) log.string());
-            return -1;
-          }
-        }
-        if (a.count() == TEST_SIZE) {
-          log.concatf("Verified. Count is %u\n", a.count());
-          log.concat("\tOverflowing... ");
-          if (a.insert(randomUInt32())) {
-            log.concatf("Is handled correctly. Count is %u\n", a.count());
-            log.concat("\tDraining... ");
-            for (unsigned int i = 0; i < TEST_SIZE; i++) {
-              val = a.get();
-            }
-            if (0 == a.count()) {
-              log.concat("done.\n\tTrying to drive count negative... ");
-              if (0 == a.get()) {
-                if (0 == a.count()) {
-                  log.concat("pass.\n");
-                  return_value = 0;
-                }
-                else log.concatf("Count should still be 0 but is %u\n", a.count());
-              }
-              else log.concatf("Get on an empty buffer should return 0.\n");
-            }
-            else log.concatf("Count should have been 0 but is %u\n", a.count());
-          }
-          else log.concatf("Sadly worked. Count is %u\n", a.count());
-        }
-        else log.concatf("Count mismatch. Got %u but was expecting %u.\n", a.count(), TEST_SIZE);
-      }
-      else log.concatf("Fairly certain we inserted %u elements, but the count says %u.\n", test_num, a.count());
-    }
-    else log.concatf("Newly created RingBuffers ought to be empty. This one reports %u.\n", a.count());
-  }
-  else log.concat("\nFailed to allocate.\n");
-
-  printf("%s\n\n", (const char*) log.string());
-  return return_value;
-}
-
-
-/*******************************************************************************
 * UUID test routines
 *******************************************************************************/
 
@@ -386,7 +308,6 @@ void printStopWatches() {
   stopwatch_1.printDebug("Vector", &out);
   stopwatch_2.printDebug("KVP", &out);
   stopwatch_3.printDebug("UUID", &out);
-  stopwatch_4.printDebug("RingBuffer", &out);
   stopwatch_99.printDebug("UNUSED", &out);
   printf("%s\n\n", (const char*) out.string());
 }
@@ -420,15 +341,10 @@ int data_structure_main() {
           stopwatch_3.markStart();
           if (0 == test_UUID()) {
             stopwatch_3.markStop();
-            stopwatch_4.markStart();
-            if (0 == test_RingBuffer()) {
-              stopwatch_4.markStop();
-              printf("**********************************\n");
-              printf("*  DataStructure tests all pass  *\n");
-              printf("**********************************\n");
-              ret = 0;
-            }
-            else printTestFailure("RingBuffer");
+            printf("**********************************\n");
+            printf("*  DataStructure tests all pass  *\n");
+            printf("**********************************\n");
+            ret = 0;
           }
           else printTestFailure("UUID");
         }

@@ -79,6 +79,7 @@ ANALYZER_FLAGS += --std=$(CPP_STANDARD) --report-progress --force -j6
 # Are we on a 64-bit system? If so, we'll need to specify
 #   that we want a 32-bit build...
 #
+# TODO: we need to make both 32-bit and 64-bit builds. The library is used under both conditions.
 # Eventually, the Argument class and the aparatus surrounding it will need
 #   to be validated on a 64-bit build, but for now, we don't want to have
 #   to worry about it.

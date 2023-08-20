@@ -190,7 +190,8 @@ int test_scheduler_spin_1_to_1(const unsigned int us_to_spin) {
     scheduler->advanceScheduler();
     scheduler->serviceSchedules();
   }
-  unsigned int local_slip = wrap_accounted_delta((micros() - entry_time), us_to_spin);
+
+  unsigned int local_slip = wrap_accounted_delta((uint64_t) (micros() - entry_time), (uint64_t) us_to_spin);
   scheduler_slip = strict_max(scheduler_slip, local_slip);
   StringBuilder text_return;
   text_return.concatf("Local timing slip: %u\n", local_slip);
@@ -212,7 +213,7 @@ int test_scheduler_spin_n_to_1(const unsigned int us_to_spin) {
     }
     scheduler->serviceSchedules();
   }
-  unsigned int local_slip = wrap_accounted_delta((micros() - entry_time), us_to_spin);
+  unsigned int local_slip = wrap_accounted_delta((uint64_t) (micros() - entry_time), (uint64_t) us_to_spin);
   scheduler_slip = strict_max(scheduler_slip, local_slip);
   StringBuilder text_return;
   text_return.concatf("Local timing slip: %u\n", local_slip);

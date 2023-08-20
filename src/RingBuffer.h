@@ -22,6 +22,10 @@ Template for a ring buffer.
 
 TODO: Rework modulus operations into bit mask, and make element count pow(2).
 TODO: Audit for best-practices for a lock-free design.
+
+NOTE: RingBuffer will not allow excursions past its declared buffer limit. In
+  the event that it is requested, it will take all that it can, and report how
+  much it actually took.
 */
 
 #include <stdlib.h>
@@ -49,9 +53,10 @@ template <class T> class RingBuffer {
     /* Returns an integer representing how many items are buffered. */
     inline unsigned int count() {      return _count;              };
 
-    void clear();       // Wipe the buffer.
-    int  insert(T);
-    int  insertIfAbsent(T x) {    return (contains(x) ? -2 : insert(x));  };
+    void clear();             // Wipe the buffer.
+    int  insert(T);           // Insert an element.
+    int  insert(T*, unsigned int len);   // Insert many elements.
+    int  insertIfAbsent(T x) {  return (contains(x) ? -2 : insert(x));  };
     bool contains(T);
     T    get(unsigned int idx, bool absolute_index = false);
     inline T get() {       return _get(true);              };
@@ -130,6 +135,36 @@ template <class T> int RingBuffer<T>::insert(T d) {
 
 
 /**
+* This template makes copies of whatever is passed into it. There is no reason
+*   for the caller to maintain local copies of data (unless T is a pointer).
+* NOTE: In the event that the number of additional elements in the request
+*   exceeds the avaiable capacity of the buffer, this function will take as many
+*   elements as it can from the provided buffer. It is the caller's
+*   responsibility to know how to handle partial takes.
+*
+* @return The number of elements taken on success, or negative on error.
+*/
+template <class T> int RingBuffer<T>::insert(T* d_ptr, unsigned int added_elements) {
+  if ((nullptr == d_ptr) | (0 >= added_elements)) {  return -1;   }  // Parameter sanity.
+  if (!allocated() || (_count >= _CAPAC)) {          return -1;   }  // Allocation and capacity.
+
+  const int32_t COUNT_TO_TAKE = strict_min(added_elements, vacancy());
+  int count_taken = 0;
+  // TODO: It would be marginally more efficient to copy the inner-loop into
+  //   this function, and re-write it to handle chunks of multiples of _E_SIZE
+  //   up to the boundaries of the ring. That way, an insertion of any number
+  //   of elements would make two calls to memcpy(), at most. And no outer loop.
+  //   Until someone cares, we keep with an outer loop (the one below), and wrap
+  //   our byte-wise function.
+  for (int32_t i = 0; i < COUNT_TO_TAKE; i++) {
+    if (0 != insert(*(d_ptr + i))) {   break;   }
+    else {    count_taken++;    }
+  }
+  return count_taken;
+}
+
+
+/**
 * Cycles through the ring and looks for any instances of the argument.
 *
 * @return 0 on success, or negative on error.
@@ -139,7 +174,9 @@ template <class T> bool RingBuffer<T>::contains(T d) {
   if (allocated() && (0 < _count)) {
     unsigned int cur_idx = _r;
     uint8_t* compare = (uint8_t*) &d;
-    while (!found & (cur_idx != _w)) {
+    uint32_t elements_tested = 0;
+
+    while (!found & (elements_tested < _count)) {
       uint8_t* current = (uint8_t*) (_pool + (cur_idx * _E_SIZE));
       bool current_is_compare = true;
       for (uint32_t i = 0; i < _E_SIZE; i++) {
@@ -148,6 +185,7 @@ template <class T> bool RingBuffer<T>::contains(T d) {
       found |= current_is_compare;
 
       cur_idx = ((cur_idx + 1) % _CAPAC);   // TODO: Convert to pow(2) later and convert to bitmask.
+      elements_tested++;
     }
   }
   return found;

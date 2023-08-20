@@ -140,6 +140,7 @@ void printTestFailure(const char* test) {
 
 #include "AsyncSequencerTests.cpp"
 #include "StringBuilderTest.cpp"
+#include "RingBufferTests.cpp"
 #include "FSMTests.cpp"
 #include "SchedulerTests.cpp"
 #include "TestDataStructures.cpp"
@@ -147,7 +148,6 @@ void printTestFailure(const char* test) {
 #include "ParsingConsoleTest.cpp"
 #include "IdentityTest.cpp"
 #include "M2MLinkTests.cpp"
-
 
 
 /*******************************************************************************
@@ -158,16 +158,17 @@ void printTestFailure(const char* test) {
 #define CHKLST_STRINGBUILDER_TESTS    0x00000001  // Everything depends on this.
 #define CHKLST_FSM_TESTS              0x00000002  //
 #define CHKLST_SCHEDULER_TESTS        0x00000004  //
-#define CHKLST_DATA_STRUCT_TESTS      0x00000008  //
+#define CHKLST_DATA_STRUCT_TESTS      0x00000008  // Unorganized tests on data structures.
 #define CHKLST_SENSORFILTER_TESTS     0x00000010  //
 #define CHKLST_IDENTITY_TESTS         0x00000020  //
 #define CHKLST_M2MLINK_TESTS          0x00000040  //
 #define CHKLST_PARSINGCONSOLE_TESTS   0x00000080  //
+#define CHKLST_RINGBUFFER_TESTS       0x00000100  //
 #define CHKLST_ASYNC_SEQUENCER_TESTS  0x80000000  // Everything depends on this.
 
 #define CHKLST_ALL_TESTS ( \
   CHKLST_STRINGBUILDER_TESTS | CHKLST_FSM_TESTS | CHKLST_SCHEDULER_TESTS | \
-  CHKLST_DATA_STRUCT_TESTS | CHKLST_SENSORFILTER_TESTS | \
+  CHKLST_DATA_STRUCT_TESTS | CHKLST_SENSORFILTER_TESTS | CHKLST_RINGBUFFER_TESTS | \
   CHKLST_IDENTITY_TESTS | CHKLST_M2MLINK_TESTS | CHKLST_PARSINGCONSOLE_TESTS | \
   CHKLST_ASYNC_SEQUENCER_TESTS)
 
@@ -178,6 +179,12 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .DEP_MASK     = (0),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == async_seq_test_main()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_RINGBUFFER_TESTS,
+    .LABEL        = "RINGBUFFER_TESTS",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == ringbuffer_main()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_STRINGBUILDER_TESTS,
     .LABEL        = "STRINGBUILDER_TESTS",
@@ -199,7 +206,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_DATA_STRUCT_TESTS,
     .LABEL        = "DATA_STRUCT_TESTS",
-    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS | CHKLST_ASYNC_SEQUENCER_TESTS),
+    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS | CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_RINGBUFFER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == data_structure_main()) ? 1:-1);  }
   },
