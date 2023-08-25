@@ -5,7 +5,7 @@
 ###########################################################################
 OPTIMIZATION       = -O0 -g -fprofile-arcs -ftest-coverage --coverage
 C_STANDARD         = gnu99
-CPP_STANDARD       = gnu++11
+CPP_STANDARD       = c++17
 CFLAGS             = -Wall
 
 ###########################################################################
@@ -21,8 +21,10 @@ export GCOV    = $(shell which gcov)
 
 # This is where we will store compiled libs and the final output.
 export BUILD_ROOT    = $(shell pwd)
-export OUTPUT_PATH   = $(BUILD_ROOT)/build/
-export COVERAGE_PATH = $(BUILD_ROOT)/build/coverage
+export OUTPUT_PATH   = $(BUILD_ROOT)/build
+export COVERAGE_PATH = $(OUTPUT_PATH)/coverage
+export ANALYZER_PATH = $(OUTPUT_PATH)/static-analysis
+
 
 ###########################################################################
 # Source files, includes, and linker directives...
@@ -42,7 +44,6 @@ SOURCES_CPP += ../../src/EnumeratedTypeCodes.cpp
 SOURCES_CPP += ../../src/KeyValuePair.cpp
 SOURCES_CPP += ../../src/AsyncSequencer.cpp
 SOURCES_CPP += ../../src/uuid.cpp
-SOURCES_CPP += ../../src/WakeLock.cpp
 SOURCES_CPP += ../../src/BusQueue.cpp
 SOURCES_CPP += ../../src/GPSWrapper.cpp
 SOURCES_CPP += ../../src/ParsingConsole.cpp
@@ -73,7 +74,8 @@ TESTS  = $(SOURCES_TESTS_CPP:.cpp=)
 COV_FILES = $(SOURCES_CPP:.cpp=.gcda) $(SOURCES_CPP:.cpp=.gcno)
 CXXFLAGS += $(INCLUDES) $(OPTIMIZATION) -std=$(CPP_STANDARD)
 ANALYZER_FLAGS  = $(INCLUDES)
-ANALYZER_FLAGS += --std=$(CPP_STANDARD) --report-progress --force -j6
+ANALYZER_FLAGS += --std=$(CPP_STANDARD) -j6 --cppcheck-build-dir=$(ANALYZER_PATH)
+ANALYZER_FLAGS += --enable=all --report-progress --force
 
 ###########################################################################
 # Are we on a 64-bit system? If so, we'll need to specify
@@ -107,13 +109,14 @@ export CXXFLAGS
 
 .PHONY: all
 
-all: buildtests coverage
+all: buildtests coverage check
 
 buildtests: outputpath
 	@$(foreach test,$(TESTS),$(CXX) -Wl,--gc-sections -static $(CXXFLAGS) $(LIBS) $(SOURCES_CPP) $(test).cpp -o $(OUTPUT_PATH)/$(test);)
 	@echo 'Built tests:  $(TESTS)'
 	@echo 'Beginning test execution...'
-	@$(foreach test,$(TESTS),$(OUTPUT_PATH)/$(test);)
+	echo "" > $(OUTPUT_PATH)/unit_test.log
+	@$(foreach test,$(TESTS),$(OUTPUT_PATH)/$(test) >> $(OUTPUT_PATH)/unit_test.log;)
 
 coverage: outputpath
 	$(GCOV) --object-directory $(COVERAGE_PATH) -m --preserve-paths --demangled-names $(SOURCES_CPP)
@@ -127,6 +130,12 @@ lib: $(OBJS)
 outputpath:
 	mkdir -p $(OUTPUT_PATH)
 	mkdir -p $(COVERAGE_PATH)
+	mkdir -p $(ANALYZER_PATH)
+
+check: outputpath
+	@echo 'Doing static analysis...'
+	find ../../src -type f \( -name \*.cpp -o -name \*.c -o -name \*.h \) -exec wc -l {} + > $(OUTPUT_PATH)/line_counts.log
+	cppcheck $(SOURCES_CPP) $(ANALYZER_FLAGS) > $(OUTPUT_PATH)/report.log
 
 clean:
 	rm -rf $(OUTPUT_PATH) $(OBJS) *.gcno *.gcda *.gcov *.o
