@@ -3,10 +3,6 @@ File:   ParsingConsoleTest.cpp
 Author: J. Ian Lindsay
 Date:   2021.04.24
 
-TODO: This test does not yet cover:
-  * Line endings for RX/TX
-  * Argument type parsing
-
 
 Copyright 2016 Manuvr, Inc
 

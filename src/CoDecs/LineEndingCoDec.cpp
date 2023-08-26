@@ -23,6 +23,7 @@ A text-converter that unifies line-endings. Usually in preparation for
 */
 
 #include "../CppPotpourri.h"
+#include "CoDec.h"
 
 
 // TODO: Check that we aren't doing replacement at the trailing edge if there is
@@ -33,32 +34,103 @@ A text-converter that unifies line-endings. Usually in preparation for
 //   single line-break.
 int8_t LineEndingCoDec::provideBuffer(StringBuilder* buf) {
   int8_t ret = -1;
-  if (nullptr != _output_target) {
-    // TODO: There may be a smarter way to do this with less branching, and
-    //   without calling StringBuilder::replace().
-    switch (_term_seq) {
-      case LineTerm::ZEROBYTE:  // "\0"
-        // TODO: This might be special... Perverrse consequence warning.
-        //   Write the unit tests for this before trying to implement it.
-        break;
-      case LineTerm::CR:
-        buf->replace("\r\n", "\r");  // Replace the complex case first.
-        buf->replace("\n",   "\r");
-        ret = _output_target->provideBuffer(buf);
-        break;
-      case LineTerm::LF:
-        buf->replace("\r\n", "\n");  // Replace the complex case first.
-        buf->replace("\r",   "\n");
-        ret = _output_target->provideBuffer(buf);
-        break;
-      case LineTerm::CRLF:
-        // TODO: This won't work because the end result will be things like "\r\r\n".
-        //   More reason to not try to use StringBuilder::replace()...
-        //buf->replace("\r",   "\r\n");
-        //buf->replace("\n",   "\r\n");
-        ret = _output_target->provideBuffer(buf);
-        break;
+
+  // Do we need to do anything?
+  const uint16_t TARGET_TERM_MASK = (1 << (uint8_t) _term_seq);
+  const uint16_t SEARCH_MASK      = (_replacement_mask & ~(TARGET_TERM_MASK));
+  const uint8_t  MAX_SEARCHES     = (uint8_t) LineTerm::INVALID;
+
+  if (0 != SEARCH_MASK) {
+    // If the replacement_mask contains something other-than our desired
+    //   LineTerm (we don't bother replacing if there will be no change),
+    //   we prepare for search.
+    // We won't try to use StringBuilder::replace(), due to the parallel nature
+    //   of the task. The logic of the problem is simpler if we don't try to
+    //   break it up.
+    // Find the byte differential, if any.
+    uint8_t lt_len_final       = lineTerminatorLength(_term_seq);
+    uint8_t lt_len_max_initial = 0;
+    uint8_t lt_len_initial[MAX_SEARCHES] = {0, };
+    int32_t lt_search_lit[MAX_SEARCHES]  = {0, };
+
+    for (uint8_t i = 0; i < MAX_SEARCHES; i++) {
+      const uint16_t CURRENT_MASK_BIT = (1 << i);
+      if (CURRENT_MASK_BIT & SEARCH_MASK) {
+        // Record length information for terminators for which we will search.
+        lt_len_initial[i]  = lineTerminatorLength((LineTerm) i);
+        lt_len_max_initial = strict_max(lt_len_max_initial, lt_len_initial[i]);
+      }
     }
+    const bool LENGTH_DIFFERENTIAL = (lt_len_max_initial != lt_len_final);
+    // If the conversion process would change the length of the string, we will
+    //   need to reallocate/copy. But don't do that just yet. Do the search and
+    //   calculate the new size and boundary rules to make sure we don't do the
+    //   replacement for nothing (since it may happen in-situ).
+    const uint8_t* INPUT_BUFFER = buf->string();
+    const int32_t  INPUT_LENGTH = buf->length();
+    int32_t replacable_lt_count = 0;
+
+    for (int32_t n = 0; n < INPUT_LENGTH; n++) {
+      const int32_t CURRENT_SEARCH_LENGTH = lt_len_initial[n];
+      for (uint8_t i = 0; i < MAX_SEARCHES; i++) {
+        switch (lt_len_initial[i]) {
+          case 0:  break;   // No search.
+          case 1:
+            break;
+          default:
+            if (0 < lt_search_lit[i]) {
+              // We are in the middle of this terminator.
+            }
+            else {
+            }
+            break;
+        }
+      }
+
+      //*(INPUT_BUFFER + i)
+      //if () {
+      //}
+    }
+    int32_t total_len_change = replacable_lt_count * LENGTH_DIFFERENTIAL;
+
+
+    if (nullptr != _output_target) {
+      // TODO: There may be a smarter way to do this with less branching, and
+      //   without calling StringBuilder::replace().
+      switch (_term_seq) {
+        case LineTerm::ZEROBYTE:  // "\0"
+          // TODO: This might be special... Perverse consequence warning.
+          //   Write the unit tests for this before trying to implement it.
+          break;
+        case LineTerm::CR:
+          buf->replace("\r\n", "\r");  // Replace the complex case first.
+          buf->replace("\n",   "\r");
+          ret = _output_target->provideBuffer(buf);
+          break;
+        case LineTerm::LF:
+          buf->replace("\r\n", "\n");  // Replace the complex case first.
+          buf->replace("\r",   "\n");
+          ret = _output_target->provideBuffer(buf);
+          break;
+        case LineTerm::CRLF:
+          // TODO: This won't work because the end result will be things like "\r\r\n".
+          //   More reason to not try to use StringBuilder::replace()...
+          //buf->replace("\r",   "\r\n");
+          //buf->replace("\n",   "\r\n");
+          ret = _output_target->provideBuffer(buf);
+          break;
+      }
+    }
+  }
+
+
+
+  if (!holdUntilBreak()) {
+    // Without chunking, we don't need to do anything special. Just forward
+    //   everything we presently have that is certain.
+  }
+  else {
+    // Chunking will complicate our lives, slightly.
   }
   return ret;
 }
@@ -70,4 +142,16 @@ int8_t LineEndingCoDec::provideBuffer(StringBuilder* buf) {
 //   the results of return values are observed within contractual limits.
 int32_t LineEndingCoDec::bufferAvailable() {
   return ((nullptr != _output_target) ? _output_target->bufferAvailable() : 0);
+}
+
+
+
+void LineEndingCoDec::holdUntilBreak(bool x) {
+  _hold_until_break = x;
+  if (!x) {  _isometric_call_to_break = false;  }
+}
+
+
+void LineEndingCoDec::isometricCallAndBreak(bool x) {
+  _isometric_call_to_break = x;
 }

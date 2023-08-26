@@ -249,16 +249,23 @@ const char* const SIUnitToStr(const SIUnit, const bool sym = false);
 void SIUnitToStr(const SIUnit*, StringBuilder*, const bool sym);
 
 
-
 /*
 * Line-termination identifiers.
-* LF ("\n") is the firmware's internal standard for string representation.
+* NOTE: LF ("\n") is the firmware's internal standard for string representation.
+* NOTE: The specific values of this enum must not be >16, since they are used
+*   for bitmask generation. Does anyone need to support 16 different kinds of
+*   line endings?
 */
 enum class LineTerm : uint8_t {
   ZEROBYTE = 0x00,
   CR       = 0x01,
   LF       = 0x02,
-  CRLF     = 0x03
+  CRLF     = 0x03,
+  INVALID  = 0x10  // Maximum valid value.
 };
+
+const char* const lineTerminatorNameStr(const LineTerm);
+const char* const lineTerminatorLiteralStr(const LineTerm);
+const uint8_t lineTerminatorLength(const LineTerm);
 
 #endif // __ENUMERATED_TYPE_CODES_H__

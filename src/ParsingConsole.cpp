@@ -51,29 +51,6 @@ const char* const ParsingConsole::errToStr(ConsoleErr err) {
 }
 
 
-const char* const ParsingConsole::terminatorStr(LineTerm lt) {
-  switch (lt) {
-    case LineTerm::CR:    return "CR";
-    case LineTerm::LF:    return "LF";
-    case LineTerm::CRLF:  return "CRLF";
-    default:              break;
-  }
-  return "";
-}
-
-
-const char* const ParsingConsole::_get_terminator(LineTerm lt) {
-  switch (lt) {
-    case LineTerm::CR:    return "\r";
-    case LineTerm::LF:    return "\n";
-    case LineTerm::CRLF:  return "\r\n";
-    default:              break;
-  }
-  return "";
-}
-
-
-
 /*******************************************************************************
 * Class boilerplate
 *******************************************************************************/
@@ -204,7 +181,7 @@ int8_t ParsingConsole::_relay_to_output_target() {
   int8_t ret = -1;
   if ((!_log.isEmpty()) && (nullptr != _output_target)) {
     if (LineTerm::LF != _tx_terminator) {
-      _log.replace("\n", _get_terminator(_tx_terminator));
+      _log.replace("\n", lineTerminatorLiteralStr(_tx_terminator));
     }
     _log.string();
     switch (_output_target->provideBuffer(&_log)) {
@@ -472,7 +449,7 @@ void ParsingConsole::printHistory(StringBuilder* output) {
 * @return true if there is a line-ending in the buffer.
 */
 bool ParsingConsole::_line_ending_rxd() {
-  const char* const L_TERM = _get_terminator(_rx_terminator);
+  const char* const L_TERM = lineTerminatorLiteralStr(_rx_terminator);
   const int L_TERM_LEN = strlen(L_TERM);
   bool ret = false;
   bool buf_has_lterm = false;
@@ -627,7 +604,7 @@ int8_t ParsingConsole::console_handler_conf(StringBuilder* text_return, StringBu
           break;
       }
     }
-    text_return->concatf("Console RX terminator: %s\n", ParsingConsole::terminatorStr(getRXTerminator()));
+    text_return->concatf("Console RX terminator: %s\n", lineTerminatorNameStr(getRXTerminator()));
   }
   else if (0 == StringBuilder::strcasecmp(cmd, "txterm")) {
     if (1 < args->count()) {
@@ -640,7 +617,7 @@ int8_t ParsingConsole::console_handler_conf(StringBuilder* text_return, StringBu
           break;
       }
     }
-    text_return->concatf("Console TX terminator: %s\n", ParsingConsole::terminatorStr(getTXTerminator()));
+    text_return->concatf("Console TX terminator: %s\n", lineTerminatorNameStr(getTXTerminator()));
   }
   else {
     ret = -1;

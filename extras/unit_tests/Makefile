@@ -50,6 +50,7 @@ SOURCES_CPP += ../../src/ParsingConsole.cpp
 SOURCES_CPP += ../../src/Quaternion.cpp
 SOURCES_CPP += ../../src/Storage.cpp
 SOURCES_CPP += ../../src/AbstractPlatform.cpp
+SOURCES_CPP += ../../src/CoDecs/*.cpp
 SOURCES_CPP += ../../src/Image/*.cpp
 SOURCES_CPP += ../../src/cbor-cpp/*.cpp
 SOURCES_CPP += ../../src/C3PEvents/*.cpp
@@ -115,14 +116,17 @@ buildtests: outputpath
 	@$(foreach test,$(TESTS),$(CXX) -Wl,--gc-sections -static $(CXXFLAGS) $(LIBS) $(SOURCES_CPP) $(test).cpp -o $(OUTPUT_PATH)/$(test);)
 	@echo 'Built tests:  $(TESTS)'
 	@echo 'Beginning test execution...'
-	echo "" > $(OUTPUT_PATH)/unit_test.log
-	@$(foreach test,$(TESTS),$(OUTPUT_PATH)/$(test) >> $(OUTPUT_PATH)/unit_test.log;)
+	@$(foreach test,$(TESTS),$(OUTPUT_PATH)/$(test);)
+	#@$(foreach test,$(TESTS),$(OUTPUT_PATH)/$(test) >> $(OUTPUT_PATH)/unit_test.log;)
+	#cat $(OUTPUT_PATH)/unit_test.log
+	@echo 'Unit testing complete.'
 
 coverage: outputpath
 	$(GCOV) --object-directory $(COVERAGE_PATH) -m --preserve-paths --demangled-names $(SOURCES_CPP)
 	mv *.gcno $(COVERAGE_PATH)
 	lcov --capture --directory $(COVERAGE_PATH) --output-file $(COVERAGE_PATH)/coverage.info
 	genhtml $(COVERAGE_PATH)/coverage.info --output-directory $(COVERAGE_PATH)
+	@echo 'Coverage measurement complete.'
 
 lib: $(OBJS)
 	$(AR) -rvs $(OUTPUT_PATH)/CppPotpourri.a $(OBJS)
@@ -136,6 +140,7 @@ check: outputpath
 	@echo 'Doing static analysis...'
 	find ../../src -type f \( -name \*.cpp -o -name \*.c -o -name \*.h \) -exec wc -l {} + > $(OUTPUT_PATH)/line_counts.log
 	cppcheck $(SOURCES_CPP) $(ANALYZER_FLAGS) > $(OUTPUT_PATH)/report.log
+	@echo 'Static analysis complete.'
 
 clean:
 	rm -rf $(OUTPUT_PATH) $(OBJS) *.gcno *.gcda *.gcov *.o

@@ -296,3 +296,63 @@ void SIUnitToStr(const SIUnit* UC_STR, StringBuilder* output, const bool sym) {
     }
   }
 }
+
+
+/*******************************************************************************
+* Support functions for dealing with line terminators.                         *
+*******************************************************************************/
+
+/**
+* This is the private structure to hold line-terminator data.
+*/
+//typedef struct typecode_def_t {
+//  const LineTerm    code;     // This identifies the type to parsers/packers.
+//  const uint8_t     length;   // Fixed metadata about a type, as this build implements it.
+//  const char* const name;     // The name of the type.
+//  const char* const literal;  // The name of the type.
+//} LineTermDef;
+//
+//
+//static const LineTermDef static_lf_data[] = {
+//  {LineTermDef::ZEROBYTE, 0,   "\0",   "ZEROBYTE"},
+//  {LineTermDef::CR,       1,   "\r",   "CR"},
+//  {LineTermDef::LF,       1,   "\n",   "LF"},
+//  {LineTermDef::CRLF,     2,   "\r\n", "CRLF"},
+//  {LineTermDef::INVALID,  0,   "",     "INVALID"}
+//};
+
+
+const char* const lineTerminatorNameStr(const LineTerm lt) {
+  switch (lt) {
+    case LineTerm::ZEROBYTE:  return "ZEROBYTE";
+    case LineTerm::CR:        return "CR";
+    case LineTerm::LF:        return "LF";
+    case LineTerm::CRLF:      return "CRLF";
+    default:  break;
+  }
+  return "";
+}
+
+
+const char* const lineTerminatorLiteralStr(const LineTerm lt) {
+  switch (lt) {
+    case LineTerm::ZEROBYTE:  return "\0";
+    case LineTerm::CR:        return "\r";
+    case LineTerm::LF:        return "\n";
+    case LineTerm::CRLF:      return "\r\n";
+    default:  break;
+  }
+  return "";
+}
+
+
+const uint8_t lineTerminatorLength(const LineTerm lt) {
+  switch (lt) {
+    case LineTerm::ZEROBYTE:
+    case LineTerm::CR:
+    case LineTerm::LF:        return 1;
+    case LineTerm::CRLF:      return 2;
+    default:  break;
+  }
+  return 0;
+}

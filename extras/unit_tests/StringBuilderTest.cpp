@@ -500,6 +500,10 @@ int test_StringBuilderHeapVersusStack() {
 }
 
 
+/*
+* Many use-cases that would otherwise need to call length() will be happy with
+*  the (much cheaper) isEmpty().
+*/
 int test_stringbuilder_isempty() {
   int return_value = -1;
   uint8_t tmp_buf[8] = {0, };

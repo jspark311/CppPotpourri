@@ -144,6 +144,7 @@ void printTestFailure(const char* test) {
 #include "FSMTests.cpp"
 #include "SchedulerTests.cpp"
 #include "TestDataStructures.cpp"
+#include "BufferAccepterTests.cpp"
 #include "SensorFilterTests.cpp"
 #include "ParsingConsoleTest.cpp"
 #include "IdentityTest.cpp"
@@ -164,13 +165,14 @@ void printTestFailure(const char* test) {
 #define CHKLST_M2MLINK_TESTS          0x00000040  //
 #define CHKLST_PARSINGCONSOLE_TESTS   0x00000080  //
 #define CHKLST_RINGBUFFER_TESTS       0x00000100  //
+#define CHKLST_BUFFER_ACCEPTER_TESTS  0x00000200  //
 #define CHKLST_ASYNC_SEQUENCER_TESTS  0x80000000  // Everything depends on this.
 
 #define CHKLST_ALL_TESTS ( \
   CHKLST_STRINGBUILDER_TESTS | CHKLST_FSM_TESTS | CHKLST_SCHEDULER_TESTS | \
   CHKLST_DATA_STRUCT_TESTS | CHKLST_SENSORFILTER_TESTS | CHKLST_RINGBUFFER_TESTS | \
   CHKLST_IDENTITY_TESTS | CHKLST_M2MLINK_TESTS | CHKLST_PARSINGCONSOLE_TESTS | \
-  CHKLST_ASYNC_SEQUENCER_TESTS)
+  CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_BUFFER_ACCEPTER_TESTS)
 
 
 const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
@@ -210,6 +212,12 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == data_structure_main()) ? 1:-1);  }
   },
+  { .FLAG         = CHKLST_BUFFER_ACCEPTER_TESTS,
+    .LABEL        = "BUFFER_ACCEPTER_TESTS",
+    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == buffer_accepter_main()) ? 1:-1);  }
+  },
   { .FLAG         = CHKLST_SENSORFILTER_TESTS,
     .LABEL        = "SENSORFILTER_TESTS",
     .DEP_MASK     = (CHKLST_FSM_TESTS),
@@ -224,13 +232,13 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_M2MLINK_TESTS,
     .LABEL        = "M2MLINK_TESTS",
-    .DEP_MASK     = (CHKLST_IDENTITY_TESTS | CHKLST_FSM_TESTS),
+    .DEP_MASK     = (CHKLST_IDENTITY_TESTS | CHKLST_FSM_TESTS | CHKLST_BUFFER_ACCEPTER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == manuvrlink_main()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_PARSINGCONSOLE_TESTS,
     .LABEL        = "PARSINGCONSOLE_TESTS",
-    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
+    .DEP_MASK     = (CHKLST_BUFFER_ACCEPTER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == parsing_console_main()) ? 1:-1);  }
   },

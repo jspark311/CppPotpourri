@@ -34,7 +34,7 @@ class C3PCoDec : public BufferAccepter {
     int8_t provideBuffer(StringBuilder*);
     int32_t bufferAvailable();
 
-    inline void setEfferant(BufferAccepter* cb) {   _efferant = cb;  };
+    inline void setEfferant(BufferAccepter* x) {   _efferant = x;  };
 
 
   protected:
@@ -49,13 +49,23 @@ class C3PCoDec : public BufferAccepter {
 
 
 /*
-* A class to enforce conformity of line-endings via simple search-and-replace.
+* A class to enforce conformity and grouping of line-endings.
 *
-* NOTE: This class is the gateway between definitions of what defines a "line"
-*   of text for internal firmware versus any external system.
+* This class is the gateway between definitions of what defines a "line" of text
+*   for internal firmware versus any external system.
 *
-* NOTE: This class can be used to signal the accumulation of text only until a
+* This class can be used to signal the accumulation of text only until a
 *   complete line is received.
+*
+* Rules:
+* 1) hold_until_break will only permit passage of the buffer if it contains
+*      a break, and if so, only forwards the buffer up to (and including) the
+*      last break in the offered buffer.
+* 2) isometric_call_to_break implies hold_until_break (it is a more-severe form
+*      of it). If set, the codec will chunk the inbound data by line-breaks,
+*      and will forward each to the downstream BufferAccepter, one at a time.
+* 3) Replacement is not assumed. With no replacement requested, this class will
+*      simply chunk output using the specified LineTerm.
 */
 class LineEndingCoDec : public BufferAccepter {
   public:
@@ -69,13 +79,25 @@ class LineEndingCoDec : public BufferAccepter {
     inline BufferAccepter* outputTarget() {          return _output_target;   };
     inline void outputTarget(BufferAccepter* x) {    _output_target = x;      };
 
-    // Input data will be searched for all line-endings that do NOT match this
-    //   specified value, and replace them when found.
-    inline void setTerminator(LineTerm x) {  _term_seq = x;      };
-    inline LineTerm getTerminator() {        return _term_seq;   };
+    /* Homogenization feature */
+    void replaceOccurrencesOf(LineTerm, bool);
+    bool replaceOccurrencesOf(LineTerm);
+
+    /* Operating LineTerm */
+    inline void setTerminator(LineTerm x) {          _term_seq = x;           };
+    inline LineTerm getTerminator() {                return _term_seq;        };
+
+    /* Chunking feature */
+    inline bool holdUntilBreak() {        return (_isometric_call_to_break | _hold_until_break);  };
+    inline bool isometriCallAndBreak() {  return (_isometric_call_to_break);  };
+    void holdUntilBreak(bool);
+    void isometricCallAndBreak(bool);
 
 
   private:
     BufferAccepter* _output_target;
-    LineTerm _term_seq;
+    LineTerm        _term_seq;
+    uint16_t        _replacement_mask;
+    bool            _hold_until_break;
+    bool            _isometric_call_to_break;
 };

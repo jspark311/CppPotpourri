@@ -157,7 +157,6 @@ class ParsingConsole : public BufferAccepter {
     inline void printHelpOnFail(bool x) {  return _console_set_flag(CONSOLE_FLAG_PRINT_HELP_ON_FAIL, x);  };
 
     static const char* const errToStr(ConsoleErr);
-    static const char* const terminatorStr(LineTerm);
 
     /* Built-in per-instance console handlers. */
     int8_t console_handler_help(StringBuilder* text_return, StringBuilder* args);
@@ -199,8 +198,6 @@ class ParsingConsole : public BufferAccepter {
       if (nu) _flags |= _flag;
       else    _flags &= ~_flag;
     };
-
-    static const char* const _get_terminator(LineTerm);
 };
 
 #endif  // __PARSING_CONSOLE_H__
