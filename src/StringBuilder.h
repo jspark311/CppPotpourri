@@ -68,9 +68,6 @@ TODO: Following the removal of zero-copy-on-const, there is no longer any reason
   gained by doing so. If zero-copy-on-const is to make a return, it will be in
   the context of a pluggable memory model, and won't belong here anyway.
 
-TODO: Re-instate semaphores via the Semaphore class, rather than the ugly
-  platform-specific preprocessor case-offs.
-
 TODO: Retrospective on the fragment structure...
   The reap member costs more memory (by way of alignmnet and padding) than it
   was saving in non-replication of const char* const. Under almost all usage
@@ -78,9 +75,6 @@ TODO: Retrospective on the fragment structure...
 
 TODO: Direct-castablity to a string ended up being a non-value. Re-order to
   support merged allocation.
-
-TODO: Style binge. Remove "this->" and use the same convention as elsewhere in
-  the library for concealed members.
 
 TODO: Merge the memory allocations for StrLLs, as well as their content. The
   following functions are hotspots for absurdities. Pay close attention to them
@@ -90,6 +84,21 @@ TODO: Merge the memory allocations for StrLLs, as well as their content. The
      and it isn't at the correct offset. A fragment created with merged
      allocation will always have a value for str that is a constant offset from
      its own.
+  2) _null_term_check()
+     This function does a regional re-allocation to accomodate a null-terminator
+     for safety's sake. This extra byte is _not_ accounted for in the string's
+     reported length. It is strictly a safety measure that the API otherwise
+     ignores. This (and a few other things that are sketchy) could be solved by
+     always allocating one extra byte and assuring that it is always null.
+
+TODO: Style binge...
+  1) Remove "this->" and use the same convention as elsewhere in the library for
+     concealed members.
+  2) Replace "unsigned char" with "uint8".
+  3) Homogenize orders of test-for-equality to not risk accidental assignment.
+
+TODO: Re-instate semaphores via the Semaphore class, rather than the ugly
+  platform-specific preprocessor case-offs.
 */
 
 
@@ -125,9 +134,9 @@ int strcasestr(char *a, const char *b);
 * It is a linked-list. For now.
 */
 typedef struct str_ll_t {
-  uint8_t*         str;   // The string.
   struct str_ll_t* next;  // The next element.
   int              len;   // The length of this element.
+  uint8_t*         str;   // The string.
 } StrLL;
 
 
@@ -241,6 +250,7 @@ class StringBuilder {
     StrLL* _stack_str_onto_list(StrLL* current, StrLL* nu);
     StrLL* _stack_str_onto_list(StrLL*);
     void   _null_term_check();
+    StrLL* _create_str_ll(uint8_t*, int, StrLL* nxt_ll = nullptr);
     void   _destroy_str_ll(StrLL*);
     StrLL* _promote_collapsed_into_ll();
     int8_t _collapse_into_buffer();

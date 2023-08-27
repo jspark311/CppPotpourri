@@ -806,39 +806,6 @@ void StringBuilder::concat(uint8_t* nu, int len) {
 }
 
 
-/**
-* Override to make best use of memory for const strings...
-*
-* Crash warning: Any const char* concat'd to a StringBuilder will not be copied
-*   until it is manipulated somehow. So be very careful if you cast to (const char*).
-*
-* NOTE: Provisionally shunted into concat(char*)
-*/
-//void StringBuilder::concat(const char *nu) {
-//  if (nu != nullptr) {
-//    int len = strlen(nu);
-//    if (len > 0) {
-//      #if defined(__BUILD_HAS_PTHREADS)
-//        //pthread_mutex_lock(&_mutex);
-//      #elif defined(__BUILD_HAS_FREERTOS)
-//      #endif
-//      StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
-//      if (nu_element != nullptr) {
-//        nu_element->reap = false;
-//        nu_element->next = nullptr;
-//        nu_element->len  = len;
-//        nu_element->str  = (uint8_t*) nu;
-//        this->_stack_str_onto_list(nu_element);
-//      }
-//      #if defined(__BUILD_HAS_PTHREADS)
-//        //pthread_mutex_unlock(&_mutex);
-//      #elif defined(__BUILD_HAS_FREERTOS)
-//      #endif
-//    }
-//  }
-//}
-
-
 void StringBuilder::concat(unsigned char nu) {
   this->concat(&nu, 1);
 }
@@ -953,6 +920,9 @@ void StringBuilder::cull(int offset, int new_length) {
     if (CURRENT_LENGTH >= (offset + new_length)) {  // ...and the range exists...
       uint8_t* temp = (uint8_t*) malloc(new_length+1);  // + 1 for null-terminator.
       if (temp != nullptr) {
+        // TODO: Prepend the collapsed string into the list, and eat fragments.
+        //   there is no need whatsoever for this fxn to ever call malloc(), let
+        //   alone incure almost triple the memory load (worst-case).
         this->_collapse_into_buffer();   // Room to optimize here...
         memcpy(temp, (this->str + offset), new_length);
         *(temp + new_length) = '\0';
@@ -991,7 +961,10 @@ void StringBuilder::cull(int x) {
       unsigned char* temp = (unsigned char*) malloc(remaining_length+1);  // + 1 for null-terminator.
       if (temp != nullptr) {
         *(temp + remaining_length) = '\0';
-        this->_collapse_into_buffer();   // Room to optimize here...
+        // TODO: Prepend the collapsed string into the list, and eat fragments.
+        //   there is no need whatsoever for this fxn to ever call malloc(), let
+        //   alone incure almost triple the memory load (worst-case).
+        this->_collapse_into_buffer();
         memcpy(temp, (unsigned char*)(this->str + x), remaining_length);
         this->clear();         // Throw away all else.
         this->str = temp;      // Replace our ref.
@@ -1376,6 +1349,7 @@ int StringBuilder::_total_str_len(StrLL* node) {
   return len;
 }
 
+
 /**
 * Recursive function to add a new string onto the end of the list.
 *
@@ -1384,8 +1358,8 @@ int StringBuilder::_total_str_len(StrLL* node) {
 * @return The StrLL reference that precedes the parameter nu in the list.
 */
 StrLL* StringBuilder::_stack_str_onto_list(StrLL* current, StrLL* nu) {
-  if (current != nullptr) {
-    if (current->next == nullptr) current->next = nu;
+  if (nullptr != current) {
+    if (nullptr == current->next) current->next = nu;
     else this->_stack_str_onto_list(current->next, nu);
   }
   return current;
@@ -1403,7 +1377,7 @@ StrLL* StringBuilder::_stack_str_onto_list(StrLL* nu) {
     //pthread_mutex_lock(&_mutex);
   #elif defined(__BUILD_HAS_FREERTOS)
   #endif
-  if (this->root == nullptr) {
+  if (nullptr == this->root) {
     this->root  = nu;
     return_value = this->root;
   }
@@ -1415,6 +1389,34 @@ StrLL* StringBuilder::_stack_str_onto_list(StrLL* nu) {
   #elif defined(__BUILD_HAS_FREERTOS)
   #endif
   return return_value;
+}
+
+
+/**
+* Choke-point for the creation of a new string fragment.
+*
+* @param content_buf Contains the content to be copied in.
+* @param content_len The length of the data to copy.
+* @return The StrLL reference that precedes the parameter nu in the list.
+*/
+StrLL* StringBuilder::_create_str_ll(uint8_t* content_buf, int content_len, StrLL* nxt_ll) {
+  StrLL* ret = nullptr;
+  if ((nullptr != content_buf) && (content_len > 0)) {
+    // Over-allocate by content_len to give space for the content in the same allocation.
+    // Over-allocate by one byte to ensure we have a null-terminator.
+    const int TOTAL_MALLOC_SIZE = (sizeof(StrLL) + content_len + 1);
+    ret = (StrLL*) malloc(TOTAL_MALLOC_SIZE);
+    if (nullptr != ret) {
+      // The str pointer should point to the first byte after the StrLL it is
+      //   member to.
+      ret->len  = content_len;  // Do not report our silent addition of null.
+      ret->next = nxt_ll;
+      ret->str  = (((uint8_t*) ret) + sizeof(StrLL));   // Derive content ptr.
+      memcpy(ret->str, content_buf, content_len);       // Copy content.
+      *(ret->str) = 0;                                  // Assign guard-rail.
+    }
+  }
+  return ret;
 }
 
 
