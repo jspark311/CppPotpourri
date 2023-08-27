@@ -60,6 +60,8 @@ TODO: It might be desirable to break StringBuilder apart along one (or more)
       pre-existing flat buffer space and only operating within it.
   2) Formatting and tokenizing handled as seperate pieces?
   3) Static styling methods have always felt wrong here...
+  4) If we stick with a linked-list, and merged allocation doesn't interfere,
+      consider building this with LightLinkedList.
 
 TODO: Following the removal of zero-copy-on-const, there is no longer any reason
   to handle StrLL allocation as two seperate steps. Much simplicity will be
@@ -77,8 +79,17 @@ TODO: Retrospective on the fragment structure...
 TODO: Direct-castablity to a string ended up being a non-value. Re-order to
   support merged allocation.
 
-TODO: Merge the memory allocations for StrLLs, as well as their content.
+TODO: Style binge. Remove "this->" and use the same convention as elsewhere in
+  the library for concealed members.
 
+TODO: Merge the memory allocations for StrLLs, as well as their content. The
+  following functions are hotspots for absurdities. Pay close attention to them
+  before making a choice:
+  1) concatHandoff(uint8_t*, int)
+     Might be easy and safe to assume a split reap if we keep the pointer member
+     and it isn't at the correct offset. A fragment created with merged
+     allocation will always have a value for str that is a constant offset from
+     its own.
 */
 
 

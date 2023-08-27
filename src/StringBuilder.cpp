@@ -722,8 +722,14 @@ void StringBuilder::prependHandoff(StringBuilder* nu) {
 
 
 /*
-* This must be called with non-stack buffers,
+* This function must only be called with a malloc()'d buffer, and never one that
+*   is on-stack, or in RO memory. By calling this function, the caller is
+*   delegating responsibility to free() a (probably large) buffer.
 * For safety's sake, the last byte should be a '\0'.
+*
+* TODO: Merged-allocation will force the re-write or removal of this function.
+*   This function in among those that must be carefully considered when
+*   before reworking the memory model.
 */
 void StringBuilder::concatHandoff(uint8_t* buf, int len) {
   if ((buf) && (len > 0)) {
