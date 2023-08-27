@@ -1436,8 +1436,12 @@ void StringBuilder::_destroy_str_ll(StrLL* r_node) {
       _destroy_str_ll(r_node->next);
       r_node->next  = nullptr;
     }
-    //if (r_node->reap) free(r_node->str);
-    if (r_node->str) free(r_node->str);
+    const bool WAS_MERGED_MALLOC = (r_node->str == (((uint8_t*) r_node) + sizeof(StrLL)));
+    if (!WAS_MERGED_MALLOC) {
+      if (r_node->str) {  // TODO: Strike. Will be assured true after MM.
+        free(r_node->str);
+      }
+    }
     free(r_node);
     if (r_node == this->root) this->root = nullptr;
   }
