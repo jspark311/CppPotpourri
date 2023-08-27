@@ -65,3 +65,53 @@ The high-level abstraction is still nascent, and shouldn't be used yet. Even
 Going forward, hardware cryptographic drivers should reside in either
   ManuvrDrivers, or ManuvrPlatform, as appropriate.
                                          `---J. Ian Lindsay 2022.05.08 00:51:49`
+
+---------------
+
+Circumstances have caused me to devote some time to improve unit testing. That
+  happened. Bugs were found and fixed. StringBuilder has come under efficiency
+  scrutiny recently. And its unit-tests are indeed languishing near 60%
+  coverage. But before I strive to improve that figure, I decided it would be
+  better to clean out some of the bugs and inefficiencies for which I already
+  have outstanding TODOs. That effort passed through a short-lived TODO items in
+  StringBuilder, which I will replicate here, so that they do not continue to
+  clutter the source file with historical notes.
+
+
+TODO: Retrospective on the fragment structure...
+  The reap member costs more memory (by way of alignmnet and padding) than it
+  was saving in non-replication of const char* const. Under almost all usage
+  patterns, and certainly the most common of them.
+TODID.
+
+TODO: Following the removal of zero-copy-on-const, there is no longer any reason
+  to handle StrLL allocation as two separate steps. Much simplicity will be
+  gained by doing so. If zero-copy-on-const is to make a return, it will be in
+  the context of a pluggable memory model, and won't belong here anyway.
+TODID: This is implemented, and passing unit tests, as-written.
+
+TODO: Direct-castablity to a string ended up being a non-value. Re-order to
+  support merged allocation.
+TODID.
+
+
+TODO: Merge the memory allocations for StrLLs, as well as their content. The
+  following functions are hotspots for absurdities. Pay close attention to them
+  before making a choice:
+  1) concatHandoff(uint8_t*, int)
+     Might be easy and safe to assume a split reap if we keep the pointer member
+     and it isn't at the correct offset. A fragment created with merged
+     allocation will always have a value for str that is a constant offset from
+     its own.
+TODID: This is indeed what I did.
+
+  2) _null_term_check()
+     This function does a regional reallocation to accommodate a null-terminator
+     for safety's sake. This extra byte is _not_ accounted for in the string's
+     reported length. It is strictly a safety measure that the API otherwise
+     ignores. This (and a few other things that are sketchy) could be solved by
+     always allocating one extra byte and assuring that it is always null.
+WASDID: This was _already how things worked_. But it was scattered throughout the
+  class, and probably had bugs somewhere.
+
+                                         `---J. Ian Lindsay 2023.0827 11:03:16`

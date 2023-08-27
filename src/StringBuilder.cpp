@@ -20,7 +20,6 @@ limitations under the License.
 
 #include "StringBuilder.h"
 #include "CppPotpourri.h"
-#include <alloca.h>    // TODO: Deprecate over time.
 
 
 /*******************************************************************************
@@ -737,12 +736,9 @@ void StringBuilder::concatHandoff(uint8_t* buf, int len) {
       //pthread_mutex_lock(&_mutex);
     #elif defined(__BUILD_HAS_FREERTOS)
     #endif
-    StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
+    StrLL* nu_element = _create_str_ll(len);
     if (nu_element) {
-      //nu_element->reap = true;
-      nu_element->next = nullptr;
-      nu_element->len  = len;
-      nu_element->str  = buf;
+      nu_element->str = buf;
       this->_stack_str_onto_list(nu_element);
     }
     #if defined(__BUILD_HAS_PTHREADS)
@@ -755,48 +751,28 @@ void StringBuilder::concatHandoff(uint8_t* buf, int len) {
 
 /*
 */
-void StringBuilder::prepend(uint8_t* nu, int len) {
-  if ((nullptr != nu) && (len > 0)) {
+void StringBuilder::prepend(uint8_t* buf, int len) {
+  if ((nullptr != buf) && (len > 0)) {
     this->root = _promote_collapsed_into_ll();   // Promote the previously-collapsed string.
 
-    StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
-    if (nullptr == nu_element) return;   // O no.
-    //nu_element->reap = true;
-    nu_element->len  = len;
-    nu_element->str  = (uint8_t*) malloc(len+1);
-    if (nu_element->str != nullptr) {
-      *(nu_element->str + len) = '\0';
-      memcpy(nu_element->str, nu, len);
-      nu_element->next = this->root;
+    StrLL* nu_element = _create_str_ll(len, buf, this->root);
+    if (nullptr != nu_element) {
       this->root = nu_element;
-    }
-    else {
-      // We were able to malloc the slot for the string, but not the buffer for
-      // the string itself. We should free() the slot before failing or we will
-      // exacerbate an already-present memory crunch.
-      free(nu_element);
     }
   }
 }
 
 
-void StringBuilder::concat(uint8_t* nu, int len) {
-  if ((nu != nullptr) && (len > 0)) {
+void StringBuilder::concat(uint8_t* buf, int len) {
+  if ((buf != nullptr) && (len > 0)) {
     #if defined(__BUILD_HAS_PTHREADS)
       //pthread_mutex_lock(&_mutex);
     #elif defined(__BUILD_HAS_FREERTOS)
     #endif
-    StrLL *nu_element = (StrLL *) malloc(sizeof(StrLL));
+    StrLL* nu_element = _create_str_ll(len, buf);
+
     if (nu_element != nullptr) {
-      //nu_element->reap = true;
-      nu_element->next = nullptr;
-      nu_element->len  = len;
-      nu_element->str  = (uint8_t*) malloc(len+1);
-      if (nu_element->str != nullptr) {
-        *(nu_element->str + len) = '\0';
-        memcpy(nu_element->str, nu, len);
-        this->_stack_str_onto_list(nu_element);
-      }
+      this->_stack_str_onto_list(nu_element);
     }
     #if defined(__BUILD_HAS_PTHREADS)
       //pthread_mutex_unlock(&_mutex);
@@ -872,9 +848,8 @@ int StringBuilder::concatf(const char* format, va_list args) {
   unsigned short f_codes = 0;  // Count how many format codes are in use...
   for (unsigned short i = 0; i < len; i++) {  if (*(format+i) == '%') f_codes++; }
   // Allocate (hopefully) more space than we will need....
-  int est_len = len + 512 + (f_codes * 15);   // TODO: Iterate on failure of vsprintf().
-  char *temp = (char *) alloca(est_len);
-  memset(temp, 0, est_len);
+  const int est_len = len + 512 + (f_codes * 15);   // TODO: Iterate on failure of vsprintf().
+  char temp[est_len] = {0, };
   int ret = 0;
   ret = vsprintf(temp, format, args);
   if (ret > 0) this->concat((char *) temp);
@@ -889,9 +864,8 @@ int StringBuilder::concatf(const char* format, va_list args) {
 * @param s The String to append.
 */
 void StringBuilder::concat(String s) {
-  int len = s.length()+1;
-  char *out  = (char *) alloca(len);
-  memset(out, 0, len);
+  const int INPUT_LEN  = s.length()+1;
+  char  out[INPUT_LEN] = {0, };
   s.toCharArray(out, len);
   this->concat((uint8_t*) out, strlen(out));
 }
@@ -1112,6 +1086,7 @@ int StringBuilder::replace(const char* needle, const char* replace) {
         int len_total = len_bulk + REPLACE_LEN;
 
         StrLL* nu_element = (StrLL*) malloc(sizeof(StrLL));
+        //StrLL* nu_element = _create_str_ll(len_total);
         if (nu_element != nullptr) {
           //nu_element->reap = true;
           nu_element->next = nullptr;
@@ -1392,16 +1367,18 @@ StrLL* StringBuilder::_stack_str_onto_list(StrLL* nu) {
 }
 
 
+
 /**
 * Choke-point for the creation of a new string fragment.
 *
-* @param content_buf Contains the content to be copied in.
+* @param content_len The length of the data to allocate for, and is required.
+* @param content_buf Is optional, and contains the content to be copied in.
 * @param content_len The length of the data to copy.
 * @return The StrLL reference that precedes the parameter nu in the list.
 */
-StrLL* StringBuilder::_create_str_ll(uint8_t* content_buf, int content_len, StrLL* nxt_ll) {
+StrLL* StringBuilder::_create_str_ll(int content_len, uint8_t* content_buf, StrLL* nxt_ll) {
   StrLL* ret = nullptr;
-  if ((nullptr != content_buf) && (content_len > 0)) {
+  if (content_len > 0) {
     // Over-allocate by content_len to give space for the content in the same allocation.
     // Over-allocate by one byte to ensure we have a null-terminator.
     const int TOTAL_MALLOC_SIZE = (sizeof(StrLL) + content_len + 1);
@@ -1412,8 +1389,13 @@ StrLL* StringBuilder::_create_str_ll(uint8_t* content_buf, int content_len, StrL
       ret->len  = content_len;  // Do not report our silent addition of null.
       ret->next = nxt_ll;
       ret->str  = (((uint8_t*) ret) + sizeof(StrLL));   // Derive content ptr.
-      memcpy(ret->str, content_buf, content_len);       // Copy content.
-      *(ret->str) = 0;                                  // Assign guard-rail.
+      if (nullptr != content_buf) {
+        memcpy(ret->str, content_buf, content_len);     // Copy content, if provided.
+      }
+      else {
+        memset(ret->str, 0, content_len);               // Zero content, if not.
+      }
+      *(ret->str + content_len) = 0;                    // Assign guard-rail.
     }
   }
   return ret;
