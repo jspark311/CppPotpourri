@@ -130,19 +130,31 @@ int test_Tokenizer() {
 
   int i_length = stack_obj.length();
   int i_count  = stack_obj.count();
+  int i_mem_sz = stack_obj.memoryCost();
+
   int chunks   = stack_obj.chunk(21);
   int p_length = stack_obj.length();
   int p_count  = stack_obj.count();
+  int p_mem_sz = stack_obj.memoryCost();
+
   stack_obj.string();
   int f_length = stack_obj.length();
   int f_count  = stack_obj.count();
-  printf("Initial:\n\t Length:    %d\n", i_length);
-  printf("\t Elements:  %d\n", i_count);
-  printf("Post-chunk:\n\t Length:    %d\n", p_length);
-  printf("\t Elements:  %d\n", p_count);
-  printf("\t Chunks:    %d\n", chunks);
-  printf("Final:\n\t Length:    %d\n", f_length);
-  printf("\t Elements:  %d\n", f_count);
+  int f_mem_sz = stack_obj.memoryCost();
+
+  printf("Initial:\n");
+  printf("\t length():     %d\n", i_length);
+  printf("\t count():      %d\n", i_count);
+  printf("\t memoryCost(): %d\n", i_mem_sz);
+  printf("Post-chunk:\n");
+  printf("\t length():     %d\n", p_length);
+  printf("\t count():      %d\n", p_count);
+  printf("\t memoryCost(): %d\n", p_mem_sz);
+  printf("Final (collapsed):\n");
+  printf("\t length():     %d\n", f_length);
+  printf("\t count():      %d\n", f_count);
+  printf("\t memoryCost(): %d\n", f_mem_sz);
+
   printf("Final Stack obj:\n");
   printf("%s", (char*) stack_obj.string());
   printf("\n\n");

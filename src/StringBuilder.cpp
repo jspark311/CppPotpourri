@@ -133,6 +133,19 @@ void StringBuilder::printBuffer(StringBuilder* output, uint8_t* buf, uint32_t le
 }
 
 
+/*******************************************************************************
+* Static string styling
+*******************************************************************************/
+
+// TODO: Both build sizes and consistency of output get a boost from central
+//   styling functions of this sort. For now, they are kept too-simple, and as
+//   statics in StringBuilder. It was a tremendous improvement over having this
+//   scattered in every printDebug() function that wanted a header.
+// It would be nice to have a central string styling class (or a prototype for)
+//   one so that complexity can be moved from everywhere into a single place
+//   which can have features like soft word-wrap, columnar output, color markup,
+//   and so on. If ever such a class is created, these should be migrated to it.
+
 /**
 * Static utility function for uniformly formatting output strings.
 *
@@ -1492,5 +1505,30 @@ int8_t StringBuilder::_collapse_into_buffer() {
     //pthread_mutex_unlock(&_mutex);
   #elif defined(__BUILD_HAS_FREERTOS)
   #endif
+  return ret;
+}
+
+
+/**
+* Return the RAM use of this string.
+* By passing true to deep, the return value will also factor in concealed heap
+*   overhead and the StringBuilder itself.
+* Return value accounts for padding due to alignment constraints.
+*
+* @param deep will also factor in heap overhead, and the StringBuilder itself.
+* @return 0 on success, or negative on failure.
+*/
+int StringBuilder::memoryCost(bool deep) {
+  // TODO: 4 for OVERHEAD_PER_MALLOC is an assumption based on a specific build
+  //   of newlib. Find a way to discover it from the build.
+  const uint32_t MALLOCS_PER_FRAG    = 2;  // TODO: This will go to unity once merged allocation is done.
+  const uint32_t OVERHEAD_PER_CLASS  = (deep ? sizeof(StringBuilder) : 0);
+  const uint32_t OVERHEAD_PER_MALLOC = (deep ? (4) : 0);
+  const uint32_t OVERHEAD_PER_FRAG   = sizeof(StrLL) + (MALLOCS_PER_FRAG * OVERHEAD_PER_MALLOC);
+  int32_t ret = length();
+  if (deep & (0 < col_length)) {
+    ret += OVERHEAD_PER_MALLOC;
+  }
+  ret += (count() * OVERHEAD_PER_FRAG);
   return ret;
 }

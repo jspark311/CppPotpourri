@@ -110,9 +110,9 @@ export CXXFLAGS
 
 .PHONY: all
 
-all: buildtests coverage check
+all: alltests coverage check
 
-buildtests: outputpath
+alltests: outputpath
 	@$(foreach test,$(TESTS),$(CXX) -Wl,--gc-sections -static $(CXXFLAGS) $(LIBS) $(SOURCES_CPP) $(test).cpp -o $(OUTPUT_PATH)/$(test);)
 	@echo 'Built tests:  $(TESTS)'
 	@echo 'Beginning test execution...'

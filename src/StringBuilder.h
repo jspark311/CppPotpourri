@@ -17,7 +17,68 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-TODO: This API badly needs return codes in the memory-allocating functions.
+
+===< Overview >=================================================================
+
+StringBuilder is the basis for string composition and interchange for the
+  entire library. It is intended to ease the routine burdens of string
+  manipulation, and uses dynamic memory internally. Some of this use is
+  exposed as public members, so care needs to be taken when such features are
+  used. Risks will be called-out per-function.
+
+This class has two modes of string storage: fragmented or collapsed, which are
+  mutal negations of one-another.
+While fragmented, the string is stored as an ordered set of elements that are
+  scattered across memory locations. These fragments ease heap loads during
+  composition, make length calculation faster, and allows for arbitrary carving.
+While collapsed, the entire string is stored in the str member as a single
+  contiguous allocation, and has a NULL root for its linked-list. That is: it
+  has no fragments. This is a minimal-overhead means of storing the string, and
+  is suitable for APIs that employ the ubiquitous (uint8*, length) pattern.
+
+Strings are stored as fragments natively, and by invocation of the tokenizer.
+  When the full string is requested, the class will collapse the fragments
+  into the str member, respecting the fact that part of the string may already
+  have been collapsed into str, in which case, str will be prepended to the
+  linked-list, and the entire linked-list then collapsed. Needless to say,
+  this shuffling act might cause the class to double its memory usage while
+  the string is being reorganized (in the worst case). So be aware of your
+  memory usage.
+
+
+===< Class-wide TODOs >=========================================================
+
+TODO: This API badly needs return codes in the memory-allocating functions. It
+  cannot be safely used as unbounded heap space until that is done. As it
+  stands, client classes have no means of detecting heap exhaustion, and are
+  individually (and completely) responsible for their own memory safety.
+
+TODO: It might be desirable to break StringBuilder apart along one (or more)
+  lines. Namely....
+  1) Memory model per-instance. Presently, this is a linked-list on the heap.
+      but it might be good to have avaialble the option of assigning a
+      pre-existing flat buffer space and only operating within it.
+  2) Formatting and tokenizing handled as seperate pieces?
+  3) Static styling methods have always felt wrong here...
+
+TODO: Following the removal of zero-copy-on-const, there is no longer any reason
+  to handle StrLL allocation as two seperate steps. Much simplicity will be
+  gained by doing so. If zero-copy-on-const is to make a return, it will be in
+  the context of a pluggable memory model, and won't belong here anyway.
+
+TODO: Re-instate semaphores via the Semaphore class, rather than the ugly
+  platform-specific preprocessor case-offs.
+
+TODO: Retrospective on the fragment structure...
+  The reap member costs more memory (by way of alignmnet and padding) than it
+  was saving in non-replication of const char* const. Under almost all usage
+  patterns, and certainly the most common of them.
+
+TODO: Direct-castablity to a string ended up being a non-value. Re-order to
+  support merged allocation.
+
+TODO: Merge the memory allocations for StrLLs, as well as their content.
+
 */
 
 
@@ -49,56 +110,17 @@ int strcasestr(char *a, const char *b);
 
 
 /*
-* TODO: Retrospective (meta edition)
-*
-* It might be desirable to break StringBuilder apart along one (or more) lines.
-* Namely....
-*   1) Memory model per-instance. Presently, this is a linked-list on the heap.
-*      but it might be good to have avaialble the option of assigning a
-*      pre-existing flat buffer space and only operating within it.
-*   2) Formatting and tokenizing handled as seperate pieces?
-*   3) Static styling methods have always felt wrong here...
-*/
-
-/*
-* This is a linked-list that is castable as a string.
-*
-* NOTE: Retrospective.
-*   The reap member costs more memory (by way of alignmnet and padding) than it
-*   was saving in non-replication of const char* const. Under almost all usage
-*   patterns, and certainly the most common of them.
-*
-* TODO: That said, we might retain the reap/no-reap distinction by making StrLL a
-*   proper polymorphic class with differential destructors. But the vtable costs
-*   would almost certainly be worse than the padding imposition of a single bool.
-*   Dig.
-*
-* NOTE: Direct-castablity to a string ended up being a non-value.
-* TODO: The investment of complexity probably has a batter RoI if we merge the
-*   memory allocations for the StrLL, as well as its content.
+* This is the struct that tracks a single fragment of a string.
+* It is a linked-list. For now.
 */
 typedef struct str_ll_t {
-  unsigned char    *str;   // The string.
-  struct str_ll_t  *next;  // The next element.
-  int              len;    // The length of this element.
-  //bool           reap;   // Should this position be reaped?
+  uint8_t*         str;   // The string.
+  struct str_ll_t* next;  // The next element.
+  int              len;   // The length of this element.
 } StrLL;
 
 
-
 /*
-* The point of this class is to ease some of the burden of doing string manipulations.
-* This class uses lots of dynamic memory internally. Some of this is exposed as public
-*   members, so care needs to be taken if heap references are to be used directly.
-* There are two modes that this class uses to store strings: collapsed and tokenized.
-* The collapsed mode stores the entire string in the str member with a NULL root.
-* The tokenized mode stores the string as sequential elements in a linked-list.
-* When the full string is requested, the class will collapse the linked-list into the str
-*   member, respecting the fact that part of the string may already have been collapsed into
-*   str, in which case, str will be prepended to the linked-list, and the entire linked-list
-*   then collapsed. Needless to say, this shuffling act might cause the class to more-than
-*   double its memory usage while the string is being reorganized. So be aware of your memory
-*   usage.
 */
 class StringBuilder {
   public:
@@ -179,6 +201,8 @@ class StringBuilder {
     // int cmpCaseless(const char* unknown);
 
     void printDebug(StringBuilder*);
+
+    int memoryCost(bool deep = false);   // Get the memory use for this string.
 
     /* Statics */
     static void printBuffer(StringBuilder* output, uint8_t* buf, uint32_t len, const char* indent = "\t");
