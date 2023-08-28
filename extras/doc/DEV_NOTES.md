@@ -94,7 +94,6 @@ TODO: Direct-castablity to a string ended up being a non-value. Re-order to
   support merged allocation.
 TODID.
 
-
 TODO: Merge the memory allocations for StrLLs, as well as their content. The
   following functions are hotspots for absurdities. Pay close attention to them
   before making a choice:
@@ -105,7 +104,7 @@ TODO: Merge the memory allocations for StrLLs, as well as their content. The
      its own.
 TODID: This is indeed what I did.
 
-  2) _null_term_check()
+  2) `_null_term_check()`
      This function does a regional reallocation to accommodate a null-terminator
      for safety's sake. This extra byte is _not_ accounted for in the string's
      reported length. It is strictly a safety measure that the API otherwise
@@ -113,5 +112,16 @@ TODID: This is indeed what I did.
      always allocating one extra byte and assuring that it is always null.
 WASDID: This was _already how things worked_. But it was scattered throughout the
   class, and probably had bugs somewhere.
+
+  3) Can `_null_term_check()` be removed entirely?
+TODID: Yup. Dropped.
+
+TODO: Style. Replace "unsigned char" with "uint8".
+TODID.
+
+TODO: Style. Remove "this->" and use the same convention as elsewhere in the library for
+  concealed members.
+TODO: Style. Homogenize orders of test-for-equality to not risk accidental assignment.
+
 
                                          `---J. Ian Lindsay 2023.0827 11:03:16`

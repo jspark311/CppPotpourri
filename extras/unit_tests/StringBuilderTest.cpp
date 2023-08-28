@@ -164,7 +164,9 @@ int test_Tokenizer() {
       printf("\tTokenizer tests pass:\n");
       ret = 0;
     }
+    else printf("\tLength of string did not stay constant throughout test (I, P, D):  %d, %d, %d).\n", i_length, p_length, f_length);
   }
+  else printf("\tChunk request disagreement with measurement (%d versus %d).\n", chunks, p_count);
   return ret;
 }
 

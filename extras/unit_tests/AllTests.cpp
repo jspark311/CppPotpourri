@@ -178,19 +178,19 @@ void printTestFailure(const char* test) {
 const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   { .FLAG         = CHKLST_ASYNC_SEQUENCER_TESTS,
     .LABEL        = "ASYNC_SEQUENCER_TESTS",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == async_seq_test_main()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_RINGBUFFER_TESTS,
     .LABEL        = "RINGBUFFER_TESTS",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == ringbuffer_main()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_STRINGBUILDER_TESTS,
     .LABEL        = "STRINGBUILDER_TESTS",
-    .DEP_MASK     = (CHKLST_ASYNC_SEQUENCER_TESTS),
+    .DEP_MASK     = (0),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == stringbuilder_main()) ? 1:-1);  }
   },

@@ -45,6 +45,13 @@ Strings are stored as fragments natively, and by invocation of the tokenizer.
   the string is being reorganized (in the worst case). So be aware of your
   memory usage.
 
+===< Useful lemmata >===========================================================
+TODO: Every single one of these must be unit tested.
+
+1) A string that is fragmented is not collapsed, and vice-versa. (Seat of excluded middle).
+2) A string that is fragmented is ipso facto not empty.
+3) An empty string is also collapsed.
+
 
 ===< Class-wide TODOs >=========================================================
 
@@ -64,15 +71,7 @@ TODO: It might be desirable to break StringBuilder apart along one (or more)
       consider building this with LightLinkedList, and doing the concurrency
       control there, instead.
 
-TODO: Merge the memory allocations for StrLLs, as well as their content. The
-  following functions are hotspots for absurdities. Pay close attention to them
-  before making a choice:
-  3) Can _null_term_check() be removed entirely?
-
 TODO: Style binge...
-  1) Remove "this->" and use the same convention as elsewhere in the library for
-     concealed members.
-  2) Replace "unsigned char" with "uint8".
   3) Homogenize orders of test-for-equality to not risk accidental assignment.
 
 TODO: Re-instate semaphores via the Semaphore class, rather than the ugly
@@ -80,8 +79,8 @@ TODO: Re-instate semaphores via the Semaphore class, rather than the ugly
 */
 
 
-#ifndef __MANUVR_DS_STRING_BUILDER_H
-#define __MANUVR_DS_STRING_BUILDER_H
+#ifndef __C3P_STRING_BUILDER_H
+#define __C3P_STRING_BUILDER_H
 
 #include <inttypes.h>
 #include <stdarg.h>
@@ -95,6 +94,7 @@ TODO: Re-instate semaphores via the Semaphore class, rather than the ugly
   #include <ctype.h>
 #endif
 
+// TODO: This concern belongs in the Semaphore class.
 #if defined(__BUILD_HAS_PTHREADS)
   #include <pthread.h>
 #elif defined(__BUILD_HAS_FREERTOS)
@@ -124,14 +124,14 @@ class StringBuilder {
   public:
     StringBuilder();
     StringBuilder(char *initial);
-    StringBuilder(unsigned char *initial, int len);
+    StringBuilder(uint8_t *initial, int len);
     StringBuilder(const char*);
     ~StringBuilder();
 
     int length();
     bool isEmpty(const bool strict = true);
     uint8_t* string();
-    void prepend(unsigned char *nu, int len);
+    void prepend(uint8_t *nu, int len);
 
     /**
     * Overrides to cleanly support C-style strings..
@@ -146,9 +146,9 @@ class StringBuilder {
     int concatf(const char* format, va_list);
 
     void concat(StringBuilder *nu);
-    void concat(unsigned char *nu, int len);
+    void concat(uint8_t *nu, int len);
     void concat(char nu);
-    void concat(unsigned char nu);
+    void concat(uint8_t nu);
     void concat(int nu);
     void concat(unsigned int nu);
     void concat(double nu);
@@ -179,7 +179,7 @@ class StringBuilder {
 
     /* The functions below are meant to aid basic tokenization. They all consider the collapsed
        root string (if present) to be index zero. This detail is concealed from client classes. */
-    int      chunk(int);                // Split the string into tokens by a uniform length.
+    int      chunk(const int);          // Split the string into tokens by a uniform length.
     int      split(const char*);        // Split the string into tokens by the given string.
     int      implode(const char*);      // Given a delimiter, form a single string from all StrLLs.
     uint16_t count();                   // Count the tokens.
@@ -213,12 +213,12 @@ class StringBuilder {
 
 
   private:
-    // TODO: This order is important until merged-allocation is done, and these
-    //   can be reduced into an StrLL themselves.
-    uint8_t* str;          // The collapsed string.
-    int      col_length;   // The length of the collapsed string.
-    StrLL*   root;         // The root of the linked-list.
+    StrLL*   _root;         // The root of the linked-list.
+    #if defined(__BUILD_HAS_CONCURRENT_STRINGBUILDER)
+      // TODO: Do concurrency control with a semaphore if the build requested it.
+    #endif
 
+    // TODO: Strike the platform-specific semaphore support.
     #if defined(__BUILD_HAS_PTHREADS)
       // If we are on linux, we control for concurrency with a mutex...
       pthread_mutex_t   _mutex;
@@ -229,10 +229,9 @@ class StringBuilder {
     int    _total_str_len(StrLL*);
     StrLL* _stack_str_onto_list(StrLL* current, StrLL* nu);
     StrLL* _stack_str_onto_list(StrLL*);
-    void   _null_term_check();
     StrLL* _create_str_ll(int, uint8_t* buf = nullptr, StrLL* nxt_ll = nullptr);
     void   _destroy_str_ll(StrLL*);
-    StrLL* _promote_collapsed_into_ll();
-    int8_t _collapse_into_buffer();
+    int8_t _collapse();       // Flatten the string into a single allocation.
+    bool   _fragged();        // Is the string fragmented?
 };
-#endif  // __MANUVR_DS_STRING_BUILDER_H
+#endif  // __C3P_STRING_BUILDER_H
