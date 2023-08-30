@@ -46,8 +46,6 @@ Strings are stored as fragments natively, and by invocation of the tokenizer.
   memory usage.
 
 ===< Useful lemmata >===========================================================
-TODO: Every single one of these must be unit tested.
-
 1) A string that is fragmented is not collapsed, and vice-versa. (Seat of excluded middle).
 2) A string that is fragmented is ipso facto not empty.
 3) An empty string is also collapsed.
@@ -118,8 +116,7 @@ typedef struct str_ll_t {
 } StrLL;
 
 
-/*
-*/
+/* Class for dynamic strings and buffers. */
 class StringBuilder {
   public:
     StringBuilder();
@@ -131,11 +128,13 @@ class StringBuilder {
     int length();
     bool isEmpty(const bool strict = true);
     uint8_t* string();
+    uint8_t byteAt(const int);          // Returns the byte at the given offset.
+
+    /* Canonical implementations of concat() and prepend(). */
+    void concat(uint8_t *nu, int len);
     void prepend(uint8_t *nu, int len);
 
-    /**
-    * Overrides to cleanly support C-style strings..
-    */
+    /* Overrides to cleanly support C-style printable strings. */
     inline void concat(char* nu) {         concat((uint8_t*) nu, strlen(nu));   };
     inline void concat(const char* nu) {   concat((uint8_t*) nu, strlen(nu));   };
     inline void prepend(char* nu) {        prepend((uint8_t*) nu, strlen(nu));  };
@@ -146,7 +145,6 @@ class StringBuilder {
     int concatf(const char* format, va_list);
 
     void concat(StringBuilder *nu);
-    void concat(uint8_t *nu, int len);
     void concat(char nu);
     void concat(uint8_t nu);
     void concat(int nu);
@@ -227,9 +225,13 @@ class StringBuilder {
     #endif
 
     int    _total_str_len(StrLL*);
+    StrLL* _get_ll_containing_offset(StrLL*, int* offset);
+    int    _deepcopy_ll_bytes(StrLL* src, StrLL* dest, int length, int initial_ll_offset = 0);
+    //int    _move_ll_bytes(StrLL* src, StrLL* dest, int length);
     StrLL* _stack_str_onto_list(StrLL* current, StrLL* nu);
     StrLL* _stack_str_onto_list(StrLL*);
     StrLL* _create_str_ll(int, uint8_t* buf = nullptr, StrLL* nxt_ll = nullptr);
+    StrLL* _create_str_ll(int, StrLL* src, int initial_ll_offset = 0);
     void   _destroy_str_ll(StrLL*);
     int8_t _collapse();       // Flatten the string into a single allocation.
     bool   _fragged();        // Is the string fragmented?

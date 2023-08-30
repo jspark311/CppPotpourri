@@ -306,6 +306,21 @@ uint8_t* StringBuilder::string() {
 
 
 /**
+*
+* @return The byte at the given offset, or 0 on negative or excessive param.
+*/
+uint8_t StringBuilder::byteAt(const int OFFSET) {
+  uint8_t ret = 0;
+  int offset = OFFSET;
+  StrLL* ll_with_byte = _get_ll_containing_offset(_root, &offset);
+  if (nullptr != ll_with_byte) {
+    ret = *(ll_with_byte->str + offset);
+  }
+  return ret;
+}
+
+
+/**
 * Wipes the StringBuilder, free'ing memory as appropriate.
 */
 void StringBuilder::clear() {
@@ -968,70 +983,123 @@ int StringBuilder::cmpBinString(uint8_t* unknown, int len) {
 * Replaces instances of the former argument with the latter.
 * Collapses the buffer. Possibly twice.
 *
-* @param search The string to search for.
+* @param search The string to search for. Must be non-null and non-zero length.
 * @param replace The string to replace it with.
 * @return The number of replacements, or -1 on memory error.
 */
 int StringBuilder::replace(const char* needle, const char* replace) {
-  int return_value = 0;
+  if (nullptr == needle) {  return 0;  }
+  int ret = 0;
   const int NEEDLE_LEN   = strlen(needle);
-  const int REPLACE_LEN  = strlen(replace);
-  if ((length() >= NEEDLE_LEN) && (0 < NEEDLE_LEN)) {
+  const int REPLACE_LEN  = ((nullptr == replace) ? 0 : strlen(replace));
+  const int HAYSTACK_LEN = length();
+  const int LENGTH_DIFFERENTIAL = (REPLACE_LEN - NEEDLE_LEN);
+
+  if ((0 < HAYSTACK_LEN) && (HAYSTACK_LEN >= NEEDLE_LEN) && (0 < NEEDLE_LEN)) {
     #if defined(__BUILD_HAS_CONCURRENT_STRINGBUILDER)
       // TODO: Lock with semaphore.
     #endif  // __BUILD_HAS_CONCURRENT_STRINGBUILDER
-    bool dangling_bulk = false;
-    // TODO: Iterate through fragments, and replace them only if necessary due
-    //   to length differential and needle location, but be wary of failing to
+
+    // Iterate through fragments, and replace them only if necessary due to
+    //   length differential and needle location, but be wary of failing to
     //   compare across frag boundaries.
-    _collapse();
-
-    const int HAYSTACK_LEN = _root->len;
-    uint8_t* tok_start = _root->str;
-    int haystack_offset = 0;   // Offset in the haystack.
-    while (haystack_offset < (HAYSTACK_LEN - (NEEDLE_LEN-1))) {
-      int needle_bytes_found = 0;
-      // Seek to the end of any potential needle at this offset.
-      while ((*(needle + needle_bytes_found) == *(_root->str + haystack_offset + needle_bytes_found)) && (needle_bytes_found < NEEDLE_LEN)) {
-        needle_bytes_found++;
-      }
-      if (needle_bytes_found == NEEDLE_LEN) {
-        // There is a needle here. Calculate the length of the new string
-        //   segment, and insert a list item.
-        int len_bulk  = haystack_offset - (tok_start - _root->str);
-        int len_total = len_bulk + REPLACE_LEN;
-
-        //StrLL* nu_element = (StrLL*) malloc(sizeof(StrLL));
-        StrLL* nu_element = _create_str_ll(len_total);
-        if (nullptr != nu_element) {
-          int local_offset = 0;
-          if (0 < len_bulk) {
-            memcpy(nu_element->str, tok_start, len_bulk);
-            local_offset = len_bulk;
+    StringBuilder working_sb;     // Writes happen to a working object.
+    // Priming of iterator variables that must cross scopes.
+    int remaining_search_len = HAYSTACK_LEN;
+    StrLL* src_ll         = _root;  // Iterator over the source list.
+    int search_hit_idx    = 0;      // Offset within the search string that match is comparing.
+    int intra_frag_idx    = 0;      // Offset within the current source fragment.
+    StrLL* src_cpy_ll     = src_ll; // If the source needs to be copied for mutation, start here.
+    int src_cpy_idx       = 0;      // If the source needs to be copied for mutation, start here.
+    int src_cpy_ll_idx    = 0;      // If the source needs to be copied for mutation, start here within the LL.
+    int src_cpy_total_idx = 0;      // If the source needs to be copied for mutation, start here within the full length.
+    bool allocation_failure = false;
+    // Haystack search loop. If the source string were collapsed, this would
+    //   be as simple as searching for a substring within a string.
+    // But since we don't want to spike the heap or mutate the source mem
+    //   needlessly, roll through its fragment list and compare as we go.
+    // One byte per-loop is compared against the delimiter.
+    while (!allocation_failure & (remaining_search_len-- > 0) & (nullptr != src_ll)) {
+      if (*(src_ll->str + intra_frag_idx++) == *(needle + search_hit_idx++)) {
+        // Bytes match.
+        if (NEEDLE_LEN == search_hit_idx) {  // If it is the conclusion of a match...
+          // Create a copy of the string up-to the first byte of the needle...
+          const int NEXT_BYTE_OFFSET  = (HAYSTACK_LEN - remaining_search_len);
+          const int THIS_BYTE_OFFSET  = (NEXT_BYTE_OFFSET - 1);
+          const int NEW_FRAG_LENGTH   = ((NEXT_BYTE_OFFSET - src_cpy_total_idx) - NEEDLE_LEN);
+          // There might not be anything to copy, in the case of multiple
+          //   replacements with no intervening bytes.
+          if (0 < NEW_FRAG_LENGTH) {
+            StrLL* chunk_ll = _create_str_ll(NEW_FRAG_LENGTH, src_cpy_ll, src_cpy_ll_idx);
+            allocation_failure = (nullptr == chunk_ll);    // Test for failure.
+            if (!allocation_failure) {
+              // Stack onto the working copy's root. Not ours.
+              working_sb._stack_str_onto_list(chunk_ll);
+            }
           }
+
+          // If there is a replacement string, add it into the working copy.
           if (0 < REPLACE_LEN) {
-            memcpy(nu_element->str + local_offset, replace, REPLACE_LEN);
+            // TODO: There are safety and minor speed-gains to be had by not
+            //   doing it this way. implode(replace) when finished?
+            working_sb.concat(replace);
           }
-          _stack_str_onto_list(nu_element);
+          ret++;   // We made a replacement.
+
+          // Do our offset reshuffle. Check against the src_ll boundaries so
+          //   that the next comparison happens on valid premises.
+          // It won't matter if there was an allocation failure above. It will
+          //   just be unused preparation.
+          // We want the next copy to start at the byte after this one (which
+          //   was the terminal byte of an instance of the search term).
+          src_cpy_total_idx = NEXT_BYTE_OFFSET;
+          src_cpy_ll_idx    = NEXT_BYTE_OFFSET;
+          // NOTE: We are setting src_cpy_ll_idx to the global index, because we
+          //   are about to search from root, and therefore, the parameter should
+          //   be the absolute (full-string) offset. But upon return,
+          src_cpy_ll = _get_ll_containing_offset(_root, &src_cpy_ll_idx);
+          search_hit_idx = 0;  // Reset the search
         }
-        else {
-          return -1;
-        }
-        haystack_offset += NEEDLE_LEN;  // Don't scan the delimiter space again.
-        tok_start = _root->str + haystack_offset;
-        dangling_bulk = (haystack_offset < (HAYSTACK_LEN-1));
-        return_value++;
       }
-      else {
-        haystack_offset++;
+      else {                       // Bytes disagree.
+        if (1 < search_hit_idx) {  // If we were into a search, back out of our
+          remaining_search_len++;  //   postfixed iterator actions so the
+          intra_frag_idx--;        //   current byte gets compared against the
+        }                          //   first needle byte.
+        search_hit_idx = 0;        // Reset the search.
+      }
+
+      // Check against the src_ll to ensure proper gather on boundaries.
+      if (intra_frag_idx >= src_ll->len) {
+        intra_frag_idx = 0;
+        src_ll = src_ll->next;
       }
     }
 
-    if (0 < return_value) {
-      if (dangling_bulk) {
-        int len_dangling  = HAYSTACK_LEN - haystack_offset;
-        concat(tok_start, len_dangling);
+    if (!allocation_failure) {
+      if (0 < ret) {
+        // If replacement actually happened, add any tail that probably
+        //   followed the final replacement, and mutate the source.
+        // search_hit_idx must be considered to avoid pulling in string that was
+        //   replaced into nothing at the end of the haystack.
+        const int DANGLING_LENGTH = (HAYSTACK_LEN - src_cpy_total_idx);
+        if (0 < DANGLING_LENGTH) {
+          StrLL* terminal_ll = _create_str_ll(DANGLING_LENGTH, src_cpy_ll, src_cpy_ll_idx);
+          allocation_failure = (nullptr == terminal_ll);    // Test for failure.
+          if (!allocation_failure) {
+            working_sb._stack_str_onto_list(terminal_ll);
+          }
+        }
+        if (!allocation_failure) {
+          _destroy_str_ll(_root);  // Wipe the linked list.
+          _root = working_sb._root;
+          working_sb._root = nullptr;
+        }
       }
+    }
+
+    if (allocation_failure) {
+      ret = -1;
     }
 
     #if defined(__BUILD_HAS_PTHREADS)
@@ -1039,7 +1107,7 @@ int StringBuilder::replace(const char* needle, const char* replace) {
     #elif defined(__BUILD_HAS_FREERTOS)
     #endif
   }
-  return return_value;
+  return ret;
 }
 
 
@@ -1190,14 +1258,14 @@ int StringBuilder::split(const char* delims) {
     _collapse();
     char* temp_str = strtok((char*) _root->str, delims);
     if (nullptr != temp_str) {
-      //StrLL* old_root = _root;
-      //_root = nullptr;
+      StrLL* old_root = _root;
+      _root = nullptr;
       while (nullptr != temp_str) {
         concat(temp_str);
         return_value++;
         temp_str = strtok(nullptr, delims);
       }
-      //_destroy_str_ll(old_root);    // Free the source memory.
+      _destroy_str_ll(old_root);    // Free the source memory.
     }
     //else {
     //  concat("");   // Assure at least one token.
@@ -1239,6 +1307,73 @@ int StringBuilder::_total_str_len(StrLL* node) {
   int len = ((node->next != nullptr) ? _total_str_len(node->next) : 0);
   return (len + node->len);
 }
+
+
+/**
+* Traverse the fragments and return the one that contains the data at the given
+*   offset. If the function returns a not-null pointer, offset will have been
+*   updated to contain the offset within that StrLL that corresponds to the
+*   offset originally requested. Thus, specific bytes can be asked for.
+* NOTE: Recursion in use.
+*
+* @param str_ll is the StrLL in which to begin searching.
+* @param offset is the pass-by-reference parameter mutated by the recursion.
+* @return A pointer to the StrLL containing the offset, or nullptr on failure.
+*/
+StrLL* StringBuilder::_get_ll_containing_offset(StrLL* str_ll, int* offset) {
+  StrLL* ret = nullptr;
+  const int STACKED_OFFSET = *offset;
+  if (STACKED_OFFSET < str_ll->len) {    // If we weren't asked for an offset
+    ret = str_ll;                        //   past the end our bounds, we're
+  }                                      //   it. Otherwise, return nullptr.
+  else if (nullptr != str_ll->next) {    // Can we go deeper?
+    *offset = (STACKED_OFFSET - str_ll->len);
+    ret = _get_ll_containing_offset(str_ll->next, offset);
+  }
+  else {           // We could simply fall through, but this adds some safety by
+    *offset = -1;  //   setting the mutated parameter to a single state that
+  }                //   indicates failure (it would otherwise be undefined).
+  return ret;
+}
+
+
+/**
+* Traverse the fragments at src and copy them into dest.
+* No allocation is done here, and so outright failure isn't possible.
+*
+* NOTE: Does not preserve structure.
+* NOTE: Presumes an existing allocation of adequate length was made for dest.
+*
+* @param src The StrLL to treat as the root.
+* @param dest The StrLL to copy into.
+* @param COPY_LEN The number of bytes to copy.
+* @param INITIAL_LL_OFFSET The initial offset where copying begins.
+* @return The number of bytes copied.
+*/
+int StringBuilder::_deepcopy_ll_bytes(StrLL* src, StrLL* dest, const int COPY_LEN, int const INITIAL_LL_OFFSET) {
+  int ret = 0;
+  if ((nullptr != src) & (nullptr != dest) & (0 < COPY_LEN)) {
+    if (src->len > INITIAL_LL_OFFSET) {  // We _could_ skip ahead, but fail instead.
+      if (dest->len >= COPY_LEN) {  // We _could_ fill as much as possible, but fail instead.
+        StrLL* current = src;
+        int intra_frag_idx = INITIAL_LL_OFFSET;
+        while ((ret < COPY_LEN) & (nullptr != current)) {
+          // This is the chunk copy loop. One byte per-loop is written to the
+          //   new chunk, Copy the byte we are primed for...
+          *(dest->str + ret++) = *(current->str + intra_frag_idx++);
+
+          // Check against the src_ll to ensure proper gather on boundaries.
+          if (intra_frag_idx >= current->len) {
+            intra_frag_idx = 0;
+            current = current->next;
+          }
+        }
+      }
+    }
+  }
+  return ret;
+}
+
 
 
 /**
@@ -1312,6 +1447,31 @@ StrLL* StringBuilder::_create_str_ll(int content_len, uint8_t* content_buf, StrL
         memset(ret->str, 0, content_len);               // Zero content, if not.
       }
       *(ret->str + content_len) = 0;                    // Assign guard-rail.
+    }
+  }
+  return ret;
+}
+
+
+/**
+* Choke-point for the creation of a new string fragment.
+*
+* @param content_len The length of the data to allocate for, and is required.
+* @param content_buf Is optional, and contains the content to be copied in.
+* @param content_len The length of the data to copy.
+* @return The StrLL reference that precedes the parameter nu in the list.
+*/
+StrLL* StringBuilder::_create_str_ll(int CONTENT_LEN, StrLL* content_ll, int initial_ll_offset) {
+  StrLL* ret = nullptr;
+  if (nullptr != content_ll) {
+    if (0 < CONTENT_LEN) {
+      const int SRC_LL_LENGTH = _total_str_len(content_ll);
+      if (CONTENT_LEN <= (SRC_LL_LENGTH - initial_ll_offset)) {
+        ret = _create_str_ll(CONTENT_LEN);
+        if (nullptr != ret) {
+          _deepcopy_ll_bytes(content_ll, ret, CONTENT_LEN, initial_ll_offset);
+        }
+      }
     }
   }
   return ret;
