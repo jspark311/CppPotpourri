@@ -30,6 +30,15 @@ This class makes extensive use of the heap, low-level memory assumptions, and is
 /*******************************************************************************
 * StringBuilder test routines
 *******************************************************************************/
+/* DRY function to print metrics for a StringBuilder. */
+void print_sb_metrics(const char* item_name, const int l, const int c, const int s) {
+  printf("\t(%20s) Length, count, size:    %5d, %5d, %5d bytes\n", item_name, l, c, s);
+}
+void print_sb_metrics(const char* item_name, StringBuilder* obj) {
+  print_sb_metrics(item_name, obj->length(), obj->count(), obj->memoryCost());
+}
+
+
 
 int test_strcasecmp() {
   int return_value = -1;
@@ -100,7 +109,11 @@ int test_strcasestr() {
 }
 
 
-int test_Tokenizer() {
+/*
+  Tests chunk(const int)
+  Depends on
+*/
+int test_stringbuilder_chunk() {
   StringBuilder stack_obj;
   int ret = -1;
   printf("===< Tokenizer tests >====================================\n");
@@ -142,18 +155,9 @@ int test_Tokenizer() {
   int f_count  = stack_obj.count();
   int f_mem_sz = stack_obj.memoryCost();
 
-  printf("Initial:\n");
-  printf("\t length():     %d\n", i_length);
-  printf("\t count():      %d\n", i_count);
-  printf("\t memoryCost(): %d\n", i_mem_sz);
-  printf("Post-chunk:\n");
-  printf("\t length():     %d\n", p_length);
-  printf("\t count():      %d\n", p_count);
-  printf("\t memoryCost(): %d\n", p_mem_sz);
-  printf("Final (collapsed):\n");
-  printf("\t length():     %d\n", f_length);
-  printf("\t count():      %d\n", f_count);
-  printf("\t memoryCost(): %d\n", f_mem_sz);
+  print_sb_metrics("Initial conditions", i_length, i_count, i_mem_sz);
+  print_sb_metrics("Post-chunk", p_length, p_count, p_mem_sz);
+  print_sb_metrics("Final (collapsed)", f_length, f_count, f_mem_sz);
 
   printf("Final Stack obj:\n");
   printf("%s", (char*) stack_obj.string());
@@ -171,12 +175,111 @@ int test_Tokenizer() {
 }
 
 
-
-int test_Implode() {
+/*
+  Tests implode(const char*)
+  Depends on
+*/
+int test_stringbuilder_implode() {
   const char* DELIM_STR = "\n\t";
   StringBuilder stack_obj;
   int ret = -1;
-  printf("===< Implode tests >====================================\n");
+  printf("Testing StringBuilder::implode(const char*)...\n");
+  stack_obj.concat("This string");
+  stack_obj.concat("had no tabs");
+  stack_obj.concat("or newlines");
+  stack_obj.concat("when it was");
+  stack_obj.concat("created.");
+
+  int i_length = stack_obj.length();
+  int i_count  = stack_obj.count();
+  int i_mem_sz = stack_obj.memoryCost();
+
+  printf("\tWe are starting with a fragmented string... ");
+  if (1 < i_count) {
+    printf("Pass.\n\timplode() should return 0 when given a null delimiter... ");
+    if ((0 == stack_obj.implode(nullptr)) && (stack_obj.count() == i_count)) {
+      printf("Pass.\n\timplode() should return 0 when given a zero-length delimiter... ");
+      if ((0 == stack_obj.implode("")) && (stack_obj.count() == i_count)) {
+        printf("Pass.\n\timplode() should return the fragment count on success... ");
+        if (i_count == stack_obj.implode(DELIM_STR)) {
+          printf("Pass.\n\tcount() should be 1 following implode()... ");
+          if (stack_obj.count() == 1) {
+            const int expect_delim_count = (i_count - 1);
+            const int expect_len = (i_length + (expect_delim_count * strlen(DELIM_STR)));
+            printf("Pass.\n\tlength() should be %d following the addition of %d delimiters... ", expect_len, expect_delim_count);
+            if (stack_obj.length() == expect_len) {
+              printf("Pass.\n\timplode() tests pass:\n");
+              print_sb_metrics("Initial conditions", i_length, i_count, i_mem_sz);
+              print_sb_metrics("Final conditions", &stack_obj);
+              ret = 0;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
+
+  return ret;
+}
+
+
+/*
+  Tests byteAt(const int)
+  (Needlesly) Depends on chunk() for inducing string fragmentation.
+*/
+int test_stringbuilder_byteat() {
+  printf("Testing byteAt(const int)...\n");
+  StringBuilder stack_obj("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
+  int ret = -1;
+  uint8_t test_byte = 0;
+  bool str_collapsed = true;
+
+  printf("\tDoes byteAt(0) return 'A'... ");
+  test_byte = stack_obj.byteAt(0);
+  if ('A' == test_byte) {
+    printf("Pass.\n\tDoes byteAt(26) return 'a'... ");
+    test_byte = stack_obj.byteAt(26);
+    if ('a' == test_byte) {
+      printf("Pass.\n\tDoes byteAt(<out-of-bounds>) return 0... ");
+      test_byte = stack_obj.byteAt(stack_obj.length() + 100);
+      if (0 == test_byte) {
+        printf("Pass.\n\tFragmenting string... ");
+        if (9 == stack_obj.chunk(6)) {
+          printf("Pass.\n\tDoes byteAt(0) still return 'A'... ");
+          test_byte = stack_obj.byteAt(0);
+          if ('A' == test_byte) {
+            printf("Pass.\n\tDoes byteAt(26) still return 'a'... ");
+            test_byte = stack_obj.byteAt(26);
+            if ('a' == test_byte) {
+              printf("Pass.\n\tDoes byteAt(51) return 'z'... ");
+              test_byte = stack_obj.byteAt(51);
+              if ('z' == test_byte) {
+                printf("Pass.\n\tbyteAt(const int) tests pass.\n");
+                ret = 0;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
+  return ret;
+}
+
+
+int test_stringbuilder_split() {
+  const char* DELIM_STR = "\n\t";
+  StringBuilder stack_obj;
+  int ret = -1;
+  printf("Testing StringBuilder::split(const char*)...\n");
   stack_obj.concat("This string");
   stack_obj.concat("had no tabs");
   stack_obj.concat("or newlines");
@@ -204,172 +307,193 @@ int test_Implode() {
   printf("\t split() returns %d\n", retoks);
   printf("\n\n");
 
-  if ((i_count == f_count) & (i_length == f_length)) {   // We started and ended with the same length and token count.
-    if (f_count == toks) {       // That token count equals the return value from implode.
-      if (p_count == 1) {        // Implode fully reduced the original set of tokens.
-        if (toks == retoks) {    // implode and split have the same return value.
-          printf("\tImplode tests pass:\n");
+  printf("\tDid we start and end with the same length and token count... ");
+  if ((i_count == f_count) & (i_length == f_length)) {
+    printf("Pass.\n\tDid we start and end with the same length and token count... ");
+    if (f_count == toks) {
+      printf("Pass.\n\tImplode fully reduced the original set of tokens.... ");
+      if (p_count == 1) {
+        printf("Pass.\n\tToken count equals the return value from implode... ");
+        if (toks == retoks) {
+          printf("Pass.\n\timplode() tests pass:\n");
           ret = 0;
         }
       }
     }
   }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
+
   return ret;
 }
 
 
-int test_replace() {
-  const char* DELIM_STR = "\n\t";
+/*
+* A one-off struct to hold test cases for replace(). Each input case is thrice
+*   mutated to test behavior on each string under both collapsed and fragmentary
+*   conditions.
+*/
+struct sb_replace_case {
+  const char* const input;
+  const char* const search_0;
+  const char* const replace_0;
+  const char* const mutant_0;
+  const int         replacements_0;
+  const char* const test_description_0;
+  const char* const search_1;
+  const char* const replace_1;
+  const char* const mutant_1;
+  const int         replacements_1;
+  const char* const test_description_1;
+  const char* const search_2;
+  const char* const replace_2;
+  const char* const mutant_2;
+  const int         replacements_2;
+  const char* const test_description_2;
+};
+
+// String replacement is a subtle problem. We have a battery of test cases to
+//   ensure edge-cases don't slip through testing, and to ensure our machinary
+//   is still readable and maintainable.
+// NOTE: replace() is meant to be textual (not buffer safe).
+// TODO: Test assurances of non-mutation of memory layout.
+sb_replace_case sb_replace_cases[] = {
+  // Basics (Part 1):
+  { "ANOTHER|||DELIMITER||TEST|||STRING",
+      "|||", "^^^", "ANOTHER^^^DELIMITER||TEST^^^STRING", 2, "Straight-across multi-byte replacement.",
+      "|", "+",     "ANOTHER^^^DELIMITER++TEST^^^STRING", 2, "Straight-across single-byte replacement.",
+      "^", "",      "ANOTHERDELIMITER++TESTSTRING",       6, "Empty replacement of single-byte search term." },
+  // Basics (Part 2):
+  { "strings must be able to be length-scaled",
+      " ",  "   ", "strings   must   be   able   to   be   length-scaled", 6, "Simple-case length scaling (upward).",
+      "  ", " ",   "strings  must  be  able  to  be  length-scaled",       6, "Simple-case length scaling (downward).",
+      "  ", "",    "stringsmustbeabletobelength-scaled",                   6, "Empty replacement of multi-byte search term." },
+  // Empty haystacks:
+  { "",
+      "needle", "(error-made-here)", "", 0, "Legal operators on empty haystack.",
+      "",       "(error-made-here)", "", 0, "Zero-length needle (illegal).",
+      "",       "",                  "", 0, "Both operators zero-length (illegal)." },
+  // Absurdities:
+  //replace() called with a needle longer than the subject string should return 0.
+  { "This string should remain unchanged.",
+      nullptr,  "(error-made-here)", "This string should remain unchanged.", 0, "Search term undefined.",
+      "",       "(error-made-here)", "This string should remain unchanged.", 0, "Search term zero-length.",
+      "wombat", "(error-made-here)", "This string should remain unchanged.", 0, "Search term not found." },
+  // Multi-byte edge-cases (Part 1):
+  { "-....-...-.-...-.--...-.-----.-.....",  // "testStringInMorse"
+      ".....", "",  "-....-...-.-...-.--...-.-----.-", 1, "Single multi-byte replacement to nothing at terminus.",
+      "-....", "",  "-...-.-...-.--...-.-----.-",      1, "Single multi-byte replacement to nothing at origin.",
+      "-...-.-...-.--...-.-----.-", "",       "",      1, "Single multi-byte replacement where the needle is the haystack." },
+  // Multi-byte edge-cases (Part 2):
+  { "-....-...-.-...-.--...-.-----.-.....",  // "testStringInMorse"
+      ".-...-", "---", "-...------.--...-.-----.-.....",                2, "Consecutive multi-byte replacement resulting in a length decrease.",
+      ".",      "--",  "--------------------------------------------", 14, "Consecutive single-byte replacement resulting in a length increase.",
+      "-",      "",    "",                                             44, "Consecutive single-byte replacement resulting in a zero-length result." },
+  // Literal edge-cases (Part 1):
+  { "------ANOTHER|DELIMITER||TEST|STRING-||||||",
+      "||",  "-", "------ANOTHER|DELIMITER-TEST|STRING----", 4, "Consecutive multi-byte replacement resulting in a length decrease at terminus.",
+      "---", "-", "--ANOTHER|DELIMITER-TEST|STRING--",       3, "Consecutive multi-byte replacements resulting in a length decrease at origin and terminus.",
+      "-",    "", "ANOTHER|DELIMITERTEST|STRING",            5, "Consecutive single-byte replacements resulting in a length decrease at origin and terminus." },
+  // Tag torture cases:
+  { ":TAG:torture:TAG:case:TAG::TAG:With:TAG long:TAG:NEEDLE:TAG::T",
+      ":TAG:", ":tag:", ":tag:torture:tag:case:tag::tag:With:TAG long:tag:NEEDLE:tag::T", 6,  "Tag torture case #1.",
+      ":tag:", "***",   "***torture***case******With:TAG long***NEEDLE***:T",             6,  "Tag torture case #2.",
+      "**",    "*",     "**torture**case***With:TAG long**NEEDLE**:T",                    7,  "Replacement is single-pass." },
+  // Common patterns of use surrounding line-endings.
+  { "Typical text layout.\n\nIt has double-spacing,\nas well as a terminal\nline ending.\n",
+      "\n", "\r\n", "Typical text layout.\r\n\r\nIt has double-spacing,\r\nas well as a terminal\r\nline ending.\r\n", 5, "LF->CRLF",
+      "\r\n", "\n", "Typical text layout.\n\nIt has double-spacing,\nas well as a terminal\nline ending.\n",           5, "CRLF->LF",
+      "\n", "\n\t", "Typical text layout.\n\t\n\tIt has double-spacing,\n\tas well as a terminal\n\tline ending.\n\t", 5, "Block indentation." },
+};
+
+
+int test_stringbuilder_replace() {
+  const int REPLACEMENT_CASE_COUNT = (sizeof(sb_replace_cases) / sizeof(sb_replace_case));
   StringBuilder stack_obj;
   int ret = -1;
-  int replacements = 0;
-  printf("===< Replace tests >====================================\n");
+  printf("Testing replace(const char*, const char*) with %d test cases (3 mutations each)...\n", REPLACEMENT_CASE_COUNT);
 
-  const int REPLACE_COUNT_0 = 7;
-  const int REPLACE_COUNT_1 = 6;
-  const int REPLACE_COUNT_2 = 5;
-  const char* exp_string_0 = "ANOTHER|DELIMITER||TEST|STRING|||";
-  const char* exp_string_1 = ":TAG:torture:TAG:case:TAG::TAG:With:TAG long:TAG:NEEDLE:TAG::T";
-  const char* exp_string_2 = "This is a typical text layout.\n\nIt has double-spacing,\nas well as a terminal\nline ending.\n";
+  int  case_idx     = 0;
+  int  replacements = 0;
+  bool test_failed  = false;
+  char* search_term           = (char*) "";
+  char* replacement_term      = (char*) "";
+  char* expected_mutant       = (char*) "";
+  int   expected_replacements = 0;
 
-  const char* ref_string_0_0 = "ANOTHER.DELIMITER..TEST.STRING...";
-  const char* ref_string_0_1 = "ANOTHER---DELIMITER------TEST---STRING---------";
-  const char* ref_string_0_2 = "ANOTHERDELIMITERTESTSTRING";
-
-  const char* ref_string_1_0 = ":tag:torture:tag:case:tag::tag:With:TAG long:tag:NEEDLE:tag::T";
-  const char* ref_string_1_1 = "***torture***case******With:TAG long***NEEDLE***:T";
-  const char* ref_string_1_2 = "*torture*case**With:TAG long*NEEDLE*:T";
-
-  const char* ref_string_2_0 = "This is a typical text layout.\r\n\r\nIt has double-spacing,\r\nas well as a terminal\r\nline ending.\r\n";
-  const char* ref_string_2_1 = "This is a typical text layout.\n\nIt has double-spacing,\nas well as a terminal\nline ending.\n";
-  const char* ref_string_2_2 = "This is a typical text layout.\n\t\n\tIt has double-spacing,\n\tas well as a terminal\n\tline ending.\n\t";
-
-  stack_obj.concat(exp_string_0);
-  replacements = stack_obj.replace("|", ".");
-  if (REPLACE_COUNT_0 == replacements) {
-    if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), ref_string_0_0)) {
-      replacements = stack_obj.replace(".", "---");
-      if (REPLACE_COUNT_0 == replacements) {
-        if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), ref_string_0_1)) {
-          replacements = stack_obj.replace("---", "");
-          if (REPLACE_COUNT_0 == replacements) {
-            if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), ref_string_0_2)) {
-              printf("\tReplacement test block 0 passes:\t%s\n", (char*)stack_obj.string());
-              ret = 0;
-            }
-            else printf("replace() result does not match ref_string_0_2.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_0_2);
-          }
-          else printf("replace(\"--\", \"\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_0, (char*)stack_obj.string());
-        }
-        else printf("replace() result does not match ref_string_0_1.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_0_1);
-      }
-      else printf("replace(\".\", \"--\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_0, (char*)stack_obj.string());
-    }
-    else printf("replace() result does not match ref_string_0_0.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_0_0);
-  }
-  else printf("replace(\"|\", \".\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_0, (char*)stack_obj.string());
-
-  if (0 == ret) {
-    ret--;
+  while ((case_idx < REPLACEMENT_CASE_COUNT) & !test_failed) {
+    printf("\tBeginning block %d...\n", case_idx);
+    test_failed  = true;  // Force an ascent to the top of the pyramid of doom.
+    search_term           = (char*) sb_replace_cases[case_idx].search_0;
+    replacement_term      = (char*) sb_replace_cases[case_idx].replace_0;
+    expected_mutant       = (char*) sb_replace_cases[case_idx].mutant_0;
+    expected_replacements = sb_replace_cases[case_idx].replacements_0;
+    const int INPUT_STR_LEN = strlen(sb_replace_cases[case_idx].input);
+    printf("\t\tTest string has same length as the source (%d)... ", INPUT_STR_LEN);
     stack_obj.clear();
-    stack_obj.concat(exp_string_1);
-    replacements = stack_obj.replace(":TAG:", ":tag:");
-    if (REPLACE_COUNT_1 == replacements) {
-      if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), ref_string_1_0)) {
-        replacements = stack_obj.replace(":tag:", "***");
-        if (REPLACE_COUNT_1 == replacements) {
-          if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), ref_string_1_1)) {
-            replacements = stack_obj.replace("***", "*");
-            if (REPLACE_COUNT_1 == replacements) {
-              if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), ref_string_1_2)) {
-                printf("\tReplacement test block 1 passes:\t%s\n", (char*)stack_obj.string());
-                ret = 0;
+    stack_obj.concat(sb_replace_cases[case_idx].input);
+    if (INPUT_STR_LEN == stack_obj.length()) {
+      printf("Pass.\n\tTest block %d, case: %s... \n", case_idx, sb_replace_cases[case_idx].test_description_0);
+      replacements = stack_obj.replace(search_term, replacement_term);
+      printf("\t\treplace(\"%s\", \"%s\") return value of %d matches expectation (%d)... ", search_term, replacement_term, replacements, expected_replacements);
+      if (expected_replacements == replacements) {
+        printf("Pass.\n\t\treplace(\"%s\", \"%s\") produced the expected mutant... ", search_term, replacement_term);
+        if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), expected_mutant)) {
+          printf("Pass.\n\tTest block %d, case: %s... \n", case_idx, sb_replace_cases[case_idx].test_description_1);
+          search_term           = (char*) sb_replace_cases[case_idx].search_1;
+          replacement_term      = (char*) sb_replace_cases[case_idx].replace_1;
+          expected_mutant       = (char*) sb_replace_cases[case_idx].mutant_1;
+          expected_replacements = sb_replace_cases[case_idx].replacements_1;
+          replacements = stack_obj.replace(search_term, replacement_term);
+          printf("\t\treplace(\"%s\", \"%s\") return value of %d matches expectation (%d)... ", search_term, replacement_term, replacements, expected_replacements);
+          if (expected_replacements == replacements) {
+            printf("Pass.\n\t\treplace(\"%s\", \"%s\") produced the expected mutant... ", search_term, replacement_term);
+            if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), expected_mutant)) {
+              printf("Pass.\n\tTest block %d, case: %s... \n", case_idx, sb_replace_cases[case_idx].test_description_2);
+              search_term           = (char*) sb_replace_cases[case_idx].search_2;
+              replacement_term      = (char*) sb_replace_cases[case_idx].replace_2;
+              expected_mutant       = (char*) sb_replace_cases[case_idx].mutant_2;
+              expected_replacements = sb_replace_cases[case_idx].replacements_2;
+              replacements = stack_obj.replace(search_term, replacement_term);
+              printf("\t\treplace(\"%s\", \"%s\") return value of %d matches expectation (%d)... ", search_term, replacement_term, replacements, expected_replacements);
+              if (expected_replacements == replacements) {
+                printf("Pass.\n\t\treplace(\"%s\", \"%s\") produced the expected mutant... ", search_term, replacement_term);
+                if (0 == StringBuilder::strcasecmp((char*)stack_obj.string(), expected_mutant)) {
+                  printf("Pass.\n\t\tTest block %d passes.\n", case_idx);
+                  test_failed  = false;
+                }
               }
-              else printf("replace() result does not match ref_string_1_2.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_1_2);
             }
-            else printf("replace(\"***\", \"*\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_1, (char*)stack_obj.string());
           }
-          else printf("replace() result does not match ref_string_1_1.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_1_1);
         }
-        else printf("replace(\":tag:\", \"***\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_1, (char*)stack_obj.string());
       }
-      else printf("replace() result does not match ref_string_1_0.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_1_0);
     }
-    else printf("replace(\":TAG:\", \":tag:\") returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_1, (char*)stack_obj.string());
-  }
 
-  if (0 == ret) {
-    ret--;
-    bool print_err = true;
-    uint8_t* debug_str = (uint8_t*) "\0\0\0";
-    stack_obj.clear();
-    stack_obj.concat(exp_string_2);
-    debug_str = (uint8_t*) ref_string_2_0;
-    int debug_str_len = strlen((char*)debug_str);
-    replacements = stack_obj.replace("\n", "\r\n");
-    if (REPLACE_COUNT_2 == replacements) {
-      if (1 == stack_obj.cmpBinString(debug_str, debug_str_len)) {
-        debug_str = (uint8_t*) ref_string_2_1;
-        debug_str_len = strlen((char*)debug_str);
-        replacements = stack_obj.replace("\r\n", "\n");
-        if (REPLACE_COUNT_2 == replacements) {
-          if (1 == stack_obj.cmpBinString(debug_str, debug_str_len)) {
-            debug_str = (uint8_t*) ref_string_2_2;
-            debug_str_len = strlen((char*)debug_str);
-            replacements = stack_obj.replace("\n", "\n\t");
-            if (REPLACE_COUNT_2 == replacements) {
-              if (1 == stack_obj.cmpBinString(debug_str, debug_str_len)) {
-                printf("\tReplacement test block 2 passes:\t%s\n", (char*)stack_obj.string());
-                print_err = false;
-                ret = 0;
-              }
-              else printf("replace() result does not match ref_string_2_2.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_2_2);
-            }
-            else printf("replace(LF, TAB+LF) returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_2, (char*)stack_obj.string());
-          }
-          else printf("replace() result does not match ref_string_2_1.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_2_1);
-        }
-        else printf("replace(CR+LF, LF) returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_2, (char*)stack_obj.string());
-      }
-      else printf("replace() result does not match ref_string_2_0.\n\t%s\n\t%s\n", (char*)stack_obj.string(), ref_string_2_0);
-    }
-    else printf("replace(LF, CR+LF) returned %d when it should have returned %d.\n\t%s\n", replacements, REPLACE_COUNT_2, (char*)stack_obj.string());
-
-    if (print_err) {
-      StringBuilder log;
-      log.concat("\n\nExpected:\n");
-      StringBuilder::printBuffer(&log, debug_str, debug_str_len);
-      log.concat("\n\nActual:\n");
-      StringBuilder::printBuffer(&log, stack_obj.string(), stack_obj.length());
-      printf("%s", (char*) log.string());
+    // Only advance the test case if it passed. Otherwise, we can't safely dump
+    //   the test parameters in the failure handing after the loop.
+    if (!test_failed) {
+      case_idx++;
     }
   }
 
-  if (0 == ret) {
-    // Empty needle/subject tests.
-    ret--;
-    stack_obj.clear();
-    stack_obj.concat("");
-    replacements = stack_obj.replace(" ", "+");
-    if (0 == replacements) {
-      replacements = stack_obj.replace("", "+");
-      if (0 == replacements) {
-        stack_obj.concat("Some not-empty string");
-        replacements = stack_obj.replace("", "+");
-        if (0 == replacements) {
-          replacements = stack_obj.replace("Some not-empty string key that is too long", "+");
-          if (0 == replacements) {
-            printf("\tReplacement test block 3 passes:\t%s\n", (char*)stack_obj.string());
-            ret = 0;
-          }
-          else printf("replace() called with a needle longer than the subject string should return 0 but returned %d instead.\n", replacements);
-        }
-        else printf("replace() called on an empty needle should return 0 but returned %d instead.\n", replacements);
-      }
-      else printf("replace() called on an empty StringBuilder and with an empty needle should return 0 but returned %d instead.\n", replacements);
-    }
-    else printf("replace() called on an empty StringBuilder should return 0 but returned %d instead.\n", replacements);
+  if (test_failed) {
+    StringBuilder log;
+    printf("Fail.\n");
+    printf("Case index %d failed.\n", case_idx);
+    print_sb_metrics("Final Stack obj", &stack_obj);
+    log.concat("\nExpected:\n");
+    StringBuilder::printBuffer(&log, (uint8_t*) expected_mutant, strlen(expected_mutant));
+    log.concat("\nProduced:\n");
+    StringBuilder::printBuffer(&log, stack_obj.string(), stack_obj.length());
+    printf("%s", (char*) log.string());
+    ret = -1;
   }
+  else {
+    ret = 0;
+  }
+
   return ret;
 }
 
@@ -418,6 +542,10 @@ int test_StringBuilder() {
     return_value = 0;
   }
   else printf("StringBuilder.string() failed to produce an empty string.\n");
+
+  if (0 != return_value) {
+    printf("\t Final Stack obj:          %s\n", stack_obj.string());
+  }
 
   return return_value;
 }
@@ -608,41 +736,49 @@ int test_misuse_cases() {
 }
 
 
-
+void print_types_stringbuilder() {
+  printf("-- Type sizes:\n");
+  printf("\tStringBuilder         %u\n", sizeof(StringBuilder));
+  printf("\tStrLL                 %u\n", sizeof(StrLL));
+}
 
 /*******************************************************************************
 * The main function.
 *******************************************************************************/
 int stringbuilder_main() {
   int ret = 1;   // Failure is the default result.
+  print_types_stringbuilder();
 
   if (0 == test_strcasecmp()) {
     if (0 == test_strcasestr()) {
-      if (0 == test_StringBuilder()) {
-        if (0 == test_Tokenizer()) {
-          if (0 == test_Implode()) {
-            if (0 == test_replace()) {
-              if (0 == test_stringbuilder_isempty()) {
-                if (0 == test_StringBuilderCull()) {
-                  if (0 == test_misuse_cases()) {
-                    printf("**********************************\n");
-                    printf("*  StringBuilder tests all pass  *\n");
-                    printf("**********************************\n");
-                    ret = 0;
+      if (0 == test_stringbuilder_byteat()) {
+        if (0 == test_StringBuilder()) {
+          if (0 == test_stringbuilder_chunk()) {
+            if (0 == test_stringbuilder_implode()) {
+              if (0 == test_stringbuilder_replace()) {
+                if (0 == test_stringbuilder_isempty()) {
+                  if (0 == test_StringBuilderCull()) {
+                    if (0 == test_misuse_cases()) {
+                      printf("**********************************\n");
+                      printf("*  StringBuilder tests all pass  *\n");
+                      printf("**********************************\n");
+                      ret = 0;
+                    }
+                    else printTestFailure("Hardening against mis-use");
                   }
-                  else printTestFailure("Hardening against mis-use");
+                  else printTestFailure("cull(int, int)");
                 }
-                else printTestFailure("cull(int, int)");
+                else printTestFailure("isEmpty");
               }
-              else printTestFailure("isEmpty");
+              else printTestFailure("Replace");
             }
-            else printTestFailure("Replace");
+            else printTestFailure("Implode");
           }
-          else printTestFailure("Implode");
+          else printTestFailure("Tokenizer");
         }
-        else printTestFailure("Tokenizer");
+        else printTestFailure("General");
       }
-      else printTestFailure("General");
+      else printTestFailure("byteAt(const int)");
     }
     else printTestFailure("strcasestr");
   }

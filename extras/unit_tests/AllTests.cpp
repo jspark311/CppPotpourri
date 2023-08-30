@@ -103,7 +103,6 @@ void printTypeSizes() {
   output.concatf("\tAbstractPlatform      %u\n", sizeof(AbstractPlatform));
   output.concatf("\tParsingConsole        %u\n", sizeof(ParsingConsole));
   output.concat("-- Elemental data structures:\n");
-  output.concatf("\tStringBuilder         %u\n", sizeof(StringBuilder));
   output.concatf("\tKeyValuePair          %u\n", sizeof(KeyValuePair));
   output.concatf("\tVector3<float>        %u\n", sizeof(Vector3<float>));
   output.concatf("\tLinkedList<void*>     %u\n", sizeof(LinkedList<void*>));

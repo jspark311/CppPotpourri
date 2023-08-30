@@ -61,8 +61,8 @@ const double  KAT_FILT_1_SNR   = 0.0;
 int sensor_filter_init() {
   int ret = 0;
 
-  if (0 == ret) {   ret = filt_stats_test_0.name("stats_0");   }
-  if (0 == ret) {   ret = filt_stats_test_1.name("stats_1");   }
+  if (0 == ret) {   ret = filt_stats_test_0.name((char*) "stats_0");   }
+  if (0 == ret) {   ret = filt_stats_test_1.name((char*) "stats_1");   }
 
   if (0 == ret) {   ret = filt_stats_test_0.init();    }
   if (0 == ret) {   ret = filt_stats_test_1.init();    }
