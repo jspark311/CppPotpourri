@@ -99,7 +99,7 @@ int GfxUIDataRecord::_render(UIGfxWrapper* ui_gfx) {
     default:
       break;
   }
-  _txt.provideBuffer(&_tmp_sbldr);
+  _txt.pushBuffer(&_tmp_sbldr);
   return 1;
 }
 

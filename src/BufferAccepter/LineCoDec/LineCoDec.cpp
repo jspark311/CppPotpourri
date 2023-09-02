@@ -1,5 +1,5 @@
 /*
-File:   CoDec.h
+File:   LineCoDec.h
 Author: J. Ian Lindsay
 Date:   2023.08.19
 
@@ -22,8 +22,7 @@ A text-converter that unifies line-endings. Usually in preparation for
   rendering printable text to some medium.
 */
 
-#include "../CppPotpourri.h"
-#include "CoDec.h"
+#include "LineCoDec.h"
 
 
 // TODO: Check that we aren't doing replacement at the trailing edge if there is
@@ -32,7 +31,7 @@ A text-converter that unifies line-endings. Usually in preparation for
 //   Can't easily leverage the tokenizer, either, since some termination
 //   sequences are multi-byte, and multiple empty lines will be crushed into a
 //   single line-break.
-int8_t LineEndingCoDec::provideBuffer(StringBuilder* buf) {
+int8_t LineEndingCoDec::pushBuffer(StringBuilder* buf) {
   int8_t ret = -1;
 
   // Do we need to do anything?
@@ -105,19 +104,19 @@ int8_t LineEndingCoDec::provideBuffer(StringBuilder* buf) {
         case LineTerm::CR:
           buf->replace("\r\n", "\r");  // Replace the complex case first.
           buf->replace("\n",   "\r");
-          ret = _output_target->provideBuffer(buf);
+          ret = _output_target->pushBuffer(buf);
           break;
         case LineTerm::LF:
           buf->replace("\r\n", "\n");  // Replace the complex case first.
           buf->replace("\r",   "\n");
-          ret = _output_target->provideBuffer(buf);
+          ret = _output_target->pushBuffer(buf);
           break;
         case LineTerm::CRLF:
           // TODO: This won't work because the end result will be things like "\r\r\n".
           //   More reason to not try to use StringBuilder::replace()...
           //buf->replace("\r",   "\r\n");
           //buf->replace("\n",   "\r\n");
-          ret = _output_target->provideBuffer(buf);
+          ret = _output_target->pushBuffer(buf);
           break;
       }
     }

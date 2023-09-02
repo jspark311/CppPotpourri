@@ -108,7 +108,7 @@ int GfxUIMLink::_render(UIGfxWrapper* ui_gfx) {
     case 0:
       _txt.clear();
       _link->printDebug(&_tmp_sbldr);
-      _txt.provideBuffer(&_tmp_sbldr);
+      _txt.pushBuffer(&_tmp_sbldr);
       break;
     case 1:
       break;

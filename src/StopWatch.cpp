@@ -45,7 +45,7 @@ bool StopWatch::markStop() {
   bool ret = false;
   if (_start_micros > 0) {
     _executions++;
-    _run_time_last    = wrap_accounted_delta(_start_micros, stop_micros);
+    _run_time_last    = delta_assume_wrap(stop_micros, _start_micros);
     _run_time_best    = strict_min(_run_time_last, _run_time_best);
     _run_time_worst   = strict_max(_run_time_last, _run_time_worst);
     _run_time_total  += _run_time_last;

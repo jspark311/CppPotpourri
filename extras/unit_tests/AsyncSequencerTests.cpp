@@ -403,12 +403,18 @@ int async_seq_test_abuse() {
 }
 
 
+void print_types_async_sequencer() {
+  printf("\tAsyncSequencer        %u\t%u\n", sizeof(AsyncSequencer),  alignof(AsyncSequencer));
+}
+
 
 /*******************************************************************************
 * The main function.
 *******************************************************************************/
 int async_seq_test_main() {
   int ret = 1;   // Failure is the default result.
+  const char* const MODULE_NAME = "AsyncSequencer";
+  printf("===< %s >=======================================\n", MODULE_NAME);
 
   if (0 == async_seq_impose_initial_state()) {
     if (0 == async_seq_test_simple_advancement()) {
@@ -420,15 +426,15 @@ int async_seq_test_main() {
             printf("**********************************\n");
             ret = 0;
           }
-          else printTestFailure("async_seq_test_abuse()");
+          else printTestFailure(MODULE_NAME, "async_seq_test_abuse()");
         }
-        else printTestFailure("async_seq_test_full_execution()");
+        else printTestFailure(MODULE_NAME, "async_seq_test_full_execution()");
       }
-      else printTestFailure("async_seq_test_simple_failures()");
+      else printTestFailure(MODULE_NAME, "async_seq_test_simple_failures()");
     }
-    else printTestFailure("async_seq_test_simple_advancement()");
+    else printTestFailure(MODULE_NAME, "async_seq_test_simple_advancement()");
   }
-  else printTestFailure("async_seq_impose_initial_state()");
+  else printTestFailure(MODULE_NAME, "async_seq_impose_initial_state()");
 
   return ret;
 }

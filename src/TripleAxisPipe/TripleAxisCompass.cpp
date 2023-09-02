@@ -76,7 +76,7 @@ int8_t TripleAxisCompass::pushVector(SpatialSense s, Vector3f* data, Vector3f* e
       }
       _apply_magnetic_declination();
       tmp_millis = millis();
-      _data_period = wrap_accounted_delta(tmp_millis, _last_update);
+      _data_period = millis_since(_last_update);
       _last_update = tmp_millis;
       // TODO: Recalculate error bars.
       _update_count++;

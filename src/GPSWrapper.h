@@ -35,9 +35,8 @@ This class in unidirectional in the sense that it only reads from the
 #include <time.h>
 #include <math.h>
 
-#include "StringBuilder.h"
 #include "CppPotpourri.h"
-
+#include "BufferAccepter/BufferAccepter.h"
 
 #define MINMEA_MAX_LENGTH          140
 
@@ -232,7 +231,7 @@ class GPSWrapper : public BufferAccepter {
     ~GPSWrapper() {};
 
     /* Implementation of BufferAccepter. */
-    int8_t provideBuffer(StringBuilder* buf);
+    int8_t pushBuffer(StringBuilder* buf);
 
     int8_t init();
     void printDebug(StringBuilder*);

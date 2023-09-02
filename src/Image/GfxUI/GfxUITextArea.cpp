@@ -104,7 +104,7 @@ bool GfxUITextArea::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, P
 }
 
 
-int8_t GfxUITextArea::provideBuffer(StringBuilder* buf) {
+int8_t GfxUITextArea::pushBuffer(StringBuilder* buf) {
   int8_t ret = 0;
   uint additional_length = buf->length();
 
@@ -120,7 +120,7 @@ int8_t GfxUITextArea::provideBuffer(StringBuilder* buf) {
       _scrollback.concatHandoff(buf);
       if (additional_length > _max_scrollback_bytes) {
         // Do not exceed defined maximum.
-        _scrollback.cull(wrap_accounted_delta(additional_length, _max_scrollback_bytes));
+        _scrollback.cull(strict_abs_delta(additional_length, _max_scrollback_bytes));
       }
       additional_length = 0;  // We just took all the additional length.
       ret = 1;  // We claimed the entire buffer.

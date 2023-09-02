@@ -102,10 +102,10 @@ void C3PSchedule::printSchedule(StringBuilder* output) {
   else {                      output->concatf("%d\n", _recurrences);  }
 
   if (willRunAgain()) {
-    output->concatf("\tNext execution:  %u (%uus from now)\n", _exec_at, wrap_accounted_delta(_exec_at, (unsigned int) micros()));
+    output->concatf("\tNext execution:  %u (%uus from now)\n", _exec_at, micros_until(_exec_at));
   }
   if (0 > profiler.executions()) {
-    output->concatf("\tLast execution:  %u (%uus ago)\n", _last_exec, wrap_accounted_delta((unsigned int) micros(), _last_exec));
+    output->concatf("\tLast execution:  %u (%uus ago)\n", _last_exec, micros_since(_last_exec));
   }
   StopWatch::printDebugHeader(output);
   profiler.printDebug("execute()", output);

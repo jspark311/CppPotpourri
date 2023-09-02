@@ -22,6 +22,7 @@ limitations under the License.
 #include <stdint.h>
 #include "StringBuilder.h"
 #include "CppPotpourri.h"
+#include "BufferAccepter/BufferAccepter.h"
 #include "LightLinkedList.h"
 #include "EnumeratedTypeCodes.h"
 
@@ -111,7 +112,7 @@ class ParsingConsole : public BufferAccepter {
     int8_t init();
 
     /* Implementation of BufferAccepter. */
-    int8_t  provideBuffer(StringBuilder*);
+    int8_t  pushBuffer(StringBuilder*);
     int32_t bufferAvailable();
 
     void   fetchLog(StringBuilder*);

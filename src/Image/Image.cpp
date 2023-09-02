@@ -1884,7 +1884,7 @@ void Image::fill(uint32_t color) {
   @param    color 16-bit 5-6-5 Color to draw with
 */
 void Image::drawLine(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uint32_t color) {
-  const bool steep = wrap_accounted_delta(y1, y0) > wrap_accounted_delta(x1, x0);
+  const bool steep = strict_abs_delta(y1, y0) > strict_abs_delta(x1, x0);
   if (steep) {
     strict_swap(&x0, &y0);
     strict_swap(&x1, &y1);
@@ -1895,7 +1895,7 @@ void Image::drawLine(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uint32_
   }
 
   const uint32_t dx    = x1 - x0;
-  const uint32_t dy    = wrap_accounted_delta(y1, y0);
+  const uint32_t dy    = strict_abs_delta(y1, y0);
   const int8_t   ystep = (y0 < y1) ? 1 : -1;
   int32_t err = (int32_t) (dx >> 1);  // NOTE: Imposes width limit of 2,147,483,648 pixels.
 

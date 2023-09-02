@@ -578,13 +578,13 @@ int link_tests_corrupted_transport(M2MLink* vlad, M2MLink* carl) {
     StringBuilder garbage_for_carl;
     garbage_for_vlad.concat((uint8_t*) &buf_0[0], 16);
     garbage_for_carl.concat((uint8_t*) &buf_1[0], 16);
-    vlad->provideBuffer(&garbage_for_vlad);
-    carl->provideBuffer(&garbage_for_carl);
+    vlad->pushBuffer(&garbage_for_vlad);
+    carl->pushBuffer(&garbage_for_carl);
     if (poll_until_finished(vlad, carl)) {
-      carl->provideBuffer(&garbage_for_carl);
-      carl->provideBuffer(&garbage_for_carl);
-      carl->provideBuffer(&garbage_for_carl);
-      carl->provideBuffer(&garbage_for_carl);
+      carl->pushBuffer(&garbage_for_carl);
+      carl->pushBuffer(&garbage_for_carl);
+      carl->pushBuffer(&garbage_for_carl);
+      carl->pushBuffer(&garbage_for_carl);
       if (poll_until_finished(vlad, carl)) {
         log.concat("Vlad and Carl resyncd after being fed garbage.\n");
         ret = 0;
@@ -601,6 +601,14 @@ int link_tests_corrupted_transport(M2MLink* vlad, M2MLink* carl) {
   return ret;
 }
 
+
+
+void print_types_m2mlink() {
+  printf("\tM2MLinkOpts           %u\t%u\n", sizeof(M2MLinkOpts), alignof(M2MLinkOpts));
+  printf("\tM2MLink               %u\t%u\n", sizeof(M2MLink), alignof(M2MLink));
+  printf("\tM2MMsg                %u\t%u\n", sizeof(M2MMsg), alignof(M2MMsg));
+  printf("\tM2MMsgHdr             %u\t%u\n", sizeof(M2MMsgHdr), alignof(M2MMsgHdr));
+}
 
 
 /**
@@ -628,6 +636,9 @@ int manuvrlink_main() {
   vlad->verbosity(6);
   carl->verbosity(6);
   int ret = -1;
+  const char* const MODULE_NAME = "M2MLink";
+  printf("===< %s >=======================================\n", MODULE_NAME);
+
   if (0 == link_tests_message_battery_0()) {
     if (0 == link_tests_message_battery_1()) {
       if (0 == link_tests_build_and_connect(vlad, carl)) {
@@ -638,21 +649,21 @@ int manuvrlink_main() {
                 if (0 == link_tests_remote_log_insertion(vlad, carl)) {
                   ret = 0;
                 }
-                else printTestFailure("link_tests_remote_log_insertion");
+                else printTestFailure(MODULE_NAME, "link_tests_remote_log_insertion");
               }
-              else printTestFailure("link_tests_reestablish_after_hangup");
+              else printTestFailure(MODULE_NAME, "link_tests_reestablish_after_hangup");
             }
-            else printTestFailure("link_tests_hangup_gentle");
+            else printTestFailure(MODULE_NAME, "link_tests_hangup_gentle");
           }
-          else printTestFailure("link_tests_corrupted_transport");
+          else printTestFailure(MODULE_NAME, "link_tests_corrupted_transport");
         }
-        else printTestFailure("link_tests_simple_messages");
+        else printTestFailure(MODULE_NAME, "link_tests_simple_messages");
       }
-      else printTestFailure("link_tests_build_and_connect");
+      else printTestFailure(MODULE_NAME, "link_tests_build_and_connect");
     }
-    else printTestFailure("link_tests_message_battery_1");
+    else printTestFailure(MODULE_NAME, "link_tests_message_battery_1");
   }
-  else printTestFailure("link_tests_message_battery_0");
+  else printTestFailure(MODULE_NAME, "link_tests_message_battery_0");
 
   if (0 == ret) {
     printf("**********************************\n");

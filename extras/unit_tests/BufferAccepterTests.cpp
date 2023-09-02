@@ -29,7 +29,7 @@ This class makes extensive use of the heap, low-level memory assumptions, and is
   be extensively unit-tested.
 */
 
-#include "CoDecs/CoDecTestFixtures.h"
+#include "BufferAccepter/TestFixtures/CoDecTestFixtures.h"
 
 
 /*******************************************************************************
@@ -56,38 +56,42 @@ int ba_harness_sink_expectation_tests() {
   printf("\tAdding initial structured test data... ");
   int STRUCTURE_CANARY_0 = offering.count();
   ba_test_sink.profiler.markStart();
-  if (1 == ba_test_sink.provideBuffer(&offering)) {
+  if (1 == ba_test_sink.pushBuffer(&offering)) {
     printf("Pass.\n\tNo expectations are tracked if none are given... ");
     if ((0 == ba_test_sink.expectationsMet()) & (0 == ba_test_sink.expectationsViolated())) {
-      printf("Pass.\n\tprovideBuffer() is appending to the take_log in a structure-preserving manner... ");
+      printf("Pass.\n\tpushBuffer() is appending to the take_log in a structure-preserving manner... ");
       int STRUCTURE_CANARY_1 = ba_test_sink.take_log.count();
       if ((0 < STRUCTURE_CANARY_1) & (STRUCTURE_CANARY_0 == STRUCTURE_CANARY_1)) {
         printf("Pass.\n\tAn expectation of length can be violated... ");
         offering.concat("garbage mock data");
         ba_test_sink.expectation(offering.length() + 4);
         ba_test_sink.profiler.markStart();
-        ba_test_sink.provideBuffer(&offering);
+        ba_test_sink.pushBuffer(&offering);
         if ((0 == ba_test_sink.expectationsMet()) & (1 == ba_test_sink.expectationsViolated())) {
           printf("Pass.\n\tAn expectation of length can be met... ");
           offering.concat("garbage mock data");
           ba_test_sink.expectation(offering.length());
           ba_test_sink.profiler.markStart();
-          ba_test_sink.provideBuffer(&offering);
+          ba_test_sink.pushBuffer(&offering);
           if ((1 == ba_test_sink.expectationsMet()) & (1 == ba_test_sink.expectationsViolated())) {
             printf("Pass.\n\tAn expectation of termination can be violated... ");
             ba_test_sink.expectation(0);
             ba_test_sink.expectation(LineTerm::CR);
             offering.concat("garbage mock data\r\n");
             ba_test_sink.profiler.markStart();
-            ba_test_sink.provideBuffer(&offering);
+            ba_test_sink.pushBuffer(&offering);
             if ((1 == ba_test_sink.expectationsMet()) & (2 == ba_test_sink.expectationsViolated())) {
               printf("Pass.\n\tAn expectation of termination can be met... ");
               ba_test_sink.expectation(LineTerm::LF);
               offering.concat("garbage mock data\r\n");
               ba_test_sink.profiler.markStart();
-              ba_test_sink.provideBuffer(&offering);
+              ba_test_sink.pushBuffer(&offering);
               if ((2 == ba_test_sink.expectationsMet()) & (2 == ba_test_sink.expectationsViolated())) {
-                printf("Pass.\n\treset() clears all expectaions and take_log... ");
+                printf("Pass.\n");
+                StringBuilder log;
+                ba_test_sink.printDebug(&log);
+                printf("\n\tFinal Sink state: \n%s\n\n", (const char*) log.string());
+                printf("\treset() clears all expectaions and take_log... ");
                 ba_test_sink.reset();
                 bool reset_worked = (ba_test_sink.take_log.count() == 0);
                 reset_worked &= (0 == ba_test_sink.expectationsMet());
@@ -130,50 +134,50 @@ int ba_harness_sink_trivial_tests() {
   //   buffer depth. It should reject any buffers we offer it.
   printf("\tOffer to a BufferAccepter that is full should be rejected... ");
   ba_test_sink.profiler.markStart();  // Ping the profiler. Normally the source would do this.
-  if (-1 == ba_test_sink.provideBuffer(&offering)) {
+  if (-1 == ba_test_sink.pushBuffer(&offering)) {
     printf("Pass.\n\tBufAcceptTestSink marked a rejection as a result... ");
     if (1 == ba_test_sink.countRejections() && ba_test_sink.callCountsBalance()) {
-      printf("Pass.\n\tprovideBuffer() does not mutate a rejected offering... ");
+      printf("Pass.\n\tpushBuffer() does not mutate a rejected offering... ");
       const char* STRUCTURE_CANARY_1 = offering.position(2);  // This should be the same.
       if ((LEN_ORGINAL_OFFERING == offering.length()) & (STRUCTURE_CANARY_1 == STRUCTURE_CANARY_0)) {
         // The trivial rejection case works. The sink can signal back-pressure,
         //   and it didn't eat any of the offering.
         // Open the gate, and try again.
-        printf("Pass.\n\tprovideBuffer() takes our full offering if it is able... ");
+        printf("Pass.\n\tpushBuffer() takes our full offering if it is able... ");
         ba_test_sink.bufferLimit(64);
         ba_test_sink.profiler.markStart();
-        if (1 == ba_test_sink.provideBuffer(&offering)) {
+        if (1 == ba_test_sink.pushBuffer(&offering)) {
           printf("Pass.\n\tBufAcceptTestSink marked a full claim as a result... ");
           if (1 == ba_test_sink.countFullClaims() && ba_test_sink.callCountsBalance()) {
-            printf("Pass.\n\tprovideBuffer() correctly adjusts the buffer following a full claim... ");
+            printf("Pass.\n\tpushBuffer() correctly adjusts the buffer following a full claim... ");
             if (0 == offering.length()) {
-              printf("Pass.\n\tprovideBuffer should reject on null-pointer... ");
+              printf("Pass.\n\tpushBuffer should reject on null-pointer... ");
               // Good. As long as our offering is empty, try our malformed and
               //   trivial argument cases. Incoming crash alert...
               ba_test_sink.profiler.markStart();
-              if ((-1 == ba_test_sink.provideBuffer(nullptr)) && ba_test_sink.callCountsBalance()) {
-                printf("Pass.\n\tprovideBuffer() should report full claim of an empty offering... ");
+              if ((-1 == ba_test_sink.pushBuffer(nullptr)) && ba_test_sink.callCountsBalance()) {
+                printf("Pass.\n\tpushBuffer() should report full claim of an empty offering... ");
                 ba_test_sink.profiler.markStart();
-                if ((1 == ba_test_sink.provideBuffer(&offering)) && ba_test_sink.callCountsBalance()) {
+                if ((1 == ba_test_sink.pushBuffer(&offering)) && ba_test_sink.callCountsBalance()) {
                   // Good. Now test partial claim by trying to over-stuff a single
                   //   call. Four times the declared buffer limit ought to do it...
                   // The resulting StringBuilder will be nearly a worst-case for
                   //   efficiency. But that is part of the point... BufferAccepter
                   //   should manage it.
-                  printf("Pass.\n\tprovideBuffer() should only be able to take some of an offering and report a partial claim... ");
+                  printf("Pass.\n\tpushBuffer() should only be able to take some of an offering and report a partial claim... ");
                   for (int i = 0; i < ba_test_sink.bufferLimit(); i++) {
                     uint32_t longword_to_add = randomUInt32();
                     offering.concat((uint8_t*) &longword_to_add, sizeof(uint32_t));
                   }
                   const int LEN_PARTIAL_OFFERING_0 = offering.length();
                   ba_test_sink.profiler.markStart();
-                  if (0 == ba_test_sink.provideBuffer(&offering)) {
+                  if (0 == ba_test_sink.pushBuffer(&offering)) {
                     printf("Pass.\n\tBufAcceptTestSink marked a partial claim as a result... ");
                     if (1 == ba_test_sink.countPartialClaims() && ba_test_sink.callCountsBalance()) {
-                      printf("Pass.\n\tprovideBuffer() adjusts the buffer after its partial take... ");
+                      printf("Pass.\n\tpushBuffer() adjusts the buffer after its partial take... ");
                       const int LEN_PARTIAL_OFFERING_1 = offering.length();
                       if (LEN_PARTIAL_OFFERING_0 > LEN_PARTIAL_OFFERING_1) {
-                        printf("Pass.\n\tprovideBuffer() adjusted by the correct amount... ");
+                        printf("Pass.\n\tpushBuffer() adjusted by the correct amount... ");
                         if (LEN_PARTIAL_OFFERING_1 == (LEN_PARTIAL_OFFERING_0 - ba_test_sink.bufferLimit())) {
                           printf("Pass.\n\treset() works... ");
                           ba_test_sink.reset();
@@ -250,6 +254,8 @@ int ba_harness_test() {
     //   directly, and see if they still play nice. This is really a test of the
     //   BufferAccepter interface contract, and not the harness, which will
     //   never be used this way again.
+    BufAcceptTestSource ba_test_source;
+    BufAcceptTestSink ba_test_sink;
 
     ret = 0;
   }
@@ -260,9 +266,34 @@ int ba_harness_test() {
 /*******************************************************************************
 * Test blocks for specific CoDecs not covered by their own tests elsewhere.
 *******************************************************************************/
-int line_term_codec_tests() {
+int codec_line_terminator_tests() {
   int ret = -1;
   return ret;
+}
+
+
+int codec_base64_tests() {
+  int ret = -1;
+  return ret;
+}
+
+
+int codec_soft_tabulator_tests() {
+  int ret = -1;
+  return ret;
+}
+
+
+int codec_sequence_scanner_tests() {
+  int ret = -1;
+  return ret;
+}
+
+
+void print_types_buffer_accepter() {
+  printf("\tBufAcceptTestSource   %u\t%u\n", sizeof(BufAcceptTestSource), alignof(BufAcceptTestSource));
+  printf("\tBufAcceptTestSink     %u\t%u\n", sizeof(BufAcceptTestSink),   alignof(BufAcceptTestSink));
+  printf("\tBufferAccepterFork    %u\t%u\n", sizeof(BufferAccepterFork),  alignof(BufferAccepterFork));
 }
 
 
@@ -271,13 +302,13 @@ int line_term_codec_tests() {
 *******************************************************************************/
 int buffer_accepter_main() {
   int ret = 1;   // Failure is the default result.
-  printf("===< BufferAccepter >=======================================\n");
+  const char* const MODULE_NAME = "BufferAccepter";
+  printf("===< %s >=======================================\n", MODULE_NAME);
 
   if (0 == ba_harness_test()) {
     ret = 0;
   }
-  else printTestFailure("BufferAccepter doesn't have a reliable test harness.");
-
+  else printTestFailure(MODULE_NAME, "BufferAccepter doesn't have a reliable test harness.");
 
   return ret;
 }

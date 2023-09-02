@@ -221,12 +221,20 @@ int test_RingBuffer_general() {
 }
 
 
+void print_types_ringbuffer() {
+  printf("\tRingBuffer<uint8_t>   %u\t%u\n", sizeof(RingBuffer<uint8_t>),  alignof(RingBuffer<uint8_t>));
+  printf("\tRingBuffer<uint32_t>  %u\t%u\n", sizeof(RingBuffer<uint32_t>), alignof(RingBuffer<uint32_t>));
+  printf("\tRingBuffer<void*>     %u\t%u\n", sizeof(RingBuffer<void*>),    alignof(RingBuffer<void*>));
+}
+
+
 /****************************************************************************************************
 * The main function.                                                                                *
 ****************************************************************************************************/
 int ringbuffer_main() {
   int ret = 1;   // Failure is the default result.
-  printf("===< RingBuffer >=======================================\n");
+  const char* const MODULE_NAME = "RingBuffer";
+  printf("===< %s >=======================================\n", MODULE_NAME);
 
   if (0 == test_RingBuffer_general()) {
     if (0 == test_RingBuffer_contains()) {
@@ -236,11 +244,11 @@ int ringbuffer_main() {
         printf("**********************************\n");
         ret = 0;
       }
-      else printTestFailure("RingBuffer::insert(T*, int) failed.");
+      else printTestFailure(MODULE_NAME, "insert(T*, int)");
     }
-    else printTestFailure("RingBuffer::contains() or RingBuffer::insert() failed.");
+    else printTestFailure(MODULE_NAME, "contains() insert()");
   }
-  else printTestFailure("test_RingBuffer_general() failed.");
+  else printTestFailure(MODULE_NAME, "test_RingBuffer_general()");
 
   return ret;
 }

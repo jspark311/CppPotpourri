@@ -191,7 +191,7 @@ int test_scheduler_spin_1_to_1(const unsigned int us_to_spin) {
     scheduler->serviceSchedules();
   }
 
-  unsigned int local_slip = wrap_accounted_delta((uint64_t) (micros() - entry_time), (uint64_t) us_to_spin);
+  unsigned int local_slip = strict_abs_delta((uint64_t) micros_since(entry_time), (uint64_t) us_to_spin);
   scheduler_slip = strict_max(scheduler_slip, local_slip);
   StringBuilder text_return;
   text_return.concatf("Local timing slip: %u\n", local_slip);
@@ -213,7 +213,7 @@ int test_scheduler_spin_n_to_1(const unsigned int us_to_spin) {
     }
     scheduler->serviceSchedules();
   }
-  unsigned int local_slip = wrap_accounted_delta((uint64_t) (micros() - entry_time), (uint64_t) us_to_spin);
+  unsigned int local_slip = strict_abs_delta((uint64_t) micros_since(entry_time), (uint64_t) us_to_spin);
   scheduler_slip = strict_max(scheduler_slip, local_slip);
   StringBuilder text_return;
   text_return.concatf("Local timing slip: %u\n", local_slip);
@@ -229,31 +229,40 @@ int test_scheduler_schedule_removal() {
 }
 
 
+void print_types_scheduler() {
+  printf("\tC3PScheduler          %u\t%u\n", sizeof(C3PScheduler), alignof(C3PScheduler));
+  printf("\tC3PScheduledLambda    %u\t%u\n", sizeof(C3PScheduledLambda),   alignof(C3PScheduledLambda));
+}
+
+
 
 /*******************************************************************************
 * Scheduler main function.
 *******************************************************************************/
 int scheduler_tests_main() {
   int ret = 1;   // Failure is the default result.
+  const char* const MODULE_NAME = "C3PScheduler";
+  printf("===< %s >=======================================\n", MODULE_NAME);
+
   if (0 == test_scheduler_init()) {
     if (0 == test_scheduler_initial_conditions()) {
       if (0 == test_scheduler_spin_1_to_1(3000000)) {
         if (0 == test_scheduler_spin_n_to_1(3000000)) {
           if (0 == test_scheduler_schedule_removal()) {
             printf("**********************************\n");
-            printf("*  Scheduler tests all pass      *\n");
+            printf("*  C3PScheduler tests all pass   *\n");
             printf("**********************************\n");
             ret = 0;
           }
-          else printTestFailure("Schedule removal.");
+          else printTestFailure(MODULE_NAME, "Schedule removal.");
         }
-        else printTestFailure("Schedules did not execute as expected (n-to-1).");
+        else printTestFailure(MODULE_NAME, "Schedules did not execute as expected (n-to-1).");
       }
-      else printTestFailure("Schedules did not execute as expected (1-to-1).");
+      else printTestFailure(MODULE_NAME, "Schedules did not execute as expected (1-to-1).");
     }
-    else printTestFailure("Scheduler initial conditions failed to evolve into working state.");
+    else printTestFailure(MODULE_NAME, "Scheduler initial conditions failed to evolve into working state.");
   }
-  else printTestFailure("Scheduler failed to initialize.");
+  else printTestFailure(MODULE_NAME, "Scheduler failed to initialize.");
 
   return ret;
 }

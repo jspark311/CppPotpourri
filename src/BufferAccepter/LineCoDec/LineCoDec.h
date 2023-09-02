@@ -1,7 +1,7 @@
 /*
-File:   CoDec.h
+File:   LineCoDec.h
 Author: J. Ian Lindsay
-Date:   2023.07.29
+Date:   2023.08.25
 
 Copyright 2016 Manuvr, Inc
 
@@ -18,54 +18,32 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 
-An abstract interface for CoDecs.
+A class to enforce conformity and grouping of line-endings.
+
+This class is the gateway between definitions of what defines a "line" of text
+  for internal firmware versus any external system.
+This class can be used to signal the accumulation of text only until a
+   complete line is received.
+
+Rules:
+1) hold_until_break will only permit passage of the buffer if it contains
+    a break, and if so, only forwards the buffer up to (and including) the
+    last break in the offered buffer.
+2) isometric_call_to_break implies hold_until_break (it is a more-severe form
+    of it). If set, the codec will chunk the inbound data by line-breaks,
+    and will forward each to the downstream BufferAccepter, one at a time.
+3) Replacement is not assumed. With no replacement requested, this class will
+    simply chunk output using the specified LineTerm.
 */
 
-#include "../StringBuilder.h"
-#include "../EnumeratedTypeCodes.h"
-#include "../CppPotpourri.h"
+#include "../BufferAccepter.h"
+#include "../../StopWatch.h"
+
+
+#ifndef __C3P_TEXT_LINE_CODEC_H__
+#define __C3P_TEXT_LINE_CODEC_H__
 
 /*
-* A half-duplex interface built on BufferAccepter.
-*/
-class C3PCoDec : public BufferAccepter {
-  public:
-    /* Implementation of BufferAccepter. This is how we accept input. */
-    int8_t provideBuffer(StringBuilder*);
-    int32_t bufferAvailable();
-
-    inline void setEfferant(BufferAccepter* x) {   _efferant = x;  };
-
-
-  protected:
-    C3PCoDec(BufferAccepter* target) : _efferant(target) {};
-    C3PCoDec() : C3PCoDec(nullptr) {};
-    ~C3PCoDec() {};
-
-    BufferAccepter* _efferant;
-};
-
-
-
-
-/*
-* A class to enforce conformity and grouping of line-endings.
-*
-* This class is the gateway between definitions of what defines a "line" of text
-*   for internal firmware versus any external system.
-*
-* This class can be used to signal the accumulation of text only until a
-*   complete line is received.
-*
-* Rules:
-* 1) hold_until_break will only permit passage of the buffer if it contains
-*      a break, and if so, only forwards the buffer up to (and including) the
-*      last break in the offered buffer.
-* 2) isometric_call_to_break implies hold_until_break (it is a more-severe form
-*      of it). If set, the codec will chunk the inbound data by line-breaks,
-*      and will forward each to the downstream BufferAccepter, one at a time.
-* 3) Replacement is not assumed. With no replacement requested, this class will
-*      simply chunk output using the specified LineTerm.
 */
 class LineEndingCoDec : public BufferAccepter {
   public:
@@ -73,7 +51,7 @@ class LineEndingCoDec : public BufferAccepter {
     ~LineEndingCoDec() {};
 
     /* Implementation of BufferAccepter. */
-    int8_t  provideBuffer(StringBuilder*);
+    int8_t  pushBuffer(StringBuilder*);
     int32_t bufferAvailable();
 
     inline BufferAccepter* outputTarget() {          return _output_target;   };
@@ -101,3 +79,6 @@ class LineEndingCoDec : public BufferAccepter {
     bool            _hold_until_break;
     bool            _isometric_call_to_break;
 };
+
+
+#endif  // __C3P_TEXT_LINE_CODEC_H__

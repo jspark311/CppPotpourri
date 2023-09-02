@@ -92,7 +92,7 @@ rmsValue           KEYWORD2
 getFilterStr       KEYWORD2
 
 # Methods and Functions (ParsingConsole)
-provideBuffer      KEYWORD2
+pushBuffer      KEYWORD2
 fetchLog           KEYWORD2
 printToLog         KEYWORD2
 printHelp          KEYWORD2

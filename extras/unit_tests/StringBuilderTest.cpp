@@ -24,8 +24,6 @@ This class makes extensive use of the heap, low-level memory assumptions, and is
   be extensively unit-tested.
 */
 
-#define STRBUILDER_STATICTEST_STRING "I CAN cOUNT to PoTaTo   "
-
 
 /*******************************************************************************
 * StringBuilder test routines
@@ -737,17 +735,17 @@ int test_misuse_cases() {
 
 
 void print_types_stringbuilder() {
-  printf("-- Type sizes:\n");
-  printf("\tStringBuilder         %u\n", sizeof(StringBuilder));
-  printf("\tStrLL                 %u\n", sizeof(StrLL));
+  printf("\tStringBuilder         %u\t%u\n", sizeof(StringBuilder), alignof(StringBuilder));
+  printf("\tStrLL                 %u\t%u\n", sizeof(StrLL), alignof(StrLL));
 }
+
 
 /*******************************************************************************
 * The main function.
 *******************************************************************************/
 int stringbuilder_main() {
   int ret = 1;   // Failure is the default result.
-  print_types_stringbuilder();
+  const char* const MODULE_NAME = "StringBuilder";
 
   if (0 == test_strcasecmp()) {
     if (0 == test_strcasestr()) {
@@ -764,25 +762,25 @@ int stringbuilder_main() {
                       printf("**********************************\n");
                       ret = 0;
                     }
-                    else printTestFailure("Hardening against mis-use");
+                    else printTestFailure(MODULE_NAME, "Hardening against mis-use");
                   }
-                  else printTestFailure("cull(int, int)");
+                  else printTestFailure(MODULE_NAME, "cull(int, int)");
                 }
-                else printTestFailure("isEmpty");
+                else printTestFailure(MODULE_NAME, "isEmpty");
               }
-              else printTestFailure("Replace");
+              else printTestFailure(MODULE_NAME, "Replace");
             }
-            else printTestFailure("Implode");
+            else printTestFailure(MODULE_NAME, "Implode");
           }
-          else printTestFailure("Tokenizer");
+          else printTestFailure(MODULE_NAME, "Tokenizer");
         }
-        else printTestFailure("General");
+        else printTestFailure(MODULE_NAME, "General");
       }
-      else printTestFailure("byteAt(const int)");
+      else printTestFailure(MODULE_NAME, "byteAt(const int)");
     }
-    else printTestFailure("strcasestr");
+    else printTestFailure(MODULE_NAME, "strcasestr");
   }
-  else printTestFailure("strcasecmp");
+  else printTestFailure(MODULE_NAME, "strcasecmp");
 
   return ret;
 }

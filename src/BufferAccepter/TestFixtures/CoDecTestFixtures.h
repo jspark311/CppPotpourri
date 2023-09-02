@@ -22,33 +22,63 @@ Test fixtures for CoDecs. Only programs concerned with unit testing need to
   include this file.
 */
 
-#include "CoDec.h"
-#include "../StopWatch.h"
-
+#include "../BufferAccepter.h"
+#include "../../StopWatch.h"
 
 #ifndef __C3P_CODEC_TEST_FIXTURES_H__
 #define __C3P_CODEC_TEST_FIXTURES_H__
 
 /*
-* Class to generate random printable strings of a shape approximating something
-* Human readable.
+* Class to analyze BufferAccepter intake behaviors.
+* This should be connected to the input side of a BufferAccepter under-test.
 */
-class BufAcceptTestSource {
+class BufAcceptTestSource : public BufferAccepter {
   public:
     BufAcceptTestSource() {};
     ~BufAcceptTestSource() {};
 
-    int8_t generateSentence();
-    inline void setEfferant(BufferAccepter* x) {   _efferant = x;  };
+    /* Implementation of BufferAccepter. This is how we accept input. */
+    int8_t pushBuffer(StringBuilder*);
+    int32_t bufferAvailable();
+
+    /* Implementation of test harness. */
+    inline void setEfferant(BufferAccepter* x) {     _efferant = x;  };
+    inline void setProfiler(StopWatch* x) {          _profiler = x;  };
+
+    void printDebug(StringBuilder*);
+    int8_t poll();
+    void reset();
+    bool callCountsBalance();
+    inline void     bufferLimit(int32_t x) {   _fake_buffer_limit = x;        };
+    inline int32_t  bufferLimit() {            return _fake_buffer_limit;     };
+    inline uint32_t callCount() {              return _call_count;            };
+    inline uint32_t countRejections() {        return _pb_call_count_rej;     };
+    inline uint32_t countPartialClaims() {     return _pb_call_count_partial; };
+    inline uint32_t countFullClaims() {        return _pb_call_count_full;    };
+
+    // TODO: It would be nice to have a fxn to generate random printable strings of a
+    //   shape approximating something human readable. Maybe another for ASCII unsafe
+    //   buffer data.
+    //int8_t generateBuffer();
+    //int8_t generateSentence();
 
 
   private:
+    StringBuilder   _backlog;  // Data is only sent via this object, in metered bursts.
     BufferAccepter* _efferant = nullptr;
+    StopWatch*      _profiler = nullptr;
+    int32_t  _fake_buffer_limit     = 0;   // Implies reject all offered buffers.
+    uint32_t _call_count            = 0;   // Count of times pushBuffer() was called.
+    uint32_t _pb_call_count_rej     = 0;   // Count of times pushBuffer() returned -1.
+    uint32_t _pb_call_count_partial = 0;   // Count of times pushBuffer() returned 0.
+    uint32_t _pb_call_count_full    = 0;   // Count of times pushBuffer() returned 1.
 };
 
 
+
 /*
-* Class to analyze BufferAccepter behaviors.
+* Class to analyze BufferAccepter output behaviors.
+* This should be connected to the output side of a BufferAccepter under-test.
 *
 * NOTE:
 *
@@ -67,7 +97,7 @@ class BufAcceptTestSink : public BufferAccepter {
     StopWatch profiler;       // The end-point of the test harness contains the profiler.
 
     /* Implementation of BufferAccepter. This is how we accept input. */
-    int8_t provideBuffer(StringBuilder*);
+    int8_t pushBuffer(StringBuilder*);
     int32_t bufferAvailable();
 
     /* Implementation of test harness. */
@@ -90,9 +120,9 @@ class BufAcceptTestSink : public BufferAccepter {
 
   private:
     int32_t  _fake_buffer_limit     = 0;   // Implies reject all offered buffers.
-    uint32_t _pb_call_count_rej     = 0;   // Count of times provideBuffer() returned -1.
-    uint32_t _pb_call_count_partial = 0;   // Count of times provideBuffer() returned 0.
-    uint32_t _pb_call_count_full    = 0;   // Count of times provideBuffer() returned 1.
+    uint32_t _pb_call_count_rej     = 0;   // Count of times pushBuffer() returned -1.
+    uint32_t _pb_call_count_partial = 0;   // Count of times pushBuffer() returned 0.
+    uint32_t _pb_call_count_full    = 0;   // Count of times pushBuffer() returned 1.
     uint32_t _expectations_met      = 0;   // How many times did an offered buffer meet expectations?
     uint32_t _expectations_violated = 0;   // How many times did an offered buffer violate expectations?
     uint32_t _expected_length       = 0;                   // Implies no expectaion.

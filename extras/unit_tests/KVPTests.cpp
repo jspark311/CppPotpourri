@@ -22,7 +22,6 @@ This program runs tests against the KeyValuePair class.
 */
 
 
-
 void dump_kvp(KeyValuePair* a) {
   if (a) {
     StringBuilder log;
@@ -684,6 +683,7 @@ int test_KeyValuePair_Build_Polytyped_KVP(KeyValuePair* a) {
     randomUInt32()/(float)randomUInt32()
   );
   Vector3<uint32_t> val11(randomUInt32(), randomUInt32(), randomUInt32());
+  const int TEST_BUFFER_SIZE = 16;
   void* val20 = malloc(TEST_BUFFER_SIZE);
   for (uint8_t i = 0; i < TEST_BUFFER_SIZE; i++) {   *((uint8_t*) val20 + i) = i;   }
 
@@ -736,12 +736,20 @@ int test_KeyValuePair_Build_Polytyped_KVP(KeyValuePair* a) {
 }
 
 
+void print_types_kvp() {
+  printf("\tKeyValuePair          %u\t%u\n", sizeof(KeyValuePair),   alignof(KeyValuePair));
+}
+
+
 /**
 * This is the root of the KeyValuePair tests.
 *
 * @return 0 on success. Nonzero otherwise.
 */
 int test_KeyValuePair() {
+  const char* const MODULE_NAME = "KeyValuePair";
+  printf("===< %s >=======================================\n", MODULE_NAME);
+
   KeyValuePair a("A const test string", "constchar*");    // const char* test
   int return_value = test_KeyValuePair_Build_Polytyped_KVP(&a);
   if (0 == return_value) {
@@ -760,29 +768,28 @@ int test_KeyValuePair() {
               if (0 == return_value) {
                 return_value = test_CBOR_Problematic_KeyValuePair();
                 if (0 == return_value) {
-                  return_value = 0;
+                  printf("**********************************\n");
+                  printf("*  KeyValuePair tests all pass   *\n");
+                  printf("**********************************\n");
                 }
-                else printTestFailure("KVP_CBOR_Problematic_KeyValuePair");
+                else printTestFailure(MODULE_NAME, "KVP_CBOR_Problematic_KeyValuePair");
               }
-              else printTestFailure("test_CBOR_KeyValuePair");
+              else printTestFailure(MODULE_NAME, "test_CBOR_KeyValuePair");
               #endif  // CONFIG_C3P_CBOR
             }
-            else printTestFailure("test_Value_Translation");
+            else printTestFailure(MODULE_NAME, "test_Value_Translation");
           }
-          else printTestFailure("KeyValuePair_Key_Abuse");
+          else printTestFailure(MODULE_NAME, "KeyValuePair_Key_Abuse");
         }
-        else printTestFailure("KVP_Value_Placement");
+        else printTestFailure(MODULE_NAME, "KVP_Value_Placement");
       }
-      else printTestFailure("KVP_InternalTypes");
+      else printTestFailure(MODULE_NAME, "KVP_InternalTypes");
     }
-    else printTestFailure("KVP_value_retrieval");
+    else printTestFailure(MODULE_NAME, "KVP_value_retrieval");
   }
-  else printTestFailure("Build_Polytyped_KVP");
+  else printTestFailure(MODULE_NAME, "Build_Polytyped_KVP");
 
   if (0 == return_value) {
-    printf("**********************************\n");
-    printf("*  KeyValuePair tests all pass   *\n");
-    printf("**********************************\n");
   }
   return return_value;
 }

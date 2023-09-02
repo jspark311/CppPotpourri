@@ -69,7 +69,7 @@ class UARTAdapter : public BufferAccepter {
     virtual ~UARTAdapter();
 
     /* Implementation of BufferAccepter. */
-    int8_t  provideBuffer(StringBuilder*);
+    int8_t  pushBuffer(StringBuilder*);
     int32_t bufferAvailable();
 
     int8_t init(const UARTOpts*);

@@ -345,7 +345,7 @@ class M2MMsg {
     /* Inlines for message options, flags, and status markers. */
     inline TCode     encoding() {     return _encoding;                                           };
     inline BusOpcode direction() {    return _op;                                                 };
-    inline uint32_t  msSinceSend() {  return wrap_accounted_delta(_ms_io_mark, (uint32_t)millis()); };
+    inline uint32_t  msSinceSend() {  return millis_since(_ms_io_mark);                           };
     inline bool      rxComplete() {   return (_accumulator.length() == _header.payload_length()); };
     inline bool      wasSent() {      return _class_flag(M2MMSG_FLAG_TX_COMPLETE);             };
     inline bool      wasACKd() {      return _class_flag(M2MMSG_FLAG_WAS_ACKD);                };
@@ -401,7 +401,7 @@ class M2MLink : public BufferAccepter {
     virtual ~M2MLink();
 
     /* Implementation of BufferAccepter. Accepts data from a transport. */
-    int8_t  provideBuffer(StringBuilder*);
+    int8_t  pushBuffer(StringBuilder*);
     int32_t bufferAvailable();
 
     /* Application glue */

@@ -126,7 +126,7 @@ int GfxUIC3PScheduler::_render(UIGfxWrapper* ui_gfx) {
     tmp_str.concat("Scheduler not created.\n");
   }
   _txt.clear();
-  _txt.provideBuffer(&tmp_str);
+  _txt.pushBuffer(&tmp_str);
   return GfxUITabbedContentPane::_render(ui_gfx);
 }
 

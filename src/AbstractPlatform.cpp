@@ -184,6 +184,46 @@ int8_t __attribute__((weak)) analogWriteFrequency(uint8_t pin, uint32_t freq) { 
 void __attribute__((weak)) c3p_log(uint8_t, const char*, StringBuilder*) {   }
 AbstractPlatform* __attribute__((weak)) platformObj() {     return nullptr;  }
 
+/*
+* These are weak-referenced, in case the platform wants to handle timer overflow
+*   in its own manner. Without such explicit control, the firmware system time
+*   will simply overflow the range of the integer used to store it.
+*
+* TODO: It might be worth it to loosen atomic micros()/millis() requirements (or
+*   make their 32-bit implementatitons more complicated). The other option is
+*   making the entire system time 64-bit, even on 32-bit builds.
+*   As it stands, 32-bit roll-over of micros() happens in about 71.5 minutes.
+*   I think it is safe to assume that extending this field is not running from a
+*   problem that will eventually catch us again. No one expects system time to
+*   legitimately run to 584,542 years (64-bit micros() roll-over). So we could
+*   solve the problem everywhere (permanently), and lose the annoying integer
+*   length ambiguities surrounding system time by doubling the storage and
+*   access requirements for 32-bit platforms.
+*/
+long unsigned __attribute__((weak)) millis_since(const long unsigned MARK) {
+  const long unsigned NOW = millis();
+  if (4 < sizeof(long unsigned)) {  return delta_assume_wrap((uint64_t) NOW, (uint64_t) MARK);  }
+  else {                            return delta_assume_wrap((uint32_t) NOW, (uint32_t) MARK);  }
+}
+
+long unsigned __attribute__((weak)) micros_since(const long unsigned MARK) {
+  const long unsigned NOW = micros();
+  if (4 < sizeof(long unsigned)) {  return delta_assume_wrap((uint64_t) NOW, (uint64_t) MARK);  }
+  else {                            return delta_assume_wrap((uint32_t) NOW, (uint32_t) MARK);  }
+}
+
+long unsigned __attribute__((weak)) millis_until(const long unsigned MARK) {
+  const long unsigned NOW = millis();
+  if (4 < sizeof(long unsigned)) {  return delta_assume_wrap((uint64_t) MARK, (uint64_t) NOW);  }
+  else {                            return delta_assume_wrap((uint32_t) MARK, (uint32_t) NOW);  }
+}
+
+long unsigned __attribute__((weak)) micros_until(const long unsigned MARK) {
+  const long unsigned NOW = micros();
+  if (4 < sizeof(long unsigned)) {  return delta_assume_wrap((uint64_t) MARK, (uint64_t) NOW);  }
+  else {                            return delta_assume_wrap((uint32_t) MARK, (uint32_t) NOW);  }
+}
+
 
 /*******************************************************************************
 * Console callbacks
@@ -258,12 +298,6 @@ int callback_platform_info(StringBuilder* text_return, StringBuilder* args) {
     case 1:
       if (0 == StringBuilder::strcasecmp(group, "crypto")) {
         platformObj()->printCryptoOverview(text_return);
-      }
-      else if (0 == StringBuilder::strcasecmp(group, "types")) {
-        text_return->concatf("ParsingConsole   %u\t%u\n", sizeof(ParsingConsole), alignof(ParsingConsole));
-        text_return->concatf("ConsoleCommand   %u\t%u\n", sizeof(ConsoleCommand), alignof(ConsoleCommand));
-        text_return->concatf("StringBuilder    %u\t%u\n", sizeof(StringBuilder), alignof(StringBuilder));
-        text_return->concatf("AbstractPlatform %u\t%u\n", sizeof(AbstractPlatform), alignof(AbstractPlatform));
       }
       break;
     default:
@@ -405,9 +439,9 @@ void C3PLogger::_store_or_forward(StringBuilder* log_line) {
   if (nullptr != _sink) {
     bool backlog_remaining = !_log.isEmpty();
     if (backlog_remaining) {
-      backlog_remaining = (0 != _sink->provideBuffer(&_log));
+      backlog_remaining = (0 != _sink->pushBuffer(&_log));
     }
-    if (!backlog_remaining && (0 == _sink->provideBuffer(log_line))) {
+    if (!backlog_remaining && (0 == _sink->pushBuffer(log_line))) {
       // NOTE: Short-circuit evaluation above is important for ordering.
       store_to_buffer = false;
     }

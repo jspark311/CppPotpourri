@@ -30,6 +30,21 @@
 #include "Identity/Identity.h"
 #include "M2MLink/M2MLink.h"
 
+/*
+Global unit-testing TODO list:
+
+TODO: Research testing frameworks for C++ again.
+
+TODO: If you won't do that, this is at least a good place to start doing some
+  dependency injection for GPIO. If we override the weak references in
+  AbstractPlatform, we can fake pin behaviors from a separate thread.
+
+TODO: About that... This program is presumably being run under linux, and so we
+  have threads. Apart from mortality, there is no good reason that some directed
+  concurrency testing of modules isn't already being done. This won't be an
+  _exact_ simulation of ISR behavior, but it is close enough to catch almost
+  everything that would happen in that context that C3P is concerned about.
+*/
 
 /*******************************************************************************
 * Globals
@@ -41,7 +56,6 @@ struct timeval start_micros;
 * Support functions
 * TODO: Some of this should be subsumed by the general linux platform.
 *   some of what remains should be collected into a general testing framework?
-* TODO: Research testing frameworks for C++ again.
 *******************************************************************************/
 
 uint32_t randomUInt32() {
@@ -91,55 +105,28 @@ void sleep_us(uint32_t us) {
 }
 
 
-/**
-* Prints the sizes of various types. Informational only. No test.
-*/
-void printTypeSizes() {
-  StringBuilder output("===< Type sizes >=======================================\n-- Primitives:\n");
-  output.concatf("\tvoid*                 %u\n", sizeof(void*));
-  output.concatf("\tFloat                 %u\n", sizeof(float));
-  output.concatf("\tDouble                %u\n", sizeof(double));
-  output.concat("-- Singletons:\n");
-  output.concatf("\tAbstractPlatform      %u\n", sizeof(AbstractPlatform));
-  output.concatf("\tParsingConsole        %u\n", sizeof(ParsingConsole));
-  output.concat("-- Elemental data structures:\n");
-  output.concatf("\tKeyValuePair          %u\n", sizeof(KeyValuePair));
-  output.concatf("\tVector3<float>        %u\n", sizeof(Vector3<float>));
-  output.concatf("\tLinkedList<void*>     %u\n", sizeof(LinkedList<void*>));
-  output.concatf("\tElementPool<void*>    %u\n", sizeof(ElementPool<void*>));
-  output.concatf("\tPriorityQueue<void*>  %u\n", sizeof(PriorityQueue<void*>));
-  output.concatf("\tRingBuffer<void*>     %u\n", sizeof(RingBuffer<void*>));
-  output.concatf("\tUUID                  %u\n", sizeof(UUID));
-  output.concatf("\tStopWatch             %u\n", sizeof(StopWatch));
-  output.concatf("\tGPSWrapper            %u\n", sizeof(GPSWrapper));
-  output.concatf("\tSensorFilter<float>   %u\n", sizeof(SensorFilter<float>));
-  output.concatf("\tIdentity              %u\n", sizeof(Identity));
-  output.concatf("\tIdentityUUID          %u\n", sizeof(IdentityUUID));
-  output.concat("-- M2M classes:\n");
-  output.concatf("\tM2MLink            %u\n", sizeof(M2MLink));
-  output.concatf("\tM2MMsg             %u\n", sizeof(M2MMsg));
-  output.concatf("\tM2MMsgHdr          %u\n", sizeof(M2MMsgHdr));
-  output.concatf("\tM2MLinkOpts        %u\n", sizeof(M2MLinkOpts));
-  printf("%s\n\n", (const char*) output.string());
-}
+/*******************************************************************************
+* Test reporting functions that are intended to be called from unit tests...
+*******************************************************************************/
 
-
-void printTestFailure(const char* test) {
+void printTestFailure(const char* module, const char* test) {
   printf("\n");
   printf("*********************************************\n");
-  printf("* %s FAILED tests.\n", test);
+  printf("* %s FAILED test: %s.\n", module, test);
   printf("*********************************************\n");
 }
-
 
 
 /*******************************************************************************
 * Something terrible.
+* Textual inclusion of CPP files until a testing framework is writen or adopted.
 *******************************************************************************/
 
 #include "AsyncSequencerTests.cpp"
 #include "StringBuilderTest.cpp"
 #include "RingBufferTests.cpp"
+#include "KVPTests.cpp"
+#include "LinkedListTests.cpp"
 #include "FSMTests.cpp"
 #include "SchedulerTests.cpp"
 #include "TestDataStructures.cpp"
@@ -148,6 +135,45 @@ void printTestFailure(const char* test) {
 #include "ParsingConsoleTest.cpp"
 #include "IdentityTest.cpp"
 #include "M2MLinkTests.cpp"
+
+
+/*******************************************************************************
+* Aggregation functions that call pieces from each unit test source file.
+* Brittle, ugly, hard to understand. Recommend me a test framework...
+* I want something that can do dependency injection with a bit more grace than
+*   the dabbling I've done for the platform.
+*******************************************************************************/
+
+/**
+* Prints the sizes of various types. Informational only. No test.
+*/
+void printTypeSizes() {
+  printf("===< Type sizes >=======================================\n-- Primitives:\n");
+  printf("\tvoid*                    %u\t%u\n", sizeof(void*),  alignof(void*));
+  printf("\tFloat                    %u\t%u\n", sizeof(float),  alignof(float));
+  printf("\tDouble                   %u\t%u\n", sizeof(double), alignof(double));
+  printf("-- C3P types:\n");
+  printf("\tAbstractPlatform         %u\t%u\n", sizeof(AbstractPlatform),     alignof(AbstractPlatform));
+  printf("\tVector3<float>           %u\t%u\n", sizeof(Vector3<float>),       alignof(Vector3<float>));
+  printf("\tLinkedList<void*>        %u\t%u\n", sizeof(LinkedList<void*>),    alignof(LinkedList<void*>));
+  printf("\tElementPool<void*>       %u\t%u\n", sizeof(ElementPool<void*>),   alignof(ElementPool<void*>));
+  printf("\tPriorityQueue<void*>     %u\t%u\n", sizeof(PriorityQueue<void*>), alignof(PriorityQueue<void*>));
+  printf("\tSensorFilter<float>      %u\t%u\n", sizeof(SensorFilter<float>),  alignof(SensorFilter<float>));
+  printf("\tUUID                     %u\t%u\n", sizeof(UUID),             alignof(UUID));
+  printf("\tStopWatch                %u\t%u\n", sizeof(StopWatch),        alignof(StopWatch));
+  printf("\tGPSWrapper               %u\t%u\n", sizeof(GPSWrapper),       alignof(GPSWrapper));
+  printf("\tIdentity                 %u\t%u\n", sizeof(Identity),         alignof(Identity));
+  printf("\tIdentityUUID             %u\t%u\n", sizeof(IdentityUUID),     alignof(IdentityUUID));
+  print_types_stringbuilder();
+  print_types_ringbuffer();
+  print_types_buffer_accepter();
+  print_types_parsing_console();
+  print_types_scheduler();
+  print_types_state_machine();
+  print_types_kvp();
+  print_types_m2mlink();
+}
+
 
 
 /*******************************************************************************
@@ -165,19 +191,27 @@ void printTestFailure(const char* test) {
 #define CHKLST_PARSINGCONSOLE_TESTS   0x00000080  //
 #define CHKLST_RINGBUFFER_TESTS       0x00000100  //
 #define CHKLST_BUFFER_ACCEPTER_TESTS  0x00000200  //
+#define CHKLST_LINKED_LIST_TESTS      0x00000400  // LinkedList
+#define CHKLST_KEY_VALUE_PAIR_TESTS   0x00000800  // KeyValuePair
+#define CHKLST_PRIORITY_QUEUE_TESTS   0x00001000  // PriorityQueue
+#define CHKLST_VECTOR3_TESTS          0x00002000  // Vector3
 #define CHKLST_ASYNC_SEQUENCER_TESTS  0x80000000  // Everything depends on this.
+
+
 
 #define CHKLST_ALL_TESTS ( \
   CHKLST_STRINGBUILDER_TESTS | CHKLST_FSM_TESTS | CHKLST_SCHEDULER_TESTS | \
   CHKLST_DATA_STRUCT_TESTS | CHKLST_SENSORFILTER_TESTS | CHKLST_RINGBUFFER_TESTS | \
   CHKLST_IDENTITY_TESTS | CHKLST_M2MLINK_TESTS | CHKLST_PARSINGCONSOLE_TESTS | \
-  CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_BUFFER_ACCEPTER_TESTS)
+  CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_BUFFER_ACCEPTER_TESTS | \
+  CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS | \
+  CHKLST_KEY_VALUE_PAIR_TESTS | CHKLST_LINKED_LIST_TESTS)
 
 
 const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   { .FLAG         = CHKLST_ASYNC_SEQUENCER_TESTS,
     .LABEL        = "ASYNC_SEQUENCER_TESTS",
-    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
+    .DEP_MASK     = (0),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == async_seq_test_main()) ? 1:-1);  }
   },
@@ -189,7 +223,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_STRINGBUILDER_TESTS,
     .LABEL        = "STRINGBUILDER_TESTS",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_ASYNC_SEQUENCER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == stringbuilder_main()) ? 1:-1);  }
   },
@@ -207,19 +241,19 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_DATA_STRUCT_TESTS,
     .LABEL        = "DATA_STRUCT_TESTS",
-    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS | CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_RINGBUFFER_TESTS),
+    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS | CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_RINGBUFFER_TESTS | CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == data_structure_main()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_BUFFER_ACCEPTER_TESTS,
     .LABEL        = "BUFFER_ACCEPTER_TESTS",
-    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
+    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == buffer_accepter_main()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_SENSORFILTER_TESTS,
     .LABEL        = "SENSORFILTER_TESTS",
-    .DEP_MASK     = (CHKLST_FSM_TESTS),
+    .DEP_MASK     = (CHKLST_FSM_TESTS | CHKLST_VECTOR3_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == sensor_filter_tests_main()) ? 1:-1);  }
   },
@@ -231,7 +265,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_M2MLINK_TESTS,
     .LABEL        = "M2MLINK_TESTS",
-    .DEP_MASK     = (CHKLST_IDENTITY_TESTS | CHKLST_FSM_TESTS | CHKLST_BUFFER_ACCEPTER_TESTS),
+    .DEP_MASK     = (CHKLST_IDENTITY_TESTS | CHKLST_FSM_TESTS | CHKLST_BUFFER_ACCEPTER_TESTS | CHKLST_KEY_VALUE_PAIR_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == manuvrlink_main()) ? 1:-1);  }
   },
@@ -240,6 +274,30 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .DEP_MASK     = (CHKLST_BUFFER_ACCEPTER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == parsing_console_main()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_LINKED_LIST_TESTS,
+    .LABEL        = "LINKED_LIST_TESTS",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_LinkedList()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_KEY_VALUE_PAIR_TESTS,
+    .LABEL        = "KEY_VALUE_PAIR_TESTS",
+    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_KeyValuePair()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_PRIORITY_QUEUE_TESTS,
+    .LABEL        = "PRIORITY_QUEUE_TESTS",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_PriorityQueue()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_VECTOR3_TESTS,
+    .LABEL        = "VECTOR3_TESTS",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == vector3_test_main()) ? 1:-1);  }
   },
 };
 

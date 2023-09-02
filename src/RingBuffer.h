@@ -56,7 +56,7 @@ template <class T> class RingBuffer {
     void clear();             // Wipe the buffer.
     int  insert(T);           // Insert an element.
     int  insert(T*, unsigned int len);   // Insert many elements.
-    int  insertIfAbsent(T x) {  return (contains(x) ? -2 : insert(x));  };
+    inline int  insertIfAbsent(T x) {  return (contains(x) ? -2 : insert(x));  };
     bool contains(T);
     T    get(unsigned int idx, bool absolute_index = false);
     inline T get() {       return _get(true);              };

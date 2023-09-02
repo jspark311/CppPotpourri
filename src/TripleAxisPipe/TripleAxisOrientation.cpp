@@ -53,7 +53,7 @@ int8_t TripleAxisOrientation::pushVector(SpatialSense s, Vector3f* data, Vector3
           atan2(proj_vect_xz.x, proj_vect_xz.z) - atan2(proj_up_xz.x, proj_up_xz.z),  // Pitch
           0   // Unless we have a magnetometer or bearing, we can't track yaw.
         );
-        _data_period = wrap_accounted_delta(tmp_millis, _last_update);
+        _data_period = millis_since(_last_update);
         _last_update = tmp_millis;
         _update_count++;
         if (nullptr != _NXT) {

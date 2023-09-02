@@ -28,13 +28,60 @@ Test fixtures for CoDecs. Only programs concerned with unit testing need to
 /*******************************************************************************
 * Source
 *******************************************************************************/
+int8_t BufAcceptTestSource::pushBuffer(StringBuilder* buf) {
+  int8_t ret = 0;
+  //if (nullptr != _profiler) {  _profiler->markStart();  }
+  return ret;
+}
+
+
+int32_t BufAcceptTestSource::bufferAvailable() {
+  return ((nullptr == _efferant) ? 0 : _efferant->bufferAvailable());
+}
+
+
+/*
+* Print object state.
+*/
+void BufAcceptTestSource::printDebug(StringBuilder* text_return) {
+  StringBuilder::styleHeader1(text_return, "BufAcceptTestSource");
+  text_return->concatf("\tBuffer_limit   %u\n", _fake_buffer_limit);
+  text_return->concat("\tCall counts:\n");
+  text_return->concatf("\t  Rejections:     %u\n", _pb_call_count_rej);
+  text_return->concatf("\t  Partial claims: %u\n", _pb_call_count_partial);
+  text_return->concatf("\t  Full claims:    %u\n", _pb_call_count_full);
+  text_return->concatf("\t  Total:          %u\n", _call_count);
+  text_return->concat("\tContract evaluation:\n");
+  text_return->concatf("\t  Return conventions respected?   %s\n\n", callCountsBalance() ? "Conforms" : "Fails");
+}
+
+
+/* Reset the source's tracking in preparation for a new test. */
+void BufAcceptTestSource::reset() {
+  _fake_buffer_limit      = 0;  // Implies never propagate buffers.
+  _call_count             = 0;
+  _pb_call_count_rej      = 0;
+  _pb_call_count_partial  = 0;
+  _pb_call_count_full     = 0;
+}
+
+
+/*
+* Instrumentation function.
+*
+* @return true if the codes we returned were always within contract.
+*/
+bool BufAcceptTestSource::callCountsBalance() {
+  return ((_pb_call_count_rej + _pb_call_count_partial + _pb_call_count_full) == _call_count);
+}
+
 
 /*******************************************************************************
 * Sink
 *******************************************************************************/
 
 
-int8_t BufAcceptTestSink::provideBuffer(StringBuilder* buf) {
+int8_t BufAcceptTestSink::pushBuffer(StringBuilder* buf) {
   int8_t ret = -1;
   if (nullptr != buf) {
     int taken_len = 0;
@@ -59,8 +106,8 @@ int8_t BufAcceptTestSink::provideBuffer(StringBuilder* buf) {
       //   equipment) wouldn't need all this bureaucracy. It would be able
       //   to make choices appropriate to its purpose (all-or-nothing
       //   behaviors, mutation concerns, etc), and avoid the copy and heap
-      //   thrash implied by the copy implicit in the creation of the
-      //   intermediate StringBuilder in the inner-loop below.
+      //   thrash implied by the copy implicit buried in the creation of the
+      //   intermediate StringBuilder call_item below.
 
       int frag_idx  = 0;
       // NOTE: This will naturally not execute if the offered buffer is empty.
@@ -72,7 +119,9 @@ int8_t BufAcceptTestSink::provideBuffer(StringBuilder* buf) {
           buf->drop_position(0);  // Drop the original fragment.
           if ((tmp_len + taken_len) <= TAKE_LENGTH) {
             // We can take this entire fragment. Zero-copy it.
-            // This pathway preserves structure, and pointer locations of fragments.
+            // This pathway preserves both structure and pointer locations of
+            //   fragments. It does not deep-copy. It is an exchange of
+            //   ownership only. It is very fast.
             take_log.concatHandoff(&call_item);
             frag_idx++;
             taken_len += tmp_len;
@@ -206,7 +255,7 @@ void BufAcceptTestSink::printDebug(StringBuilder* text_return) {
   text_return->concatf("\t  Return conventions respected?   %s\n\n", callCountsBalance() ? "Conforms" : "Fails");
 
   StopWatch::printDebugHeader(text_return);
-  profiler.printDebug("provideBuffer()", text_return);
+  profiler.printDebug("pushBuffer()", text_return);
 }
 
 
@@ -217,7 +266,7 @@ bool BufAcceptTestSink::_does_terminator_match() {
   // TODO: Contract question... should this test against offer length,
   //   or taken length? A "normal" implementation would only care to
   //   differentiate if it irrationally (and counter to contract)
-  //   demanded that lines must coincide with calls to provideBuffer(),
+  //   demanded that lines must coincide with calls to pushBuffer(),
   //   as helpful as it might be to some pipelines that have a concept
   //   of "lines". But that isn't our concern here.
   // For now, it will test against taken_len. Just make sure the harness

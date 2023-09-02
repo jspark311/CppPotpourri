@@ -19,7 +19,6 @@ limitations under the License.
 */
 
 #include "ParsingConsole.h"
-#include "CppPotpourri.h"
 
 /*******************************************************************************
 *      _______.___________.    ___   .___________. __    ______     _______.
@@ -89,7 +88,7 @@ int8_t ParsingConsole::init() {
 * @param  buf    A pointer to the buffer.
 * @return -1 to reject buffer, 0 to accept without claiming, 1 to accept with claim.
 */
-int8_t ParsingConsole::provideBuffer(StringBuilder* incoming) {
+int8_t ParsingConsole::pushBuffer(StringBuilder* incoming) {
   // TODO: This is a proper choke-point for enforcement of inbound line termination.
   // TODO: Implement cursor keys.
   //   U: 0x1b, 0x5b, 0x41   D: 0x1b, 0x5b, 0x42
@@ -184,7 +183,7 @@ int8_t ParsingConsole::_relay_to_output_target() {
       _log.replace("\n", lineTerminatorLiteralStr(_tx_terminator));
     }
     _log.string();
-    switch (_output_target->provideBuffer(&_log)) {
+    switch (_output_target->pushBuffer(&_log)) {
       case 0:   _log.clear();  // Be sure to discard the log if the downstream BufferAcceptor didn't entirely claim it.
       case 1:   ret = 0;
       default:  break;

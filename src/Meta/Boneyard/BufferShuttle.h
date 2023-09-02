@@ -29,6 +29,13 @@ TODO: This should turn into a templated class to handle complex types that are
 #include "Image/Image.h"
 
 
+////////////////////////////////////////////////////////////////////////////////
+// TODO: Don't code against this.
+// Formerly, this was the substance of BufferShuttle.h
+// This strategy functioned, but it was brittle, and required too much overhead
+//   in terms of cooperation to be worthwhile. It is being kept until such time
+//   as its value as a learning step is taken, and something better is done.
+////////////////////////////////////////////////////////////////////////////////
 class BufferShuttle {
   public:
     BufferShuttle(BufferAccepter* target) : BufferShuttle(target, nullptr, 0, 0) {};

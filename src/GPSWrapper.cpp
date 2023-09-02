@@ -146,7 +146,7 @@ static inline float minmea_tocoord(struct minmea_float *f) {
 * @param  buf    A pointer to the buffer.
 * @return -1 to reject buffer, 0 to accept without claiming, 1 to accept with claim.
 */
-int8_t GPSWrapper::provideBuffer(StringBuilder* buf) {
+int8_t GPSWrapper::pushBuffer(StringBuilder* buf) {
   _accumulator.concatHandoff(buf);
   if (MINMEA_MAX_LENGTH < _accumulator.length()) {
     _attempt_parse();

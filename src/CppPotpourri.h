@@ -20,6 +20,7 @@ limitations under the License.
 
 #include <inttypes.h>
 #include <stdint.h>
+#include <limits.h>
 #include "EnumeratedTypeCodes.h"
 
 #ifndef __CPPPOTPOURRI_H__
@@ -69,24 +70,39 @@ inline void strict_swap(int32_t*  a, int32_t*  b) {  int32_t  t = *a; *a = *b; *
 inline void strict_swap(int16_t*  a, int16_t*  b) {  int16_t  t = *a; *a = *b; *b = t;  };
 inline void strict_swap(int8_t*   a, int8_t*   b) {  int8_t   t = *a; *a = *b; *b = t;  };
 
-/*
-* Given two values, gives the difference between them after accounting for wrap.
+/* Given two values (a and b), effectively returns abs(a-b). */
+inline double   strict_abs_delta(double   a, double   b) {   return (a > b) ? (a - b) : (b - a);   };
+inline float    strict_abs_delta(float    a, float    b) {   return (a > b) ? (a - b) : (b - a);   };
+inline uint64_t strict_abs_delta(uint64_t a, uint64_t b) {   return (a > b) ? (a - b) : (b - a);   };
+inline uint32_t strict_abs_delta(uint32_t a, uint32_t b) {   return (a > b) ? (a - b) : (b - a);   };
+inline uint16_t strict_abs_delta(uint16_t a, uint16_t b) {   return (a > b) ? (a - b) : (b - a);   };
+inline uint8_t  strict_abs_delta(uint8_t  a, uint8_t  b) {   return (a > b) ? (a - b) : (b - a);   };
+inline int64_t  strict_abs_delta(int64_t  a, int64_t  b) {   return (a > b) ? (a - b) : (b - a);   };
+inline int32_t  strict_abs_delta(int32_t  a, int32_t  b) {   return (a > b) ? (a - b) : (b - a);   };
+inline int16_t  strict_abs_delta(int16_t  a, int16_t  b) {   return (a > b) ? (a - b) : (b - a);   };
+inline int8_t   strict_abs_delta(int8_t   a, int8_t   b) {   return (a > b) ? (a - b) : (b - a);   };
+
+/**
+* Given two values (a and b), returns the distance between them, allowing for wrap.
+* If the second parameter is smaller than the first, a wrap will be assumed to have
+*   happened between the mark and the comparison, and the return value will be
+*   adjusted accordingly.
+* NOTE: Integer overflow is being assumed. But your compiler/hardware may not
+*   handle overflow in a manner that allows this function to make sense. YMMV.
 *
-* TODO: Poor-naming, or poor implementation. Can't tell. But there are bugs
-*   surrounding these inlines. Should use the GCC macro for the type's maximum
-*   value? In any case, audit the entire lib's use of these inlines, and maybe
-*   doc and unit-test them.
+* @param val_now is the present position on an unbounded half-dimensional finite number line.
+* @param val_then is the position on the same line against which we will compare.
+* @return the positive-going displacement of val_now from val_then
 */
-inline double   wrap_accounted_delta(double   a, double   b) {   return (a > b) ? (a - b) : (b - a);   };
-inline float    wrap_accounted_delta(float    a, float    b) {   return (a > b) ? (a - b) : (b - a);   };
-inline uint64_t wrap_accounted_delta(uint64_t a, uint64_t b) {   return (a > b) ? (a - b) : (b - a);   };
-inline uint32_t wrap_accounted_delta(uint32_t a, uint32_t b) {   return (a > b) ? (a - b) : (b - a);   };
-inline uint16_t wrap_accounted_delta(uint16_t a, uint16_t b) {   return (a > b) ? (a - b) : (b - a);   };
-inline uint8_t  wrap_accounted_delta(uint8_t  a, uint8_t  b) {   return (a > b) ? (a - b) : (b - a);   };
-inline int64_t  wrap_accounted_delta(int64_t  a, int64_t  b) {   return (a > b) ? (a - b) : (b - a);   };
-inline int32_t  wrap_accounted_delta(int32_t  a, int32_t  b) {   return (a > b) ? (a - b) : (b - a);   };
-inline int16_t  wrap_accounted_delta(int16_t  a, int16_t  b) {   return (a > b) ? (a - b) : (b - a);   };
-inline int8_t   wrap_accounted_delta(int8_t   a, int8_t   b) {   return (a > b) ? (a - b) : (b - a);   };
+inline uint64_t delta_assume_wrap(const uint64_t NOW, const uint64_t THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (0xFFFFFFFFFFFFFFFF - (THEN - NOW)));   };
+inline uint32_t delta_assume_wrap(const uint32_t NOW, const uint32_t THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (0xFFFFFFFF - (THEN - NOW)));           };
+inline uint16_t delta_assume_wrap(const uint16_t NOW, const uint16_t THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (0xFFFF - (THEN - NOW)));               };
+inline uint8_t  delta_assume_wrap(const uint8_t  NOW, const uint8_t  THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (0xFF - (THEN - NOW)));                 };
+//inline int64_t  delta_assume_wrap(const int64_t  NOW, const int64_t  THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (ULONG_MAX - (THEN - NOW)));          };
+//inline int32_t  delta_assume_wrap(const int32_t  NOW, const int32_t  THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (ULONG_MAX - (THEN - NOW)));          };
+//inline int16_t  delta_assume_wrap(const int16_t  NOW, const int16_t  THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (ULONG_MAX - (THEN - NOW)));          };
+//inline int8_t   delta_assume_wrap(const int8_t   NOW, const int8_t   THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (ULONG_MAX - (THEN - NOW)));          };
+
 
 /*
 * Given a value and a range, gives the saturated result.
@@ -136,68 +152,6 @@ typedef void (*FxnPointer)();
 typedef void (*PinCallback)(uint8_t pin, uint8_t level);
 
 
-/*******************************************************************************
-* Interfaces for moving buffers in a predictable fashion. Also, some optional
-*   helper classes built on that capability.
-*
-* A class would implement BufferAccepter to expose a means of accepting a
-*   formless buffer from a source that doesn't need to know the specifics of
-*   what is to be done with the buffer, nor how.
-* NOTE: This idea was the fundamental idea behind Manuvr's BufferPipe class,
-*   which was not pure virtual, and carried far more implementation burden.
-*
-* TODO: Migrate elsewhere.
-*******************************************************************************/
-
-/* An interface class for accepting a buffer. */
-// TODO: Doc and unit-testing to spell out contract for this interface.
-//   Points to cover... Synchronicity, ownership transfer (in heap case).
-class BufferAccepter {
-  public:
-    /**
-    * Provides a heap-based buffer with fully-realized ownership management.
-    *
-    * @param is the pointer to the managed container for the content.
-    * @return -1 to reject buffer, 0 to accept with partial claim, 1 to accept with full claim.
-    */
-    virtual int8_t provideBuffer(StringBuilder*) =0;
-
-    /**
-    * @return the number of bytes available in the next stage of buffering.
-    */
-    virtual int32_t bufferAvailable() =0;
-};
-
-
-/* A class to fork string in a safe way. */
-// TODO: Migrate elsewhere.
-class BufferAccepterFork : public BufferAccepter {
-  public:
-    BufferAccepterFork(BufferAccepter* lh, BufferAccepter* rh) : _left_hand(lh), _right_hand(rh) {};
-    BufferAccepterFork(BufferAccepter* lh) : BufferAccepterFork(lh, nullptr) {};
-    BufferAccepterFork() : BufferAccepterFork(nullptr, nullptr) {};
-    ~BufferAccepterFork() {};
-
-    /* Implementation of BufferAccepter. */
-    int8_t provideBuffer(StringBuilder* buf);
-    int32_t bufferAvailable();
-
-    inline BufferAccepter* leftHand() {          return _left_hand;   };
-    inline BufferAccepter* rightHand() {         return _right_hand;  };
-    inline void leftHand(BufferAccepter* x) {    _left_hand = x;      };
-    inline void rightHand(BufferAccepter* x) {   _right_hand = x;     };
-
-  private:
-    BufferAccepter* _left_hand;
-    BufferAccepter* _right_hand;
-};
-
-// TODO: Write proper CoDec transform objects: CBOR, Delta97, Base64.
-
-
-//
-// TODO: End of migration block
-//////////////////////////////////////////////////
 
 /*******************************************************************************
 * ScalarAccepter is the same composable pipeline idea as BufferAccepter, but

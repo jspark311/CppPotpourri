@@ -21,8 +21,6 @@ limitations under the License.
 This program runs tests against our raw data-handling classes.
 */
 
-#define TEST_BUFFER_SIZE  16
-
 
 /*******************************************************************************
 * Globals
@@ -191,12 +189,27 @@ int vector3_float_test() {
 * UUID test routines
 *******************************************************************************/
 
+void printStopWatches() {
+  StringBuilder out;
+  StopWatch::printDebugHeader(&out);
+  stopwatch_0.printDebug("UUID", &out);
+  stopwatch_1.printDebug("Vector", &out);
+  stopwatch_99.printDebug("UNUSED", &out);
+  printf("%s\n\n", (const char*) out.string());
+}
+
+
+/****************************************************************************************************
+* The main functions.                                                                                *
+****************************************************************************************************/
+
 /**
 * UUID battery.
 * @return 0 on pass. Non-zero otherwise.
 */
 int test_UUID() {
-  printf("===< UUID >=============================================\n");
+  const char* const MODULE_NAME = "UUID";
+  printf("===< %s >=======================================\n", MODULE_NAME);
   StringBuilder log;
   StringBuilder temp;
   UUID test0;
@@ -206,6 +219,7 @@ int test_UUID() {
   for (int i = 0; i < 16; i++) {
     if (0 != *((uint8_t*) &test0.id[i])) {
       printf("UUID should be initialized to zeros. It was not. Failing...\n");
+      printTestFailure(MODULE_NAME, "clean init()");
       return -1;
     }
   }
@@ -214,6 +228,7 @@ int test_UUID() {
   printf("UUID comparison... ");
   if (uuid_compare(&test0, &test1)) {
     printf(" considers these distinct. Failing...\n");
+    printTestFailure(MODULE_NAME, "uuid_compare()");
     temp.concat((uint8_t*) &test0, sizeof(test0));
     temp.printDebug(&log);
     temp.clear();
@@ -229,6 +244,7 @@ int test_UUID() {
   // Does the comparison function work?
   if (0 == uuid_compare(&test0, &test1)) {
     printf("produced no change in the UUID. Failing...\n");
+    printTestFailure(MODULE_NAME, "uuid_compare()");
     temp.concat((uint8_t*) &test0, sizeof(test0));
     temp.printDebug(&log);
     temp.clear();
@@ -249,12 +265,14 @@ int test_UUID() {
 
     if (0 == uuid_compare(&test0, &test1)) {
       printf("UUID generator gave us a repeat UUID. Fail...\n");
+      printTestFailure(MODULE_NAME, "uuid_compare()");
       printf("%s\n\n", (const char*) log.string());
       return -1;
     }
     uuid_copy(&test0, &test1);
     if (0 != uuid_compare(&test0, &test1)) {
       log.concat("UUID copy appears to have failed...\n");
+      printTestFailure(MODULE_NAME, "uuid_copy()");
       temp.concat((uint8_t*) &test0, sizeof(test0));
       temp.printDebug(&log);
       temp.clear();
@@ -289,6 +307,7 @@ int test_UUID() {
 
   if (0 != uuid_compare(&test0, &test1)) {
     printf("UUID parsing of the string previously packed did not yield the same value. Failing...\n");
+    printTestFailure(MODULE_NAME, "parse on prior pack didn't match input");
     printf("%s\n\n", (const char*) log.string());
     return -1;
   }
@@ -301,60 +320,33 @@ int test_UUID() {
 }
 
 
-void printStopWatches() {
-  StringBuilder out;
-  StopWatch::printDebugHeader(&out);
-  stopwatch_0.printDebug("LinkedList", &out);
-  stopwatch_1.printDebug("Vector", &out);
-  stopwatch_2.printDebug("KVP", &out);
-  stopwatch_3.printDebug("UUID", &out);
-  stopwatch_99.printDebug("UNUSED", &out);
-  printf("%s\n\n", (const char*) out.string());
+int vector3_test_main() {
+  int ret = 1;   // Failure is the default result.
+  const char* const MODULE_NAME = "BufferAccepter";
+  stopwatch_1.markStart();
+  if (0 == vector3_float_test()) {
+    stopwatch_1.markStop();
+    printf("**********************************\n");
+    printf("*  Vector3 tests all pass        *\n");
+    printf("**********************************\n");
+    ret = 0;
+  }
+  else printTestFailure("Vector3", "Using float");
+
+  return ret;
 }
 
 
-/*******************************************************************************
-* Something terrible.
-*******************************************************************************/
-
-#include "KVPTests.cpp"
-#include "LinkedListTests.cpp"
-
-
-
-/****************************************************************************************************
-* The main function.                                                                                *
-****************************************************************************************************/
 int data_structure_main() {
   int ret = 1;   // Failure is the default result.
-
   stopwatch_0.markStart();
-  if (0 == test_LinkedList()) {
-    if (0 == test_PriorityQueue()) {
-      stopwatch_0.markStop();
-      stopwatch_1.markStart();
-      if (0 == vector3_float_test()) {
-        stopwatch_1.markStop();
-        stopwatch_2.markStart();
-        if (0 == test_KeyValuePair()) {
-          stopwatch_2.markStop();
-          stopwatch_3.markStart();
-          if (0 == test_UUID()) {
-            stopwatch_3.markStop();
-            printf("**********************************\n");
-            printf("*  DataStructure tests all pass  *\n");
-            printf("**********************************\n");
-            ret = 0;
-          }
-          else printTestFailure("UUID");
-        }
-        else printTestFailure("KeyValuePair");
-      }
-      else printTestFailure("Vector3");
-    }
-    else printTestFailure("PriorityQueue");
+  if (0 == test_UUID()) {
+    stopwatch_0.markStop();
+    printf("**********************************\n");
+    printf("*  DataStructure tests all pass  *\n");
+    printf("**********************************\n");
+    ret = 0;
   }
-  else printTestFailure("LinkedList");
 
   printStopWatches();
   return ret;

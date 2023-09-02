@@ -229,6 +229,9 @@ int sensor_filter_teardown() {
 *******************************************************************************/
 int sensor_filter_tests_main() {
   int ret = 1;   // Failure is the default result.
+  const char* const MODULE_NAME = "SensorFilter";
+  printf("===< %s >=======================================\n", MODULE_NAME);
+
   if (0 == sensor_filter_init()) {
     if (0 == sensor_filter_initial_conditions()) {
       if (0 == sensor_filter_stats_tests()) {
@@ -244,25 +247,25 @@ int sensor_filter_tests_main() {
                       printf("**********************************\n");
                       ret = 0;
                     }
-                    else printTestFailure("SensorFilter failed teardown.");
+                    else printTestFailure(MODULE_NAME, "SensorFilter failed teardown.");
                   }
-                  else printTestFailure("SensorFilter failed advanced pack and parse.");
+                  else printTestFailure(MODULE_NAME, "SensorFilter failed advanced pack and parse.");
                 }
-                else printTestFailure("SensorFilter failed basic pack and parse.");
+                else printTestFailure(MODULE_NAME, "SensorFilter failed basic pack and parse.");
               }
-              else printTestFailure("SensorFilter failed nominal operations battery-2.");
+              else printTestFailure(MODULE_NAME, "SensorFilter failed nominal operations battery-2.");
             }
-            else printTestFailure("SensorFilter failed nominal operations battery-1.");
+            else printTestFailure(MODULE_NAME, "SensorFilter failed nominal operations battery-1.");
           }
-          else printTestFailure("SensorFilter failed nominal operations battery-0.");
+          else printTestFailure(MODULE_NAME, "SensorFilter failed nominal operations battery-0.");
         }
-        else printTestFailure("SensorFilter failed re-windowing.");
+        else printTestFailure(MODULE_NAME, "SensorFilter failed re-windowing.");
       }
-      else printTestFailure("SensorFilter failed stats test.");
+      else printTestFailure(MODULE_NAME, "SensorFilter failed stats test.");
     }
-    else printTestFailure("SensorFilter failed to fill with test state.");
+    else printTestFailure(MODULE_NAME, "SensorFilter failed to fill with test state.");
   }
-  else printTestFailure("SensorFilter failed to initialize.");
+  else printTestFailure(MODULE_NAME, "SensorFilter failed to initialize.");
 
   return ret;
 }

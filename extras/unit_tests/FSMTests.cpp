@@ -182,12 +182,22 @@ int test_fsm_execution_to_idle() {
 }
 
 
+void print_types_state_machine() {
+  printf("\tEnumDefList<StateTest>   %u\t%u\n", sizeof(EnumDefList<StateTest>),   alignof(EnumDefList<StateTest>));
+  printf("\tStateMachine<StateTest>  %u\t%u\n", sizeof(StateMachine<StateTest>),  alignof(StateMachine<StateTest>));
+  printf("\tFSM_STATE_LIST           %u\t%u\n", sizeof(FSM_STATE_LIST),           alignof(FSM_STATE_LIST));
+  printf("\tExample_FSM              %u\t%u\n", sizeof(Example_FSM),  alignof(Example_FSM));
+}
+
 
 /*******************************************************************************
 * The main function.
 *******************************************************************************/
 int fsm_test_main() {
   int ret = 1;   // Failure is the default result.
+  const char* const MODULE_NAME = "StateMachine";
+  printf("===< %s >=======================================\n", MODULE_NAME);
+
   if (0 == test_enumlist_catchall()) {
     if (0 == test_fsm_init()) {
       if (0 == test_fsm_execution_to_idle()) {
@@ -196,11 +206,11 @@ int fsm_test_main() {
         printf("**********************************\n");
         ret = 0;
       }
-      else printTestFailure("Execution to IDLE");
+      else printTestFailure(MODULE_NAME, "Execution to IDLE");
     }
-    else printTestFailure("FSM initial states");
+    else printTestFailure(MODULE_NAME, "FSM initial states");
   }
-  else printTestFailure("Enum catch-all");
+  else printTestFailure(MODULE_NAME, "Enum catch-all");
 
   return ret;
 }

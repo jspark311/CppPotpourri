@@ -203,7 +203,7 @@ M2MLink::~M2MLink() {
 * @param buf Incoming data from the transport.
 * @return -1 to reject buffer, 0 to accept without claiming, 1 to accept with claim.
 */
-int8_t M2MLink::provideBuffer(StringBuilder* buf) {
+int8_t M2MLink::pushBuffer(StringBuilder* buf) {
   int8_t ret = 1;
   _ms_last_rec = millis();
 
@@ -265,7 +265,7 @@ int8_t M2MLink::poll(StringBuilder* log_ret) {
       _churn_outbound();
       // If we need to send an obligatory sync packet, do so.
       if (_flags.value(M2MLINK_FLAG_SYNC_CASTING | M2MLINK_FLAG_SEND_KA)) {
-        if (wrap_accounted_delta(_ms_last_send, (uint32_t) millis()) > _opts.ms_keepalive) {
+        if (millis_since(_ms_last_send) > _opts.ms_keepalive) {
           _send_sync_packet(true);
         }
       }
@@ -1042,7 +1042,7 @@ int8_t M2MLink::_relay_to_output_target(StringBuilder* buf) {
       c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, &tmp_log);
     }
 
-    switch (_output_target->provideBuffer(buf)) {
+    switch (_output_target->pushBuffer(buf)) {
       case 0:
         buf->clear();  // If the BufferPipe didn't claim the buffer, clear it.
         // NOTE: No break;

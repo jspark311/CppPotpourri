@@ -21,7 +21,7 @@ template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
   if ((_filter->dirty() | underPointer()) && _filter->windowFull()) {
     const uint32_t  DATA_SIZE = _filter->windowSize();
     const uint32_t  LAST_SIDX = _filter->lastIndex();
-    const uint32_t  DATA_IDX  = (1 + LAST_SIDX + wrap_accounted_delta(DATA_SIZE, (uint32_t) i_w)) % DATA_SIZE;
+    const uint32_t  DATA_IDX  = (1 + LAST_SIDX + strict_abs_delta(DATA_SIZE, (uint32_t) i_w)) % DATA_SIZE;
     const uint32_t* F_MEM_PTR = _filter->memPtr();
 
     uint32_t tmp_data[DATA_SIZE];
@@ -83,7 +83,7 @@ template <> int GfxUISensorFilter<float>::_render(UIGfxWrapper* ui_gfx) {
   if ((_filter->dirty() | underPointer()) && _filter->windowFull()) {
     const uint32_t  DATA_SIZE = _filter->windowSize();
     const uint32_t  LAST_SIDX = _filter->lastIndex();
-    const uint32_t  DATA_IDX  = (1 + LAST_SIDX + wrap_accounted_delta(DATA_SIZE, (uint32_t) i_w)) % DATA_SIZE;
+    const uint32_t  DATA_IDX  = (1 + LAST_SIDX + strict_abs_delta(DATA_SIZE, (uint32_t) i_w)) % DATA_SIZE;
     const float*    F_MEM_PTR = _filter->memPtr();
 
     float tmp_data[DATA_SIZE];

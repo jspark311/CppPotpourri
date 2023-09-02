@@ -132,7 +132,7 @@ int feed_console_bytewise(const char* str) {
   StringBuilder temp_buf;
   for (int i = 0; i < STR_LEN_TO_SEND; i++) {
     temp_buf.concat(*(str + i));
-    int console_ret = console.provideBuffer(&temp_buf);
+    int console_ret = console.pushBuffer(&temp_buf);
     switch (console_ret) {
       case -1:   // console buffered the data, but took no other action.
       default:
@@ -212,11 +212,11 @@ int run_command_tests(StringBuilder* output) {
 
   if (continue_testing) {
     StringBuilder multi_cmd_buf("test2\ntest3\n");
-    if (1 == console.provideBuffer(&multi_cmd_buf)) {  // Should result in two callbacks.
+    if (1 == console.pushBuffer(&multi_cmd_buf)) {  // Should result in two callbacks.
       output->concat("run_command_tests() passed.\n");
       ret = 0;
     }
-    else output->concat("provideBuffer() failed.\n");
+    else output->concat("pushBuffer() failed.\n");
   }
   else output->concat("Command test loop aborted early.\n");
 
@@ -248,11 +248,22 @@ int run_history_tests(StringBuilder* output) {
 
 
 
+void print_types_parsing_console() {
+  printf("\tParsingConsole        %u\t%u\n", sizeof(ParsingConsole), alignof(ParsingConsole));
+  printf("\tConsoleCommand        %u\t%u\n", sizeof(ConsoleCommand), alignof(ConsoleCommand));
+}
+
+
+
+
 /*******************************************************************************
 * The main function.
 *******************************************************************************/
 int parsing_console_main() {
   int ret = 1;   // Failure is the default result.
+  const char* const MODULE_NAME = "ParsingConsole";
+  printf("===< %s >=======================================\n", MODULE_NAME);
+
   StringBuilder log;
   if (0 == setup_console(&log)) {
     if (0 == run_command_tests(&log)) {
@@ -262,7 +273,9 @@ int parsing_console_main() {
         while (test_result_union & (idx < TOTAL_TEST_COUNT)) {
           test_result_union &= test_result_array[idx];
           if (!test_result_union) {
-            log.concatf("FAILED test %d.\n", idx);
+            StringBuilder tmp_sb;
+            tmp_sb.concatf("test_result_array[%d]", idx);
+            printTestFailure(MODULE_NAME, (char*) tmp_sb.string());
           }
           idx++;
         }
@@ -276,11 +289,11 @@ int parsing_console_main() {
           else log.concatf("Callback for test6 was called %d times. This is wrong.\n", test_result_count);
         }
       }
-      else printTestFailure("run_history_tests()");
+      else printTestFailure(MODULE_NAME, "run_history_tests()");
     }
-    else printTestFailure("run_command_tests()");
+    else printTestFailure(MODULE_NAME, "run_command_tests()");
   }
-  else printTestFailure("setup_console()");
+  else printTestFailure(MODULE_NAME, "setup_console()");
 
   if (0 < log.length()) {
     printf("%s\n\n", (const char*) log.string());

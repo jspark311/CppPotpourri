@@ -84,13 +84,13 @@ int GfxUIIdentity::_render(UIGfxWrapper* ui_gfx) {
   if (nullptr != _ident) {
     StringBuilder _tmp_sbldr;
     _tmp_sbldr.concatf("%s\n", _ident->getHandle());
-    _txt_handle.provideBuffer(&_tmp_sbldr);
+    _txt_handle.pushBuffer(&_tmp_sbldr);
 
     _tmp_sbldr.concatf("%s\n", Identity::identityTypeString(_ident->identityType()));
-    _txt_format.provideBuffer(&_tmp_sbldr);
+    _txt_format.pushBuffer(&_tmp_sbldr);
 
     _ident->toString(&_tmp_sbldr);
-    _txt_meta.provideBuffer(&_tmp_sbldr);
+    _txt_meta.pushBuffer(&_tmp_sbldr);
   }
   return 1;
 }

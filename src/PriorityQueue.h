@@ -26,10 +26,10 @@ Some functions are #pragma'd to stop the compiler from complaining about nullptr
   (doubles, floats, ints, etc) without polluting the log.
 */
 
-#ifndef PRIORITY_QUEUE_H
-#define PRIORITY_QUEUE_H
+#ifndef __C3P_PRIORITY_QUEUE_H__
+#define __C3P_PRIORITY_QUEUE_H__
 
-#include <inttypes.h>
+#include <stdint.h>
 
 #if defined(ARDUINO)
   #include <Arduino.h>
@@ -41,6 +41,7 @@ Some functions are #pragma'd to stop the compiler from complaining about nullptr
 #else
   #include <stdlib.h>
 #endif
+
 
 /* This is the class that holds a datum in the list. */
 template <class T> class PriorityNode{
@@ -55,7 +56,6 @@ template <class T> class PriorityNode{
 * The class that should be instantiated.
 */
 template <class T> class PriorityQueue {
-
   public:
     PriorityQueue(void);
     ~PriorityQueue(void);
@@ -685,4 +685,4 @@ template <class T> bool PriorityQueue<T>::hasNext() {
 }
 
 
-#endif
+#endif   // __C3P_PRIORITY_QUEUE_H__

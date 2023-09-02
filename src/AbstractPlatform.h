@@ -4,6 +4,7 @@
 */
 #include <inttypes.h>
 #include <stdint.h>
+#include <limits.h>
 #include "BusQueue.h"
 #include "StringBuilder.h"
 #include "CryptoBurrito/Cryptographic.h"
@@ -165,6 +166,10 @@ typedef struct __platform_thread_opts {
   void sleep_us(uint32_t);
   long unsigned millis();
   long unsigned micros();
+  long unsigned millis_since(const long unsigned);
+  long unsigned micros_since(const long unsigned);
+  long unsigned millis_until(const long unsigned);
+  long unsigned micros_until(const long unsigned);
 
   /* Real Time functions. These rely on an RTC. */
   int8_t rtcInit();  // TODO: This might be migrated into a separate abstraction.

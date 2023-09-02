@@ -113,7 +113,7 @@ void UARTAdapter::printDebug(StringBuilder* output) {
 * @param is the pointer to the managed container for the content.
 * @return -1 to reject buffer, 0 to accept with partial claim, 1 to accept with full claim.
 */
-int8_t UARTAdapter::provideBuffer(StringBuilder* buf) {
+int8_t UARTAdapter::pushBuffer(StringBuilder* buf) {
   int8_t ret = -1;
   if (buf) {
     const int32_t FULL_BUFFER_LEN = (int32_t) buf->length();
