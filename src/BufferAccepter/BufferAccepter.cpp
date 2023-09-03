@@ -23,6 +23,36 @@ An abstract interface for buffers.
 
 #include "BufferAccepter.h"
 
+
+/*******************************************************************************
+* StringBuilderSink
+*******************************************************************************/
+
+int8_t StringBuilderSink::pushBuffer(StringBuilder* buf) {
+  int8_t ret = -1;
+  const int32_t PUSH_LEN      = ((nullptr != buf) ? buf->length() : 0);
+  const int32_t AVAILABLE_LEN = bufferAvailable();
+  const int32_t TAKE_LEN      = strict_min(AVAILABLE_LEN, PUSH_LEN);
+  if (TAKE_LEN > 0) {
+    if (TAKE_LEN == PUSH_LEN) {
+      concatHandoff(buf);
+      ret = 1;
+    }
+    else {
+      concatHandoffLimit(buf, TAKE_LEN);
+      ret = 0;
+    }
+  }
+  return ret;
+}
+
+
+int32_t StringBuilderSink::bufferAvailable() {
+  const int32_t RETURN_LEN = (MAX_CAPTURE_LENGTH - length());
+  return ((RETURN_LEN < 0) ? 0 : (RETURN_LEN));
+}
+
+
 /*******************************************************************************
 * BufferAccepterFork
 *******************************************************************************/

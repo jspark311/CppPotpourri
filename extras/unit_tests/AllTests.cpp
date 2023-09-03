@@ -109,6 +109,21 @@ void sleep_us(uint32_t us) {
 * Test reporting functions that are intended to be called from unit tests...
 *******************************************************************************/
 
+int generate_random_text_buffer(StringBuilder* buf, const int RANDOM_BUF_LEN) {
+  int ret = 0;
+  if ((RANDOM_BUF_LEN > 0) && (nullptr != buf)) {
+    uint8_t tmp_buf[RANDOM_BUF_LEN+1] = {0, };
+    random_fill(tmp_buf, RANDOM_BUF_LEN);
+    for (uint32_t i = 0; i < RANDOM_BUF_LEN; i++) {
+      tmp_buf[i] = (0x30 + (tmp_buf[i] % 0x4E));
+    }
+    ret = RANDOM_BUF_LEN;
+    buf->concat(tmp_buf, RANDOM_BUF_LEN);
+  }
+  return ret;
+}
+
+
 void printTestFailure(const char* module, const char* test) {
   printf("\n");
   printf("*********************************************\n");

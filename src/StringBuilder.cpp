@@ -577,56 +577,68 @@ void StringBuilder::concatHandoff(StringBuilder* donar) {
 * Like concatHandoff(StringBuilder*), but bounded. Will only transfer the given
 *   number of bytes, taking full chunks if possible.
 */
-void StringBuilder::concatHandoffLimit(StringBuilder* nu, unsigned int len_limit) {
+void StringBuilder::concatHandoffLimit(StringBuilder* donar, unsigned int len_limit) {
   #if defined(__BUILD_HAS_PTHREADS)
     // TODO: Both this instance, as well as the argument instance must be locked.
     pthread_mutex_lock(&_mutex);
-    pthread_mutex_lock(&nu->_mutex);
+    pthread_mutex_lock(&donar->_mutex);
   #endif
-  if ((nullptr != nu) && (!nu->isEmpty(true))) {
-    unsigned int buffer_taken  = 0;
-    StrLL*   current       = nu->_root;
-    StrLL*   first_overlen = nu->_root;
-    uint32_t snip_length   = 0;
-    int      ll_snip_count = 0;
-    // Seek through the input and find the point where we need to snip.
-    while ((nullptr != current) && ((snip_length + current->len) <= len_limit)) {
-      ll_snip_count++;
-      snip_length += current->len;
-      current = current->next;
-      first_overlen = current->next;
-    }
-    // If we can simply move memory references around, do so. All leading StrLL
-    //   that fits within the limit is taken directly.
-    if (0 < snip_length) {
-      StrLL* old_root = nu->_root;
-      nu->_root = first_overlen;   // Shortens the length of nu.
-      current->next = nullptr;     // Break the links in the items we are taking.
-      _stack_str_onto_list(old_root);  // Append the assumed data.
-      buffer_taken += snip_length;     // Note the bytes taken.
-    }
-
-    if (buffer_taken < len_limit) {
-      // We've taken all of the whole allocations that we could, but the limit
-      //   doesn't fall on a convenient boundary. So we'll have to actually
-      //   allocate and shuffle at this point.
-      // For this object, we will create a new StrLL and copy the difference of
-      //   bytes into it. But for the source object, we will just shift all the
-      //   bytes forward that fell outside of the limit, and change the size.
-      //   The memory will be reclaimed on the next string consolidation.
-      const int32_t LEN_DIFFERENCE    = (len_limit - buffer_taken);
-      const int32_t LEN_OUT_OF_BOUNDS = (first_overlen->len - LEN_DIFFERENCE);
-      concat(first_overlen->str, LEN_DIFFERENCE);
-      for (int i = 0; i < LEN_OUT_OF_BOUNDS; i++) {
-        *(first_overlen->str + i) = *(first_overlen->str + i + LEN_DIFFERENCE);
+  if ((0 < len_limit) && (nullptr != donar) && (!donar->isEmpty(true))) {
+    StrLL* old_root = donar->_root;  // We'll take this for the moment...
+    donar->_root = nullptr;          // Inform the donar instance...
+    int offset = (len_limit - 1);    // Get the StrLL containing the last byte to be transfered.
+    StrLL* ll_with_byte = _get_ll_containing_offset(old_root, &offset);
+    if ((nullptr != ll_with_byte) & (0 < offset)) {
+      // We're going to leave some data with the donor. How much?
+      if ((ll_with_byte->len - 1) == offset) {
+        // The requested length fit neatly on a fragment boundary.
+        donar->_root = ll_with_byte->next;    // Inform the donar instance...
+        ll_with_byte->next = nullptr;         // ...snip...
+        _stack_str_onto_list(old_root);       // ...and stitch.
       }
-      first_overlen->len = LEN_OUT_OF_BOUNDS;
-      buffer_taken += LEN_DIFFERENCE;
+      else {
+        // The limit fell within the available length, but not on a convenient
+        //   boundary. So we must actually allocate and shuffle at this point.
+        // For this object (left-hand side of the split), we will create a new
+        //   StrLL. But for the source object (right-hand side), we will just
+        //   shift all the bytes forward that fell outside of the limit, and
+        //   change the size. The memory will be reclaimed on the next string
+        //   consolidation.
+        const int32_t LEN_RIGHT    = ((ll_with_byte->len - 1) - offset);
+        const int32_t LEN_LEFT     = (ll_with_byte->len - LEN_RIGHT);
+        StrLL* split_left = _create_str_ll(LEN_LEFT, ll_with_byte);
+        if (nullptr != split_left) {
+          for (int i = 0; i < LEN_RIGHT; i++) {
+            *(ll_with_byte->str + i) = *(ll_with_byte->str + i + LEN_LEFT);
+          }
+          ll_with_byte->len = LEN_RIGHT;
+          donar->_root = ll_with_byte;    // Inform the donar instance...
+
+          // Seek through the input and find the point where we need to snip.
+          StrLL* current = old_root;
+          while ((nullptr != current) && (ll_with_byte != current) && (ll_with_byte != current->next)) {
+            current = current->next;
+          }
+          // To the extent that we can simply move memory references around, do
+          //   so. All leading StrLL that fits within the limit is taken directly.
+          if (current != old_root) {
+            current->next = split_left;       // Snip the list where we left it.
+            _stack_str_onto_list(old_root);   // Attach the fragment list before
+          }
+          else {
+            _stack_str_onto_list(split_left);  // No leading whole fragments to take.
+          }
+        }
+      }
+    }
+    else {
+      // We're taking the whole source.
+      _stack_str_onto_list(old_root);
     }
   }
   #if defined(__BUILD_HAS_PTHREADS)
     // TODO: Both this instance, as well as the argument instance must be unlocked.
-    pthread_mutex_unlock(&nu->_mutex);
+    pthread_mutex_unlock(&donar->_mutex);
     pthread_mutex_unlock(&_mutex);
   #endif
 }

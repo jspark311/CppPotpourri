@@ -47,14 +47,16 @@ class BufAcceptTestSource : public BufferAccepter {
 
     void printDebug(StringBuilder*);
     int8_t poll();
+    int8_t pollUntilStagnant();
     void reset();
     bool callCountsBalance();
-    inline void     bufferLimit(int32_t x) {   _fake_buffer_limit = x;        };
-    inline int32_t  bufferLimit() {            return _fake_buffer_limit;     };
+    inline void     pushLimit(int32_t x) {     _fake_buffer_limit = x;        };
+    inline int32_t  pushLimit() {              return _fake_buffer_limit;     };
     inline uint32_t callCount() {              return _call_count;            };
     inline uint32_t countRejections() {        return _pb_call_count_rej;     };
     inline uint32_t countPartialClaims() {     return _pb_call_count_partial; };
     inline uint32_t countFullClaims() {        return _pb_call_count_full;    };
+    inline int32_t  backlogLength() {          return _backlog.length();      };
 
     // TODO: It would be nice to have a fxn to generate random printable strings of a
     //   shape approximating something human readable. Maybe another for ASCII unsafe
@@ -68,10 +70,10 @@ class BufAcceptTestSource : public BufferAccepter {
     BufferAccepter* _efferant = nullptr;
     StopWatch*      _profiler = nullptr;
     int32_t  _fake_buffer_limit     = 0;   // Implies reject all offered buffers.
-    uint32_t _call_count            = 0;   // Count of times pushBuffer() was called.
     uint32_t _pb_call_count_rej     = 0;   // Count of times pushBuffer() returned -1.
     uint32_t _pb_call_count_partial = 0;   // Count of times pushBuffer() returned 0.
     uint32_t _pb_call_count_full    = 0;   // Count of times pushBuffer() returned 1.
+    uint32_t _call_count            = 0;   // Count of times pushBuffer() was called.
 };
 
 
@@ -79,8 +81,6 @@ class BufAcceptTestSource : public BufferAccepter {
 /*
 * Class to analyze BufferAccepter output behaviors.
 * This should be connected to the output side of a BufferAccepter under-test.
-*
-* NOTE:
 *
 * NOTE: The take_log is extra-contractual. For contractual purposes, this class
 *   does no true buffering. It discards whatever it receives after noticing a

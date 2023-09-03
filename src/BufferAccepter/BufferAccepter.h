@@ -62,6 +62,21 @@ class BufferAccepter {
 * Helpers and utility classes surrounding BufferAccepter.
 *******************************************************************************/
 
+/* A trivial class to collect buffers into a StringBuilder. */
+class StringBuilderSink : public StringBuilder, public BufferAccepter {
+  public:
+    StringBuilderSink(const int32_t MAX_L) : MAX_CAPTURE_LENGTH(MAX_L) {};
+    ~StringBuilderSink() {};
+
+    /* Implementation of BufferAccepter. */
+    int8_t  pushBuffer(StringBuilder* buf);
+    int32_t bufferAvailable();
+
+  private:
+    const int32_t MAX_CAPTURE_LENGTH;
+};
+
+
 /* A class to fork a string in a safe way. */
 class BufferAccepterFork : public BufferAccepter {
   public:

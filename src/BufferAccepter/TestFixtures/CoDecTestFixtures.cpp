@@ -28,9 +28,18 @@ Test fixtures for CoDecs. Only programs concerned with unit testing need to
 /*******************************************************************************
 * Source
 *******************************************************************************/
+/*
+* BufAcceptTestSource will always accept the entire buffer, and will meter it
+*   out to the efferant BufferAccepter over successive polling cycles.
+*
+*/
 int8_t BufAcceptTestSource::pushBuffer(StringBuilder* buf) {
-  int8_t ret = 0;
-  //if (nullptr != _profiler) {  _profiler->markStart();  }
+  int8_t ret = -1;
+  if (nullptr != _efferant) {
+    ret = 1;
+    _backlog.concatHandoff(buf);
+  }
+
   return ret;
 }
 
@@ -45,7 +54,8 @@ int32_t BufAcceptTestSource::bufferAvailable() {
 */
 void BufAcceptTestSource::printDebug(StringBuilder* text_return) {
   StringBuilder::styleHeader1(text_return, "BufAcceptTestSource");
-  text_return->concatf("\tBuffer_limit   %u\n", _fake_buffer_limit);
+  text_return->concatf("\tBuffer_limit:   %u\n", _fake_buffer_limit);
+  text_return->concatf("\tBacklog length: %u\n", backlogLength());
   text_return->concat("\tCall counts:\n");
   text_return->concatf("\t  Rejections:     %u\n", _pb_call_count_rej);
   text_return->concatf("\t  Partial claims: %u\n", _pb_call_count_partial);
@@ -56,13 +66,51 @@ void BufAcceptTestSource::printDebug(StringBuilder* text_return) {
 }
 
 
-/* Reset the source's tracking in preparation for a new test. */
+int8_t BufAcceptTestSource::poll() {
+  int8_t ret = -1;
+  if (nullptr != _efferant) {
+    ret = 0;
+    if ((backlogLength() > 0) & (0 < _fake_buffer_limit)) {
+      StringBuilder buf_to_push;
+      //buf_to_push.concatHandoffLimit(&_backlog, _fake_buffer_limit);
+      buf_to_push.concatHandoffLimit(&_backlog, _fake_buffer_limit);
+      if (nullptr != _profiler) {
+        _profiler->markStart();
+      }
+
+      // Note the return code, and bin it.
+      switch (_efferant->pushBuffer(&buf_to_push)) {
+        case -1:  _pb_call_count_rej++;      break;
+        case 0:   _pb_call_count_partial++;  break;
+        case 1:   _pb_call_count_full++;     break;
+        default:  break;
+      }
+      _call_count++;
+      ret = 1;
+    }
+  }
+  return ret;
+}
+
+
+int8_t BufAcceptTestSource::pollUntilStagnant() {
+  int8_t ret = 0;
+  while (0 < poll()) {  ret++;  }
+  return ret;
+}
+
+
+/*
+* Reset the source's tracking in preparation for a new test.
+* NOTE: Will not reset the externally-held profiler.
+*/
 void BufAcceptTestSource::reset() {
   _fake_buffer_limit      = 0;  // Implies never propagate buffers.
   _call_count             = 0;
   _pb_call_count_rej      = 0;
   _pb_call_count_partial  = 0;
   _pb_call_count_full     = 0;
+  _backlog.clear();
 }
 
 
@@ -74,6 +122,7 @@ void BufAcceptTestSource::reset() {
 bool BufAcceptTestSource::callCountsBalance() {
   return ((_pb_call_count_rej + _pb_call_count_partial + _pb_call_count_full) == _call_count);
 }
+
 
 
 /*******************************************************************************
@@ -222,7 +271,7 @@ bool BufAcceptTestSink::callCountsBalance() {
 */
 void BufAcceptTestSink::printDebug(StringBuilder* text_return) {
   StringBuilder::styleHeader1(text_return, "BufAcceptTestSink");
-  text_return->concatf("\tBuffer_limit   %u\n", _fake_buffer_limit);
+  text_return->concatf("\tBuffer_limit:   %u\n", _fake_buffer_limit);
   text_return->concat("\tCall counts:\n");
   text_return->concatf("\t  Rejections:     %u\n", _pb_call_count_rej);
   text_return->concatf("\t  Partial claims: %u\n", _pb_call_count_partial);

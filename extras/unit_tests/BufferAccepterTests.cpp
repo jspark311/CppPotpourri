@@ -218,6 +218,7 @@ int ba_harness_sink_trivial_tests() {
   return ret;
 }
 
+
 /*
 * All tests for the sink side of the harness.
 */
@@ -235,10 +236,99 @@ int ba_harness_sink_tests() {
 
 
 /*
+* Test the source side's trivial operation.
+*/
+int ba_harness_source_trivial_tests() {
+  int ret = -1;
+  printf("Running BufAcceptTestSource trivial tests...\n");
+  printf("\tGenerating test string... ");
+  const uint32_t TEST_BUF_LEN    = (129 + (randomUInt32() % 32));
+  const uint32_t CAPTURE_MAX_LEN = (TEST_BUF_LEN + 16);
+  const uint32_t PUSH_LEN_LIMIT  = (16 + (randomUInt32() % 8));
+  StringBuilder offering;
+  generate_random_text_buffer(&offering, TEST_BUF_LEN);
+  StringBuilder baseline_sb(offering.string(), offering.length());
+  printf("Done (%d bytes):\n\t%s\n", TEST_BUF_LEN, (char*) baseline_sb.string());
+  BufAcceptTestSource ba_test_source;
+  StringBuilderSink sb_sink(CAPTURE_MAX_LEN);
+
+  printf("\tbufferAvailable() with no efferant returns 0... ");
+  if (0 == ba_test_source.bufferAvailable()) {
+    printf("Pass.\n\tPush to BufAcceptTestSource with no efferant returns -1... ");
+    if ((-1 == ba_test_source.pushBuffer(&offering)) && (TEST_BUF_LEN == offering.length())) {
+      printf("Pass.\n\tConnecting to an efferant BufferAccepter... ");
+      ba_test_source.setEfferant(&sb_sink);
+      printf("Done.\n\tBufAcceptTestSource->bufferAvailable() passes through to efferant... ");
+      if (CAPTURE_MAX_LEN == ba_test_source.bufferAvailable()) {
+        printf("Pass.\n\tPush to BufAcceptTestSource with efferant returns 1... ");
+        if ((1 == ba_test_source.pushBuffer(&offering)) && (0 == offering.length())) {
+          printf("Pass.\n\tbacklogLength() is equal to the length of the just-pushed buffer... ");
+          if (TEST_BUF_LEN == ba_test_source.backlogLength()) {
+            printf("Pass.\n\tpoll() still returns zero... ");
+            if (0 == ba_test_source.poll()) {
+              printf("Pass.\n\tpoll() returns 1 after setting pushLimit(%d)... ", PUSH_LEN_LIMIT);
+              ba_test_source.pushLimit(PUSH_LEN_LIMIT);
+              if (1 == ba_test_source.poll()) {
+                printf("Pass.\n\tbacklogLength() is equal to the size of the pushed buffer minus the chunk size... ");
+                if ((TEST_BUF_LEN - PUSH_LEN_LIMIT) == ba_test_source.backlogLength()) {
+                  printf("Pass.\n\tpoll() eventually returns 0 again... ");
+                  int poll_count_before_stagnation = ba_test_source.pollUntilStagnant();
+                  printf("Done (%d iterations)\n", poll_count_before_stagnation);
+                  printf("\tbacklogLength() is equal to 0... ");
+                  if (0 == ba_test_source.backlogLength()) {
+                    printf("Pass.\n\tThe content of the buffer sink equals what we originally pushed... ");
+                    if (0 == StringBuilder::strcasecmp((char*) sb_sink.string(), (char*) baseline_sb.string())) {
+                      printf("Pass.\n\tFinal object states... ");
+                      StringBuilder log;
+                      log.concatf("\nsb_sink contents: (%u bytes)\n%s\n", sb_sink.length(), (char*) sb_sink.string());
+                      sb_sink.printDebug(&log);
+                      log.concat("\n");
+                      ba_test_source.printDebug(&log);
+                      printf("\n%s\n", (const char*) log.string());
+                      printf("\treset() works... ");
+                      ba_test_source.reset();
+                      bool reset_worked = ba_test_source.callCountsBalance();
+                      reset_worked &= (0 == ba_test_source.pushLimit());
+                      reset_worked &= (0 == ba_test_source.callCount());
+                      reset_worked &= (0 == ba_test_source.countRejections());
+                      reset_worked &= (0 == ba_test_source.countPartialClaims());
+                      reset_worked &= (0 == ba_test_source.countFullClaims());
+                      if (reset_worked) {
+                        printf("Pass.\n\tBufAcceptTestSource passes its trivial tests.\n\n");
+                        ret = 0;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf(" Fail.\n");
+    StringBuilder log;
+    log.concatf("\nRemaining offering contents: (%u bytes)\n", offering.length());
+    offering.printDebug(&log);
+    log.concat("\n");
+    ba_test_source.printDebug(&log);
+    printf("\n%s\n\n", (const char*) log.string());
+  }
+  return ret;
+}
+
+
+
+/*
 * All tests for the source side of the harness.
 */
 int ba_harness_source_tests() {
-  int ret = 0;
+  int ret = ba_harness_source_trivial_tests();
+  if (0 == ret) {
+  }
   // TODO: This
   return ret;
 }

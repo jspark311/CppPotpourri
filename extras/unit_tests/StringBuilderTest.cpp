@@ -686,6 +686,120 @@ int test_stringbuilder_isempty() {
 
 
 /*
+* The structure-preserving ownership transfer functions.
+*/
+int test_stringbuilder_concat_handoff() {
+  int ret = -1;
+  printf("Running concatHandoff(StringBuilder*) tests...\n");
+  const uint32_t TEST_BUF_LEN = (20 + (randomUInt32() % 10));
+  StringBuilder should_be_empty;
+  StringBuilder should_have_things;
+  generate_random_text_buffer(&should_be_empty, TEST_BUF_LEN);
+  printf("\tGenerating test string (%d bytes): %s\n", TEST_BUF_LEN, (char*) should_be_empty.string());
+  const uint8_t* PTR_MUTATION_CHECK_0 = should_be_empty.string();
+
+  should_have_things.concatHandoff(&should_be_empty);
+  printf("\tshould_be_empty.isEmpty() should return true... ");
+  if (should_be_empty.isEmpty()) {
+    printf("Pass.\n\tshould_be_empty.isEmpty(true) should return true... ");
+    if (should_be_empty.isEmpty(true)) {
+      if (PTR_MUTATION_CHECK_0 == should_have_things.string()) {
+        printf("Pass.\n\tconcatHandoff(StringBuilder*) passes.\n");
+        ret = 0;
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
+  return ret;
+}
+
+
+/*
+* The structure-preserving ownership transfer functions.
+*/
+int test_stringbuilder_concat_handoff_limit() {
+  int ret = -1;
+  printf("Running concatHandoffLimit(StringBuilder*, unsigned int) tests...\n");
+  const uint32_t TEST_BUF_LEN = (30 + (randomUInt32() % 10));
+  const uint32_t LIMIT_LEN    = (5 + (randomUInt32() % 5));
+  StringBuilder src;
+  StringBuilder dest;
+  generate_random_text_buffer(&src, TEST_BUF_LEN);
+  printf("\tGenerating test string (%d bytes): %s\n", TEST_BUF_LEN, (char*) src.string());
+  printf("\tconcatHandoffLimit() should take no action if passed a length of 0... ");
+  dest.concatHandoffLimit(&src, 0);
+  if ((dest.length() == 0) & (src.length() == TEST_BUF_LEN)) {
+    printf("Pass.\n\tdest.length() should return %d... ", LIMIT_LEN);
+    dest.concatHandoffLimit(&src, LIMIT_LEN);
+    if (dest.length() == LIMIT_LEN) {
+      const int REMAINING_SRC_LEN = (TEST_BUF_LEN - LIMIT_LEN);
+      printf("Pass.\n\tsrc.length() should return %d... ", REMAINING_SRC_LEN);
+      if (src.length() == REMAINING_SRC_LEN) {
+        printf("Pass.\n\tconcatHandoffLimit() should be able to copy less than the directed length... ");
+        dest.concatHandoffLimit(&src, TEST_BUF_LEN);
+        if ((TEST_BUF_LEN == dest.length()) & (0 == src.length())) {
+          printf("Pass.\n");
+          dest.clear();
+          const int      FRAGMENTS_IN_SRC   = 4;
+          const int      FRAGMENTS_TO_MOVE  = 2;
+          const uint32_t LIMIT_LEN_TIMES_4  = (LIMIT_LEN * FRAGMENTS_IN_SRC);
+          printf("\tGenerating fragmented test string (%d bytes over %d fragments)... ", LIMIT_LEN_TIMES_4, FRAGMENTS_IN_SRC);
+          while (src.count() < FRAGMENTS_IN_SRC) {  generate_random_text_buffer(&src, LIMIT_LEN);  }
+          if ((src.length() == LIMIT_LEN_TIMES_4) & (src.count() == FRAGMENTS_IN_SRC)) {
+            printf("Pass.\n\tLimit falling cleanly on the first fragment of a multipart source... ");
+            dest.concatHandoffLimit(&src, LIMIT_LEN);
+            if ((dest.length() == LIMIT_LEN) & (src.length() == (LIMIT_LEN_TIMES_4 - LIMIT_LEN))) {
+              printf("Pass.\n\tAre the source and destimation counts (1 and %d) correct?... ", (FRAGMENTS_IN_SRC - 1));
+              if ((dest.count() == 1) & (src.count() == (FRAGMENTS_IN_SRC - 1))) {
+                printf("Pass.\n\tLimit falling cleanly on a middle fragment boundary... ");
+                dest.clear();
+                while (src.count() < FRAGMENTS_IN_SRC) {  generate_random_text_buffer(&src, LIMIT_LEN);  }
+                dest.concatHandoffLimit(&src, (LIMIT_LEN * FRAGMENTS_TO_MOVE));
+                if ((dest.length() == (LIMIT_LEN * FRAGMENTS_TO_MOVE)) & (src.length() == (LIMIT_LEN_TIMES_4 - (LIMIT_LEN * FRAGMENTS_TO_MOVE)))) {
+                  printf("Pass.\n\tAre the source and destimation counts (%d and %d) correct?... ", (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE), FRAGMENTS_TO_MOVE);
+                  if ((dest.count() == FRAGMENTS_TO_MOVE) & (src.count() == (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE))) {
+                    dest.clear();
+                    while (src.count() < FRAGMENTS_IN_SRC) {  generate_random_text_buffer(&src, LIMIT_LEN);  }
+                    const int BYTES_TO_MOVE = (FRAGMENTS_TO_MOVE * LIMIT_LEN) + (2 + (randomUInt32() % (LIMIT_LEN - 4)));
+                    printf("Pass.\n\tLimit falling in a messy place in the middle (%d byte offset)... ", BYTES_TO_MOVE);
+                    dest.concatHandoffLimit(&src, BYTES_TO_MOVE);
+                    if ((dest.length() == BYTES_TO_MOVE) & (src.length() == (LIMIT_LEN_TIMES_4 - BYTES_TO_MOVE))) {
+                      const int DEST_SPLIT_FRAG_COUNT = (FRAGMENTS_TO_MOVE+1);
+                      printf("Pass.\n\tAre the source and destimation counts (%d and %d) correct?... ", (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE), DEST_SPLIT_FRAG_COUNT);
+                      if ((dest.count() == DEST_SPLIT_FRAG_COUNT) & (src.count() == (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE))) {
+                        printf("Pass.\n\tconcatHandoffLimit(StringBuilder*, unsigned int) passes.\n");
+                        ret = 0;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+    StringBuilder log;
+    log.concatf("\nsrc:  (%u bytes)\n", src.length());
+    src.printDebug(&log);
+    log.concat("\n");
+    log.concatf("\ndest: (%u bytes)\n", dest.length());
+    dest.printDebug(&log);
+    log.concat("\n");
+    printf("\n%s\n\n", (const char*) log.string());
+  }
+  return ret;
+}
+
+
+/*
 * StringBuilder is a big API. It's easy to make mistakes or under-estimate
 *   memory impact.
 */
@@ -751,28 +865,34 @@ int stringbuilder_main() {
     if (0 == test_strcasestr()) {
       if (0 == test_stringbuilder_byteat()) {
         if (0 == test_StringBuilder()) {
-          if (0 == test_stringbuilder_chunk()) {
-            if (0 == test_stringbuilder_implode()) {
-              if (0 == test_stringbuilder_replace()) {
-                if (0 == test_stringbuilder_isempty()) {
-                  if (0 == test_StringBuilderCull()) {
-                    if (0 == test_misuse_cases()) {
-                      printf("**********************************\n");
-                      printf("*  StringBuilder tests all pass  *\n");
-                      printf("**********************************\n");
-                      ret = 0;
+          if (0 == test_stringbuilder_concat_handoff()) {
+            if (0 == test_stringbuilder_concat_handoff_limit()) {
+              if (0 == test_stringbuilder_chunk()) {
+                if (0 == test_stringbuilder_implode()) {
+                  if (0 == test_stringbuilder_replace()) {
+                    if (0 == test_stringbuilder_isempty()) {
+                      if (0 == test_StringBuilderCull()) {
+                        if (0 == test_misuse_cases()) {
+                          printf("**********************************\n");
+                          printf("*  StringBuilder tests all pass  *\n");
+                          printf("**********************************\n");
+                          ret = 0;
+                        }
+                        else printTestFailure(MODULE_NAME, "Hardening against mis-use");
+                      }
+                      else printTestFailure(MODULE_NAME, "cull(int, int)");
                     }
-                    else printTestFailure(MODULE_NAME, "Hardening against mis-use");
+                    else printTestFailure(MODULE_NAME, "isEmpty");
                   }
-                  else printTestFailure(MODULE_NAME, "cull(int, int)");
+                  else printTestFailure(MODULE_NAME, "Replace");
                 }
-                else printTestFailure(MODULE_NAME, "isEmpty");
+                else printTestFailure(MODULE_NAME, "Implode");
               }
-              else printTestFailure(MODULE_NAME, "Replace");
+              else printTestFailure(MODULE_NAME, "Tokenizer");
             }
-            else printTestFailure(MODULE_NAME, "Implode");
+            else printTestFailure(MODULE_NAME, "concatHandoffLimit(StringBuilder*, unsigned int)");
           }
-          else printTestFailure(MODULE_NAME, "Tokenizer");
+          else printTestFailure(MODULE_NAME, "concatHandoff(StringBuilder*)");
         }
         else printTestFailure(MODULE_NAME, "General");
       }
