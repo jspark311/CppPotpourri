@@ -109,7 +109,7 @@ class BufferAccepterFork : public BufferAccepter {
 class C3PCoDec : public BufferAccepter {
   public:
     /* Implementation of BufferAccepter. This is how we accept input. */
-    int8_t pushBuffer(StringBuilder*);
+    int8_t  pushBuffer(StringBuilder*);
     int32_t bufferAvailable();
 
     inline void setEfferant(BufferAccepter* x) {   _efferant = x;  };

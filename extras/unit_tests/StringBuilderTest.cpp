@@ -225,6 +225,47 @@ int test_stringbuilder_implode() {
 }
 
 
+
+/*
+  Tests toUpper() and toLower()
+*/
+int test_stringbuilder_case_shifter() {
+  const char* const PRIMER_STRING = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const char* const UPPER_STRING  = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const char* const LOWER_STRING  = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz";
+  const int         TEST_STR_LEN  = strlen(PRIMER_STRING);
+  printf("Testing toUpper()...\n");
+  int ret = -1;
+  StringBuilder stack_obj(PRIMER_STRING);
+  //stack_obj.toLower();
+
+  printf("\ttoUpper() works... ");
+  stack_obj.toUpper();
+  if (1 == stack_obj.cmpBinString((uint8_t*) UPPER_STRING, TEST_STR_LEN)) {
+    printf("Pass.\n\ttoUpper() tests pass.\n");
+    ret = 0;
+  }
+
+  if (0 == ret) {
+    printf("Testing toLower()...\n");
+    ret = -2;
+    stack_obj.clear();
+    stack_obj.concat(PRIMER_STRING);
+    printf("\ttoLower() works... ");
+    stack_obj.toLower();
+    if (1 == stack_obj.cmpBinString((uint8_t*) LOWER_STRING, TEST_STR_LEN)) {
+      printf("Pass.\n\ttoLower() tests pass.\n");
+      ret = 0;
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
+  return ret;
+}
+
+
 /*
   Tests byteAt(const int)
   (Needlesly) Depends on chunk() for inducing string fragmentation.
@@ -646,6 +687,7 @@ int test_StringBuilderHeapVersusStack() {
 */
 int test_stringbuilder_isempty() {
   int return_value = -1;
+  printf("Testing isEmpty()...\n");
   uint8_t tmp_buf[8] = {0, };
   StringBuilder should_be_empty;
   StringBuilder should_have_things(&tmp_buf[0], 8);
@@ -686,11 +728,53 @@ int test_stringbuilder_isempty() {
 
 
 /*
+* Taking ownership of a buffer malloc'd from elsewhere.
+*/
+int test_stringbuilder_concat_handoff_raw() {
+  int ret = -1;
+  printf("Testing concatHandoff(uint8_t*, int)...\n");
+  StringBuilder dest("Something already in the string. ");
+  const int         BASE_STR_LENGTH      = dest.length();
+  const char* const SOME_STRING_IN_FLASH = "Some string in flash.";
+  const int         SOME_STRING_LENGTH   = strlen(SOME_STRING_IN_FLASH);
+  const int         COMBINED_STR_LENGTH  = (BASE_STR_LENGTH + SOME_STRING_LENGTH);
+
+  uint8_t* heap_ptr = (uint8_t*) malloc(SOME_STRING_LENGTH + 1);
+  printf("\tHeap-allocating test string... ");
+  if (nullptr != heap_ptr) {
+    printf("Pass.\n\tAdding it to the existing StringBuilder should increase the count by 1 and the length to %d... ", COMBINED_STR_LENGTH);
+    memcpy(heap_ptr, SOME_STRING_IN_FLASH, SOME_STRING_LENGTH);
+    *(heap_ptr + SOME_STRING_LENGTH) = 0;
+    dest.concatHandoff(heap_ptr, SOME_STRING_LENGTH);
+    if ((2 == dest.count()) & (COMBINED_STR_LENGTH == dest.length())) {
+      printf("Pass. Full memory cost is %d bytes.\n", dest.memoryCost(true));
+      printf("\tCollapsing the SringBuilder should result in a heap free without crashing... ");
+      dest.string();
+      if ((1 == dest.count()) & (COMBINED_STR_LENGTH == dest.length())) {
+        printf("Pass.\n\tconcatHandoff(uint8_t*, int) passes.\n");
+        ret = 0;
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+    StringBuilder log;
+    log.concatf("\ndest: (%d bytes) (%u frags)\n", dest.length(), dest.count());
+    dest.printDebug(&log);
+    log.concat("\n");
+    printf("\n%s\n\n", (const char*) log.string());
+  }
+  return ret;
+}
+
+
+/*
 * The structure-preserving ownership transfer functions.
 */
 int test_stringbuilder_concat_handoff() {
   int ret = -1;
-  printf("Running concatHandoff(StringBuilder*) tests...\n");
+  printf("Testing concatHandoff(StringBuilder*)...\n");
   const uint32_t TEST_BUF_LEN = (20 + (randomUInt32() % 10));
   StringBuilder should_be_empty;
   StringBuilder should_have_things;
@@ -718,11 +802,27 @@ int test_stringbuilder_concat_handoff() {
 
 
 /*
+* printBuffer(StringBuilder*, uint8_t*, uint32_t, const char*)
+*/
+int test_stringbuilder_print_buffer() {
+  int ret = 0;
+  printf("Testing printBuffer(StringBuilder*, uint8_t*, uint32_t, const char*)...\n");
+  StringBuilder log;
+  uint8_t buf[83];
+  random_fill(buf, sizeof(buf));
+  StringBuilder::printBuffer(&log, nullptr, 0, "\t");
+  StringBuilder::printBuffer(&log, buf, sizeof(buf), "\t");
+  printf("%s\n", (const char*) log.string());
+  return ret;
+}
+
+
+/*
 * The structure-preserving ownership transfer functions.
 */
 int test_stringbuilder_concat_handoff_limit() {
   int ret = -1;
-  printf("Running concatHandoffLimit(StringBuilder*, unsigned int) tests...\n");
+  printf("Testing concatHandoffLimit(StringBuilder*, unsigned int)...\n");
   const uint32_t TEST_BUF_LEN = (30 + (randomUInt32() % 10));
   const uint32_t LIMIT_LEN    = (5 + (randomUInt32() % 5));
   StringBuilder src;
@@ -799,6 +899,7 @@ int test_stringbuilder_concat_handoff_limit() {
 }
 
 
+
 /*
 * StringBuilder is a big API. It's easy to make mistakes or under-estimate
 *   memory impact.
@@ -848,6 +949,7 @@ int test_misuse_cases() {
 }
 
 
+
 void print_types_stringbuilder() {
   printf("\tStringBuilder         %u\t%u\n", sizeof(StringBuilder), alignof(StringBuilder));
   printf("\tStrLL                 %u\t%u\n", sizeof(StrLL), alignof(StrLL));
@@ -865,34 +967,43 @@ int stringbuilder_main() {
     if (0 == test_strcasestr()) {
       if (0 == test_stringbuilder_byteat()) {
         if (0 == test_StringBuilder()) {
-          if (0 == test_stringbuilder_concat_handoff()) {
-            if (0 == test_stringbuilder_concat_handoff_limit()) {
-              if (0 == test_stringbuilder_chunk()) {
-                if (0 == test_stringbuilder_implode()) {
-                  if (0 == test_stringbuilder_replace()) {
-                    if (0 == test_stringbuilder_isempty()) {
-                      if (0 == test_StringBuilderCull()) {
-                        if (0 == test_misuse_cases()) {
-                          printf("**********************************\n");
-                          printf("*  StringBuilder tests all pass  *\n");
-                          printf("**********************************\n");
-                          ret = 0;
+          if (0 == test_stringbuilder_concat_handoff_raw()) {
+            if (0 == test_stringbuilder_case_shifter()) {
+              if (0 == test_stringbuilder_print_buffer()) {
+                if (0 == test_stringbuilder_concat_handoff()) {
+                  if (0 == test_stringbuilder_concat_handoff_limit()) {
+                    if (0 == test_stringbuilder_chunk()) {
+                      if (0 == test_stringbuilder_implode()) {
+                        if (0 == test_stringbuilder_replace()) {
+                          if (0 == test_stringbuilder_isempty()) {
+                            if (0 == test_StringBuilderCull()) {
+                              if (0 == test_misuse_cases()) {
+                                printf("**********************************\n");
+                                printf("*  StringBuilder tests all pass  *\n");
+                                printf("**********************************\n");
+                                ret = 0;
+                              }
+                              else printTestFailure(MODULE_NAME, "Hardening against mis-use");
+                            }
+                            else printTestFailure(MODULE_NAME, "cull(int, int)");
+                          }
+                          else printTestFailure(MODULE_NAME, "isEmpty");
                         }
-                        else printTestFailure(MODULE_NAME, "Hardening against mis-use");
+                        else printTestFailure(MODULE_NAME, "Replace");
                       }
-                      else printTestFailure(MODULE_NAME, "cull(int, int)");
+                      else printTestFailure(MODULE_NAME, "Implode");
                     }
-                    else printTestFailure(MODULE_NAME, "isEmpty");
+                    else printTestFailure(MODULE_NAME, "Tokenizer");
                   }
-                  else printTestFailure(MODULE_NAME, "Replace");
+                  else printTestFailure(MODULE_NAME, "concatHandoffLimit(StringBuilder*, unsigned int)");
                 }
-                else printTestFailure(MODULE_NAME, "Implode");
+                else printTestFailure(MODULE_NAME, "concatHandoff(StringBuilder*)");
               }
-              else printTestFailure(MODULE_NAME, "Tokenizer");
+              else printTestFailure(MODULE_NAME, "printBuffer(StringBuilder*, uint8_t*, uint32_t, const char*)");
             }
-            else printTestFailure(MODULE_NAME, "concatHandoffLimit(StringBuilder*, unsigned int)");
+            else printTestFailure(MODULE_NAME, "toUpper() / toLower()");
           }
-          else printTestFailure(MODULE_NAME, "concatHandoff(StringBuilder*)");
+          else printTestFailure(MODULE_NAME, "concatHandoff(uint8_t*, int)");
         }
         else printTestFailure(MODULE_NAME, "General");
       }

@@ -179,6 +179,7 @@ void printTypeSizes() {
   printf("\tGPSWrapper               %u\t%u\n", sizeof(GPSWrapper),       alignof(GPSWrapper));
   printf("\tIdentity                 %u\t%u\n", sizeof(Identity),         alignof(Identity));
   printf("\tIdentityUUID             %u\t%u\n", sizeof(IdentityUUID),     alignof(IdentityUUID));
+  print_types_async_sequencer();
   print_types_stringbuilder();
   print_types_ringbuffer();
   print_types_buffer_accepter();
