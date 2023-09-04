@@ -959,6 +959,7 @@ void print_types_stringbuilder() {
 /*******************************************************************************
 * The main function.
 *******************************************************************************/
+
 int stringbuilder_main() {
   int ret = 1;   // Failure is the default result.
   const char* const MODULE_NAME = "StringBuilder";

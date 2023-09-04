@@ -59,7 +59,8 @@ int32_t StringBuilderSink::bufferAvailable() {
 
 int8_t BufferAccepterFork::pushBuffer(StringBuilder* buf) {
   int8_t ret = -1;
-  const int32_t BYTES_TO_TAKE = strict_min(bufferAvailable(), buf->length());
+  const int32_t BYTES_OFFERED = buf->length();
+  const int32_t BYTES_TO_TAKE = strict_min(bufferAvailable(), BYTES_OFFERED);
   if (0 < BYTES_TO_TAKE) {
     int left_took  = BYTES_TO_TAKE;
     int right_took = BYTES_TO_TAKE;
@@ -81,7 +82,7 @@ int8_t BufferAccepterFork::pushBuffer(StringBuilder* buf) {
     }
     const int TOTAL_TAKEN = strict_min(left_took, right_took);
     buf->cull(TOTAL_TAKEN);
-    ret = (BYTES_TO_TAKE == TOTAL_TAKEN) ? 1 : 0;
+    ret = (BYTES_OFFERED == TOTAL_TAKEN) ? 1 : 0;
   }
   return ret;
 }
