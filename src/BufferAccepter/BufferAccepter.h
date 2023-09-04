@@ -80,23 +80,27 @@ class StringBuilderSink : public StringBuilder, public BufferAccepter {
 /* A class to fork a string in a safe way. */
 class BufferAccepterFork : public BufferAccepter {
   public:
-    BufferAccepterFork(BufferAccepter* lh, BufferAccepter* rh) : _left_hand(lh), _right_hand(rh) {};
-    BufferAccepterFork(BufferAccepter* lh) : BufferAccepterFork(lh, nullptr) {};
-    BufferAccepterFork() : BufferAccepterFork(nullptr, nullptr) {};
+    BufferAccepterFork(BufferAccepter* lh = nullptr, BufferAccepter* rh = nullptr) :
+      _left_hand(lh), _right_hand(rh),
+      _left_drift(0), _right_drift(0) {};
     ~BufferAccepterFork() {};
 
     /* Implementation of BufferAccepter. */
-    int8_t  pushBuffer(StringBuilder* buf);
+    int8_t  pushBuffer(StringBuilder*);
     int32_t bufferAvailable();
 
     inline BufferAccepter* leftHand() {          return _left_hand;   };
     inline BufferAccepter* rightHand() {         return _right_hand;  };
-    inline void leftHand(BufferAccepter* x) {    _left_hand = x;      };
-    inline void rightHand(BufferAccepter* x) {   _right_hand = x;     };
+    inline void leftHand(BufferAccepter* x) {    _left_hand  = x;  _left_drift  = 0;   };
+    inline void rightHand(BufferAccepter* x) {   _right_hand = x;  _right_drift = 0;   };
 
   private:
     BufferAccepter* _left_hand;
     BufferAccepter* _right_hand;
+    int32_t _left_drift;
+    int32_t _right_drift;
+
+    //int8_t _push_to_hand(BufferAccepter*, StringBuilder*);
 };
 
 // TODO: Write proper CoDec transform objects: CBOR, Delta97, Base64.

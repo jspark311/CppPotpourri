@@ -49,7 +49,7 @@ int ba_sb_sink_test() {
   printf("\tGenerating test string... ");
   generate_random_text_buffer(&offering, TEST_BUF_LEN);
   StringBuilder check_string(offering.string(), offering.length());
-  printf("Done (%d bytes):\n\t%s\n", TEST_BUF_LEN, (char*) check_string.string());
+  printf("Done (%d bytes):  %s\n", TEST_BUF_LEN, (char*) check_string.string());
 
   printf("\tbufferAvailable() returns the size of CAPTURE_MAX_LEN (%d)... ", CAPTURE_MAX_LEN);
   if (CAPTURE_MAX_LEN == sb_sink.bufferAvailable()) {
@@ -83,7 +83,7 @@ int ba_sb_sink_test() {
                       if (1 == sb_sink.pushBuffer(&offering)) {
                         printf("Pass.\n\tbufferAvailable() returns 0... ");
                         if ((0 == sb_sink.bufferAvailable()) & (CAPTURE_MAX_LEN == sb_sink.length())) {
-                          printf("Pass.\n\tStringBuilderSink passes tests.");
+                          printf("Pass.\n\tStringBuilderSink passes tests.\n");
                           ret = 0;
                         }
                       }
@@ -121,16 +121,16 @@ int ba_fork_single_test(bool is_right) {
   StringBuilder offering;
   generate_random_text_buffer(&offering, TEST_BUF_LEN);
   StringBuilder check_string(offering.string(), offering.length());
-  printf("Done (%d bytes),\n", TEST_BUF_LEN);
+  printf("Done (%d bytes).\n", TEST_BUF_LEN);
   BufferAccepterFork ba_fork;
   StringBuilderSink sb_sink(SINK_LIMIT);
   if (is_right) {
-    printf("\tAssigned sb_sink to right-hand of fork... ");
+    printf("\tAssigned sb_sink to right-hand of fork...\n");
     ba_fork.leftHand(nullptr);
     ba_fork.rightHand(&sb_sink);
   }
   else {
-    printf("\tAssigned sb_sink to left-hand of fork... ");
+    printf("\tAssigned sb_sink to left-hand of fork...\n");
     ba_fork.leftHand(&sb_sink);
     ba_fork.rightHand(nullptr);
   }
@@ -150,8 +150,8 @@ int ba_fork_single_test(bool is_right) {
             printf("Pass.\n\tPushing the second buffer had the predicted results (%d bytes available)... ", LENGTH_CHECK_2);
             const int LENGTH_FREE_IN_SINK = ba_fork.bufferAvailable();
             if (offering.isEmpty(true) && (LENGTH_CHECK_2 == LENGTH_FREE_IN_SINK)) {
-              printf("Pass.\n\tOver-capacity pushBuffer() returns 0... ");
-              const int OVERSTUFF_LENGTH = (LENGTH_FREE_IN_SINK + TEST_BUF_LEN);
+              const int OVERSTUFF_LENGTH = (LENGTH_FREE_IN_SINK + (4 + (randomUInt32() % 11)));
+              printf("Pass.\n\tPushing a buffer of length %d into obj that only has %d free returns 0... ", OVERSTUFF_LENGTH, LENGTH_FREE_IN_SINK);
               generate_random_text_buffer(&offering, OVERSTUFF_LENGTH);
               if (0 == ba_fork.pushBuffer(&offering)) {
                 const int LENGTH_CHECK_3 = (OVERSTUFF_LENGTH - LENGTH_FREE_IN_SINK);
@@ -224,31 +224,110 @@ int ba_fork_test() {
     ret = ba_fork_single_test(true);
   }
 
-  /* Both hands. */
+  /* Both hands, with isometric sinks. */
   if (0 == ret) {
-    //printf("Running BufferAccepterFork tests involving both hands...\n");
-    //const uint32_t TEST_BUF_LEN    = (171 + (randomUInt32() % 15));
-    //const uint32_t LIMIT_LEFT      = TEST_BUF_LEN;
-    //const uint32_t LIMIT_RIGHT     = TEST_BUF_LEN;
-    //StringBuilderSink sink_left(LIMIT_LEFT);
-    //StringBuilderSink sink_right(LIMIT_RIGHT);
-    //StringBuilder offering;
-    //generate_random_text_buffer(&offering, TEST_BUF_LEN);
+    ret = -1;
+    printf("Running BufferAccepterFork isometric sink tests...\n");
+    const uint32_t TEST_BUF_LEN    = (171 + (randomUInt32() % 15));
+    const uint32_t LIMIT_LEFT      = TEST_BUF_LEN;
+    const uint32_t LIMIT_RIGHT     = TEST_BUF_LEN;
+    StringBuilderSink sink_left(LIMIT_LEFT);
+    StringBuilderSink sink_right(LIMIT_RIGHT);
+    BufferAccepterFork ba_fork(&sink_left, &sink_right);
+    printf("\tGenerating test string... ");
+    StringBuilder offering;
+    generate_random_text_buffer(&offering, TEST_BUF_LEN);
+    printf("Done (%d bytes),\n", TEST_BUF_LEN);
 
-    //ba_fork.leftHand(&sink_left);
-    //ba_fork.rightHand(&sink_right);
+    printf("\tA fork with both efferants returns the minimum bufferAvailable() between them... left: ");
+    const uint32_t PRELOAD_LEN_L = (3 + (randomUInt32() % 43));
+    const uint32_t PRELOAD_LEN_R = (PRELOAD_LEN_L + (randomUInt32() % 10));
+    const int      LEN_CHECK_L_0 = (TEST_BUF_LEN - PRELOAD_LEN_L);
+    const int      LEN_CHECK_R_0 = (TEST_BUF_LEN - PRELOAD_LEN_R);
+    StringBuilder garbage_prefill;
+    generate_random_text_buffer(&garbage_prefill, PRELOAD_LEN_L);
+    sink_left.concatHandoff(&garbage_prefill);
+    if (LEN_CHECK_L_0 == ba_fork.bufferAvailable()) {
+      printf("Pass, right: ");
+      generate_random_text_buffer(&garbage_prefill, PRELOAD_LEN_R);
+      sink_right.concatHandoff(&garbage_prefill);
+      const int LEN_CHECK_FORK_0 = ba_fork.bufferAvailable();
+      if (LEN_CHECK_R_0 == LEN_CHECK_FORK_0) {
+        printf("Pass.\n\tPusing a full-length buffer will result in a partial claim... ");
+        if (0 == ba_fork.pushBuffer(&offering)) {
+          printf("Pass.\n\tA fork with both efferants will take as much as the most-laden half will allow... ");
+          StringBuilderSink* least_laden = (PRELOAD_LEN_L > PRELOAD_LEN_R) ? &sink_right : &sink_left;
+          StringBuilderSink* most_laden  = (PRELOAD_LEN_L > PRELOAD_LEN_R) ? &sink_left : &sink_right;
+          const int  LENGTH_CHECKSUM_0 = (sink_left.bufferAvailable() + sink_right.bufferAvailable());
+          const bool ONE_SINK_FILLED   = ((0 == sink_left.bufferAvailable()) | (0 == sink_right.bufferAvailable()));
+          if (ONE_SINK_FILLED & (0 == ba_fork.bufferAvailable())) {
+            printf("Pass.\n\tThe correct amount of unclaimed bytes were left in the source... ");
+            const int  LENGTH_LEFT_IN_SRC_0 = offering.length();
+            if (LENGTH_LEFT_IN_SRC_0 == strict_max(PRELOAD_LEN_R, PRELOAD_LEN_L)) {
+              printf("Pass.\n\tThe least-laden half of the fork will still have buffer available... ");
+              if (0 < least_laden->bufferAvailable()) {
+                const int AVAILABLE_IN_LEAST_LADEN = strict_abs_delta(PRELOAD_LEN_L, PRELOAD_LEN_R);
+                printf("Pass.\n\tThat amount will be the difference in initial lading (%d)... ", AVAILABLE_IN_LEAST_LADEN);
+                if (AVAILABLE_IN_LEAST_LADEN == least_laden->bufferAvailable()) {
+                  printf("Pass.\n\tAdditional calls to pushBuffer() result in rejection... ");
+                  if (-1 == ba_fork.pushBuffer(&offering)) {
+                    printf("Pass.\n\tClearing the filled sink allows another partial claim... ");
+                    most_laden->clear();
+                    if (0 == ba_fork.pushBuffer(&offering)) {
+                      printf("Pass.\n\tThat partial claim filled the previously-unfilled half of the fork... ");
+                      if (0 == least_laden->bufferAvailable()) {
+                        printf("Pass.\n\tAdditional calls to pushBuffer() result in rejection... ");
+                        if (-1 == ba_fork.pushBuffer(&offering)) {
+                          printf("Pass.\n\tClearing the sinks causes bufferAvailable() to once again return (%d)... ", TEST_BUF_LEN);
+                          sink_left.clear();
+                          sink_right.clear();
+                          if (TEST_BUF_LEN == ba_fork.bufferAvailable()) {
+                            printf("Pass.\n\tPushing a full-length buffer results in a full claim... ");
+                            offering.clear();
+                            generate_random_text_buffer(&offering, TEST_BUF_LEN);
+                            StringBuilder check_string(offering.string(), offering.length());
+                            if (1 == ba_fork.pushBuffer(&offering)) {
+                              printf("Pass.\n\tBoth halves of the fork are the same (correct) length... ");
+                              if ((TEST_BUF_LEN == sink_left.length()) & (TEST_BUF_LEN == sink_right.length())) {
+                                printf("Pass.\n\tBoth halves of the fork have different copies of the content... ");
+                                char* str_ptr_l = (char*) sink_left.string();
+                                char* str_ptr_r = (char*) sink_right.string();
+                                if ((str_ptr_l != str_ptr_r) & (nullptr != str_ptr_l) & (nullptr != str_ptr_r)) {
+                                  printf("Pass.\n\tLeft sink matches... ");
+                                  if (1 == sink_left.cmpBinString(check_string.string(), check_string.length())) {
+                                    printf("Pass.\n\tRight sink matches... ");
+                                    if (1 == sink_right.cmpBinString(check_string.string(), check_string.length())) {
+                                      printf("Pass.\n\tBufferAccepterFork passes all isometric sink tests.\n");
+                                      ret = 0;
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
 
-    //if (0 != ret) {
-    //  printf(" Fail.\n");
-    //  StringBuilder log;
-    //  log.concatf("\nRemaining offering contents: (%u bytes)\n", offering.length());
-    //  offering.printDebug(&log);
-    //  log.concatf("\nRemaining sink_left contents: (%u bytes)\n", sink_left.length());
-    //  sink_left.printDebug(&log);
-    //  log.concatf("\nRemaining sink_right contents: (%u bytes)\n", sink_right.length());
-    //  sink_right.printDebug(&log);
-    //  printf("\n%s\n", (const char*) log.string());
-    //}
+    if (0 != ret) {
+     printf(" Fail.\n");
+     StringBuilder log;
+     log.concatf("\nRemaining offering contents: (%u bytes)\n", offering.length());
+     offering.printDebug(&log);
+     log.concatf("\nRemaining sink_left contents: (%u bytes)\n", sink_left.length());
+     sink_left.printDebug(&log);
+     log.concatf("\nRemaining sink_right contents: (%u bytes)\n", sink_right.length());
+     sink_right.printDebug(&log);
+     printf("\n%s\n", (const char*) log.string());
+    }
   }
   return ret;
 }
@@ -319,7 +398,7 @@ int ba_harness_sink_expectation_tests() {
                 reset_worked &= (0 == ba_test_sink.expectationsMet());
                 reset_worked &= (0 == ba_test_sink.expectationsViolated());
                 if (reset_worked) {
-                  printf("Pass.\n\tBufAcceptTestSink passes its expectation tests.\n\n");
+                  printf("Pass.\n\tBufAcceptTestSink passes its expectation tests.\n");
                   ret = 0;
                 }
               }
@@ -412,7 +491,7 @@ int ba_harness_sink_trivial_tests() {
                           reset_worked &= (0 == ba_test_sink.expectationsMet());
                           reset_worked &= (0 == ba_test_sink.expectationsViolated());
                           if (reset_worked) {
-                            printf("Pass.\n\tBufAcceptTestSink passes its trivial tests.\n\n");
+                            printf("Pass.\n\tBufAcceptTestSink passes its trivial tests.\n");
                             ret = 0;
                           }
                         }

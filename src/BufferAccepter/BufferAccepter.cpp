@@ -62,26 +62,27 @@ int8_t BufferAccepterFork::pushBuffer(StringBuilder* buf) {
   const int32_t BYTES_OFFERED = buf->length();
   const int32_t BYTES_TO_TAKE = strict_min(bufferAvailable(), BYTES_OFFERED);
   if (0 < BYTES_TO_TAKE) {
-    int left_took  = BYTES_TO_TAKE;
-    int right_took = BYTES_TO_TAKE;
-    // We could be risky at this point, so we do a pedantic deep-copy.
-    StringBuilder deep_copy_0(buf->string(), BYTES_TO_TAKE);
-    if (_left_hand) {
-      _left_hand->pushBuffer(&deep_copy_0);
-      left_took  = (BYTES_TO_TAKE - deep_copy_0.length());
+    // We could be risky at this point, but we do a pedantic deep-copy instead.
+    // Note the drift distance for each side of the fork.
+    const int32_t LEFT_OFFER_LEN  = (BYTES_TO_TAKE - _left_drift);
+    const int32_t RIGHT_OFFER_LEN = (BYTES_TO_TAKE - _right_drift);
+    int left_range_covered  = BYTES_TO_TAKE;
+    int right_range_covered = BYTES_TO_TAKE;
+    if ((nullptr != _left_hand) & (LEFT_OFFER_LEN > 0)) {
+      StringBuilder deep_copy(buf->string() + _left_drift, LEFT_OFFER_LEN);
+      _left_hand->pushBuffer(&deep_copy);
+      left_range_covered -= deep_copy.length();
     }
-    if (_right_hand) {
-      if (deep_copy_0.length() < BYTES_TO_TAKE) {
-        if (0 < left_took) {
-          deep_copy_0.clear();
-          deep_copy_0.concat(buf->string(), BYTES_TO_TAKE);
-        }
-      }
-      _right_hand->pushBuffer(&deep_copy_0);
-      right_took = (BYTES_TO_TAKE - deep_copy_0.length());
+    if ((nullptr != _right_hand) & (RIGHT_OFFER_LEN > 0)) {
+      StringBuilder deep_copy(buf->string() + _right_drift, RIGHT_OFFER_LEN);
+      _right_hand->pushBuffer(&deep_copy);
+      right_range_covered -= deep_copy.length();
     }
-    const int TOTAL_TAKEN = strict_min(left_took, right_took);
+    const int TOTAL_TAKEN = strict_min(left_range_covered, right_range_covered);
     buf->cull(TOTAL_TAKEN);
+    _left_drift  = (TOTAL_TAKEN - left_range_covered);
+    _right_drift = (TOTAL_TAKEN - right_range_covered);
+
     ret = (BYTES_OFFERED == TOTAL_TAKEN) ? 1 : 0;
   }
   return ret;
@@ -112,3 +113,7 @@ int32_t BufferAccepterFork::bufferAvailable() {
   }
   return ret;
 }
+
+
+//int8_t BufferAccepterFork::_push_to_hand(BufferAccepter* hand, StringBuilder* buf) {
+//}
