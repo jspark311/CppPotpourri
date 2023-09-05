@@ -113,7 +113,3 @@ int32_t BufferAccepterFork::bufferAvailable() {
   }
   return ret;
 }
-
-
-//int8_t BufferAccepterFork::_push_to_hand(BufferAccepter* hand, StringBuilder* buf) {
-//}

@@ -51,6 +51,7 @@ SOURCES_CPP += ../../src/Quaternion.cpp
 SOURCES_CPP += ../../src/Storage.cpp
 SOURCES_CPP += ../../src/AbstractPlatform.cpp
 SOURCES_CPP += ../../src/BufferAccepter/*.cpp
+SOURCES_CPP += ../../src/BufferAccepter/Base64/*.cpp
 SOURCES_CPP += ../../src/BufferAccepter/LineCoDec/*.cpp
 SOURCES_CPP += ../../src/BufferAccepter/TestFixtures/*.cpp
 SOURCES_CPP += ../../src/Image/*.cpp

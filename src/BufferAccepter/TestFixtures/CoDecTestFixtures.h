@@ -32,9 +32,9 @@ Test fixtures for CoDecs. Only programs concerned with unit testing need to
 * Class to analyze BufferAccepter intake behaviors.
 * This should be connected to the input side of a BufferAccepter under-test.
 */
-class BufAcceptTestSource : public BufferAccepter {
+class BufAcceptTestSource : public BufferCoDec {
   public:
-    BufAcceptTestSource() {};
+    BufAcceptTestSource(BufferAccepter* eff = nullptr) : BufferCoDec(eff) {};
     ~BufAcceptTestSource() {};
 
     /* Implementation of BufferAccepter. This is how we accept input. */
@@ -42,7 +42,6 @@ class BufAcceptTestSource : public BufferAccepter {
     int32_t bufferAvailable();
 
     /* Implementation of test harness. */
-    inline void setEfferant(BufferAccepter* x) {     _efferant = x;  };
     inline void setProfiler(StopWatch* x) {          _profiler = x;  };
 
     void printDebug(StringBuilder*);
@@ -67,7 +66,6 @@ class BufAcceptTestSource : public BufferAccepter {
 
   private:
     StringBuilder   _backlog;  // Data is only sent via this object, in metered bursts.
-    BufferAccepter* _efferant = nullptr;
     StopWatch*      _profiler = nullptr;
     int32_t  _fake_buffer_limit     = 0;   // Implies reject all offered buffers.
     uint32_t _pb_call_count_rej     = 0;   // Count of times pushBuffer() returned -1.

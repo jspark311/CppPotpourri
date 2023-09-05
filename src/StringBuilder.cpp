@@ -1005,7 +1005,6 @@ int StringBuilder::replace(const char* needle, const char* replace) {
   const int NEEDLE_LEN   = strlen(needle);
   const int REPLACE_LEN  = ((nullptr == replace) ? 0 : strlen(replace));
   const int HAYSTACK_LEN = length();
-  const int LENGTH_DIFFERENTIAL = (REPLACE_LEN - NEEDLE_LEN);
 
   if ((0 < HAYSTACK_LEN) && (HAYSTACK_LEN >= NEEDLE_LEN) && (0 < NEEDLE_LEN)) {
     #if defined(__BUILD_HAS_CONCURRENT_STRINGBUILDER)
@@ -1022,7 +1021,6 @@ int StringBuilder::replace(const char* needle, const char* replace) {
     int search_hit_idx    = 0;      // Offset within the search string that match is comparing.
     int intra_frag_idx    = 0;      // Offset within the current source fragment.
     StrLL* src_cpy_ll     = src_ll; // If the source needs to be copied for mutation, start here.
-    int src_cpy_idx       = 0;      // If the source needs to be copied for mutation, start here.
     int src_cpy_ll_idx    = 0;      // If the source needs to be copied for mutation, start here within the LL.
     int src_cpy_total_idx = 0;      // If the source needs to be copied for mutation, start here within the full length.
     bool allocation_failure = false;
@@ -1031,13 +1029,12 @@ int StringBuilder::replace(const char* needle, const char* replace) {
     // But since we don't want to spike the heap or mutate the source mem
     //   needlessly, roll through its fragment list and compare as we go.
     // One byte per-loop is compared against the delimiter.
-    while (!allocation_failure & (remaining_search_len-- > 0) & (nullptr != src_ll)) {
+    while ((!allocation_failure) & (remaining_search_len-- > 0) & (nullptr != src_ll)) {
       if (*(src_ll->str + intra_frag_idx++) == *(needle + search_hit_idx++)) {
         // Bytes match.
         if (NEEDLE_LEN == search_hit_idx) {  // If it is the conclusion of a match...
           // Create a copy of the string up-to the first byte of the needle...
           const int NEXT_BYTE_OFFSET  = (HAYSTACK_LEN - remaining_search_len);
-          const int THIS_BYTE_OFFSET  = (NEXT_BYTE_OFFSET - 1);
           const int NEW_FRAG_LENGTH   = ((NEXT_BYTE_OFFSET - src_cpy_total_idx) - NEEDLE_LEN);
           // There might not be anything to copy, in the case of multiple
           //   replacements with no intervening bytes.
@@ -1210,7 +1207,7 @@ int StringBuilder::chunk(const int CSIZE) {
         //   memcpy(chunk_ll->str, _root->str, CSIZE);
         // But since we don't want to spike the heap or mutate the source mem
         //   needlessly, roll through its fragment list and copy as we go.
-        while (!allocation_failure & (remaining_len > 0)) {
+        while ((!allocation_failure) & (remaining_len > 0)) {
           while ((intra_chunk_idx < current_chunk_len) & (nullptr != src_ll)) {
             // This is the chunk copy loop. One byte per-loop is written to the
             //   new chunk, Copy the byte we are primed for...

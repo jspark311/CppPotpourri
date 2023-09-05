@@ -146,10 +146,12 @@ void printTestFailure(const char* module, const char* test) {
 #include "SchedulerTests.cpp"
 #include "TestDataStructures.cpp"
 #include "BufferAccepterTests.cpp"
+#include "Base64CoDecTests.cpp"
 #include "SensorFilterTests.cpp"
 #include "ParsingConsoleTest.cpp"
 #include "IdentityTest.cpp"
 #include "M2MLinkTests.cpp"
+
 
 
 /*******************************************************************************
@@ -183,6 +185,7 @@ void printTypeSizes() {
   print_types_stringbuilder();
   print_types_ringbuffer();
   print_types_buffer_accepter();
+  print_types_c3p_b64();
   print_types_parsing_console();
   print_types_scheduler();
   print_types_state_machine();
@@ -211,6 +214,7 @@ void printTypeSizes() {
 #define CHKLST_KEY_VALUE_PAIR_TESTS   0x00000800  // KeyValuePair
 #define CHKLST_PRIORITY_QUEUE_TESTS   0x00001000  // PriorityQueue
 #define CHKLST_VECTOR3_TESTS          0x00002000  // Vector3
+#define CHKLST_CODEC_B64_TESTS        0x00004000  // Base64Encoder, Base64Decoder
 #define CHKLST_ASYNC_SEQUENCER_TESTS  0x80000000  // Everything depends on this.
 
 
@@ -219,7 +223,7 @@ void printTypeSizes() {
   CHKLST_DATA_STRUCT_TESTS | CHKLST_SENSORFILTER_TESTS | CHKLST_RINGBUFFER_TESTS | \
   CHKLST_IDENTITY_TESTS | CHKLST_M2MLINK_TESTS | CHKLST_PARSINGCONSOLE_TESTS | \
   CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_BUFFER_ACCEPTER_TESTS | \
-  CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS | \
+  CHKLST_CODEC_B64_TESTS | CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS | \
   CHKLST_KEY_VALUE_PAIR_TESTS | CHKLST_LINKED_LIST_TESTS)
 
 
@@ -313,6 +317,12 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .DEP_MASK     = (0),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == vector3_test_main()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_CODEC_B64_TESTS,
+    .LABEL        = "CODEC_B64_TESTS",
+    .DEP_MASK     = (CHKLST_BUFFER_ACCEPTER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_b64_test_main()) ? 1:-1);  }
   },
 };
 

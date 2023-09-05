@@ -30,17 +30,23 @@ An abstract interface for buffers.
 
 
 /*******************************************************************************
-* Interface for moving buffers in a predictable fashion. Also, some optional
+* Interfaces for moving buffers in a predictable fashion. Also, some optional
 *   helper classes built on that capability.
+*
+* NOTE: This idea was the fundamental idea behind Manuvr's BufferPipe class,
+*   which was not pure virtual, carried far more implementation burden, and led
+*   to all manner of inheritance-fueled maintenance nightmares. Please carefully
+*   consider the contracts in the README.md file before extending (or
+*   espescially changing) these interfaces. Many things depend on the contract.
+*******************************************************************************/
+
+/*
+* An interface class for accepting a buffer.
 *
 * A class would implement BufferAccepter to expose a means of accepting a
 *   formless buffer from a source that doesn't need to know the specifics of
 *   what is to be done with the buffer, nor how.
-* NOTE: This idea was the fundamental idea behind Manuvr's BufferPipe class,
-*   which was not pure virtual, and carried far more implementation burden.
-*******************************************************************************/
-
-/* An interface class for accepting a buffer. */
+*/
 class BufferAccepter {
   public:
     /**
@@ -56,6 +62,71 @@ class BufferAccepter {
     */
     virtual int32_t bufferAvailable() =0;
 };
+
+
+/*
+* A half-duplex interface built on BufferAccepter.
+*
+* TODO: The might be bikeshedding, but having the extra member in a controled
+*   namespace might be useful. We'll see... Expect flux.
+*   If this idea is retained, it should received a formalized contract and full
+*   unit-testing thereof, as BufferAccepter has.
+*
+* The basic intent is, we need a generallized class that is not only itself a
+*   BufferAccepter, but is also expected to produce buffers as a result of
+*   afferant pushes. That is, it is neither a sink, nor a source.
+*   Or it is both. But not only one or the other.
+*
+* TODO: Well.... Is it neither or both? It's shaping up to be both, as long as
+*   it is degrading types down to BufferAccepter... But we haven't a need of
+*   defining the shape of a source, explicitly.
+*
+* NOTE: This class degrades types of potentially other CoDocs. That is, it only
+*   deals with contracts on BufferAccepter's terms. Not its own, or those of its
+*   children.
+*
+* TODO: Should bufferAvailable() make an attempt to do its own scaling to report
+*   to callers? IE, if a CoDec knows that it will change the size of a buffer,
+*   should it report the honest value from downstream, or scale it for its own
+*   reply? The BufferAccepter contract says that either are acceptable here.
+* An argument for "always honest" would be that some CoDecs (compression) will
+*   have absolutely no idea what their scaler would be until they are given
+*   specific data (which they can't be). Maybe report honest in such cases?
+* The argument for "always scaled" is that upstream callers will be unable to
+*   make reliable choices in their length-dependent behaviors without having
+*   unobtainable knowledge about their downstream ratios.
+* Make a seperate call-chain for this? Can't do it with type degredataion.
+* Make a parameter to bufferAvailable()? That could work, but might be ugly.
+*/
+class BufferCoDec : public BufferAccepter {
+  public:
+    /* Extention carries no implementation of BufferAccepter. */
+    //virtual int8_t  pushBuffer(StringBuilder*) =0;
+    //virtual int32_t bufferAvailable() =0;
+
+    inline void setEfferant(BufferAccepter* x) {   _efferant = x;  };
+    // TODO: Might be better to do this, so a chance can be made to accept or reject
+    //   potential efferants based on class criteria. Or reset child-scoped variables
+    //   when the efferant changes. Keeping it simple for now...
+    //virtual int8_   setEfferant(BufferAccepter* x) =0;
+
+
+  protected:
+    BufferCoDec(BufferAccepter* target = nullptr) : _efferant(target) {};
+    ~BufferCoDec() {};
+
+    BufferAccepter* _efferant;
+};
+
+
+/*
+* A full-duplex interface built on BufferAccepter.
+*
+* TODO: It would be nice to have this eventually. But doing it in a way that is
+*   composable (and safe (and not confusing (and not a nightmare to maintain)))
+*   is a real challenge. Might be best to make it parallel to (and not depend
+*   upon) BufferAccepter.
+*/
 
 
 /*******************************************************************************
@@ -99,33 +170,8 @@ class BufferAccepterFork : public BufferAccepter {
     BufferAccepter* _right_hand;
     int32_t _left_drift;
     int32_t _right_drift;
-
-    //int8_t _push_to_hand(BufferAccepter*, StringBuilder*);
 };
 
-// TODO: Write proper CoDec transform objects: CBOR, Delta97, Base64.
-
-
-
-/*
-* A half-duplex interface built on BufferAccepter.
-*/
-class C3PCoDec : public BufferAccepter {
-  public:
-    /* Implementation of BufferAccepter. This is how we accept input. */
-    int8_t  pushBuffer(StringBuilder*);
-    int32_t bufferAvailable();
-
-    inline void setEfferant(BufferAccepter* x) {   _efferant = x;  };
-
-
-  protected:
-    C3PCoDec(BufferAccepter* target) : _efferant(target) {};
-    C3PCoDec() : C3PCoDec(nullptr) {};
-    ~C3PCoDec() {};
-
-    BufferAccepter* _efferant;
-};
-
+// TODO: Write proper CoDec transform objects: CBOR, Delta97.
 
 #endif  // __C3P_BUFFERACCEPTER_H__

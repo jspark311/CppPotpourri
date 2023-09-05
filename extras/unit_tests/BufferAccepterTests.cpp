@@ -681,35 +681,6 @@ int ba_harness_test() {
 }
 
 
-
-/*******************************************************************************
-* Test blocks for specific CoDecs not covered by their own tests elsewhere.
-*******************************************************************************/
-
-int codec_line_terminator_tests() {
-  int ret = -1;
-  return ret;
-}
-
-
-int codec_base64_tests() {
-  int ret = -1;
-  return ret;
-}
-
-
-int codec_soft_tabulator_tests() {
-  int ret = -1;
-  return ret;
-}
-
-
-int codec_sequence_scanner_tests() {
-  int ret = -1;
-  return ret;
-}
-
-
 void print_types_buffer_accepter() {
   printf("\tStringBuilderSink     %u\t%u\n", sizeof(StringBuilderSink),   alignof(StringBuilderSink));
   printf("\tBufferAccepterFork    %u\t%u\n", sizeof(BufferAccepterFork),  alignof(BufferAccepterFork));
@@ -727,9 +698,7 @@ int buffer_accepter_main() {
   printf("===< %s >=======================================\n", MODULE_NAME);
 
   if (0 == ba_harness_test()) {
-    //if (0 == codec_line_terminator_tests()) {
-      ret = 0;
-    //}
+    ret = 0;
   }
   else printTestFailure(MODULE_NAME, "BufferAccepter doesn't have a reliable test harness.");
 
