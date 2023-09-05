@@ -147,11 +147,12 @@ void printTestFailure(const char* module, const char* test) {
 #include "TestDataStructures.cpp"
 #include "BufferAccepterTests.cpp"
 #include "Base64CoDecTests.cpp"
+#include "LineTermCoDecTests.cpp"
+#include "ImageTests.cpp"
 #include "SensorFilterTests.cpp"
 #include "ParsingConsoleTest.cpp"
 #include "IdentityTest.cpp"
 #include "M2MLinkTests.cpp"
-
 
 
 /*******************************************************************************
@@ -186,6 +187,8 @@ void printTypeSizes() {
   print_types_ringbuffer();
   print_types_buffer_accepter();
   print_types_c3p_b64();
+  print_types_line_term_codec();
+  print_types_image();
   print_types_parsing_console();
   print_types_scheduler();
   print_types_state_machine();
@@ -215,6 +218,8 @@ void printTypeSizes() {
 #define CHKLST_PRIORITY_QUEUE_TESTS   0x00001000  // PriorityQueue
 #define CHKLST_VECTOR3_TESTS          0x00002000  // Vector3
 #define CHKLST_CODEC_B64_TESTS        0x00004000  // Base64Encoder, Base64Decoder
+#define CHKLST_CODEC_LINE_TERM_TESTS  0x00008000  // LineEndingCoDec
+#define CHKLST_IMAGE_TESTS            0x00010000  // Image
 #define CHKLST_ASYNC_SEQUENCER_TESTS  0x80000000  // Everything depends on this.
 
 
@@ -223,6 +228,7 @@ void printTypeSizes() {
   CHKLST_DATA_STRUCT_TESTS | CHKLST_SENSORFILTER_TESTS | CHKLST_RINGBUFFER_TESTS | \
   CHKLST_IDENTITY_TESTS | CHKLST_M2MLINK_TESTS | CHKLST_PARSINGCONSOLE_TESTS | \
   CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_BUFFER_ACCEPTER_TESTS | \
+  CHKLST_IMAGE_TESTS | CHKLST_CODEC_LINE_TERM_TESTS | \
   CHKLST_CODEC_B64_TESTS | CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS | \
   CHKLST_KEY_VALUE_PAIR_TESTS | CHKLST_LINKED_LIST_TESTS)
 
@@ -323,6 +329,18 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .DEP_MASK     = (CHKLST_BUFFER_ACCEPTER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == c3p_b64_test_main()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_CODEC_LINE_TERM_TESTS,
+    .LABEL        = "LINE_TERM_TESTS",
+    .DEP_MASK     = (CHKLST_BUFFER_ACCEPTER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_line_codec_test_main()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_IMAGE_TESTS,
+    .LABEL        = "IMAGE_TESTS",
+    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_image_test_main()) ? 1:-1);  }
   },
 };
 
