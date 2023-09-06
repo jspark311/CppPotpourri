@@ -20,6 +20,12 @@ limitations under the License.
 
 
 This program tests LineCoDec.
+
+Lingo used in this test file:
+"KAT":          "Known-answer test"
+"Call-break":   See BufferAccepter contract.
+"term-at-tail": The condtion where an input buffer ends with a sequences of
+                bytes that corresponds to a line ending.
 */
 
 #include "BufferAccepter/LineCoDec/LineCoDec.h"
@@ -202,7 +208,7 @@ int line_term_known_answer_tests() {
   bool test_failed  = false;
   while ((case_idx < CASE_COUNT) & !test_failed) {
     printf(
-      "\tBeginning case %d (%s), Conditions %d, break-mode %d, %sterm at tail).\n",
+      "\tBeginning case %d (%s, Conditions %d, break-mode %d, %sterm at tail)...\n",
       case_idx, lineterm_test_cases[case_idx].test_description, condition_idx, break_mode_idx, (has_term_at_end ? "" : "no ")
     );
     test_failed = true;
@@ -217,19 +223,26 @@ int line_term_known_answer_tests() {
     StringBuilder offering(lineterm_test_cases[case_idx].input);
     StringBuilder check_string((uint8_t*) lineterm_test_cases[case_idx].output, strlen(lineterm_test_cases[case_idx].output));
 
+    int expected_call_breaks = 0;
+    switch (break_mode_idx) {
+      case 0:  expected_call_breaks = lineterm_test_cases[case_idx].conditions[condition_idx].call_breaks_mode_0;  break;
+      case 1:  expected_call_breaks = lineterm_test_cases[case_idx].conditions[condition_idx].call_breaks_mode_1;  break;
+      case 2:  expected_call_breaks = lineterm_test_cases[case_idx].conditions[condition_idx].call_breaks_mode_2;  break;
+    }
+
     printf("\tPushing the buffer through the harness source indicates full claim... ");
     if (1 == test_source.pushBuffer(&offering)) {
       int polling_count = test_source.pollUntilStagnant();
       printf("Pass.\n\tTest harness moved at least one chunk... ");
       if (polling_count) {
-        //printf("Pass (ran %d times).\n\tSink received a result of the correct length (%d)... ", polling_count, check_string.length());
-        //if (test_sink.take_log.length() == check_string.length()) {
+        printf("Pass (ran %d times).\n\tSink received the expected number of call-breaks (%d)... ", polling_count, expected_call_breaks);
+        if (test_sink.take_log.length() == check_string.length()) {
           printf("Pass.\n\tThe sink received the correct content... ");
           if (1 == check_string.cmpBinString(test_sink.take_log.string(), test_sink.take_log.length())) {
             printf("Pass.\n\tTest case %d passes.\n", case_idx);
             test_failed = false;
           }
-        //}
+        }
       }
     }
 

@@ -241,7 +241,7 @@ int ba_fork_test() {
 
     printf("\tA fork with both efferants returns the minimum bufferAvailable() between them... left: ");
     const uint32_t PRELOAD_LEN_L = (3 + (randomUInt32() % 43));
-    const uint32_t PRELOAD_LEN_R = (PRELOAD_LEN_L + (randomUInt32() % 10));
+    const uint32_t PRELOAD_LEN_R = (PRELOAD_LEN_L + 1 + (randomUInt32() % 10));
     const int      LEN_CHECK_L_0 = (TEST_BUF_LEN - PRELOAD_LEN_L);
     const int      LEN_CHECK_R_0 = (TEST_BUF_LEN - PRELOAD_LEN_R);
     StringBuilder garbage_prefill;

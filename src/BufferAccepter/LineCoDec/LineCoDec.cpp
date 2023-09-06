@@ -100,6 +100,7 @@ int8_t LineEndingCoDec::pushBuffer(StringBuilder* buf) {
         case LineTerm::ZEROBYTE:  // "\0"
           // TODO: This might be special... Perverse consequence warning.
           //   Write the unit tests for this before trying to implement it.
+          ret = _output_target->pushBuffer(buf);
           break;
         case LineTerm::CR:
           buf->replace("\r\n", "\r");  // Replace the complex case first.
@@ -144,12 +145,10 @@ int32_t LineEndingCoDec::bufferAvailable() {
 }
 
 
-
 void LineEndingCoDec::holdUntilBreak(bool x) {
   _hold_until_break = x;
   if (!x) {  _isometric_call_to_break = false;  }
 }
-
 
 void LineEndingCoDec::isometricCallAndBreak(bool x) {
   _isometric_call_to_break = x;

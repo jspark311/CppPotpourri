@@ -974,20 +974,28 @@ bool StringBuilder::contains(const char* needle) {
 * Returns 1 if the values match. 0 otherwise.
 * Collapses the buffer prior to comparing.
 * Will compare ONLY the first len bytes, or the length of our present string. Whichever is less.
+* TODO: This had a glaring bug. Unit tests need to be done to this one.
 *
 * @param unknown The byte string under test.
 * @param len The number of bytes to compare.
 * @return 1 if the strings are equal to the comparison limit. 0 otherwise.
 */
 int StringBuilder::cmpBinString(uint8_t* unknown, int len) {
+  int ret = 0;
   if (nullptr != _root) {
-    _collapse();   // TODO: Lazy.... Needlessly mutates string.
-    const int MINIMUM_LEN = ((len > _root->len) ? _root->len : len);
-    for (int i = 0; i < MINIMUM_LEN; i++) {
-      if (*(unknown + i) != *(_root->str + i)) return 0;
+    const int THIS_LENGTH    = length();
+    const int COMPARE_LENGTH = strict_min(len, THIS_LENGTH);
+    // TODO: If this is a strict comparison, fail if the lengths aren't equal.
+    if (THIS_LENGTH >= COMPARE_LENGTH) {
+      ret = 1;
+      _collapse();   // TODO: Lazy.... Needlessly mutates string.
+      const int MINIMUM_LEN = ((len > _root->len) ? _root->len : len);
+      for (int i = 0; i < MINIMUM_LEN; i++) {
+        if (*(unknown + i) != *(_root->str + i)) return 0;
+      }
     }
   }
-  return 1;
+  return ret;
 }
 
 
