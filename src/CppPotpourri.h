@@ -94,10 +94,10 @@ inline int8_t   strict_abs_delta(int8_t   a, int8_t   b) {   return (a > b) ? (a
 * @param val_then is the position on the same line against which we will compare.
 * @return the positive-going displacement of val_now from val_then
 */
-inline uint64_t delta_assume_wrap(const uint64_t NOW, const uint64_t THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (0xFFFFFFFFFFFFFFFF - (THEN - NOW)));   };
-inline uint32_t delta_assume_wrap(const uint32_t NOW, const uint32_t THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (0xFFFFFFFF - (THEN - NOW)));           };
-inline uint16_t delta_assume_wrap(const uint16_t NOW, const uint16_t THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (0xFFFF - (THEN - NOW)));               };
-inline uint8_t  delta_assume_wrap(const uint8_t  NOW, const uint8_t  THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (0xFF - (THEN - NOW)));                 };
+inline uint64_t delta_assume_wrap(const uint64_t NOW, const uint64_t THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (1 + (0xFFFFFFFFFFFFFFFF - (THEN - NOW))));  };
+inline uint32_t delta_assume_wrap(const uint32_t NOW, const uint32_t THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (1 + (0xFFFFFFFF - (THEN - NOW))));          };
+inline uint16_t delta_assume_wrap(const uint16_t NOW, const uint16_t THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (1 + (0xFFFF - (THEN - NOW))));              };
+inline uint8_t  delta_assume_wrap(const uint8_t  NOW, const uint8_t  THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (1 + (0xFF - (THEN - NOW))));                };
 //inline int64_t  delta_assume_wrap(const int64_t  NOW, const int64_t  THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (ULONG_MAX - (THEN - NOW)));          };
 //inline int32_t  delta_assume_wrap(const int32_t  NOW, const int32_t  THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (ULONG_MAX - (THEN - NOW)));          };
 //inline int16_t  delta_assume_wrap(const int16_t  NOW, const int16_t  THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (ULONG_MAX - (THEN - NOW)));          };
