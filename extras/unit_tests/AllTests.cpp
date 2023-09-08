@@ -30,6 +30,7 @@
 #include "Identity/Identity.h"
 #include "M2MLink/M2MLink.h"
 
+
 /*
 Global unit-testing TODO list:
 
@@ -124,6 +125,22 @@ int generate_random_text_buffer(StringBuilder* buf, const int RANDOM_BUF_LEN) {
 }
 
 
+uint64_t generate_random_uint64() {
+  uint64_t ret = 0;
+  random_fill((uint8_t*) &ret, sizeof(uint64_t));
+  return ret;
+}
+
+
+int64_t generate_random_int64() {
+  int64_t ret = 0;
+  random_fill((uint8_t*) &ret, sizeof(int64_t));
+  return ret;
+}
+
+
+
+
 void printTestFailure(const char* module, const char* test) {
   printf("\n");
   printf("*********************************************\n");
@@ -136,7 +153,7 @@ void printTestFailure(const char* module, const char* test) {
 * Something terrible.
 * Textual inclusion of CPP files until a testing framework is writen or adopted.
 *******************************************************************************/
-
+#include "GlueTests.cpp"
 #include "AsyncSequencerTests.cpp"
 #include "StringBuilderTest.cpp"
 #include "RingBufferTests.cpp"
@@ -220,6 +237,7 @@ void printTypeSizes() {
 #define CHKLST_CODEC_B64_TESTS        0x00004000  // Base64Encoder, Base64Decoder
 #define CHKLST_CODEC_LINE_TERM_TESTS  0x00008000  // LineEndingCoDec
 #define CHKLST_IMAGE_TESTS            0x00010000  // Image
+#define CHKLST_C3P_HEADER_TESTS       0x00020000  // CppPotpourri.h
 #define CHKLST_ASYNC_SEQUENCER_TESTS  0x80000000  // Everything depends on this.
 
 
@@ -228,7 +246,7 @@ void printTypeSizes() {
   CHKLST_DATA_STRUCT_TESTS | CHKLST_SENSORFILTER_TESTS | CHKLST_RINGBUFFER_TESTS | \
   CHKLST_IDENTITY_TESTS | CHKLST_M2MLINK_TESTS | CHKLST_PARSINGCONSOLE_TESTS | \
   CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_BUFFER_ACCEPTER_TESTS | \
-  CHKLST_IMAGE_TESTS | CHKLST_CODEC_LINE_TERM_TESTS | \
+  CHKLST_IMAGE_TESTS | CHKLST_CODEC_LINE_TERM_TESTS | CHKLST_C3P_HEADER_TESTS | \
   CHKLST_CODEC_B64_TESTS | CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS | \
   CHKLST_KEY_VALUE_PAIR_TESTS | CHKLST_LINKED_LIST_TESTS)
 
@@ -248,7 +266,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_STRINGBUILDER_TESTS,
     .LABEL        = "STRINGBUILDER_TESTS",
-    .DEP_MASK     = (CHKLST_ASYNC_SEQUENCER_TESTS),
+    .DEP_MASK     = (CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_C3P_HEADER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == stringbuilder_main()) ? 1:-1);  }
   },
@@ -341,6 +359,12 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == c3p_image_test_main()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_C3P_HEADER_TESTS,
+    .LABEL        = "C3P_HEADER_TESTS",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_header_test_main()) ? 1:-1);  }
   },
 };
 
