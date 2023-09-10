@@ -87,6 +87,7 @@ inline int8_t   strict_abs_delta(int8_t   a, int8_t   b) {   return (a > b) ? (a
 * If the second parameter is smaller than the first, a wrap will be assumed to have
 *   happened between the mark and the comparison, and the return value will be
 *   adjusted accordingly.
+*
 * NOTE: Integer overflow is being assumed. But your compiler/hardware may not
 *   handle overflow in a manner that allows this function to make sense. YMMV.
 *
@@ -98,10 +99,6 @@ inline uint64_t delta_assume_wrap(const uint64_t NOW, const uint64_t THEN) {   r
 inline uint32_t delta_assume_wrap(const uint32_t NOW, const uint32_t THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (1 + (0xFFFFFFFF - (THEN - NOW))));          };
 inline uint16_t delta_assume_wrap(const uint16_t NOW, const uint16_t THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (1 + (0xFFFF - (THEN - NOW))));              };
 inline uint8_t  delta_assume_wrap(const uint8_t  NOW, const uint8_t  THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (1 + (0xFF - (THEN - NOW))));                };
-//inline int64_t  delta_assume_wrap(const int64_t  NOW, const int64_t  THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (ULONG_MAX - (THEN - NOW)));          };
-//inline int32_t  delta_assume_wrap(const int32_t  NOW, const int32_t  THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (ULONG_MAX - (THEN - NOW)));          };
-//inline int16_t  delta_assume_wrap(const int16_t  NOW, const int16_t  THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (ULONG_MAX - (THEN - NOW)));          };
-//inline int8_t   delta_assume_wrap(const int8_t   NOW, const int8_t   THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (ULONG_MAX - (THEN - NOW)));          };
 
 
 /*
