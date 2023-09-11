@@ -223,12 +223,39 @@ int line_term_known_answer_tests() {
     StringBuilder offering(lineterm_test_cases[case_idx].input);
     StringBuilder check_string((uint8_t*) lineterm_test_cases[case_idx].output, strlen(lineterm_test_cases[case_idx].output));
 
+    // Setup the test conditions in the CoDec...
+    line_breaker.setTerminator(lineterm_test_cases[case_idx].output_terminator);
+    if (LineTerm::ZERO_BYTE != lineterm_test_cases[case_idx].replace_0) {
+      line_breaker.replaceOccurrencesOf(lineterm_test_cases[case_idx].replace_0, true);
+    }
+    if (LineTerm::ZERO_BYTE != lineterm_test_cases[case_idx].replace_1) {
+      line_breaker.replaceOccurrencesOf(lineterm_test_cases[case_idx].replace_1, true);
+    }
+    if (LineTerm::ZERO_BYTE != lineterm_test_cases[case_idx].replace_2) {
+      line_breaker.replaceOccurrencesOf(lineterm_test_cases[case_idx].replace_2, true);
+    }
+
     int expected_call_breaks = 0;
+    int expected_length      = check_string.length();
     switch (break_mode_idx) {
       case 0:  expected_call_breaks = lineterm_test_cases[case_idx].conditions[condition_idx].call_breaks_mode_0;  break;
       case 1:  expected_call_breaks = lineterm_test_cases[case_idx].conditions[condition_idx].call_breaks_mode_1;  break;
       case 2:  expected_call_breaks = lineterm_test_cases[case_idx].conditions[condition_idx].call_breaks_mode_2;  break;
     }
+    if (has_term_at_end) {
+      expected_call_breaks++;
+      //test_sink.expectation(LineTerm::);
+    }
+    else {
+      // We need to trim the end from the check string to reflect the fact that
+      //   it should not be transmitted by the CoDec under anything but
+      //   no-break conditions.
+    }
+
+    printf(
+      "\tExpected length in sink is %d after %d calls to its pushBuffer() fxn...\n",
+      expected_length, expected_call_breaks
+    );
 
     printf("\tPushing the buffer through the harness source indicates full claim... ");
     if (1 == test_source.pushBuffer(&offering)) {
@@ -236,11 +263,17 @@ int line_term_known_answer_tests() {
       printf("Pass.\n\tTest harness moved at least one chunk... ");
       if (polling_count) {
         printf("Pass (ran %d times).\n\tSink received the expected number of call-breaks (%d)... ", polling_count, expected_call_breaks);
-        if (test_sink.take_log.length() == check_string.length()) {
-          printf("Pass.\n\tThe sink received the correct content... ");
-          if (1 == check_string.cmpBinString(test_sink.take_log.string(), test_sink.take_log.length())) {
-            printf("Pass.\n\tTest case %d passes.\n", case_idx);
-            test_failed = false;
+        if (expected_call_breaks == test_sink.callCount()) {
+          printf("Pass.\n\tNeither the sink nor source observed contract violations... ");
+          if (test_source.callCountsBalance() & test_sink.callCountsBalance()) {
+            printf("Pass.\n\tThe sink received the correct length (%d)... ", expected_length);
+            if (test_sink.take_log.length() == expected_length) {
+              printf("Pass.\n\tThe sink received the correct content... ");
+              if (1 == check_string.cmpBinString(test_sink.take_log.string(), test_sink.take_log.length())) {
+                printf("Pass.\n\tTest case %d passes.\n", case_idx);
+                test_failed = false;
+              }
+            }
           }
         }
       }
