@@ -237,11 +237,10 @@ int test_stringbuilder_case_shifter() {
   printf("Testing toUpper()...\n");
   int ret = -1;
   StringBuilder stack_obj(PRIMER_STRING);
-  //stack_obj.toLower();
 
   printf("\ttoUpper() works... ");
   stack_obj.toUpper();
-  if (1 == stack_obj.cmpBinString((uint8_t*) UPPER_STRING, TEST_STR_LEN)) {
+  if (0 == stack_obj.locate(UPPER_STRING)) {
     printf("Pass.\n\ttoUpper() tests pass.\n");
     ret = 0;
   }
@@ -253,7 +252,7 @@ int test_stringbuilder_case_shifter() {
     stack_obj.concat(PRIMER_STRING);
     printf("\ttoLower() works... ");
     stack_obj.toLower();
-    if (1 == stack_obj.cmpBinString((uint8_t*) LOWER_STRING, TEST_STR_LEN)) {
+    if (0 == stack_obj.locate(LOWER_STRING)) {
       printf("Pass.\n\ttoLower() tests pass.\n");
       ret = 0;
     }
@@ -312,6 +311,47 @@ int test_stringbuilder_byteat() {
   }
   return ret;
 }
+
+
+int test_stringbuilder_locate() {
+  printf("Testing locate(const char*)...\n");
+  const char* LOCATE_TEST_STRING = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  StringBuilder stack_obj(LOCATE_TEST_STRING);
+  int ret = -1;
+
+  printf("\tWhen called with a single byte needle, locate() returns 0 if it matches the first byte... ");
+  if (0 == stack_obj.locate("A")) {
+    printf("Pass.\n\tWhen called with a single byte needle, locate() returns (length-1) if it matches the last byte... ");
+    if ((stack_obj.length() - 1) == stack_obj.locate("Z")) {
+      printf("Pass.\n\tDoes locate() return -1 if the string is not found... ");
+      if (-1 == stack_obj.locate("BA")) {
+        printf("Pass.\n\tFragmenting string... ");
+        if (13 == stack_obj.chunk(2)) {
+          printf("Pass.\n\tDoes the first case still match... ");
+          if (0 == stack_obj.locate("A")) {
+            printf("Pass.\n\tDoes the second case still match... ");
+            if ((stack_obj.length() - 1) == stack_obj.locate("Z")) {
+              printf("Pass.\n\tDoes an exact match return 0... ");
+              if (0 == stack_obj.locate(LOCATE_TEST_STRING)) {
+                printf("Pass.\n\tDoes a a multibyte locate() work on haystack terminus... ");
+                if ((stack_obj.length() - 4) == stack_obj.locate("WXYZ")) {
+                  printf("Pass.\n\tlocate(const char*) tests pass.\n");
+                  ret = 0;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
+  return ret;
+}
+
 
 
 int test_stringbuilder_split() {
@@ -633,7 +673,6 @@ int test_StringBuilderCull() {
     else printf("obj_1 does not match.\n");
   }
   else printf("obj_0 does not match.\n");
-
 
   printf("obj_0:    %s\n", obj_0.string());
   printf("obj_1:    %s\n", obj_1.string());
@@ -967,46 +1006,49 @@ int stringbuilder_main() {
   if (0 == test_strcasecmp()) {
     if (0 == test_strcasestr()) {
       if (0 == test_stringbuilder_byteat()) {
-        if (0 == test_StringBuilder()) {
-          if (0 == test_stringbuilder_concat_handoff_raw()) {
-            if (0 == test_stringbuilder_case_shifter()) {
-              if (0 == test_stringbuilder_print_buffer()) {
-                if (0 == test_stringbuilder_concat_handoff()) {
-                  if (0 == test_stringbuilder_concat_handoff_limit()) {
-                    if (0 == test_stringbuilder_chunk()) {
-                      if (0 == test_stringbuilder_implode()) {
-                        if (0 == test_stringbuilder_replace()) {
-                          if (0 == test_stringbuilder_isempty()) {
-                            if (0 == test_StringBuilderCull()) {
-                              if (0 == test_misuse_cases()) {
-                                printf("**********************************\n");
-                                printf("*  StringBuilder tests all pass  *\n");
-                                printf("**********************************\n");
-                                ret = 0;
+        if (0 == test_stringbuilder_locate()) {
+          if (0 == test_StringBuilder()) {
+            if (0 == test_stringbuilder_concat_handoff_raw()) {
+              if (0 == test_stringbuilder_case_shifter()) {
+                if (0 == test_stringbuilder_print_buffer()) {
+                  if (0 == test_stringbuilder_concat_handoff()) {
+                    if (0 == test_stringbuilder_concat_handoff_limit()) {
+                      if (0 == test_stringbuilder_chunk()) {
+                        if (0 == test_stringbuilder_implode()) {
+                          if (0 == test_stringbuilder_replace()) {
+                            if (0 == test_stringbuilder_isempty()) {
+                              if (0 == test_StringBuilderCull()) {
+                                if (0 == test_misuse_cases()) {
+                                  printf("**********************************\n");
+                                  printf("*  StringBuilder tests all pass  *\n");
+                                  printf("**********************************\n");
+                                  ret = 0;
+                                }
+                                else printTestFailure(MODULE_NAME, "Hardening against mis-use");
                               }
-                              else printTestFailure(MODULE_NAME, "Hardening against mis-use");
+                              else printTestFailure(MODULE_NAME, "cull(int, int)");
                             }
-                            else printTestFailure(MODULE_NAME, "cull(int, int)");
+                            else printTestFailure(MODULE_NAME, "isEmpty");
                           }
-                          else printTestFailure(MODULE_NAME, "isEmpty");
+                          else printTestFailure(MODULE_NAME, "Replace");
                         }
-                        else printTestFailure(MODULE_NAME, "Replace");
+                        else printTestFailure(MODULE_NAME, "Implode");
                       }
-                      else printTestFailure(MODULE_NAME, "Implode");
+                      else printTestFailure(MODULE_NAME, "Tokenizer");
                     }
-                    else printTestFailure(MODULE_NAME, "Tokenizer");
+                    else printTestFailure(MODULE_NAME, "concatHandoffLimit(StringBuilder*, unsigned int)");
                   }
-                  else printTestFailure(MODULE_NAME, "concatHandoffLimit(StringBuilder*, unsigned int)");
+                  else printTestFailure(MODULE_NAME, "concatHandoff(StringBuilder*)");
                 }
-                else printTestFailure(MODULE_NAME, "concatHandoff(StringBuilder*)");
+                else printTestFailure(MODULE_NAME, "printBuffer(StringBuilder*, uint8_t*, uint32_t, const char*)");
               }
-              else printTestFailure(MODULE_NAME, "printBuffer(StringBuilder*, uint8_t*, uint32_t, const char*)");
+              else printTestFailure(MODULE_NAME, "toUpper() / toLower()");
             }
-            else printTestFailure(MODULE_NAME, "toUpper() / toLower()");
+            else printTestFailure(MODULE_NAME, "concatHandoff(uint8_t*, int)");
           }
-          else printTestFailure(MODULE_NAME, "concatHandoff(uint8_t*, int)");
+          else printTestFailure(MODULE_NAME, "General");
         }
-        else printTestFailure(MODULE_NAME, "General");
+        else printTestFailure(MODULE_NAME, "locate()");
       }
       else printTestFailure(MODULE_NAME, "byteAt(const int)");
     }

@@ -190,6 +190,8 @@ class StringBuilder {
     bool     drop_position(unsigned int pos);   // And use this to reap the tokens that you've used.
 
     /* Comparison and search. */
+    int  locate(const uint8_t*, int len, int start_offset = 0);  // Returns the offset of the given string.
+    int  locate(const char*, int start_offset = 0);  // Returns the offset of the given string.
     bool contains(char);                // Does the buffer contain the given character?
     bool contains(const char*);         // Does the buffer contain the given string?
     int cmpBinString(uint8_t*, int);    // Compare byte-wise a given length.

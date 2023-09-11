@@ -921,51 +921,67 @@ void StringBuilder::trim() {
 }
 
 
+
+/**
+* Search the string for the given sequence.
+*
+* @param NEEDLE The string to search for.
+* @param NEEDLE_LEN The string to search for.
+* @param start_offset is the depth into the string to begin the search.
+* @return the offset of the specified string.
+*/
+int StringBuilder::locate(const uint8_t* NEEDLE, int NEEDLE_LEN, int start_offset) {
+  int ret = -1;
+  if ((nullptr != _root) & (nullptr != NEEDLE) & (NEEDLE_LEN > 0)) {
+    int search_offset = start_offset;
+    int strll_offset  = start_offset;
+    int match_length  = 0;
+    StrLL* src_ll = _get_ll_containing_offset(_root, &strll_offset);
+    while ((nullptr != src_ll) & (-1 == ret)) {
+      if (*(src_ll->str + strll_offset) == *(NEEDLE + match_length++)) {
+        if (match_length == NEEDLE_LEN) {
+          ret = (search_offset);
+        }
+      }
+      else {
+        search_offset += match_length;
+        match_length  = 0;
+      }
+      strll_offset++;
+      if (strll_offset >= src_ll->len) {
+        strll_offset = 0;
+        src_ll = src_ll->next;
+      }
+    }
+  }
+  return ret;
+}
+
+
+int StringBuilder::locate(const char* NEEDLE, int start_offset) {
+  return locate((const uint8_t*) NEEDLE, strlen(NEEDLE), start_offset);
+}
+
+
 /**
 * Search the string for the given character.
-* Collapses the string before searching.
 *
 * @param needle The char to search for.
 * @return true if the string contains the given character.
 */
 bool StringBuilder::contains(char needle) {
-  if (nullptr != _root) {
-    _collapse();   // TODO: Lazy.... Needlessly mutates string.
-    for (int i = 0; i < _root->len; i++) {
-      if (needle == *(_root->str + i)) return true;
-    }
-  }
-  return false;
+  return (-1 < locate((const uint8_t*) &needle, 1));
 }
 
 
 /**
-* TODO: Something about this is broken. Don't use it with confidence.
 * Search the string for the given string.
-* Collapses the string before searching.
 *
 * @param needle The string to search for.
 * @return true if the string contains the given string.
 */
 bool StringBuilder::contains(const char* needle) {
-  if (nullptr != _root) {
-    const int NEEDLE_LEN = strlen(needle);
-    _collapse();   // TODO: Lazy.... Needlessly mutates string.
-    if (NEEDLE_LEN > _root->len) {  return false;   }
-    if (NEEDLE_LEN == 0) {          return false;   }
-
-    for (int i = 0; i < (_root->len - NEEDLE_LEN); i++) {
-      int needle_offset = 0;
-      while ((*(needle + needle_offset) == *(_root->str + i + needle_offset)) && (needle_offset < NEEDLE_LEN)) {
-        needle_offset++;
-      }
-      if (needle_offset == NEEDLE_LEN) {
-        //return (*(needle + needle_offset) == *(_root->str + i + needle_offset));
-        return true;
-      }
-    }
-  }
-  return false;
+  return (-1 < locate(needle));
 }
 
 
@@ -980,19 +996,11 @@ bool StringBuilder::contains(const char* needle) {
 * @param len The number of bytes to compare.
 * @return 1 if the strings are equal to the comparison limit. 0 otherwise.
 */
-int StringBuilder::cmpBinString(uint8_t* unknown, int len) {
+int StringBuilder::cmpBinString(uint8_t* unknown, int compare_length) {
   int ret = 0;
   if (nullptr != _root) {
-    const int THIS_LENGTH    = length();
-    const int COMPARE_LENGTH = strict_min(len, THIS_LENGTH);
-    // TODO: If this is a strict comparison, fail if the lengths aren't equal.
-    if (THIS_LENGTH >= COMPARE_LENGTH) {
-      ret = 1;
-      _collapse();   // TODO: Lazy.... Needlessly mutates string.
-      const int MINIMUM_LEN = ((len > _root->len) ? _root->len : len);
-      for (int i = 0; i < MINIMUM_LEN; i++) {
-        if (*(unknown + i) != *(_root->str + i)) return 0;
-      }
+    if (length() == compare_length) {
+      ret = (0 == locate(unknown, compare_length, 0)) ? 1:0;
     }
   }
   return ret;
@@ -1001,7 +1009,6 @@ int StringBuilder::cmpBinString(uint8_t* unknown, int len) {
 
 /**
 * Replaces instances of the former argument with the latter.
-* Collapses the buffer. Possibly twice.
 *
 * @param search The string to search for. Must be non-null and non-zero length.
 * @param replace The string to replace it with.
