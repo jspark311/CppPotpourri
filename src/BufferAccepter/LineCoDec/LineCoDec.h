@@ -133,15 +133,12 @@ Rules:
 */
 class LineEndingCoDec : public BufferCoDec {
   public:
-    LineEndingCoDec(BufferAccepter* targ = nullptr, LineTerm t = LineTerm::ZEROBYTE) : _output_target(targ), _term_seq(t) {};
+    LineEndingCoDec(BufferAccepter* targ = nullptr, LineTerm t = LineTerm::ZEROBYTE) : BufferCoDec(targ), _term_seq(t) {};
     ~LineEndingCoDec() {};
 
     /* Implementation of BufferAccepter. */
     int8_t  pushBuffer(StringBuilder*);
     int32_t bufferAvailable();
-
-    inline BufferAccepter* outputTarget() {          return _output_target;   };
-    inline void outputTarget(BufferAccepter* x) {    _output_target = x;      };
 
     /* Homogenization feature */
     void replaceOccurrencesOf(LineTerm, bool);
@@ -159,7 +156,6 @@ class LineEndingCoDec : public BufferCoDec {
 
 
   private:
-    BufferAccepter* _output_target;
     LineTerm        _term_seq;
     uint16_t        _replacement_mask;
     bool            _hold_until_break;

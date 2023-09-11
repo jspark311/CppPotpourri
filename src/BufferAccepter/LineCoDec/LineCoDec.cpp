@@ -93,31 +93,31 @@ int8_t LineEndingCoDec::pushBuffer(StringBuilder* buf) {
     int32_t total_len_change = replacable_lt_count * LENGTH_DIFFERENTIAL;
 
 
-    if (nullptr != _output_target) {
+    if (nullptr != _efferant) {
       // TODO: There may be a smarter way to do this with less branching, and
       //   without calling StringBuilder::replace().
       switch (_term_seq) {
         case LineTerm::ZEROBYTE:  // "\0"
           // TODO: This might be special... Perverse consequence warning.
           //   Write the unit tests for this before trying to implement it.
-          ret = _output_target->pushBuffer(buf);
+          ret = _efferant->pushBuffer(buf);
           break;
         case LineTerm::CR:
-          buf->replace("\r\n", "\r");  // Replace the complex case first.
-          buf->replace("\n",   "\r");
-          ret = _output_target->pushBuffer(buf);
+          if (replaceOccurrencesOf(LineTerm::CRLF)) {  buf->replace("\r\n", "\r");  }
+          if (replaceOccurrencesOf(LineTerm::LF)) {    buf->replace("\n", "\r");    }
+          ret = _efferant->pushBuffer(buf);
           break;
         case LineTerm::LF:
-          buf->replace("\r\n", "\n");  // Replace the complex case first.
-          buf->replace("\r",   "\n");
-          ret = _output_target->pushBuffer(buf);
+          if (replaceOccurrencesOf(LineTerm::CRLF)) {  buf->replace("\r\n", "\n");  }
+          if (replaceOccurrencesOf(LineTerm::CR)) {    buf->replace("\r", "\n");    } 
+          ret = _efferant->pushBuffer(buf);
           break;
         case LineTerm::CRLF:
           // TODO: This won't work because the end result will be things like "\r\r\n".
           //   More reason to not try to use StringBuilder::replace()...
           //buf->replace("\r",   "\r\n");
           //buf->replace("\n",   "\r\n");
-          ret = _output_target->pushBuffer(buf);
+          ret = _efferant->pushBuffer(buf);
           break;
       }
     }
@@ -141,7 +141,25 @@ int8_t LineEndingCoDec::pushBuffer(StringBuilder* buf) {
 //   conversion decreases the count. This is perfectly acceptable behavior if
 //   the results of return values are observed within contractual limits.
 int32_t LineEndingCoDec::bufferAvailable() {
-  return ((nullptr != _output_target) ? _output_target->bufferAvailable() : 0);
+  return ((nullptr != _efferant) ? _efferant->bufferAvailable() : 0);
+}
+
+
+/*******************************************************************************
+* LineEndingCoDec specifics
+*******************************************************************************/
+
+void LineEndingCoDec::replaceOccurrencesOf(LineTerm r_term, bool replace) {
+  const uint16_t TARGET_TERM_MASK = (1 << (uint8_t) r_term);
+  if (replace) {  _replacement_mask |= TARGET_TERM_MASK;     }
+  else {          _replacement_mask &= ~(TARGET_TERM_MASK);  }
+}
+
+
+bool LineEndingCoDec::replaceOccurrencesOf(LineTerm r_term) {
+  const uint16_t TARGET_TERM_MASK = (1 << (uint8_t) r_term);
+  const uint16_t SEARCH_MASK      = (_replacement_mask & ~(TARGET_TERM_MASK));
+  return (0 != SEARCH_MASK);
 }
 
 

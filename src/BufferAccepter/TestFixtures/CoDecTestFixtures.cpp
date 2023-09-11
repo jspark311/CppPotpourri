@@ -62,28 +62,55 @@ void BufAcceptTestSource::printDebug(StringBuilder* text_return) {
   text_return->concatf("\t  Full claims:    %u\n", _pb_call_count_full);
   text_return->concatf("\t  Total:          %u\n", _call_count);
   text_return->concat("\tContract evaluation:\n");
-  text_return->concatf("\t  Return conventions respected?   %s\n\n", callCountsBalance() ? "Conforms" : "Fails");
+  text_return->concatf("\t  Return conventions respected?   %s\n",   callCountsBalance() ? "Conforms" : "Fails");
+  text_return->concatf("\t  Rejection semantics?            %s\n",   (0 == _false_rejections) ? "Conforms" : "Fails");
+  text_return->concatf("\t  Partial claim semantics?        %s\n",   (0 == _false_partial_claims) ? "Conforms" : "Fails");
+  text_return->concatf("\t  Full claim semantics?           %s\n\n", (0 == _false_full_claims) ? "Conforms" : "Fails");
 }
+
+
+bool BufAcceptTestSource::efferantViolatesContract() {
+  bool ret = !callCountsBalance();
+  ret |= (0 < _false_rejections);
+  ret |= (0 < _false_partial_claims);
+  ret |= (0 < _false_full_claims);
+  return ret;
+}
+
 
 
 int8_t BufAcceptTestSource::poll() {
   int8_t ret = -1;
   if (nullptr != _efferant) {
     ret = 0;
-    if ((backlogLength() > 0) & (0 < _fake_buffer_limit)) {
+    const int PUSH_LENGTH = strict_min(_fake_buffer_limit, backlogLength());
+    if (PUSH_LENGTH > 0) {
       StringBuilder buf_to_push;
       //buf_to_push.concatHandoffLimit(&_backlog, _fake_buffer_limit);
       buf_to_push.concatHandoffLimit(&_backlog, _fake_buffer_limit);
       if (nullptr != _profiler) {
         _profiler->markStart();
       }
-
       // Note the return code, and bin it.
       switch (_efferant->pushBuffer(&buf_to_push)) {
-        case -1:  _pb_call_count_rej++;      break;
-        case 0:   _pb_call_count_partial++;  break;
-        case 1:   _pb_call_count_full++;     break;
-        default:  break;
+        case -1:
+          _pb_call_count_rej++;
+          if (PUSH_LENGTH != buf_to_push.length()) {  _false_rejections++;  }
+          break;
+        case 0:
+          _pb_call_count_partial++;
+          if (PUSH_LENGTH == buf_to_push.length()) {  _false_partial_claims++;  }
+          break;
+        case 1:
+          _pb_call_count_full++;
+          if (0 != buf_to_push.length()) {  _false_full_claims++;  }
+          break;
+        default:
+          break;
+      }
+      if (buf_to_push.length() > 0) {
+        // Return any unclaimed buffer to the backlog.
+        _backlog.prependHandoff(&buf_to_push);
       }
       _call_count++;
       ret = 1;
@@ -94,8 +121,16 @@ int8_t BufAcceptTestSource::poll() {
 
 
 int8_t BufAcceptTestSource::pollUntilStagnant() {
+  const int BACKLOG_LEN_0 = _backlog.length();
   int8_t ret = 0;
-  while (0 < poll()) {  ret++;  }
+  bool keep_polling = true;
+  while (keep_polling) {
+    keep_polling = false;
+    if (1 == poll()) {
+      keep_polling = !efferantViolatesContract();
+      ret++;
+    }
+  }
   return ret;
 }
 
@@ -281,7 +316,7 @@ void BufAcceptTestSink::printDebug(StringBuilder* text_return) {
   text_return->concatf("\t  Met:       %u\n", _expectations_met);
   text_return->concatf("\t  Violated:  %u\n", _expectations_violated);
   const uint32_t TAKE_LOG_COUNT = take_log.count();
-  text_return->concatf("\tTake log:      %u entries\n", TAKE_LOG_COUNT);
+  text_return->concatf("\tTake log:      %u entries (total length: %d)\n", TAKE_LOG_COUNT, take_log.length());
   if (0 < TAKE_LOG_COUNT) {
     StringBuilder line_list;
     for (uint32_t i = 0; i < TAKE_LOG_COUNT; i++) {
@@ -291,7 +326,7 @@ void BufAcceptTestSink::printDebug(StringBuilder* text_return) {
         StringBuilder call_item(tmp_ptr, tmp_len);
         StringBuilder ascii_render;
         call_item.printDebug(&ascii_render);
-        line_list.concatf("\t  %u:  %s", i, (char*) ascii_render.string());
+        line_list.concatf("\t  %u (%d):\t %s", i, tmp_len, (char*) ascii_render.string());
       }
       else {
         line_list.concatf("\t  Fault rendering entry %u\n", i);

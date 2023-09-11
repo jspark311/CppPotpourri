@@ -45,6 +45,7 @@ class BufAcceptTestSource : public BufferCoDec {
     inline void setProfiler(StopWatch* x) {          _profiler = x;  };
 
     void printDebug(StringBuilder*);
+    bool efferantViolatesContract();
     int8_t poll();
     int8_t pollUntilStagnant();
     void reset();
@@ -71,6 +72,11 @@ class BufAcceptTestSource : public BufferCoDec {
     uint32_t _pb_call_count_rej     = 0;   // Count of times pushBuffer() returned -1.
     uint32_t _pb_call_count_partial = 0;   // Count of times pushBuffer() returned 0.
     uint32_t _pb_call_count_full    = 0;   // Count of times pushBuffer() returned 1.
+
+
+    uint32_t _false_rejections      = 0;   // Count of times pushBuffer() returned -1 but didn't take nothing.
+    uint32_t _false_partial_claims  = 0;   // Count of times pushBuffer() returned 0 but didn't take anything.
+    uint32_t _false_full_claims     = 0;   // Count of times pushBuffer() returned 1 but didn't take everything.
     uint32_t _call_count            = 0;   // Count of times pushBuffer() was called.
 };
 

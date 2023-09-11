@@ -65,15 +65,15 @@ const int WIDE_OPEN_CHANNEL  = (strict_max( strict_max(KAT_LEN_0, KAT_LEN_1), st
 
 // TODO: Doing these repeat special cases up here, because they would be
 //   unreadable inline.
-const int KAT_CB_NUL_XFORM_DS_0 = ((KAT_LEN_0 / DRY_SOURCE_LIMIT) + 1) + ((0 < KAT_LEN_0 % DRY_SOURCE_LIMIT) ? 1 : 0);
-const int KAT_CB_NUL_XFORM_DS_1 = ((KAT_LEN_1 / DRY_SOURCE_LIMIT) + 1) + ((0 < KAT_LEN_1 % DRY_SOURCE_LIMIT) ? 1 : 0);
-const int KAT_CB_NUL_XFORM_DS_2 = ((KAT_LEN_2 / DRY_SOURCE_LIMIT) + 1) + ((0 < KAT_LEN_2 % DRY_SOURCE_LIMIT) ? 1 : 0);
-const int KAT_CB_NUL_XFORM_DS_3 = ((KAT_LEN_3 / DRY_SOURCE_LIMIT) + 1) + ((0 < KAT_LEN_3 % DRY_SOURCE_LIMIT) ? 1 : 0);
+const int KAT_CB_NUL_XFORM_DS_0 = (KAT_LEN_0 / DRY_SOURCE_LIMIT) + ((0 < KAT_LEN_0 % DRY_SOURCE_LIMIT) ? 1 : 0);
+const int KAT_CB_NUL_XFORM_DS_1 = (KAT_LEN_1 / DRY_SOURCE_LIMIT) + ((0 < KAT_LEN_1 % DRY_SOURCE_LIMIT) ? 1 : 0);
+const int KAT_CB_NUL_XFORM_DS_2 = (KAT_LEN_2 / DRY_SOURCE_LIMIT) + ((0 < KAT_LEN_2 % DRY_SOURCE_LIMIT) ? 1 : 0);
+const int KAT_CB_NUL_XFORM_DS_3 = (KAT_LEN_3 / DRY_SOURCE_LIMIT) + ((0 < KAT_LEN_3 % DRY_SOURCE_LIMIT) ? 1 : 0);
 
-const int KAT_CB_NUL_XFORM_FS_0 = ((KAT_LEN_0 / FLOODED_SINK_LIMIT) + 1) + ((0 < KAT_LEN_0 % FLOODED_SINK_LIMIT) ? 1 : 0);
-const int KAT_CB_NUL_XFORM_FS_1 = ((KAT_LEN_1 / FLOODED_SINK_LIMIT) + 1) + ((0 < KAT_LEN_1 % FLOODED_SINK_LIMIT) ? 1 : 0);
-const int KAT_CB_NUL_XFORM_FS_2 = ((KAT_LEN_2 / FLOODED_SINK_LIMIT) + 1) + ((0 < KAT_LEN_2 % FLOODED_SINK_LIMIT) ? 1 : 0);
-const int KAT_CB_NUL_XFORM_FS_3 = ((KAT_LEN_3 / FLOODED_SINK_LIMIT) + 1) + ((0 < KAT_LEN_3 % FLOODED_SINK_LIMIT) ? 1 : 0);
+const int KAT_CB_NUL_XFORM_FS_0 = (KAT_LEN_0 / FLOODED_SINK_LIMIT) + ((0 < KAT_LEN_0 % FLOODED_SINK_LIMIT) ? 1 : 0);
+const int KAT_CB_NUL_XFORM_FS_1 = (KAT_LEN_1 / FLOODED_SINK_LIMIT) + ((0 < KAT_LEN_1 % FLOODED_SINK_LIMIT) ? 1 : 0);
+const int KAT_CB_NUL_XFORM_FS_2 = (KAT_LEN_2 / FLOODED_SINK_LIMIT) + ((0 < KAT_LEN_2 % FLOODED_SINK_LIMIT) ? 1 : 0);
+const int KAT_CB_NUL_XFORM_FS_3 = (KAT_LEN_3 / FLOODED_SINK_LIMIT) + ((0 < KAT_LEN_3 % FLOODED_SINK_LIMIT) ? 1 : 0);
 
 /*
 * Each known-answer test is run under a variety of simulated constraints.
@@ -225,52 +225,69 @@ int line_term_known_answer_tests() {
 
     // Setup the test conditions in the CoDec...
     line_breaker.setTerminator(lineterm_test_cases[case_idx].output_terminator);
-    if (LineTerm::ZERO_BYTE != lineterm_test_cases[case_idx].replace_0) {
+    if (LineTerm::ZEROBYTE != lineterm_test_cases[case_idx].replace_0) {
       line_breaker.replaceOccurrencesOf(lineterm_test_cases[case_idx].replace_0, true);
     }
-    if (LineTerm::ZERO_BYTE != lineterm_test_cases[case_idx].replace_1) {
+    if (LineTerm::ZEROBYTE != lineterm_test_cases[case_idx].replace_1) {
       line_breaker.replaceOccurrencesOf(lineterm_test_cases[case_idx].replace_1, true);
     }
-    if (LineTerm::ZERO_BYTE != lineterm_test_cases[case_idx].replace_2) {
+    if (LineTerm::ZEROBYTE != lineterm_test_cases[case_idx].replace_2) {
       line_breaker.replaceOccurrencesOf(lineterm_test_cases[case_idx].replace_2, true);
     }
 
     int expected_call_breaks = 0;
-    int expected_length      = check_string.length();
+    int expected_length      = 0;
     switch (break_mode_idx) {
       case 0:  expected_call_breaks = lineterm_test_cases[case_idx].conditions[condition_idx].call_breaks_mode_0;  break;
       case 1:  expected_call_breaks = lineterm_test_cases[case_idx].conditions[condition_idx].call_breaks_mode_1;  break;
       case 2:  expected_call_breaks = lineterm_test_cases[case_idx].conditions[condition_idx].call_breaks_mode_2;  break;
     }
-    if (has_term_at_end) {
-      expected_call_breaks++;
-      //test_sink.expectation(LineTerm::);
+
+    // Adjust the test conditions to reflect the expected results of this
+    //   permutation of the test case. If there is a terminator at the end of
+    //   the input, we will expect different values for length and break.
+    // If the CoDec is configured to break on line boundaries, the test
+    //   case will need to reflect so.
+    //test_sink.expectation(LineTerm::);
+    if (line_breaker.holdUntilBreak()) {
+      if (LineTerm::ZEROBYTE != lineterm_test_cases[case_idx].output_terminator) {
+        if (has_term_at_end) {
+          expected_call_breaks++;
+        }
+        else {
+          // We need to trim the end from the check string to reflect the fact that
+          //   it should not be transmitted by the CoDec under anything but
+          //   no-break conditions.
+          // TODO: Check this logic... It may run aground on some test cases.
+          check_string.split(lineTerminatorLiteralStr(lineterm_test_cases[case_idx].output_terminator));
+          check_string.drop_position(check_string.count() - 1);
+          check_string.implode(lineTerminatorLiteralStr(lineterm_test_cases[case_idx].output_terminator));
+        }
+      }
     }
-    else {
-      // We need to trim the end from the check string to reflect the fact that
-      //   it should not be transmitted by the CoDec under anything but
-      //   no-break conditions.
-    }
+    expected_length = check_string.length();
 
     printf(
-      "\tExpected length in sink is %d after %d calls to its pushBuffer() fxn...\n",
-      expected_length, expected_call_breaks
+      "\t\tExpected length in sink is %d after %d calls to its pushBuffer() fxn. Limits (src: %d,  sink: %d)\n",
+      expected_length, expected_call_breaks, test_source.pushLimit(), test_sink.bufferLimit()
     );
 
-    printf("\tPushing the buffer through the harness source indicates full claim... ");
+    printf("\t\tPushing the buffer through the harness source indicates full claim... ");
     if (1 == test_source.pushBuffer(&offering)) {
       int polling_count = test_source.pollUntilStagnant();
-      printf("Pass.\n\tTest harness moved at least one chunk... ");
+      printf("Pass.\n\t\tTest harness moved at least one chunk... ");
       if (polling_count) {
-        printf("Pass (ran %d times).\n\tSink received the expected number of call-breaks (%d)... ", polling_count, expected_call_breaks);
+        printf("Pass (ran %d times).\n\t\tSink received the expected number of call-breaks (%d)... ", polling_count, expected_call_breaks);
         if (expected_call_breaks == test_sink.callCount()) {
-          printf("Pass.\n\tNeither the sink nor source observed contract violations... ");
-          if (test_source.callCountsBalance() & test_sink.callCountsBalance()) {
-            printf("Pass.\n\tThe sink received the correct length (%d)... ", expected_length);
+          printf("Pass.\n\t\tNeither the sink nor source observed contract violations... ");
+          if ((!test_source.efferantViolatesContract()) & test_sink.callCountsBalance()) {
+            printf("Pass.\n\t\tThe sink received the correct length (%d)... ", expected_length);
             if (test_sink.take_log.length() == expected_length) {
-              printf("Pass.\n\tThe sink received the correct content... ");
+              printf("Pass.\n\t\tThe sink received the correct content... ");
               if (1 == check_string.cmpBinString(test_sink.take_log.string(), test_sink.take_log.length())) {
-                printf("Pass.\n\tTest case %d passes.\n", case_idx);
+                const int PERM_COUNT = (3 * 3 * 2);  // condition_idx * break_mode_idx * bool (term-at-tail)
+                const int PERM_ID    = ((condition_idx * 6) + (break_mode_idx * 2) + (has_term_at_end ? 2:1));
+                printf("Pass.\n\t\tPermutation (%d / %d) of test case %d passes.\n", PERM_ID, PERM_COUNT, case_idx);
                 test_failed = false;
               }
             }
