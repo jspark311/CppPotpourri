@@ -1,5 +1,5 @@
 /*
-File:   LineCoDec.h
+File:   LineCoDec.cpp
 Author: J. Ian Lindsay
 Date:   2023.08.19
 
@@ -25,115 +25,114 @@ A text-converter that unifies line-endings. Usually in preparation for
 #include "LineCoDec.h"
 
 
-// TODO: Check that we aren't doing replacement at the trailing edge if there is
-//   a chance that the search will miss a multi-byte sequence. Might-shouldn't
-//   use StringBuilder::replace()...
-//   Can't easily leverage the tokenizer, either, since some termination
-//   sequences are multi-byte, and multiple empty lines will be crushed into a
-//   single line-break.
+/*******************************************************************************
+* Implementation of BufferAccepter, via CoDec.
+*******************************************************************************/
+
 int8_t LineEndingCoDec::pushBuffer(StringBuilder* buf) {
+  if ((nullptr == buf) | (nullptr == _efferant)) {  return -1;  }  // Bailout.
   int8_t ret = -1;
 
-  // Do we need to do anything?
-  const uint16_t TARGET_TERM_MASK = (1 << (uint8_t) _term_seq);
-  const uint16_t SEARCH_MASK      = (_replacement_mask & ~(TARGET_TERM_MASK));
-  const uint8_t  MAX_SEARCHES     = (uint8_t) LineTerm::INVALID;
+  const int32_t INPUT_LENGTH    = buf->length();                 // Find input bounds.
+  const int32_t MAX_PUSH_LENGTH = _efferant->bufferAvailable();  // Find efferant push bounds.
+  // Find the pure-take bounds (the amount we can take if we were not chunking or replacing).
+  const int32_t PURE_TAKE_LENGTH = strict_min(INPUT_LENGTH, MAX_PUSH_LENGTH);
+  if (PURE_TAKE_LENGTH > 0) {
+    // If there is no line terminator specified, we can not chunk, and we
+    //   should just forward pushed buffers with any search terms removed.
+    // NOTE: LineTerm::INVALID has a length of zero.
+    // NOTE: LineTerm::ZEROBYTE has a length of one, and this constitutes
+    //   special handling.
+    const uint8_t LT_LEN_FINAL = (LineTerm::ZEROBYTE != _term_seq) ? lineTerminatorLength(_term_seq) : 0;
 
-  if (0 != SEARCH_MASK) {
-    // If the replacement_mask contains something other-than our desired
-    //   LineTerm (we don't bother replacing if there will be no change),
-    //   we prepare for search.
-    // We won't try to use StringBuilder::replace(), due to the parallel nature
-    //   of the task. The logic of the problem is simpler if we don't try to
-    //   break it up.
-    // Find the byte differential, if any.
-    uint8_t lt_len_final       = lineTerminatorLength(_term_seq);
-    uint8_t lt_len_max_initial = 0;
-    uint8_t lt_len_initial[MAX_SEARCHES] = {0, };
-    int32_t lt_search_lit[MAX_SEARCHES]  = {0, };
+    // We abstract the assignment of the forwarded buffer from the from source,
+    //   despite it being assigned that way by default. If mutation is required,
+    //   buf_to_push will be assigned to mutation_buf instead. This prevents us
+    //   having to shuffle and copy needlessly if we aren't doing replacement.
+    StringBuilder  mutation_buf;
+    StringBuilder* buf_to_push = buf;
+    int length_taken = 0;
 
-    for (uint8_t i = 0; i < MAX_SEARCHES; i++) {
-      const uint16_t CURRENT_MASK_BIT = (1 << i);
-      if (CURRENT_MASK_BIT & SEARCH_MASK) {
-        // Record length information for terminators for which we will search.
-        lt_len_initial[i]  = lineTerminatorLength((LineTerm) i);
-        lt_len_max_initial = strict_max(lt_len_max_initial, lt_len_initial[i]);
-      }
-    }
-    const bool LENGTH_DIFFERENTIAL = (lt_len_max_initial != lt_len_final);
-    // If the conversion process would change the length of the string, we will
-    //   need to reallocate/copy. But don't do that just yet. Do the search and
-    //   calculate the new size and boundary rules to make sure we don't do the
-    //   replacement for nothing (since it may happen in-situ).
-    const uint8_t* INPUT_BUFFER = buf->string();
-    const int32_t  INPUT_LENGTH = buf->length();
-    int32_t replacable_lt_count = 0;
+    // We don't bother replacing if there will be no change. But if the
+    //   replacement_mask contains something other-than our desired LineTerm,
+    //   we prepare for a search.
+    const uint8_t TARGET_TERM_MASK = (1 << (uint8_t) _term_seq);
+    const uint8_t SEARCH_MASK      = (_replacement_mask & ~(TARGET_TERM_MASK));
+    // Do we need to do anything for search and relace? Set up for it, if so.
+    if (0 != SEARCH_MASK) {
+      const uint8_t MAX_SEARCHES = (uint8_t) LineTerm::INVALID;
+      MultiStringSearch search_machine(MAX_SEARCHES);
 
-    for (int32_t n = 0; n < INPUT_LENGTH; n++) {
-      const int32_t CURRENT_SEARCH_LENGTH = lt_len_initial[n];
       for (uint8_t i = 0; i < MAX_SEARCHES; i++) {
-        switch (lt_len_initial[i]) {
-          case 0:  break;   // No search.
-          case 1:
-            break;
-          default:
-            if (0 < lt_search_lit[i]) {
-              // We are in the middle of this terminator.
-            }
-            else {
-            }
-            break;
+        if ((1 << i) & SEARCH_MASK) {
+          // Record information for terminators included in the search.
+          const LineTerm TMP_TERM = (LineTerm) i;
+          intt8_t ret_st_add = search_machine.addSearchTerm(
+            (const uint8_t*) lineTerminatorLiteralStr(TMP_TERM),
+            lineTerminatorLength(TMP_TERM)
+          );
+          // If we don't have enough memory to define a termination sequences, we
+          //   certainly don't have enough to do a replace(). Bail out.
+          if (0 != ret_st_add) {  return ret;   }
         }
       }
 
-      //*(INPUT_BUFFER + i)
-      //if () {
-      //}
+      bool keep_searching = true;
+      int search_result = search_machine.runSearch(buf, PURE_TAKE_LENGTH);
+      while (keep_searching) {
+        switch (search_result) {
+          case 0:
+          default:
+            break;
+        }
+        keep_searching = false;
+      }
+      //search_machine.maxNeedleLength();
     }
-    int32_t total_len_change = replacable_lt_count * LENGTH_DIFFERENTIAL;
 
-
-    if (nullptr != _efferant) {
-      // TODO: There may be a smarter way to do this with less branching, and
-      //   without calling StringBuilder::replace().
-      switch (_term_seq) {
-        case LineTerm::ZEROBYTE:  // "\0"
-          // TODO: This might be special... Perverse consequence warning.
-          //   Write the unit tests for this before trying to implement it.
-          ret = _efferant->pushBuffer(buf);
-          break;
-        case LineTerm::CR:
-          if (replaceOccurrencesOf(LineTerm::CRLF)) {  buf->replace("\r\n", "\r");  }
-          if (replaceOccurrencesOf(LineTerm::LF)) {    buf->replace("\n", "\r");    }
-          ret = _efferant->pushBuffer(buf);
-          break;
-        case LineTerm::LF:
-          if (replaceOccurrencesOf(LineTerm::CRLF)) {  buf->replace("\r\n", "\n");  }
-          if (replaceOccurrencesOf(LineTerm::CR)) {    buf->replace("\r", "\n");    } 
-          ret = _efferant->pushBuffer(buf);
-          break;
-        case LineTerm::CRLF:
-          // TODO: This won't work because the end result will be things like "\r\r\n".
-          //   More reason to not try to use StringBuilder::replace()...
-          //buf->replace("\r",   "\r\n");
-          //buf->replace("\n",   "\r\n");
-          ret = _efferant->pushBuffer(buf);
+    // With search and replace optionally completed, we can push the result
+    //   according to class settings.
+    if (holdUntilBreak()) {
+      // Chunking will complicate our lives, slightly.
+      ret = _push_buffer_with_callbreak(buf_to_push);  // TODO: Wrong
+    }
+    else {
+      // Without chunking, we don't need to do anything special. Just forward
+      //   everything we presently have that is certain.
+      switch (_efferent->pushBuffer(&push_buf)) {
+        case -1:
+        case 0:
+          // TODO: We planned very hard to avoid this case. Yet here we are.
+          // Prepend the unclaimed (and mutated) data back onto the source buffer.
+        case 1:
+        default:
           break;
       }
     }
+
+    ret = (((INPUT_LENGTH - buf->length()) < INPUT_LENGTH) ? 0 : 1);
   }
 
-
-
-  if (!holdUntilBreak()) {
-    // Without chunking, we don't need to do anything special. Just forward
-    //   everything we presently have that is certain.
-  }
-  else {
-    // Chunking will complicate our lives, slightly.
-  }
   return ret;
 }
+
+
+int8_t LineEndingCoDec::_push_no_callbreak(StringBuilder* buf) {
+  int8_t ret = -1;
+  return ret;
+}
+
+
+/*
+* NOTE: Private method, but follows the same return conventions and rules as
+*   does pushBuffer() itself.
+* TODO: Iterate efferent push if isometry is desired.
+*/
+int8_t LineEndingCoDec::_push_with_callbreak(StringBuilder* buf) {
+  int8_t ret = -1;
+  return ret;
+}
+
 
 
 // NOTE: This function will over-report if doing a conversion that
@@ -145,20 +144,21 @@ int32_t LineEndingCoDec::bufferAvailable() {
 }
 
 
+
 /*******************************************************************************
 * LineEndingCoDec specifics
 *******************************************************************************/
 
 void LineEndingCoDec::replaceOccurrencesOf(LineTerm r_term, bool replace) {
-  const uint16_t TARGET_TERM_MASK = (1 << (uint8_t) r_term);
+  const uint8_t TARGET_TERM_MASK = (1 << (uint8_t) r_term);
   if (replace) {  _replacement_mask |= TARGET_TERM_MASK;     }
   else {          _replacement_mask &= ~(TARGET_TERM_MASK);  }
 }
 
 
 bool LineEndingCoDec::replaceOccurrencesOf(LineTerm r_term) {
-  const uint16_t TARGET_TERM_MASK = (1 << (uint8_t) r_term);
-  const uint16_t SEARCH_MASK      = (_replacement_mask & ~(TARGET_TERM_MASK));
+  const uint8_t TARGET_TERM_MASK = (1 << (uint8_t) r_term);
+  const uint8_t SEARCH_MASK      = (_replacement_mask & ~(TARGET_TERM_MASK));
   return (0 != SEARCH_MASK);
 }
 
