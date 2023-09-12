@@ -119,22 +119,27 @@ typedef struct str_ll_t {
 /* Class for dynamic strings and buffers. */
 class StringBuilder {
   public:
+    /* There is a single base constructor that is shimmed by wrapper
+       constructors for convenience of loading initial content. */
     StringBuilder();
-    StringBuilder(char *initial);
-    StringBuilder(uint8_t *initial, int len);
+    StringBuilder(char*);
     StringBuilder(const char*);
+    StringBuilder(uint8_t*, int);
+    StringBuilder(const uint8_t*, int);
     ~StringBuilder();
 
+    uint8_t* string();   // Flattens the memory layout and returns its pointer.
     int length();
     bool isEmpty(const bool strict = true);
-    uint8_t* string();
-    uint8_t byteAt(const int);          // Returns the byte at the given offset.
+    uint8_t byteAt(const int);        // Returns the byte at the given offset.
 
     /* Canonical implementations of concat() and prepend(). */
-    void concat(uint8_t *nu, int len);
-    void prepend(uint8_t *nu, int len);
+    void concat(uint8_t* nu, int len);
+    void prepend(uint8_t* nu, int len);
 
     /* Overrides to cleanly support C-style printable strings. */
+    inline void concat(const uint8_t* nu, const int len) {  return concat((uint8_t*) nu, len);  };
+
     inline void concat(char* nu) {         concat((uint8_t*) nu, strlen(nu));   };
     inline void concat(const char* nu) {   concat((uint8_t*) nu, strlen(nu));   };
     inline void prepend(char* nu) {        prepend((uint8_t*) nu, strlen(nu));  };
@@ -144,7 +149,7 @@ class StringBuilder {
     int concatf(const char* format, ...);
     int concatf(const char* format, va_list);
 
-    void concat(StringBuilder *nu);
+    void concat(StringBuilder* src);
     void concat(char nu);
     void concat(uint8_t nu);
     void concat(int nu);
@@ -160,9 +165,10 @@ class StringBuilder {
 
     /* These fxns allow for memory-tight hand-off of StrLL chains. Useful for merging
        StringBuilder instances. */
-    void concatHandoff(StringBuilder *nu);
-    void concatHandoffLimit(StringBuilder *nu, unsigned int len_limit);
-    void prependHandoff(StringBuilder *nu);
+    void concatHandoff(StringBuilder* src);
+    void concatHandoffLimit(StringBuilder* src, unsigned int len_limit);
+    void prependHandoff(StringBuilder* src);
+    void concatLimit(StringBuilder* src, unsigned int len_limit);
 
     /* Same idea as above, but takes a malloc'd buffer, alleviating the caller
        of responsibility for managing it. */

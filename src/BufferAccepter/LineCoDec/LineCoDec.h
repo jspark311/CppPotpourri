@@ -159,8 +159,8 @@ class StrSearchDef {
     ~StrSearchDef() {};
 
     void reset();
-    inline bool searchRunning() {  return (enabled & (0 <= offset_start) & (offset_start > offset_end);  };
-    inline bool searchHit() {      return ((0 <= offset_start) & (0 <= offset_end);            };
+    inline bool searchRunning() {  return (enabled & (0 <= offset_start) & (offset_start > offset_end));  };
+    inline bool searchHit() {      return ((0 <= offset_start) & (0 <= offset_end));            };
 };
 
 
@@ -171,7 +171,7 @@ class MultiStringSearch {
   public:
     MultiStringSearch(const uint8_t TC) :
       _MAX_SEARCH_TERMS(TC), _defs_added(0), _sdef_pool(nullptr), _src(nullptr),
-      _needle_count(0), _pickup_offset(0) {};
+      _needle_count(0) {};
     ~MultiStringSearch();
 
     bool   initialized();   // Allocates once on-demand.
@@ -182,7 +182,11 @@ class MultiStringSearch {
     int    resolvedLength();
     int    minNeedleLength();
     int    maxNeedleLength();
+    inline StrSearchDef* lastMatch() {      return _last_match;        };
+    inline bool          searchRunning() {  return (nullptr != _src);  };
+    inline bool          needlesFound() {   return _needle_count;      };
 
+    void   printDebug(StringBuilder*);
 
 
   private:
@@ -190,6 +194,7 @@ class MultiStringSearch {
     uint8_t        _defs_added;
     StrSearchDef*  _sdef_pool;
     StringBuilder* _src;
+    StrSearchDef*  _last_match;
 
     uint32_t      _needle_count;   // How many needles have been found so far?
     //PriorityQueue<StrSearchInProgress*>
@@ -231,8 +236,8 @@ class LineEndingCoDec : public BufferCoDec {
     bool            _hold_until_break;
     bool            _isometric_call_to_break;
 
-    int  _push_with_callbreak(StringBuilder*);
-    int  _push_no_callbreak(StringBuilder*);
+    int8_t  _push_with_callbreak(StringBuilder*);
+    int8_t  _push_no_callbreak(StringBuilder*);
 };
 
 

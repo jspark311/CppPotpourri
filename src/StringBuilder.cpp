@@ -198,14 +198,18 @@ StringBuilder::StringBuilder(char* initial) : StringBuilder() {
   concat(initial);
 }
 
+StringBuilder::StringBuilder(const char* initial) : StringBuilder() {
+  concat(initial);
+}
+
 StringBuilder::StringBuilder(uint8_t* initial, int len) : StringBuilder() {
   concat(initial, len);
 }
 
-
-StringBuilder::StringBuilder(const char* initial) : StringBuilder() {
-  concat(initial);
+StringBuilder::StringBuilder(const uint8_t* initial, int len) : StringBuilder() {
+  concat(initial, len);
 }
+
 
 
 /**
@@ -634,6 +638,34 @@ void StringBuilder::concatHandoffLimit(StringBuilder* donar, unsigned int len_li
     else {
       // We're taking the whole source.
       _stack_str_onto_list(old_root);
+    }
+  }
+  #if defined(__BUILD_HAS_PTHREADS)
+    // TODO: Both this instance, as well as the argument instance must be unlocked.
+    pthread_mutex_unlock(&donar->_mutex);
+    pthread_mutex_unlock(&_mutex);
+  #endif
+}
+
+
+/**
+* Like concatHandoffLimit(StringBuilder*), but makes a deep-copy instead of a
+*   transfer of ownership. Will only copy the given number of bytes, and will
+*   do so into a single StrLL.
+*/
+void StringBuilder::concatLimit(StringBuilder* donar, unsigned int len_limit) {
+  #if defined(__BUILD_HAS_PTHREADS)
+    // TODO: Both this instance, as well as the argument instance must be locked.
+    pthread_mutex_lock(&_mutex);
+    pthread_mutex_lock(&donar->_mutex);
+  #endif
+  if ((0 < len_limit) && (nullptr != donar) && (!donar->isEmpty(true))) {
+    const int CONTENT_LEN = strict_min((int32_t) len_limit, (int32_t) donar->length());
+    if (0 < CONTENT_LEN) {
+      StrLL* frag = _create_str_ll(CONTENT_LEN, donar->_root, 0);
+      if (nullptr != frag) {
+        _stack_str_onto_list(frag);
+      }
     }
   }
   #if defined(__BUILD_HAS_PTHREADS)
