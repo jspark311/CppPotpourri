@@ -118,16 +118,17 @@ int8_t LineEndingCoDec::pushBuffer(StringBuilder* buf) {
           else {
             keep_searching = false;
           }
+
+          StringBuilder log;
+          search_machine.printDebug(&log);
+          printf("\n%s\n", (char*) log.string());
         }
       }
       else {
         // A failure to initiate the search is a halting failure. Bail out.
+        printf("search_result = %d\n", search_result);
         return ret;
       }
-      //StringBuilder log;
-      //search_machine.printDebug(&log);
-      //printf("\n%s\n", (char*) log.string());
-
       // If we made it this far without a bailout, it means that search and
       //   replace went well, and we should cull the source string according
       //   to how much of the input we took.
@@ -137,16 +138,15 @@ int8_t LineEndingCoDec::pushBuffer(StringBuilder* buf) {
 
     // With search and replace optionally completed, we can push the result
     //   according to class settings.
-    if (holdUntilBreak()) {
-      // Chunking will complicate our lives, slightly.
-      ret = _push_with_callbreak(buf_to_push);  // TODO: Wrong
-    }
-    else {
-      // Without chunking, we don't need to do anything special. Just forward
-      //   everything we presently have that is certain.
-      switch (_efferant->pushBuffer(buf_to_push)) {
-        case -1:
-        case 0:
+    if (!buf_to_push->isEmpty(true)) {
+      if (holdUntilBreak()) {
+        // Chunking will complicate our lives, slightly.
+        ret = _push_with_callbreak(buf_to_push);  // TODO: Wrong
+      }
+      else {
+        // Without chunking, we don't need to do anything special. Just forward
+        //   everything we presently have that is certain.
+        if (1 > _efferant->pushBuffer(buf_to_push)) {
           // We planned very hard to avoid this case. Yet here we are. If
           //   mutated buffer was unclaimed by the efferant, prepend it back
           //   onto the source buffer.
@@ -154,22 +154,13 @@ int8_t LineEndingCoDec::pushBuffer(StringBuilder* buf) {
           if (push_mutated_buf) {
             buf->prependHandoff(buf_to_push);
           }
-          break;
-
-        default:
-          break;
+        }
       }
     }
 
     ret = (((INPUT_LENGTH - buf->length()) < INPUT_LENGTH) ? 0 : 1);
   }
 
-  return ret;
-}
-
-
-int8_t LineEndingCoDec::_push_no_callbreak(StringBuilder* buf) {
-  int8_t ret = -1;
   return ret;
 }
 
@@ -183,7 +174,6 @@ int8_t LineEndingCoDec::_push_with_callbreak(StringBuilder* buf) {
   int8_t ret = -1;
   return ret;
 }
-
 
 
 // NOTE: This function will over-report if doing a conversion that

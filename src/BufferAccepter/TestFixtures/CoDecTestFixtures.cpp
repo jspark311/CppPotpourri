@@ -140,11 +140,15 @@ int8_t BufAcceptTestSource::pollUntilStagnant() {
 * NOTE: Will not reset the externally-held profiler.
 */
 void BufAcceptTestSource::reset() {
-  _fake_buffer_limit      = 0;  // Implies never propagate buffers.
-  _call_count             = 0;
-  _pb_call_count_rej      = 0;
-  _pb_call_count_partial  = 0;
-  _pb_call_count_full     = 0;
+  _fake_buffer_limit     = 0;  // Implies never propagate buffers.
+  _call_count            = 0;
+  _pb_call_count_rej     = 0;
+  _pb_call_count_partial = 0;
+  _pb_call_count_full    = 0;
+  _false_rejections      = 0;
+  _false_partial_claims  = 0;
+  _false_full_claims     = 0;
+  _call_count            = 0;
   _backlog.clear();
 }
 

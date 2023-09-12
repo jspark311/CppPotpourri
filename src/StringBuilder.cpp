@@ -958,9 +958,9 @@ void StringBuilder::trim() {
 * Search the string for the given sequence.
 *
 * @param NEEDLE The string to search for.
-* @param NEEDLE_LEN The string to search for.
+* @param NEEDLE_LEN The length of the string to search for.
 * @param start_offset is the depth into the string to begin the search.
-* @return the offset of the specified string.
+* @return the offset of the specified needle.
 */
 int StringBuilder::locate(const uint8_t* NEEDLE, int NEEDLE_LEN, int start_offset) {
   int ret = -1;

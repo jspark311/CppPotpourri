@@ -74,6 +74,10 @@ bool MultiStringSearch::initialized() {
 */
 void MultiStringSearch::reset() {
   _src = nullptr;
+  _last_match = nullptr;
+  _last_full_match_offset = -1;
+  _next_starting_offset   = -1;
+  _needles_found = 0;
   if (initialized()) {
     for (uint8_t i = 0; i < _defs_added; i++) {
       _sdef_pool[i].reset();
@@ -135,6 +139,7 @@ int MultiStringSearch::runSearch(StringBuilder* untrusted_src, const int SEARCH_
   if (INPUT_LENGTH <= STARTING_OFFSET) {                 return -3;  }  // Params are confused.
   reset();
   _src = untrusted_src;
+  _next_starting_offset = 0;
   return continueSearch();
 }
 
@@ -156,21 +161,125 @@ int MultiStringSearch::runSearch(StringBuilder* untrusted_src, const int SEARCH_
 *   the search (which doesn't copy anything) until the search is concluded for
 *   one of the above reasons.
 *
+* TODO: A speed efficiency gain can be made by pushing the multiple-search
+*   feature down into locate(). But that will take some careful planning.
+*
 * @return the number of search hits (after factoring out collision) on success.
 */
 int MultiStringSearch::continueSearch() {
   int ret = 0;
-  if (nullptr != _src) {
-  }
-  if (initialized()) {
+  _last_match = nullptr;
+  if (searchRunning()) {
+    const int INPUT_LEN = _src->length();
+    // If this passes, we are assured that at least needle is enabled.
+    // Update our search bounds.
+    _update_next_starting_offsets(_next_starting_offset);
+
+    int locate_results[_defs_added] = {0, };
+    int  matches_this_run = 0;
+    int  longest_match    = 0;
+    bool longest_match_is_partial = false;
     for (uint8_t i = 0; i < _defs_added; i++) {
-      _sdef_pool[i].reset();
-      _sdef_pool[i].enabled = true;
+      // For any searches still running, find the next occurance.
+      if (_sdef_pool[i].enabled) {
+        const int REMAINING_SEARCH_LEN = (INPUT_LEN - _sdef_pool[i].offset_start);
+        const int NEEDLE_COMPARE_LEN   = strict_min(REMAINING_SEARCH_LEN, _sdef_pool[i].SEARCH_STR_LEN);
+        locate_results[i] = _src->locate(_sdef_pool[i].SEARCH_STR, NEEDLE_COMPARE_LEN, _sdef_pool[i].offset_start);
+        if (-1 < locate_results[i]) {
+          // There was a match on a needle. Was it complete?
+          const bool WAS_COMPLETE_MATCH = (NEEDLE_COMPARE_LEN == _sdef_pool[i].SEARCH_STR_LEN);
+          if (WAS_COMPLETE_MATCH) {
+            // If a needle had a complete match, we mark its def to reflect so.
+            _sdef_pool[i].offset_start = locate_results[i];
+            _sdef_pool[i].offset_end   = (locate_results[i] + _sdef_pool[i].SEARCH_STR_LEN);
+            _needles_found++;
+            printf("(%d) Found complete match %d\n", i, locate_results[i]);
+          }
+
+          if (longest_match < locate_results[i]) {           // If this was at least the longest
+            longest_match_is_partial = WAS_COMPLETE_MATCH;   //   match so far, we set the
+          }                                                  //   feasibility of more searching.
+          else if (longest_match == locate_results[i]) {     // If it is tied for longest, we
+            longest_match_is_partial |= WAS_COMPLETE_MATCH;  //   may be done with the search.
+          }
+          else {
+            // This needle is at least as long as the longest match so far
+            //   this run. If it is incomplete, set the flag for completeness.
+            longest_match_is_partial = true;
+          }
+          longest_match = strict_max(longest_match, locate_results[i]);
+          matches_this_run++;
+        }
+      }
+      else {
+        locate_results[i] = -1;
+      }
+    }
+
+    // Did we have matches?
+    if ((!longest_match_is_partial) & (0 < matches_this_run)) {
+      // With all the results collected from each locate() on each possible
+      //   substring, did anything come back positive for a match? Return the
+      //   longest match that is also complete.
+      for (uint8_t i = 0; i < _defs_added; i++) {
+        if (-1 != locate_results[i]) {
+          if (locate_results[i] == longest_match) {
+            _sdef_pool[i].offset_end = (locate_results[i] + _sdef_pool[i].SEARCH_STR_LEN);
+            _last_match = &_sdef_pool[i];
+            _next_starting_offset = _sdef_pool[i].offset_end;
+            _last_full_match_offset = locate_results[i];
+            ret = 1;
+          }
+        }
+      }
+    }
+    else {
+      // If the longest match was also a partial match, or there were no matches
+      //   on this run, the search is concluded because we don't want to
+      //   unwittingly replace longer strings that are cut off with (possibly
+      //   overlapping) substrings that are complete matches.
+      _next_starting_offset = INPUT_LEN;
     }
   }
   return ret;
 }
 
+
+bool MultiStringSearch::searchRunning() {
+  // If this is set, a positive search state must be refuted.
+  bool ret = (nullptr != _src);
+  if (ret) {
+    // No active needle definitions would be a sufficient reason to consider
+    //   the search complete.
+    bool any_def_active = false;
+    for (uint8_t i = 0; i < _defs_added; i++) {
+      any_def_active |= _sdef_pool[i].enabled;
+    }
+    ret &= any_def_active;
+  }
+  if (ret) {
+    // Finally, if the search has exhausted its input length, it is complete,
+    //   even if there are still active searches for needles.
+    ret &= (_next_starting_offset >= _src->length());
+  }
+  return ret;
+}
+
+
+/**
+* If a needle was found, this function will be called to realign the search
+*   boundaries to possibly exclude space that is unproductive to search.
+*/
+void MultiStringSearch::_update_next_starting_offsets(const int NEW_START) {
+  for (uint8_t i = 0; i < _defs_added; i++) {
+    if (_sdef_pool[i].enabled) {
+      if (_sdef_pool[i].offset_start < NEW_START) {
+        _sdef_pool[i].offset_start = NEW_START;
+      }
+      _sdef_pool[i].offset_end = -1;
+    }
+  }
+}
 
 
 /**
@@ -221,9 +330,27 @@ int MultiStringSearch::maxNeedleLength() {
 }
 
 
+/**
+* Find the number of searches that are unresolved.
+*
+* @return the length unambiguously searched.
+*
+*/
+int MultiStringSearch::unresolvedSearches() {
+  int ret = 0;
+  for (uint8_t i = 0; i < _defs_added; i++) {
+    if (_sdef_pool[i].searchRunning()) {
+      ret++;
+    }
+  }
+  return ret;
+}
+
+
 void MultiStringSearch::printDebug(StringBuilder* text_return) {
   StringBuilder::styleHeader1(text_return, "MultiStringSearch");
   text_return->concatf("\tNeedle size range:   [%d, %d]\n", minNeedleLength(), maxNeedleLength());
+  text_return->concatf("\tNeedles found:       %d\n", needlesFound());
   text_return->concatf("\tResolved length:     %d\n\t", resolvedLength());
   StringBuilder::styleHeader2(text_return, "Needles:");
   for (uint8_t i = 0; i < _defs_added; i++) {
@@ -234,69 +361,3 @@ void MultiStringSearch::printDebug(StringBuilder* text_return) {
     text_return->concatf("\t  offset_start/end:     \t(%d / %d)\n", _sdef_pool[i].offset_start, _sdef_pool[i].offset_end);
   }
 }
-
-
-// int8_t ::pushBuffer(StringBuilder* buf) {
-//   if (0 != SEARCH_MASK) {
-//     // If the conversion process would change the length of the string, we will
-//     //   need to reallocate/copy. But don't do that just yet. Do the search and
-//     //   calculate the new size and boundary rules to make sure we don't do the
-//     //   replacement for nothing (since it may happen in-situ).
-//     const int LENGTH_DIFFERENTIAL = (LT_LEN_FINAL + lt_len_max_initial);
-//     const uint8_t* INPUT_BUFFER = buf->string();
-//     int32_t lt_search_lit[MAX_SEARCHES]  = {0, };  // Search-tracking
-//     const uint8_t* seg_start_pos = INPUT_BUFFER;
-//     int32_t search_idx    = 0;
-//     bool keep_searching = true;
-//     int searches_unresolved = 0;
-//
-//     while (keep_searching) {
-//       const int32_t CURRENT_SEARCH_LENGTH = lt_len_initial[n];
-//       bool found_terminator = false;
-//       const char INPUT_BYTE      = *(INPUT_BUFFER + i);
-//       for (uint8_t i = 0; i < MAX_SEARCHES; i++) {
-//         if (0 < lt_len_initial[i]) {  // We are searching for a terminator of this length.
-//           const char* TERMINATOR_STR = lineTerminatorLiteralStr();
-//           if (0 < lt_search_lit[i]) {
-//             // We are in the middle of this terminator.
-//             const int TERM_STR_OFFSET = (search_idx - lt_len_initial[i]);
-//             if (INPUT_BYTE == *(TERMINATOR_STR + TERM_STR_OFFSET)) {
-//               if ((SEARCH_OFFSET + 1) == lt_len_initial[i]) {
-//                 found_terminator = true;
-//                 searches_unresolved--;
-//               }
-//             }
-//             else {
-//               searches_unresolved--;
-//             }
-//           }
-//           else if (INPUT_BYTE == *TERMINATOR_STR) {
-//             // This is the first character of the search term.
-//             lt_len_initial[i] = search_idx;
-//             if (1 == lt_len_initial[i]) {
-//               // It is also the only byte.
-//               found_terminator = true;
-//             }
-//             else {
-//               searches_unresolved++;
-//             }
-//           }
-//         }
-//       }
-//
-//
-//       if (found_terminator) {             // If any terminal sequence was found...
-//         if (0 == searches_unresolved) {   // ...and there are no unresolved searches...
-//           const int SEG_LENGTH = ((INPUT_BUFFER + i) - seg_start_pos) - lt_len_initial[i];
-//           if (0 < SEG_LENGTH) {
-//             push_buf.concat(seg_start_pos, SEG_LENGTH);
-//           }
-//           seg_start_pos = (INPUT_BUFFER + i);
-//         }
-//       }
-//
-//       search_idx++;
-//       keep_searching = (PURE_TAKE_LENGTH > search_idx);
-//     }
-//   }
-// }
