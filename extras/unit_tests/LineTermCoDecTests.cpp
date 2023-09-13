@@ -176,9 +176,9 @@ int line_term_trivial_tests() {
   test_source.pushLimit(1000000);  // Ensure the whole buffer goes out at once.
 
   printf("\tPushing a buffer through a null transform results in the same buffer... ");
-  printf("\tPass.\n\tThat buffer has the same break count... ");
-  printf("\tPass.\n\tThat buffer matches what was pushed... ");
-  printf("\tPass.\n\tLineTerm::INVALID as the replacement sequence results in a null transform... ");
+  printf("Pass.\n\tThat buffer has the same break count... ");
+  printf("Pass.\n\tThat buffer matches what was pushed... ");
+  printf("Pass.\n\tLineTerm::INVALID as the replacement sequence results in a null transform... ");
 
   if (0 != ret) {
     printf(" Fail.\n");

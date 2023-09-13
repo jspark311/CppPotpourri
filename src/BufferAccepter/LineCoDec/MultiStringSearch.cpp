@@ -76,6 +76,8 @@ void MultiStringSearch::reset() {
   _src = nullptr;
   _last_match = nullptr;
   _last_full_match_offset = -1;
+  _search_length = 0;
+  _starting_offset = 0;
   _next_starting_offset   = -1;
   _needles_found = 0;
   if (initialized()) {
@@ -102,7 +104,8 @@ int8_t MultiStringSearch::addSearchTerm(const uint8_t* BUF, const int LEN) {
       ret--;
       if (initialized()) {
         new(_sdef_pool + _defs_added) StrSearchDef(BUF, LEN);  // Placement new.
-        _sdef_pool[_defs_added++].enabled = true;;
+        _sdef_pool[_defs_added].enabled = true;
+        _defs_added++;
         ret = 0;
       }
     }
@@ -134,12 +137,15 @@ int8_t MultiStringSearch::addSearchTerm(const uint8_t* BUF, const int LEN) {
 int MultiStringSearch::runSearch(StringBuilder* untrusted_src, const int SEARCH_LEN, const int STARTING_OFFSET) {
   // Bailout clauses...
   if ((nullptr == untrusted_src) || (!initialized())) {  return -1;  }  // NOTE: short-circuit.
-  if (nullptr != _src) {       return -2;  }  // Search in progress.
-  const int32_t INPUT_LENGTH = untrusted_src->length();   // Find input bounds.
-  if (INPUT_LENGTH <= STARTING_OFFSET) {                 return -3;  }  // Params are confused.
+  if (nullptr != _src) {                                 return -2;  }  // Search in progress.
+  if ((0 > STARTING_OFFSET) | (0 >= SEARCH_LEN)) {       return -3;  }  // Params are confused.
+  const int32_t INPUT_LENGTH = untrusted_src->length();
+  if (INPUT_LENGTH < (STARTING_OFFSET + SEARCH_LEN)) {   return -3;  }  // Params are confused.
   reset();
   _src = untrusted_src;
-  _next_starting_offset = 0;
+  _search_length        = SEARCH_LEN;
+  _starting_offset      = STARTING_OFFSET;
+  _next_starting_offset = STARTING_OFFSET;
   return continueSearch();
 }
 
@@ -180,6 +186,7 @@ int MultiStringSearch::continueSearch() {
     int  longest_match    = 0;
     bool longest_match_is_partial = false;
     for (uint8_t i = 0; i < _defs_added; i++) {
+      //printf("continue iteration (%d) \n", i);
       // For any searches still running, find the next occurance.
       if (_sdef_pool[i].enabled) {
         const int REMAINING_SEARCH_LEN = (INPUT_LEN - _sdef_pool[i].offset_start);
@@ -193,19 +200,14 @@ int MultiStringSearch::continueSearch() {
             _sdef_pool[i].offset_start = locate_results[i];
             _sdef_pool[i].offset_end   = (locate_results[i] + _sdef_pool[i].SEARCH_STR_LEN);
             _needles_found++;
-            printf("(%d) Found complete match %d\n", i, locate_results[i]);
+            //printf("(%d) Found complete match %d\n", i, locate_results[i]);
           }
 
-          if (longest_match < locate_results[i]) {           // If this was at least the longest
-            longest_match_is_partial = WAS_COMPLETE_MATCH;   //   match so far, we set the
-          }                                                  //   feasibility of more searching.
-          else if (longest_match == locate_results[i]) {     // If it is tied for longest, we
-            longest_match_is_partial |= WAS_COMPLETE_MATCH;  //   may be done with the search.
-          }
-          else {
-            // This needle is at least as long as the longest match so far
-            //   this run. If it is incomplete, set the flag for completeness.
-            longest_match_is_partial = true;
+          if (longest_match < locate_results[i]) {            // If this was at least the longest
+            longest_match_is_partial = !WAS_COMPLETE_MATCH;   //   match so far, we set the
+          }                                                   //   feasibility of more searching.
+          else if (longest_match == locate_results[i]) {      // If it is tied for longest, we
+            longest_match_is_partial |= !WAS_COMPLETE_MATCH;  //   may be done with the search.
           }
           longest_match = strict_max(longest_match, locate_results[i]);
           matches_this_run++;
@@ -217,6 +219,7 @@ int MultiStringSearch::continueSearch() {
     }
 
     // Did we have matches?
+    //printf("matches_this_run = %d \t longest_match_is_partial = %c\n", matches_this_run, (longest_match_is_partial ? '1':'0'));
     if ((!longest_match_is_partial) & (0 < matches_this_run)) {
       // With all the results collected from each locate() on each possible
       //   substring, did anything come back positive for a match? Return the
@@ -257,10 +260,12 @@ bool MultiStringSearch::searchRunning() {
     }
     ret &= any_def_active;
   }
+  const int REMAINING_SEARCH_LEN = (_search_length - (_next_starting_offset - _starting_offset));
+  ret &= (0 < REMAINING_SEARCH_LEN);
   if (ret) {
     // Finally, if the search has exhausted its input length, it is complete,
     //   even if there are still active searches for needles.
-    ret &= (_next_starting_offset >= _src->length());
+    ret &= (_next_starting_offset < _src->length());
   }
   return ret;
 }
@@ -350,14 +355,18 @@ int MultiStringSearch::unresolvedSearches() {
 void MultiStringSearch::printDebug(StringBuilder* text_return) {
   StringBuilder::styleHeader1(text_return, "MultiStringSearch");
   text_return->concatf("\tNeedle size range:   [%d, %d]\n", minNeedleLength(), maxNeedleLength());
+  text_return->concatf("\tSearch_length:       %d\n", _search_length);
+  text_return->concatf("\tStarting offset:     %d\n", _starting_offset);
+  text_return->concatf("\tNext offset:         %d\n", _next_starting_offset);
   text_return->concatf("\tNeedles found:       %d\n", needlesFound());
-  text_return->concatf("\tResolved length:     %d\n\t", resolvedLength());
+  text_return->concatf("\tResolved length:     %d\n", resolvedLength());
+  text_return->concatf("\tHas match:           %c\n\t", ((nullptr == lastMatch()) ? 'n':'y'));
   StringBuilder::styleHeader2(text_return, "Needles:");
   for (uint8_t i = 0; i < _defs_added; i++) {
     text_return->concatf("\t%u (%sabled)\n", i, (_sdef_pool[i].enabled ? "en":"dis"));
     text_return->concatf("\t  SEARCH_STR (%d bytes):\t", _sdef_pool[i].SEARCH_STR_LEN);
     StringBuilder ascii_dump(_sdef_pool[i].SEARCH_STR, _sdef_pool[i].SEARCH_STR_LEN);
     ascii_dump.printDebug(text_return);
-    text_return->concatf("\t  offset_start/end:     \t(%d / %d)\n", _sdef_pool[i].offset_start, _sdef_pool[i].offset_end);
+    text_return->concatf("\t  offset_start/end:\t(%d / %d)\n", _sdef_pool[i].offset_start, _sdef_pool[i].offset_end);
   }
 }

@@ -171,8 +171,8 @@ class MultiStringSearch {
   public:
     MultiStringSearch(const uint8_t TC) :
       _MAX_SEARCH_TERMS(TC), _defs_added(0), _sdef_pool(nullptr), _src(nullptr),
-      _last_match(nullptr), _last_full_match_offset(-1),
-      _next_starting_offset(-1), _needles_found(0) {};
+      _search_length(0), _starting_offset(-1), _last_match(nullptr),
+      _last_full_match_offset(-1), _next_starting_offset(-1), _needles_found(0) {};
 
     ~MultiStringSearch();
 
@@ -186,8 +186,9 @@ class MultiStringSearch {
     int    minNeedleLength();
     int    maxNeedleLength();
     int    unresolvedSearches();
-    inline StrSearchDef* lastMatch() {      return _last_match;        };
-    inline bool          needlesFound() {   return _needles_found;     };
+    inline uint8_t       needlesDefined() {   return _defs_added;        };
+    inline uint32_t      needlesFound() {     return _needles_found;     };
+    inline StrSearchDef* lastMatch() {        return _last_match;        };
 
     void   printDebug(StringBuilder*);
 
@@ -197,6 +198,8 @@ class MultiStringSearch {
     uint8_t        _defs_added;
     StrSearchDef*  _sdef_pool;
     StringBuilder* _src;
+    int            _search_length;
+    int            _starting_offset;
     StrSearchDef*  _last_match;
     int            _last_full_match_offset;
     int            _next_starting_offset;
