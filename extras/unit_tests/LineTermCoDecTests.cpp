@@ -327,7 +327,7 @@ int line_term_known_answer_tests() {
 
 
 void print_types_line_term_codec() {
-  printf("\tLineEndingCoDec       %u\t%u\n", sizeof(Image),   alignof(Image));
+  printf("\tLineEndingCoDec       %u\t%u\n", sizeof(LineEndingCoDec), alignof(LineEndingCoDec));
 }
 
 

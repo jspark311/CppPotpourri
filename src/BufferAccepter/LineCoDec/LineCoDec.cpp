@@ -118,15 +118,10 @@ int8_t LineEndingCoDec::pushBuffer(StringBuilder* buf) {
           else {
             keep_searching = false;
           }
-
-          StringBuilder log;
-          search_machine.printDebug(&log);
-          printf("\n%s\n", (char*) log.string());
         }
       }
       else {
         // A failure to initiate the search is a halting failure. Bail out.
-        printf("search_result = %d\n", search_result);
         return ret;
       }
       // If we made it this far without a bailout, it means that search and

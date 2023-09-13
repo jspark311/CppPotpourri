@@ -153,6 +153,7 @@ void printTestFailure(const char* module, const char* test) {
 * Something terrible.
 * Textual inclusion of CPP files until a testing framework is writen or adopted.
 *******************************************************************************/
+#include "PlatformAssurances.cpp"
 #include "GlueTests.cpp"
 #include "AsyncSequencerTests.cpp"
 #include "StringBuilderTest.cpp"
@@ -164,6 +165,7 @@ void printTestFailure(const char* module, const char* test) {
 #include "TestDataStructures.cpp"
 #include "BufferAccepterTests.cpp"
 #include "Base64CoDecTests.cpp"
+#include "MultiStringSearchTests.cpp"
 #include "LineTermCoDecTests.cpp"
 #include "ImageTests.cpp"
 #include "SensorFilterTests.cpp"
@@ -188,22 +190,23 @@ void printTypeSizes() {
   printf("\tFloat                    %u\t%u\n", sizeof(float),  alignof(float));
   printf("\tDouble                   %u\t%u\n", sizeof(double), alignof(double));
   printf("-- C3P types:\n");
-  printf("\tAbstractPlatform         %u\t%u\n", sizeof(AbstractPlatform),     alignof(AbstractPlatform));
   printf("\tVector3<float>           %u\t%u\n", sizeof(Vector3<float>),       alignof(Vector3<float>));
   printf("\tLinkedList<void*>        %u\t%u\n", sizeof(LinkedList<void*>),    alignof(LinkedList<void*>));
   printf("\tElementPool<void*>       %u\t%u\n", sizeof(ElementPool<void*>),   alignof(ElementPool<void*>));
   printf("\tPriorityQueue<void*>     %u\t%u\n", sizeof(PriorityQueue<void*>), alignof(PriorityQueue<void*>));
   printf("\tSensorFilter<float>      %u\t%u\n", sizeof(SensorFilter<float>),  alignof(SensorFilter<float>));
-  printf("\tUUID                     %u\t%u\n", sizeof(UUID),             alignof(UUID));
-  printf("\tStopWatch                %u\t%u\n", sizeof(StopWatch),        alignof(StopWatch));
-  printf("\tGPSWrapper               %u\t%u\n", sizeof(GPSWrapper),       alignof(GPSWrapper));
-  printf("\tIdentity                 %u\t%u\n", sizeof(Identity),         alignof(Identity));
-  printf("\tIdentityUUID             %u\t%u\n", sizeof(IdentityUUID),     alignof(IdentityUUID));
+  printf("\tUUID                     %u\t%u\n", sizeof(UUID),                 alignof(UUID));
+  printf("\tStopWatch                %u\t%u\n", sizeof(StopWatch),            alignof(StopWatch));
+  printf("\tGPSWrapper               %u\t%u\n", sizeof(GPSWrapper),           alignof(GPSWrapper));
+  printf("\tIdentity                 %u\t%u\n", sizeof(Identity),             alignof(Identity));
+  printf("\tIdentityUUID             %u\t%u\n", sizeof(IdentityUUID),         alignof(IdentityUUID));
+  print_types_platform();
   print_types_async_sequencer();
   print_types_stringbuilder();
   print_types_ringbuffer();
   print_types_buffer_accepter();
   print_types_c3p_b64();
+  print_types_multisearch();
   print_types_line_term_codec();
   print_types_image();
   print_types_parsing_console();
@@ -238,6 +241,8 @@ void printTypeSizes() {
 #define CHKLST_CODEC_LINE_TERM_TESTS  0x00008000  // LineEndingCoDec
 #define CHKLST_IMAGE_TESTS            0x00010000  // Image
 #define CHKLST_C3P_HEADER_TESTS       0x00020000  // CppPotpourri.h
+#define CHKLST_MULT_STR_SEARCH_TESTS  0x00040000  // MultiStringSearch
+#define CHKLST_CI_PLATFORM_TESTS      0x00080000  // Platform assurances for this test program.
 #define CHKLST_ASYNC_SEQUENCER_TESTS  0x80000000  // Everything depends on this.
 
 
@@ -248,10 +253,17 @@ void printTypeSizes() {
   CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_BUFFER_ACCEPTER_TESTS | \
   CHKLST_IMAGE_TESTS | CHKLST_CODEC_LINE_TERM_TESTS | CHKLST_C3P_HEADER_TESTS | \
   CHKLST_CODEC_B64_TESTS | CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS | \
-  CHKLST_KEY_VALUE_PAIR_TESTS | CHKLST_LINKED_LIST_TESTS)
+  CHKLST_KEY_VALUE_PAIR_TESTS | CHKLST_LINKED_LIST_TESTS | CHKLST_CI_PLATFORM_TESTS | \
+  CHKLST_MULT_STR_SEARCH_TESTS)
 
 
 const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
+  { .FLAG         = CHKLST_CI_PLATFORM_TESTS,
+    .LABEL        = "CI_PLATFORM_TESTS",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == platform_assurance_test_main()) ? 1:-1);  }
+  },
   { .FLAG         = CHKLST_ASYNC_SEQUENCER_TESTS,
     .LABEL        = "ASYNC_SEQUENCER_TESTS",
     .DEP_MASK     = (0),
@@ -278,7 +290,8 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_SCHEDULER_TESTS,
     .LABEL        = "SCHEDULER_TESTS",
-    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS | CHKLST_DATA_STRUCT_TESTS),
+    // CHKLST_CI_PLATFORM_TESTS:   Test needs the system time
+    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS | CHKLST_DATA_STRUCT_TESTS | CHKLST_CI_PLATFORM_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == scheduler_tests_main()) ? 1:-1);  }
   },
@@ -350,7 +363,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_CODEC_LINE_TERM_TESTS,
     .LABEL        = "LINE_TERM_TESTS",
-    .DEP_MASK     = (CHKLST_BUFFER_ACCEPTER_TESTS),
+    .DEP_MASK     = (CHKLST_BUFFER_ACCEPTER_TESTS | CHKLST_MULT_STR_SEARCH_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == c3p_line_codec_test_main()) ? 1:-1);  }
   },
@@ -362,18 +375,25 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_C3P_HEADER_TESTS,
     .LABEL        = "C3P_HEADER_TESTS",
-    .DEP_MASK     = (0),
+    // CHKLST_CI_PLATFORM_TESTS:   Test needs the RNG
+    .DEP_MASK     = (CHKLST_CI_PLATFORM_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == c3p_header_test_main()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_MULT_STR_SEARCH_TESTS,
+    .LABEL        = "MULT_STR_SEARCH_TESTS",
+    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_multisearch_test_main()) ? 1:-1);  }
   },
 };
 
 AsyncSequencer checklist_unit_tests(TOP_LEVEL_TEST_LIST, (sizeof(TOP_LEVEL_TEST_LIST) / sizeof(TOP_LEVEL_TEST_LIST[0])));
 
 
-/****************************************************************************************************
-* The main function.                                                                                *
-****************************************************************************************************/
+/*******************************************************************************
+* The top-level main function.                                                 *
+*******************************************************************************/
 int main(int argc, char *argv[]) {
   int exit_value = 1;   // Failure is the default result.
   srand(time(NULL));
