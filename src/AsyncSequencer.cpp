@@ -24,22 +24,42 @@ void AsyncSequencer::printDebug(StringBuilder* output) {
   output->concatf("\tSteps outstanding:    %c\n", all_steps_have_run() ? 'n':'y');
   output->concatf("\tAll steps pass:       %c\n", all_steps_have_passed() ? 'y':'n');
   output->concatf("\tSteps are running:    %c\n", steps_running() ? 'y':'n');
-  output->concat("\tStep                   | Requested | Runnable | Running | Complete | Result\n");
-  output->concat("\t-----------------------|-----------|----------|---------|----------|-------\n");
+  const char* COL_0_HEADER = "Step";
+  const int OBLIGATORY_MIN_WIDTH_COL_0 = strlen(COL_0_HEADER);
+  uint32_t col_width_0 = OBLIGATORY_MIN_WIDTH_COL_0;
+  for (uint32_t i = 0; i < _STEP_COUNT; i++) {
+    const StepSequenceList* STEP = (_STEP_LIST + i);
+    col_width_0 = strict_max(col_width_0, strlen(STEP->LABEL));
+  }
+  const uint32_t SPACER_LENGTH = (col_width_0 - OBLIGATORY_MIN_WIDTH_COL_0);
+  // TODO: What follows is confusing and brittle. But it works. Might be nice
+  //   to port it over to a columnar output formatting class, since we commonly
+  //   build tables such as this, and it would be ok to take a long time to do it.
+  StringBuilder row_def_string;
+  row_def_string.concatf("\t%%%us |         %%c |        %%c |       %%c |        %%c |   %%s\n", col_width_0);
+  char dyn_row_0[SPACER_LENGTH + 1] = {0, };
+  char dyn_row_1[SPACER_LENGTH + 1] = {0, };
+  memset(dyn_row_0, ' ', SPACER_LENGTH);
+  memset(dyn_row_1, '-', SPACER_LENGTH);
+  output->concatf("\t%s ", COL_0_HEADER);
+  output->concat(dyn_row_0);
+  output->concat("| Requested | Runnable | Running | Complete | Result\n");
+  output->concat("\t-----");
+  output->concat(dyn_row_1);
+  output->concat("|-----------|----------|---------|----------|-------\n");
   for (uint32_t i = 0; i < _STEP_COUNT; i++) {
     const StepSequenceList* STEP = (_STEP_LIST + i);
     output->concatf(
-        "\t%22s |         %c |        %c |       %c |        %c |   %s\n",
-        STEP->LABEL,
-        (_steps_requested.value(STEP->FLAG) ? 'y':'n'),
-        (_steps_runnable.value(STEP->FLAG) ? 'y':'n'),
-        (_steps_running.value(STEP->FLAG) ? 'y':'n'),
-        (_steps_complete.value(STEP->FLAG) ? 'y':'n'),
-        (_steps_complete.value(STEP->FLAG) ? (_steps_passed.value(STEP->FLAG) ? "pass":"fail") : "")
+      (const char*) row_def_string.string(),
+      STEP->LABEL,
+      (_steps_requested.value(STEP->FLAG) ? 'y':'n'),
+      (_steps_runnable.value(STEP->FLAG) ? 'y':'n'),
+      (_steps_running.value(STEP->FLAG) ? 'y':'n'),
+      (_steps_complete.value(STEP->FLAG) ? 'y':'n'),
+      (_steps_complete.value(STEP->FLAG) ? (_steps_passed.value(STEP->FLAG) ? "pass":"fail") : "")
     );
   }
 }
-
 
 
 

@@ -26,6 +26,20 @@ This class makes extensive use of the heap, low-level memory assumptions, and is
 
 
 /*******************************************************************************
+* TODO: Generalization block
+*******************************************************************************/
+
+void print_types_stringbuilder() {
+  printf("\tStringBuilder         %u\t%u\n", sizeof(StringBuilder), alignof(StringBuilder));
+  printf("\tStrLL                 %u\t%u\n", sizeof(StrLL), alignof(StrLL));
+}
+
+
+// TODO: End of generalization block.
+
+
+
+/*******************************************************************************
 * StringBuilder test routines
 *******************************************************************************/
 /* DRY function to print metrics for a StringBuilder. */
@@ -989,10 +1003,220 @@ int test_misuse_cases() {
 
 
 
-void print_types_stringbuilder() {
-  printf("\tStringBuilder         %u\t%u\n", sizeof(StringBuilder), alignof(StringBuilder));
-  printf("\tStrLL                 %u\t%u\n", sizeof(StrLL), alignof(StrLL));
-}
+
+/*******************************************************************************
+* StringBuilder test plan
+* Testing a large class with concealed internal dependencies is a good use-case
+*   for AsyncSequencer. The code below defines a test plan that accounts for
+*   those hidden dependencies, and helps readability of both the tests, and the
+*   results.
+*******************************************************************************/
+#define CHKLST_SB_TEST_STRCASESTR     0x00000001  // strcasestr(const char* haystack, const char* needle)
+#define CHKLST_SB_TEST_STRCASECMP     0x00000002  // strcasecmp(const char*, const char*)
+#define CHKLST_SB_TEST_BASICS         0x00000004  // concat(uint8_t*, int), prepend(uint8_t*, int), length(), clear()
+#define CHKLST_SB_TEST_CMPBINSTRING   0x00000008  // cmpBinString(uint8_t*, int)
+#define CHKLST_SB_TEST_CASE_CONVERT   0x00000010  // toUpper() and toLower()
+#define CHKLST_SB_TEST_BYTEAT         0x00000020  // byteAt(const int)
+#define CHKLST_SB_TEST_ISEMPTY        0x00000040  // isEmpty(const bool)
+#define CHKLST_SB_TEST_LOCATE         0x00000080  // locate(const uint8_t*, int len, int start_offset)
+#define CHKLST_SB_TEST_CONTAINS_1     0x00000100  // contains(char)
+#define CHKLST_SB_TEST_CONTAINS_2     0x00000200  // contains(const char*)
+#define CHKLST_SB_TEST_CULL_1         0x00000400  // cull(int length)
+#define CHKLST_SB_TEST_CULL_2         0x00000800  // cull(int offset, int length)
+#define CHKLST_SB_TEST_SPLIT          0x00001000  // split(const char*)
+#define CHKLST_SB_TEST_IMPLODE        0x00002000  // implode(const char*)
+#define CHKLST_SB_TEST_CHUNK          0x00004000  // chunk(const int)
+#define CHKLST_SB_TEST_REPLACE        0x00008000  // replace(const char*, const char*)
+#define CHKLST_SB_TEST_HANDOFFS_1     0x00010000  // concatHandoff(StringBuilder*), prependHandoff(StringBuilder*)
+#define CHKLST_SB_TEST_HANDOFFS_2     0x00020000  // concatHandoff(uint8_t*, int)
+#define CHKLST_SB_TEST_HANDOFFS_3     0x00040000  // concatHandoffLimit(uint8_t*, int)
+#define CHKLST_SB_TEST_COUNT          0x00080000  // count()
+#define CHKLST_SB_TEST_POSITION       0x00100000  // position(int) functions, and drop_position(unsigned int)
+#define CHKLST_SB_TEST_CONCATF        0x00200000  // concatf(const char* format, va_list)
+#define CHKLST_SB_TEST_PRINTDEBUG     0x00400000  // printDebug(StringBuilder*)
+#define CHKLST_SB_TEST_PRINTBUFFER    0x00800000  // printBuffer(StringBuilder* output, uint8_t* buf, uint32_t len, const char* indent)
+#define CHKLST_SB_TEST_MEM_MUTATION   0x01000000  // Memory layout non-mutation assurances.
+#define CHKLST_SB_TEST_MISUSE         0x02000000  // Foreseeable misuse tests.
+#define CHKLST_SB_TEST_MISCELLANEOUS  0x04000000  // Scattered small tests.
+
+#define CHKLST_SB_TESTS_ALL ( \
+  CHKLST_SB_TEST_STRCASESTR | CHKLST_SB_TEST_STRCASECMP | CHKLST_SB_TEST_BASICS | \
+  CHKLST_SB_TEST_CMPBINSTRING | CHKLST_SB_TEST_CASE_CONVERT | CHKLST_SB_TEST_BYTEAT | \
+  CHKLST_SB_TEST_ISEMPTY | CHKLST_SB_TEST_LOCATE | CHKLST_SB_TEST_CONTAINS_1 | \
+  CHKLST_SB_TEST_CONTAINS_2 | CHKLST_SB_TEST_CULL_1 | CHKLST_SB_TEST_CULL_2 | \
+  CHKLST_SB_TEST_SPLIT | CHKLST_SB_TEST_IMPLODE | CHKLST_SB_TEST_CHUNK | \
+  CHKLST_SB_TEST_REPLACE | CHKLST_SB_TEST_HANDOFFS_1 | CHKLST_SB_TEST_HANDOFFS_2 | \
+  CHKLST_SB_TEST_HANDOFFS_3 | \
+  CHKLST_SB_TEST_COUNT | CHKLST_SB_TEST_POSITION | CHKLST_SB_TEST_CONCATF | \
+  CHKLST_SB_TEST_PRINTDEBUG | CHKLST_SB_TEST_PRINTBUFFER | \
+  CHKLST_SB_TEST_MEM_MUTATION | CHKLST_SB_TEST_MISUSE | CHKLST_SB_TEST_MISCELLANEOUS)
+
+const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
+  { .FLAG         = CHKLST_SB_TEST_STRCASESTR,
+    .LABEL        = "strcasestr(const char*, const char*)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_strcasestr()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_STRCASECMP,
+    .LABEL        = "strcasecmp(const char*, const char*)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_strcasecmp()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_BASICS,
+    .LABEL        = "concat(uint8_t*, int), prepend(uint8_t*, int), length(), clear()",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }    // TODO: Separate
+  },
+  { .FLAG         = CHKLST_SB_TEST_CMPBINSTRING,
+    .LABEL        = "cmpBinString(uint8_t*, int)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }    // TODO: Separate
+  },
+  { .FLAG         = CHKLST_SB_TEST_CASE_CONVERT,
+    .LABEL        = "toUpper() and toLower()",
+    .DEP_MASK     = (CHKLST_SB_TEST_CMPBINSTRING),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_stringbuilder_case_shifter()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_BYTEAT,
+    .LABEL        = "byteAt(const int)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_stringbuilder_byteat()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_ISEMPTY,
+    .LABEL        = "isEmpty(const bool)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_stringbuilder_isempty()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_LOCATE,
+    .LABEL        = "locate(const uint8_t*, int len, int)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_stringbuilder_locate()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_CONTAINS_1,
+    .LABEL        = "contains(char)",
+    .DEP_MASK     = (CHKLST_SB_TEST_LOCATE),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }    // TODO: Separate
+  },
+  { .FLAG         = CHKLST_SB_TEST_CONTAINS_2,
+    .LABEL        = "contains(const char*)",
+    .DEP_MASK     = (CHKLST_SB_TEST_LOCATE),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }    // TODO: Separate
+  },
+  { .FLAG         = CHKLST_SB_TEST_CULL_1,
+    .LABEL        = "cull(int)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_StringBuilderCull()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_CULL_2,
+    .LABEL        = "cull(int, int)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }    // TODO: Separate
+  },
+  { .FLAG         = CHKLST_SB_TEST_SPLIT,
+    .LABEL        = "split(const char*)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }    // TODO: Separate
+  },
+  { .FLAG         = CHKLST_SB_TEST_IMPLODE,
+    .LABEL        = "implode(const char*)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_stringbuilder_implode()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_CHUNK,
+    .LABEL        = "chunk(const int)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_stringbuilder_chunk()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_REPLACE,
+    .LABEL        = "replace(const char*, const char*)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_stringbuilder_replace()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_HANDOFFS_1,
+    .LABEL        = "concatHandoff(StringBuilder*), prependHandoff(StringBuilder*)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_stringbuilder_concat_handoff()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_HANDOFFS_2,
+    .LABEL        = "concatHandoff(uint8_t*, int)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_stringbuilder_concat_handoff_raw()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_HANDOFFS_3,
+    .LABEL        = "concatHandoffLimit(StringBuilder*, unsigned int)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_stringbuilder_concat_handoff_limit()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_COUNT,
+    .LABEL        = "count()",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }    // TODO: Separate
+  },
+  { .FLAG         = CHKLST_SB_TEST_POSITION,
+    .LABEL        = "position(int) / drop_position(unsigned int)",
+    .DEP_MASK     = (CHKLST_SB_TEST_COUNT),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }    // TODO: Separate
+  },
+  { .FLAG         = CHKLST_SB_TEST_CONCATF,
+    .LABEL        = "concatf(const char*, va_list)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }    // TODO: Separate
+  },
+  { .FLAG         = CHKLST_SB_TEST_PRINTDEBUG,
+    .LABEL        = "printDebug(StringBuilder*)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }    // TODO: Separate
+  },
+  { .FLAG         = CHKLST_SB_TEST_PRINTBUFFER,
+    .LABEL        = "printBuffer(StringBuilder*, uint8_t*, uint32_t, const char*)",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_stringbuilder_print_buffer()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_MEM_MUTATION,
+    .LABEL        = "Memory layout non-mutation assurances.",
+    .DEP_MASK     = (CHKLST_SB_TEST_COUNT),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }    // TODO: Separate
+  },
+  { .FLAG         = CHKLST_SB_TEST_MISUSE,
+    .LABEL        = "Scattered small tests.",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_misuse_cases()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_MISCELLANEOUS,
+    .LABEL        = "Scattered small tests.",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_StringBuilder()) ? 1:-1);  }
+  },
+};
+
+AsyncSequencer sb_test_plan(TOP_LEVEL_SB_TEST_LIST, (sizeof(TOP_LEVEL_SB_TEST_LIST) / sizeof(TOP_LEVEL_SB_TEST_LIST[0])));
 
 
 /*******************************************************************************
@@ -1003,58 +1227,15 @@ int stringbuilder_main() {
   int ret = 1;   // Failure is the default result.
   const char* const MODULE_NAME = "StringBuilder";
 
-  if (0 == test_strcasecmp()) {
-    if (0 == test_strcasestr()) {
-      if (0 == test_stringbuilder_byteat()) {
-        if (0 == test_stringbuilder_locate()) {
-          if (0 == test_StringBuilder()) {
-            if (0 == test_stringbuilder_concat_handoff_raw()) {
-              if (0 == test_stringbuilder_case_shifter()) {
-                if (0 == test_stringbuilder_print_buffer()) {
-                  if (0 == test_stringbuilder_concat_handoff()) {
-                    if (0 == test_stringbuilder_concat_handoff_limit()) {
-                      if (0 == test_stringbuilder_chunk()) {
-                        if (0 == test_stringbuilder_implode()) {
-                          if (0 == test_stringbuilder_replace()) {
-                            if (0 == test_stringbuilder_isempty()) {
-                              if (0 == test_StringBuilderCull()) {
-                                if (0 == test_misuse_cases()) {
-                                  printf("**********************************\n");
-                                  printf("*  StringBuilder tests all pass  *\n");
-                                  printf("**********************************\n");
-                                  ret = 0;
-                                }
-                                else printTestFailure(MODULE_NAME, "Hardening against mis-use");
-                              }
-                              else printTestFailure(MODULE_NAME, "cull(int, int)");
-                            }
-                            else printTestFailure(MODULE_NAME, "isEmpty");
-                          }
-                          else printTestFailure(MODULE_NAME, "Replace");
-                        }
-                        else printTestFailure(MODULE_NAME, "Implode");
-                      }
-                      else printTestFailure(MODULE_NAME, "Tokenizer");
-                    }
-                    else printTestFailure(MODULE_NAME, "concatHandoffLimit(StringBuilder*, unsigned int)");
-                  }
-                  else printTestFailure(MODULE_NAME, "concatHandoff(StringBuilder*)");
-                }
-                else printTestFailure(MODULE_NAME, "printBuffer(StringBuilder*, uint8_t*, uint32_t, const char*)");
-              }
-              else printTestFailure(MODULE_NAME, "toUpper() / toLower()");
-            }
-            else printTestFailure(MODULE_NAME, "concatHandoff(uint8_t*, int)");
-          }
-          else printTestFailure(MODULE_NAME, "General");
-        }
-        else printTestFailure(MODULE_NAME, "locate()");
-      }
-      else printTestFailure(MODULE_NAME, "byteAt(const int)");
-    }
-    else printTestFailure(MODULE_NAME, "strcasestr");
+  sb_test_plan.requestSteps(CHKLST_SB_TESTS_ALL);
+  while (!sb_test_plan.request_completed() && (0 == sb_test_plan.failed_steps(false))) {
+    sb_test_plan.poll();
   }
-  else printTestFailure(MODULE_NAME, "strcasecmp");
+  ret = (sb_test_plan.request_fulfilled() ? 0 : 1);
+
+  StringBuilder report_output;
+  sb_test_plan.printDebug(&report_output);
+  printf("%s\n", (char*) report_output.string());
 
   return ret;
 }

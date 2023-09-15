@@ -31,6 +31,36 @@ Lingo used in this test file:
 #define NEEDLE_BASE_LEN              4   // How big should the smallest test needle be?
 
 
+/* A one-off struct to hold troublesome test cases with known answers. */
+struct multisearch_case {
+  const char* const test_description;
+  const char* const subject;
+  const char* const needle_defs[MULT_SRCH_TEST_MAX_SEARCHES];
+  const int   ka_needles_found;
+  const int   ka_len_resolved;
+  const int   ka_needles_unresolved;
+};
+
+multisearch_case multisearch_cases[] = {
+  { "Simple multi-needle #1",
+    "this haystack will have five needles",
+    { "this", "haystack", "will", "have", "needles"},
+    5, 36, 0 },
+  { "Simple multi-needle unresolved",
+    "this haystack will have five needles",
+    { "this", "haystack", "will", "have", "needless"},
+    4, 29, 1 },
+  { "Complex multi-needle #1",
+    "AAA AAA BBB CCC AAA BBB AAA AAA AAA BBB AAA BBB",
+    { "AAA ", "AAA BBB ", "AAA BBB CCC", nullptr, nullptr},
+    7, 29, 1 },
+  { "Complex multi-needle #2",
+    "AAA AAA BBB CCC AAA BBB AAA AAA AAA BBB AAA BBB",
+    { "AAA ", "AAA BBB ", "AAA BBB CCC", " ", nullptr},
+    7, 29, 1 },
+};
+
+
 /*******************************************************************************
 * TODO: Over the past few weeks, I've written enough unit tests to start getting
 *   a good sense of what concerns the testing of diverse objects have in-common.
@@ -298,11 +328,14 @@ int multisearch_trivial_tests() {
 *
 */
 int multisearch_known_answer_tests() {
+  const int CASE_COUNT = (sizeof(multisearch_cases) / sizeof(multisearch_case));
   printf("Running known-answer tests...\n");
-  //const int CASE_COUNT = (sizeof(lineterm_test_cases) / sizeof(lineterm_test_case));
   bool test_failed = false;
   int  case_idx    = 0;
   int  ret         = -1;
+
+
+
   return (test_failed ? -1 : 0);
 }
 

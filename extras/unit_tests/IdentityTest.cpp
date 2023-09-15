@@ -86,7 +86,7 @@ int UUID_IDENT_TESTS() {
 *******************************************************************************/
 int identity_main() {
   int ret = 1;   // Failure is the default result.
-  const char* const MODULE_NAME = "BufferAccepter";
+  const char* const MODULE_NAME = "Identity";
   printf("===< %s >=======================================\n", MODULE_NAME);
 
   if (0 == UUID_IDENT_TESTS()) {

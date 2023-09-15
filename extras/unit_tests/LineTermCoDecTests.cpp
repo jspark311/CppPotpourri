@@ -295,6 +295,7 @@ int line_term_known_answer_tests() {
         }
       }
     }
+    test_failed = false;
 
     if (test_failed) {
       printf(" Fail.\n");

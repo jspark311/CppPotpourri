@@ -231,16 +231,16 @@ int8_t C3PHeaderTestCase::run_test_wrap_delta() {
       test_failed  = (delta_assume_wrap(C_NOW_U8, C_BEHIND_U8) != delta_assume_wrap(C_AHEAD_U8, C_NOW_U8));
       test_failed |= ((1 << 8) != (delta_assume_wrap(C_NOW_U8, C_BEHIND_U8) + delta_assume_wrap(C_BEHIND_U8, C_NOW_U8)));
       test_failed |= ((1 << 8) != (delta_assume_wrap(C_NOW_U8, C_AHEAD_U8)  + delta_assume_wrap(C_AHEAD_U8, C_NOW_U8)));
-      test_failed |= (C_NOW_U8 != (delta_assume_wrap(C_NOW_U8, 0)));
-      test_failed |= (0 != (delta_assume_wrap((uint8_t) 0, 0)));
+      test_failed |= (C_NOW_U8 != (delta_assume_wrap(C_NOW_U8, (uint8_t) 0)));
+      test_failed |= (0 != (delta_assume_wrap((uint8_t) 0, (uint8_t) 0)));
       test_failed |= (0 != (delta_assume_wrap(C_NOW_U8, C_NOW_U8)));
       break;
     case TCode::UINT16:
       test_failed  = (delta_assume_wrap(C_NOW_U16, C_BEHIND_U16) != delta_assume_wrap(C_AHEAD_U16, C_NOW_U16));
       test_failed |= ((1 << 16) != (delta_assume_wrap(C_NOW_U16, C_BEHIND_U16) + delta_assume_wrap(C_BEHIND_U16, C_NOW_U16)));
       test_failed |= ((1 << 16) != (delta_assume_wrap(C_NOW_U16, C_AHEAD_U16)  + delta_assume_wrap(C_AHEAD_U16, C_NOW_U16)));
-      test_failed |= (C_NOW_U16 != (delta_assume_wrap(C_NOW_U16, 0)));
-      test_failed |= (0 != (delta_assume_wrap((uint16_t) 0, 0)));
+      test_failed |= (C_NOW_U16 != (delta_assume_wrap(C_NOW_U16, (uint16_t) 0)));
+      test_failed |= (0 != (delta_assume_wrap((uint16_t) 0, (uint16_t) 0)));
       test_failed |= (0 != (delta_assume_wrap(C_NOW_U16, C_NOW_U16)));
       break;
     case TCode::UINT32:
@@ -250,8 +250,8 @@ int8_t C3PHeaderTestCase::run_test_wrap_delta() {
       //   ALU is 32 or 64.
       test_failed |= (ULONG_MAX != (delta_assume_wrap(C_NOW_U32, C_BEHIND_U32) + (delta_assume_wrap(C_BEHIND_U32, C_NOW_U32) - 1)));
       test_failed |= (ULONG_MAX != (delta_assume_wrap(C_NOW_U32, C_AHEAD_U32)  + (delta_assume_wrap(C_AHEAD_U32, C_NOW_U32) - 1)));
-      test_failed |= (C_NOW_U32 != (delta_assume_wrap(C_NOW_U32, 0)));
-      test_failed |= (0 != (delta_assume_wrap((uint32_t) 0, 0)));
+      test_failed |= (C_NOW_U32 != (delta_assume_wrap(C_NOW_U32, (uint32_t) 0)));
+      test_failed |= (0 != (delta_assume_wrap((uint32_t) 0, (uint32_t) 0)));
       test_failed |= (0 != (delta_assume_wrap(C_NOW_U32, C_NOW_U32)));
       break;
     case TCode::UINT64:
@@ -261,8 +261,8 @@ int8_t C3PHeaderTestCase::run_test_wrap_delta() {
       //   ALU is 32 or 64.
       test_failed |= (ULLONG_MAX != (delta_assume_wrap(C_NOW_U64, C_BEHIND_U64) + (delta_assume_wrap(C_BEHIND_U64, C_NOW_U64) - 1)));
       test_failed |= (ULLONG_MAX != (delta_assume_wrap(C_NOW_U64, C_AHEAD_U64)  + (delta_assume_wrap(C_AHEAD_U64, C_NOW_U64) - 1)));
-      test_failed |= (C_NOW_U64 != (delta_assume_wrap(C_NOW_U64, 0)));
-      test_failed |= (0 != (delta_assume_wrap((uint64_t) 0, 0)));
+      test_failed |= (C_NOW_U64 != (delta_assume_wrap(C_NOW_U64, (uint64_t) 0)));
+      test_failed |= (0 != (delta_assume_wrap((uint64_t) 0, (uint64_t) 0)));
       test_failed |= (0 != (delta_assume_wrap(C_NOW_U64, C_NOW_U64)));
       break;
     default:  return 0;   // NOTE: Hard bail-out.
