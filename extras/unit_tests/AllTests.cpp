@@ -58,6 +58,8 @@ struct timeval start_micros;
 * TODO: Some of this should be subsumed by the general linux platform.
 *   some of what remains should be collected into a general testing framework?
 *******************************************************************************/
+long unsigned timer_rebase = 0;
+
 
 uint32_t randomUInt32() {
   uint32_t ret = ((uint8_t) rand()) << 24;
@@ -79,9 +81,7 @@ int8_t random_fill(uint8_t* buf, uint len) {
 * Not provided elsewhere on a linux platform.
 */
 long unsigned millis() {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (ts.tv_sec * 1000 + ts.tv_nsec / 1000000L);
+  return (micros() / 1000L);
 }
 
 /*
@@ -90,7 +90,12 @@ long unsigned millis() {
 long unsigned micros() {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (ts.tv_sec * 1000000L + ts.tv_nsec / 1000L);
+  long unsigned raw = (ts.tv_sec * 1000000L + ts.tv_nsec / 1000L);
+  if (timer_rebase) {
+    return (raw - timer_rebase);
+  }
+  timer_rebase = raw;
+  return 0;
 }
 
 
@@ -223,7 +228,7 @@ void printTypeSizes() {
 * The dependency graph will allow us to order tests in a bottom-up manner, with
 *   more sophisticated pieces being run only if base support passes.
 *******************************************************************************/
-#define CHKLST_STRINGBUILDER_TESTS    0x00000001  // Everything depends on this.
+#define CHKLST_STRINGBUILDER_TESTS    0x00000001  //
 #define CHKLST_FSM_TESTS              0x00000002  //
 #define CHKLST_SCHEDULER_TESTS        0x00000004  //
 #define CHKLST_DATA_STRUCT_TESTS      0x00000008  // Unorganized tests on data structures.
@@ -243,148 +248,311 @@ void printTypeSizes() {
 #define CHKLST_C3P_HEADER_TESTS       0x00020000  // CppPotpourri.h
 #define CHKLST_MULT_STR_SEARCH_TESTS  0x00040000  // MultiStringSearch
 #define CHKLST_CI_PLATFORM_TESTS      0x00080000  // Platform assurances for this test program.
-#define CHKLST_ASYNC_SEQUENCER_TESTS  0x80000000  // Everything depends on this.
+#define CHKLST_ASYNC_SEQUENCER_TESTS  0x80000000  //
 
+/*
+* We're going to do a bit of clutter-control...
+* Tier-0: The platform and C3P header. Our primary definitions and ontology.
+* Tier-1: The library's basic elements of composition. Data structures, special
+*   types with no dependencies, etc.
+* Tier-2: The mid-level abstractions and contracts that are formed on the basis
+*   of those elements, as well as some optional machinary for solving common
+*   problems.
+* Tier-3: The composition of those contracts and abstractions into well-defined
+*   modules that solve high-value problems in firmware design.
+*/
+#define CHKLST_ALL_TIER_0_TESTS ( \
+  CHKLST_CI_PLATFORM_TESTS | CHKLST_C3P_HEADER_TESTS)
+
+#define CHKLST_ALL_TIER_1_TESTS ( \
+  CHKLST_STRINGBUILDER_TESTS | CHKLST_DATA_STRUCT_TESTS | CHKLST_RINGBUFFER_TESTS | \
+  CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS | \
+  CHKLST_LINKED_LIST_TESTS | CHKLST_IMAGE_TESTS)
+
+#define CHKLST_ALL_TIER_2_TESTS ( \
+  CHKLST_FSM_TESTS | CHKLST_SCHEDULER_TESTS | CHKLST_IDENTITY_TESTS | \
+  CHKLST_BUFFER_ACCEPTER_TESTS | CHKLST_MULT_STR_SEARCH_TESTS | \
+  CHKLST_KEY_VALUE_PAIR_TESTS)
+
+#define CHKLST_ALL_TIER_3_TESTS ( \
+  CHKLST_CODEC_LINE_TERM_TESTS | CHKLST_PARSINGCONSOLE_TESTS | \
+  CHKLST_SENSORFILTER_TESTS | CHKLST_M2MLINK_TESTS | CHKLST_CODEC_B64_TESTS)
 
 #define CHKLST_ALL_TESTS ( \
-  CHKLST_STRINGBUILDER_TESTS | CHKLST_FSM_TESTS | CHKLST_SCHEDULER_TESTS | \
-  CHKLST_DATA_STRUCT_TESTS | CHKLST_SENSORFILTER_TESTS | CHKLST_RINGBUFFER_TESTS | \
-  CHKLST_IDENTITY_TESTS | CHKLST_M2MLINK_TESTS | CHKLST_PARSINGCONSOLE_TESTS | \
-  CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_BUFFER_ACCEPTER_TESTS | \
-  CHKLST_IMAGE_TESTS | CHKLST_CODEC_LINE_TERM_TESTS | CHKLST_C3P_HEADER_TESTS | \
-  CHKLST_CODEC_B64_TESTS | CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS | \
-  CHKLST_KEY_VALUE_PAIR_TESTS | CHKLST_LINKED_LIST_TESTS | CHKLST_CI_PLATFORM_TESTS | \
-  CHKLST_MULT_STR_SEARCH_TESTS)
+  CHKLST_ALL_TIER_0_TESTS | CHKLST_ALL_TIER_1_TESTS | \
+  CHKLST_ALL_TIER_2_TESTS | CHKLST_ALL_TIER_3_TESTS)
 
-
+/*
+* Top level test definitions.
+* Each of these blocks defines a top-level series of tests on the named module
+*   of the library.
+*
+* NOTE: These tests are listed in their dependency order for clarity only. Their
+*   ordering in this list is arbitrary with respect to the outcome. All tests
+*   with sated dependencies will be given a chance to run, even if the test that
+*   just ran failed.
+*/
 const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
+  // The tests of the test program's implementation of AbstractPlatform. Nothing
+  //   else will make any sense if this fails. It is ultimately a dependency for
+  //   everything being tested, in one way or another.
+  // TODO: Verification of correct operation of any dependency injection
+  //   features should fall into this block as well.
   { .FLAG         = CHKLST_CI_PLATFORM_TESTS,
-    .LABEL        = "CI_PLATFORM_TESTS",
-    .DEP_MASK     = (0),
+    .LABEL        = "Test program ontology",
+    .DEP_MASK     = (0),   // Bottom Turtle
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == platform_assurance_test_main()) ? 1:-1);  }
   },
-  { .FLAG         = CHKLST_ASYNC_SEQUENCER_TESTS,
-    .LABEL        = "ASYNC_SEQUENCER_TESTS",
-    .DEP_MASK     = (0),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == async_seq_test_main()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_RINGBUFFER_TESTS,
-    .LABEL        = "RINGBUFFER_TESTS",
-    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == ringbuffer_main()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_STRINGBUILDER_TESTS,
-    .LABEL        = "STRINGBUILDER_TESTS",
-    .DEP_MASK     = (CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_C3P_HEADER_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == stringbuilder_main()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_FSM_TESTS,
-    .LABEL        = "FSM_TESTS",
-    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS | CHKLST_DATA_STRUCT_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == fsm_test_main()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_SCHEDULER_TESTS,
-    .LABEL        = "SCHEDULER_TESTS",
-    // CHKLST_CI_PLATFORM_TESTS:   Test needs the system time
-    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS | CHKLST_DATA_STRUCT_TESTS | CHKLST_CI_PLATFORM_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == scheduler_tests_main()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_DATA_STRUCT_TESTS,
-    .LABEL        = "DATA_STRUCT_TESTS",
-    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS | CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_RINGBUFFER_TESTS | CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == data_structure_main()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_BUFFER_ACCEPTER_TESTS,
-    .LABEL        = "BUFFER_ACCEPTER_TESTS",
-    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == buffer_accepter_main()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_SENSORFILTER_TESTS,
-    .LABEL        = "SENSORFILTER_TESTS",
-    .DEP_MASK     = (CHKLST_FSM_TESTS | CHKLST_VECTOR3_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == sensor_filter_tests_main()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_IDENTITY_TESTS,
-    .LABEL        = "IDENTITY_TESTS",
-    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == identity_main()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_M2MLINK_TESTS,
-    .LABEL        = "M2MLINK_TESTS",
-    .DEP_MASK     = (CHKLST_IDENTITY_TESTS | CHKLST_FSM_TESTS | CHKLST_BUFFER_ACCEPTER_TESTS | CHKLST_KEY_VALUE_PAIR_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == manuvrlink_main()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_PARSINGCONSOLE_TESTS,
-    .LABEL        = "PARSINGCONSOLE_TESTS",
-    .DEP_MASK     = (CHKLST_BUFFER_ACCEPTER_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == parsing_console_main()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_LINKED_LIST_TESTS,
-    .LABEL        = "LINKED_LIST_TESTS",
-    .DEP_MASK     = (0),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == test_LinkedList()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_KEY_VALUE_PAIR_TESTS,
-    .LABEL        = "KEY_VALUE_PAIR_TESTS",
-    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == test_KeyValuePair()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_PRIORITY_QUEUE_TESTS,
-    .LABEL        = "PRIORITY_QUEUE_TESTS",
-    .DEP_MASK     = (0),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == test_PriorityQueue()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_VECTOR3_TESTS,
-    .LABEL        = "VECTOR3_TESTS",
-    .DEP_MASK     = (0),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == vector3_test_main()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_CODEC_B64_TESTS,
-    .LABEL        = "CODEC_B64_TESTS",
-    .DEP_MASK     = (CHKLST_BUFFER_ACCEPTER_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == c3p_b64_test_main()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_CODEC_LINE_TERM_TESTS,
-    .LABEL        = "LINE_TERM_TESTS",
-    .DEP_MASK     = (CHKLST_BUFFER_ACCEPTER_TESTS | CHKLST_MULT_STR_SEARCH_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == c3p_line_codec_test_main()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_IMAGE_TESTS,
-    .LABEL        = "IMAGE_TESTS",
-    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == c3p_image_test_main()) ? 1:-1);  }
-  },
+
+  // After that, we'll want to test some of our library glue.
+  // These tests handle
+  // CHKLST_CI_PLATFORM_TESTS:   Test needs the RNG
   { .FLAG         = CHKLST_C3P_HEADER_TESTS,
-    .LABEL        = "C3P_HEADER_TESTS",
-    // CHKLST_CI_PLATFORM_TESTS:   Test needs the RNG
+    .LABEL        = "CppPotpourri.h",
     .DEP_MASK     = (CHKLST_CI_PLATFORM_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == c3p_header_test_main()) ? 1:-1);  }
   },
-  { .FLAG         = CHKLST_MULT_STR_SEARCH_TESTS,
-    .LABEL        = "MULT_STR_SEARCH_TESTS",
+
+  // Now, we can begin tier-1 and test our elements...
+  // 3-space is a really common thing to deal with. Test our vector class.
+  { .FLAG         = CHKLST_VECTOR3_TESTS,
+    .LABEL        = "Vector3",
+    .DEP_MASK     = (CHKLST_C3P_HEADER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == vector3_test_main()) ? 1:-1);  }
+  },
+
+  // Test the data structure that we are using to execute these test blocks.
+  // AsyncSequencer is used for (lazy and asyncronous) resolution of complex
+  //   dependency trees.
+  { .FLAG         = CHKLST_ASYNC_SEQUENCER_TESTS,
+    .LABEL        = "AsyncSequencer",
+    .DEP_MASK     = (CHKLST_C3P_HEADER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == async_seq_test_main()) ? 1:-1);  }
+  },
+
+  // StringBuilder is the library's abstraction of "strings", in the general
+  //   sense of the word. It is used for both binary data that is not
+  //   null-terminated, as well as C-style printable strings. Its API allows
+  //   safe and seamless cross-interpretation of strings and buffers, with
+  //   features that wrap complex dynamic memory use into a uniform contract.
+  // StringBuilder is the elemental representation of dynamic buffers throughout
+  //   the library. Prinable, null-terminated, or otherwise.
+  { .FLAG         = CHKLST_STRINGBUILDER_TESTS,
+    .LABEL        = "StringBuilder",
+    .DEP_MASK     = (CHKLST_C3P_HEADER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == stringbuilder_main()) ? 1:-1);  }
+  },
+
+  // RingBuffer is our template for a heap-resident, fixed length FIFO.
+  // It forms the underpinning of the FiniteStateMachine template, as well as
+  //   many termini of BufferAccepter chains.
+  { .FLAG         = CHKLST_RINGBUFFER_TESTS,
+    .LABEL        = "RingBuffer<T>",
     .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == ringbuffer_main()) ? 1:-1);  }
+  },
+
+  // LinkedList and Priority queue are sister templates with _almost_ matching
+  //   APIs and implementations. Both are heap-resident.
+  // One or the other of these classes is the library's go-to for orderd lists
+  //   of things.
+  { .FLAG         = CHKLST_LINKED_LIST_TESTS,
+    .LABEL        = "LinkedList<T>",
+    .DEP_MASK     = (CHKLST_C3P_HEADER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_LinkedList()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_PRIORITY_QUEUE_TESTS,
+    .LABEL        = "PriorityQueue<T>",
+    .DEP_MASK     = (CHKLST_C3P_HEADER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_PriorityQueue()) ? 1:-1);  }
+  },
+
+  // This test is a tie-up block that has every test of an elemental data type
+  //   as a dependency (to assure they pass), and then proceeds to test any
+  //   classes that haven't yet undergone fission into their own test blocks.
+  // Complex, high-level tests are encouraged to cite CHKLST_DATA_STRUCT_TESTS
+  //   as a dependency for brevity. This will save testing complexity by not
+  //   requiring strict dep-knowledge for a given high-level capability (which
+  //   probably relies on StringBuilder, and at least one other thing covered
+  //   by this block).
+  { .FLAG         = CHKLST_DATA_STRUCT_TESTS,
+    .LABEL        = "Misc data structures",
+    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS | CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_RINGBUFFER_TESTS | CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS | CHKLST_LINKED_LIST_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == data_structure_main()) ? 1:-1);  }
+  },
+
+  // Now moving into tier-2, where we start testing some higher-level things...
+  // These are the tests of the BufferAccepter interface (used to govern
+  //   buffer transfer by contract).
+  { .FLAG         = CHKLST_BUFFER_ACCEPTER_TESTS,
+    .LABEL        = "BufferAccepter",
+    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == buffer_accepter_main()) ? 1:-1);  }
+  },
+
+  // The finite state machine template. Many classes of varying degrees of
+  //   constraint rely on this class to exhibit controlled state evolution.
+  // Such classes tend to be the ones with wide failure nets (many parameters),
+  //   and/or have asynchronicity concerns forced upon them. Often these are
+  //   hardware drivers, but also any pure-software classes that want to spread
+  //   their local complexity out over a defined state-space and polling cycles.
+  { .FLAG         = CHKLST_FSM_TESTS,
+    .LABEL        = "StateMachine<T>",
+    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == fsm_test_main()) ? 1:-1);  }
+  },
+
+  // Tests the ability to do concurrent string search. This has very simple
+  //   dependencies (basically StringBuilder), but is a difficult problem to
+  //   solve, in practice.
+  { .FLAG         = CHKLST_MULT_STR_SEARCH_TESTS,
+    .LABEL        = "MultiStringSearch",
+    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == c3p_multisearch_test_main()) ? 1:-1);  }
+  },
+
+  // Image is a high-complexity API that is used as the basis for frame-buffer
+  //   APIs, and wrapping specific image libraries.
+  { .FLAG         = CHKLST_IMAGE_TESTS,
+    .LABEL        = "Image",
+    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_image_test_main()) ? 1:-1);  }
+  },
+
+  // Identity tests in this block are the trivial types, and base-class
+  //   implementations of Identity. Notions of Identity that have cryptographic
+  //   backing should be tested in the (TODO) cryptography tests,
+  { .FLAG         = CHKLST_IDENTITY_TESTS,
+    .LABEL        = "Identity",
+    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == identity_main()) ? 1:-1);  }
+  },
+
+  // KVP is responsible for implementing a map data type with full
+  //   type-resolution and memory management of the library's
+  //   internally-enumerated types. It is thus the library's highest complexity
+  //   class, in the sense that it must be aware of the contracts of the highest
+  //   numbers of types and their APIs.
+  // Fortunately, it is also entirely optional. If you just want a map, use the
+  //   one in the standard library. If, however, you want to conduct exchange of
+  //   sophisticated objects in terms of their string representations, use this.
+  // NOTE: This test block also covers CBOR implementation.
+  { .FLAG         = CHKLST_KEY_VALUE_PAIR_TESTS,
+    .LABEL        = "KeyValuePair",
+    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_KeyValuePair()) ? 1:-1);  }
+  },
+
+  // This test block is for the scheduler.
+  // Most firmware designs are simple. They only do a handful of things, are not
+  //   I/O-bound, and can afford sloppy top-level scheduling (or no scheduling
+  //   at all).
+  // Other firmware designs can get by with a smattering of cheap and simple
+  //   PeriodicTimeout instances.
+  // But some firmware designs have to cope with multiple real-time demands
+  //   which sometime conflict, and have to do so without threads, and at the
+  //   scale of microseconds.
+  // For this final class of firmware designs, we have C3PScheduler.
+  // CHKLST_CI_PLATFORM_TESTS:   Test needs the system time
+  { .FLAG         = CHKLST_SCHEDULER_TESTS,
+    .LABEL        = "C3PScheduler",
+    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS | CHKLST_CI_PLATFORM_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == scheduler_tests_main()) ? 1:-1);  }
+  },
+
+  // Thusly begins tier-3.
+  // By now, we'll be able to test some of our top-level abstractions that deal
+  //   with the outside world. It can be said that the true purpose of the unit
+  //   tests is to have confidence in the things being tested below. Not only
+  //   because thier dep complexities are the highest in the library, but
+  //   also because these pieces are exposed to input from the outside world
+  //   (which is always in a state of anarchy).
+  // Test our Base64 implementation...
+  { .FLAG         = CHKLST_CODEC_B64_TESTS,
+    .LABEL        = "Base64 CoDec",
+    .DEP_MASK     = (CHKLST_BUFFER_ACCEPTER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_b64_test_main()) ? 1:-1);  }
+  },
+
+  // Textual buffers are commonly imbued with a protocol meant for typewriters,
+  //   for the benefit of brains. We call the atomic end-result of the protocol
+  //   a "line".
+  // In theory, it doesn't matter what line-terminator you use. But in practice,
+  //   sometimes those terminal sequences are observed by machines in a manner
+  //   that locally makes sense in the face of its practical constraints, but
+  //   isn't the same choice that local firmware made.
+  // LineEndingCoDec is intended to make this library a neutral party in this
+  //   particular Holy War, and to optionally align line-breaks with call-time
+  //   semantics in a given program.
+  { .FLAG         = CHKLST_CODEC_LINE_TERM_TESTS,
+    .LABEL        = "LineEndingCoDec",
+    .DEP_MASK     = (CHKLST_BUFFER_ACCEPTER_TESTS | CHKLST_MULT_STR_SEARCH_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_line_codec_test_main()) ? 1:-1);  }
+  },
+
+  // Another common thing to have in firmware is a console relationship with
+  //   the engineer (at least). Rather than forcing the consideration of a given
+  //   program's needs from the console, this class is provided as a ready
+  //   solution so that work can be done in places that are probably of higher
+  //   value early on the design cycle.
+  // Many of the sophisticated modules in C3P (and drivers written against it)
+  //   contain built-in console handlers that can either be ignored or re-used
+  //   by an application-custom implementation of ParsingConsole.
+  // These handlers would ordinarilly be dropped by the linker if unused, along
+  //   with the significant burden of the data section content to support them.
+  //   They also prevent the linker's garbage collection from dropping code
+  //   branches that are never otherwise called.
+  // So if you are pressed for code size, dropping console support for drivers
+  //   you are done debugging will go a long way to limiting the size and
+  //   complexity of the resulting build. But no other top-level class in C3P
+  //   does more to eliminate the boilerplate of making a firmware program.
+  { .FLAG         = CHKLST_PARSINGCONSOLE_TESTS,
+    .LABEL        = "ParsingConsole",
+    .DEP_MASK     = (CHKLST_CODEC_LINE_TERM_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == parsing_console_main()) ? 1:-1);  }
+  },
+
+  // TODO: SensorFilter is under tremendous strain right now. It's API and
+  //   contract are not finalized, and it will likely undergo fission into
+  //   better-contained (and better-defined) pieces. It will probably be used
+  //   as a dep for KVP, rather than as now (the other way around), and will
+  //   probably have a memory implementation rooted in RingBuffer.
+  { .FLAG         = CHKLST_SENSORFILTER_TESTS,
+    .LABEL        = "SensorFilter<T>",
+    .DEP_MASK     = (CHKLST_FSM_TESTS | CHKLST_KEY_VALUE_PAIR_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == sensor_filter_tests_main()) ? 1:-1);  }
+  },
+
+  // By nature of its purpose, this constellation of classes is the most
+  //   complicated in the entire library. It basically forms an object
+  //   translation aperture with another machine using this library (SOAP or
+  //   REST, depending on usage). It must potentially handle any of the
+  //   KVP-supported types within the library.
+  { .FLAG         = CHKLST_M2MLINK_TESTS,
+    .LABEL        = "M2MLink",
+    .DEP_MASK     = (CHKLST_IDENTITY_TESTS | CHKLST_FSM_TESTS | CHKLST_BUFFER_ACCEPTER_TESTS | CHKLST_KEY_VALUE_PAIR_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == manuvrlink_main()) ? 1:-1);  }
   },
 };
 
@@ -407,7 +575,7 @@ int main(int argc, char *argv[]) {
   exit_value = (checklist_unit_tests.request_fulfilled() ? 0 : 1);
 
   StringBuilder report_output;
-  checklist_unit_tests.printDebug(&report_output);
+  checklist_unit_tests.printDebug(&report_output, "Final test report");
   printf("%s\n", (char*) report_output.string());
 
   exit(exit_value);

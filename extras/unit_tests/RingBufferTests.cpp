@@ -84,64 +84,57 @@ int test_RingBuffer_contains() {
   // contains(anything) should return false and not crash. We deliberatly choose
   //   zero (the reset value) to ensure this.
   if (!a.contains(0)) {
-    uint32_t val = 0;
-    printf("\tVerifying RNG works...\n");
-    if (0 == val) {    // It _could_ happen...
-      val = randomUInt32();
-    }
-    if (0 != val) {    // But twice is 2^32 times as suspect... Fail.
-      if (0 == a.insert(val)) {
-        if (a.contains(val)) {
-          if (!a.contains(0)) {
-            if (0 == a.insert(0)) {
-              if (a.contains(0)) {
-                printf("\tInserted test values 0 and %08x. Count is at %u.\n\tFilling:", val, a.count());
-                bool keep_filling = true;
-                while (keep_filling) {
-                  // Fill the buffer with anything but zero or our initial test
-                  //   value. We want to make sure they don't get lost when the
-                  //   buffer is driven to capacity.
-                  uint32_t filtered_val = randomUInt32();
-                  if ((0 != val) & (filtered_val != val)) {
-                    keep_filling = (0 == a.insert(filtered_val));
-                    printf(" %08x", filtered_val);
-                    if (!keep_filling) {
-                      printf(" <terminated fill at count = %u>\n", a.count());
-                    }
-                  }
-                  else {
-                    printf("Rejecting repeated value (%08x).\n", filtered_val);
-                    keep_filling = false;
+    uint32_t val = randomUInt32();
+    if (0 == a.insert(val)) {
+      if (a.contains(val)) {
+        if (!a.contains(0)) {
+          if (0 == a.insert(0)) {
+            if (a.contains(0)) {
+              printf("\tInserted test values 0 and %08x. Count is at %u.\n\tFilling:", val, a.count());
+              bool keep_filling = true;
+              while (keep_filling) {
+                // Fill the buffer with anything but zero or our initial test
+                //   value. We want to make sure they don't get lost when the
+                //   buffer is driven to capacity.
+                uint32_t filtered_val = randomUInt32();
+                if ((0 != val) & (filtered_val != val)) {
+                  keep_filling = (0 == a.insert(filtered_val));
+                  printf(" %08x", filtered_val);
+                  if (!keep_filling) {
+                    printf(" <terminated fill at count = %u>\n", a.count());
                   }
                 }
-                if (a.contains(val)) {
-                  if (a.contains(0)) {
-                    a.clear();
-                    if (!a.contains(val)) {
-                      if (!a.contains(0)) {
-                        return_value = 0;
-                      }
-                      else printf("Failed: contains(0) ought to have returned false after clear, but did not.\n");
-                    }
-                    else printf("Failed: contains(%08x) ought to have returned false after clear, but did not.\n", val);
-                  }
-                  else printf("Failed: contains(0) ought to have returned true after fill, but did not.\n");
+                else {
+                  printf("Rejecting repeated value (%08x).\n", filtered_val);
+                  keep_filling = false;
                 }
-                else printf("Failed: contains(%08x) ought to have returned true after fill, but did not.\n", val);
               }
-              else printf("Failed: contains(0) finally ought to have returned true, but did not.\n");
+              if (a.contains(val)) {
+                if (a.contains(0)) {
+                  a.clear();
+                  if (!a.contains(val)) {
+                    if (!a.contains(0)) {
+                      return_value = 0;
+                    }
+                    else printf("Failed: contains(0) ought to have returned false after clear, but did not.\n");
+                  }
+                  else printf("Failed: contains(%08x) ought to have returned false after clear, but did not.\n", val);
+                }
+                else printf("Failed: contains(0) ought to have returned true after fill, but did not.\n");
+              }
+              else printf("Failed: contains(%08x) ought to have returned true after fill, but did not.\n", val);
             }
-            else printf("Failed: contains(0) STILL ought to have returned false, but did not.\n");
+            else printf("Failed: contains(0) finally ought to have returned true, but did not.\n");
           }
           else printf("Failed: contains(0) STILL ought to have returned false, but did not.\n");
         }
-        else printf("Failed: contains(%08x) ought to have returned true, but did not.\n", val);
+        else printf("Failed: contains(0) STILL ought to have returned false, but did not.\n");
       }
-      else printf("Failed to insert(%08x).\n", val);
+      else printf("Failed: contains(%08x) ought to have returned true, but did not.\n", val);
     }
-    else printf("Failed: contains(0) ought to have returned false, but did not.\n");
+    else printf("Failed to insert(%08x).\n", val);
   }
-  else printf("Failed: RNG gave 0 twice-in-a-row. There is a 1-in-(2^64 that this is a false-failure.\n");
+  else printf("Failed: contains(0) ought to have returned false, but did not.\n");
 
   return return_value;
 }

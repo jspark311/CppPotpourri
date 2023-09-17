@@ -83,17 +83,21 @@ inline int16_t  strict_abs_delta(int16_t  a, int16_t  b) {   return (a > b) ? (a
 inline int8_t   strict_abs_delta(int8_t   a, int8_t   b) {   return (a > b) ? (a - b) : (b - a);   };
 
 /**
-* Given two values (a and b), returns the distance between them, allowing for wrap.
-* If the second parameter is smaller than the first, a wrap will be assumed to have
-*   happened between the mark and the comparison, and the return value will be
-*   adjusted accordingly.
+* Given two values (NOW and THEN), returns the displacement of NOW from THEN.
+* This function only makes sense if NOW and THEN are time-like. That is, if they
+*   are taken to be locations on an unbounded half-dimensional finite number
+*   line (such as an analog clockface). Although this function is most-commonly
+*   used with time values, it is equally applicable to any displacement problem
+*   that is time-like.
 *
-* NOTE: Integer overflow is being assumed. But your compiler/hardware may not
-*   handle overflow in a manner that allows this function to make sense. YMMV.
+* If the second parameter is smaller than the first, a wrap will be assumed to
+*   have happened between the mark and the comparison, and the return value will
+*   be adjusted accordingly. No type-shifting is required, and a value of 0 will
+*   be returned if the same number is given for both NOW and THEN.
 *
-* @param val_now is the present position on an unbounded half-dimensional finite number line.
-* @param val_then is the position on the same line against which we will compare.
-* @return the positive-going displacement of val_now from val_then
+* @param NOW is the present position on the clockface.
+* @param THEN is the position on the clockface against which we will compare.
+* @return the positive-going displacement of NOW from THEN
 */
 inline uint64_t delta_assume_wrap(const uint64_t NOW, const uint64_t THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (1 + (0xFFFFFFFFFFFFFFFF - (THEN - NOW))));  };
 inline uint32_t delta_assume_wrap(const uint32_t NOW, const uint32_t THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (1 + (0xFFFFFFFF - (THEN - NOW))));          };

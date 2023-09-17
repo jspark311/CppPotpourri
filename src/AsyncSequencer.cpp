@@ -18,8 +18,8 @@
 *
 * @param output is the buffer to receive the text.
 */
-void AsyncSequencer::printDebug(StringBuilder* output) {
-  StringBuilder::styleHeader1(output, "AsyncSequencer");
+void AsyncSequencer::printDebug(StringBuilder* output, const char* hdr) {
+  StringBuilder::styleHeader1(output, hdr);
   output->concatf("\tRequest Fulfilled:    %c\n", request_fulfilled() ? 'y':'n');
   output->concatf("\tSteps outstanding:    %c\n", all_steps_have_run() ? 'n':'y');
   output->concatf("\tAll steps pass:       %c\n", all_steps_have_passed() ? 'y':'n');

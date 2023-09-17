@@ -225,6 +225,9 @@ int8_t C3PHeaderTestCase::run_test_wrap_delta() {
   const uint64_t  C_BEHIND_U64 = (C_NOW_U64 - 1);  // The non-wrapped case.
   const uint64_t  C_AHEAD_U64  = (C_NOW_U64 + 1);  // The overflow case.
 
+  // NOTE: Integer overflow is here being assumed to happen "naturally". But
+  //   your compiler/hardware may not handle overflow in a manner that allows
+  //   this test to make sense. YMMV.
   profiler_wrap_delta.markStart();
   switch (test_type) {
     case TCode::UINT8:
@@ -346,6 +349,8 @@ int numeric_helper_tests() {
       if (0 == test_case.run_test_swap()) {
         printf("Pass.\n\t\tdelta_assume_wrap()... ");
         if (0 == test_case.run_test_wrap_delta()) {
+          // TODO: strict_abs_delta()
+          // TODO: strict_range_bind()  <---rename to this for consistency.
           printf("Pass.\n\t\tTest case %d passes.\n", case_idx);
           test_failed  = false;
         }

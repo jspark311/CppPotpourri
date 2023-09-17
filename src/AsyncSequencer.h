@@ -36,7 +36,7 @@ class AsyncSequencer {
       _STEP_LIST(STEP_LIST), _STEP_COUNT(COUNT) {};
     ~AsyncSequencer() {};
 
-    void     printDebug(StringBuilder*);
+    void     printDebug(StringBuilder*, const char* hdr = "AsyncSequencer");
     int8_t   poll();
     void     resetSequencer();
     void     resetSteps(const uint32_t STEP_MASK);

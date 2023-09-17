@@ -1197,19 +1197,19 @@ const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
     .POLL_FXN     = []() { return ((0 == test_stringbuilder_print_buffer()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_SB_TEST_MEM_MUTATION,
-    .LABEL        = "Memory layout non-mutation assurances.",
+    .LABEL        = "Memory layout non-mutation assurances",
     .DEP_MASK     = (CHKLST_SB_TEST_COUNT),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return 1;  }    // TODO: Separate
   },
   { .FLAG         = CHKLST_SB_TEST_MISUSE,
-    .LABEL        = "Scattered small tests.",
+    .LABEL        = "Guardrails against misuse",
     .DEP_MASK     = (0),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_misuse_cases()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_SB_TEST_MISCELLANEOUS,
-    .LABEL        = "Scattered small tests.",
+    .LABEL        = "Scattered small tests",
     .DEP_MASK     = (0),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_StringBuilder()) ? 1:-1);  }
@@ -1234,7 +1234,7 @@ int stringbuilder_main() {
   ret = (sb_test_plan.request_fulfilled() ? 0 : 1);
 
   StringBuilder report_output;
-  sb_test_plan.printDebug(&report_output);
+  sb_test_plan.printDebug(&report_output, "StringBuilder test report");
   printf("%s\n", (char*) report_output.string());
 
   return ret;
