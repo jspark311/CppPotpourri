@@ -32,8 +32,8 @@ using namespace cbor;
 
 uint8_t* output_stringbuilder::data() {   return _str_bldr->string();   }
 uint32_t output_stringbuilder::size() {   return _str_bldr->length();   }
-void output_stringbuilder::put_byte(uint8_t x) {  _str_bldr->concat(&x, 1); }
-void output_stringbuilder::put_bytes(const uint8_t* buf, int len) {  _str_bldr->concat((uint8_t*) buf, len);  }
+int8_t output_stringbuilder::put_byte(uint8_t x) {  _str_bldr->concat(&x, 1);  return 0;  }   // TODO: StringBuilder return codes.
+int8_t output_stringbuilder::put_bytes(const uint8_t* buf, int len) {  _str_bldr->concat((uint8_t*) buf, len);  return 0;  }  // TODO: StringBuilder return codes.
 
 
 /*******************************************************************************
@@ -61,24 +61,40 @@ output_dynamic::~output_dynamic() {
 uint8_t* output_dynamic::data() {   return _buffer;   }  // Cannot inline due to being virtual.
 uint32_t output_dynamic::size() {   return _offset;   }  // Cannot inline due to being virtual.
 
-void output_dynamic::put_byte(uint8_t value) {
+int8_t output_dynamic::put_byte(uint8_t value) {
+  int8_t ret = 0;
   if (_offset < _capacity) {
     _buffer[_offset++] = value;
   }
   else {
     _capacity *= 2;
-    _buffer = (uint8_t*) realloc(_buffer, _capacity);
+    uint8_t* new_ptr = (uint8_t*) realloc(_buffer, _capacity);
+    if (nullptr != new_ptr) {
+      _buffer = new_ptr;
+    }
+    else {
+      ret = -1;
+    }
     _buffer[_offset++] = value;
   }
+  return ret;
 }
 
-void output_dynamic::put_bytes(const uint8_t* data, int size) {
-  while(_offset + size > _capacity) {
+int8_t output_dynamic::put_bytes(const uint8_t* data, int size) {
+  int8_t ret = 0;
+  while((_offset + size) > _capacity) {
     _capacity *= 2;
-    _buffer = (uint8_t*) realloc(_buffer, _capacity);
+    uint8_t* new_ptr = (uint8_t*) realloc(_buffer, _capacity);
+    if (nullptr != new_ptr) {
+      _buffer = new_ptr;
+    }
+    else {
+      ret = -1;
+    }
   }
   memcpy(_buffer + _offset, data, size);
   _offset += size;
+  return ret;
 }
 
 
@@ -86,37 +102,50 @@ void output_dynamic::put_bytes(const uint8_t* data, int size) {
 * output_static
 *******************************************************************************/
 
-output_static::output_static(uint32_t capacity) {
-  this->_capacity = capacity;
-  this->_buffer = new uint8_t[capacity];
-  this->_offset = 0;
+output_static::output_static(uint32_t cap, uint8_t* buf) : _buffer(buf), _capacity(cap), _offset(0), _should_free(false) {
+  if ((nullptr == _buffer) & (_capacity > 0)) {
+    _buffer = (uint8_t*) malloc(_capacity);
+    if (nullptr != _buffer) {
+      _should_free = true;
+    }
+    else {
+      _capacity = 0;
+    }
+  }
 }
 
 output_static::~output_static() {
-  delete _buffer;
+  if (_should_free & (nullptr != _buffer)) {
+    delete _buffer;
+    _buffer = nullptr;
+  }
 }
 
-void output_static::put_byte(uint8_t value) {
+int8_t output_static::put_byte(uint8_t value) {
   if (_offset < _capacity) {
     _buffer[_offset++] = value;
+    return 0;
   }
   else {
     logger("buffer overflow error");
+    return -1;
   }
 }
 
-void output_static::put_bytes(const uint8_t* data, int size) {
+int8_t output_static::put_bytes(const uint8_t* data, int size) {
   if (_offset + size - 1 < _capacity) {
     memcpy(_buffer + _offset, data, size);
     _offset += size;
+    return 0;
   }
   else {
     logger("buffer overflow error");
+    return -1;
   }
 }
 
-uint8_t* output_static::getData() {  return _buffer;  }  // Cannot inline due to being virtual.
-uint32_t output_static::getSize() {  return _offset;  }  // Cannot inline due to being virtual.
+uint8_t* output_static::data() {  return _buffer;  }  // Cannot inline due to being virtual.
+uint32_t output_static::size() {  return _offset;  }  // Cannot inline due to being virtual.
 
 
 

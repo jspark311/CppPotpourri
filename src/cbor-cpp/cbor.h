@@ -64,21 +64,21 @@ namespace cbor {
 
   class listener {
     public:
-      virtual void on_integer(int8_t   value)        = 0;
-      virtual void on_integer(int16_t  value)        = 0;
-      virtual void on_integer(int32_t  value)        = 0;
-      virtual void on_integer(uint8_t  value)        = 0;
-      virtual void on_integer(uint16_t value)        = 0;
-      virtual void on_integer(uint32_t value)        = 0;
-      virtual void on_float32(float value)           = 0;
-      virtual void on_double(double value)           = 0;
-      virtual void on_bytes(uint8_t* data, int size) = 0;
-      virtual void on_string(char* str)              = 0;
-      virtual void on_array(int size)                = 0;
-      virtual void on_map(int size)                  = 0;
-      virtual void on_tag(unsigned int tag)          = 0;
-      virtual void on_special(unsigned int code)     = 0;
-      virtual void on_error(const char *error)       = 0;
+      virtual void on_integer(int8_t   value)        =0;
+      virtual void on_integer(int16_t  value)        =0;
+      virtual void on_integer(int32_t  value)        =0;
+      virtual void on_integer(uint8_t  value)        =0;
+      virtual void on_integer(uint16_t value)        =0;
+      virtual void on_integer(uint32_t value)        =0;
+      virtual void on_float32(float value)           =0;
+      virtual void on_double(double value)           =0;
+      virtual void on_bytes(uint8_t* data, int size) =0;
+      virtual void on_string(char* str)              =0;
+      virtual void on_array(int size)                =0;
+      virtual void on_map(int size)                  =0;
+      virtual void on_tag(unsigned int tag)          =0;
+      virtual void on_special(unsigned int code)     =0;
+      virtual void on_error(const char *error)       =0;
 
       virtual void on_extra_integer(uint64_t value, int sign) {}
       virtual void on_extra_tag(uint64_t tag) {}
@@ -112,10 +112,10 @@ namespace cbor {
 
   class output {
     public:
-      virtual uint8_t* data()                             = 0;
-      virtual uint32_t size()                             = 0;
-      virtual void     put_byte(uint8_t value)            = 0;
-      virtual void     put_bytes(const uint8_t* data, int size) = 0;
+      virtual uint8_t* data()                         =0;
+      virtual uint32_t size()                         =0;
+      virtual int8_t   put_byte(uint8_t value)        =0;
+      virtual int8_t   put_bytes(const uint8_t*, int) =0;
   };
 
 
@@ -176,8 +176,8 @@ namespace cbor {
 
       uint8_t* data();
       uint32_t size();
-      void put_byte(uint8_t value);
-      void put_bytes(const uint8_t* data, int size);
+      int8_t put_byte(uint8_t value);
+      int8_t put_bytes(const uint8_t* data, int size);
 
     private:
       StringBuilder* _str_bldr;
@@ -190,10 +190,10 @@ namespace cbor {
       output_dynamic(uint32_t inital_capacity);
       ~output_dynamic();
 
-      virtual uint8_t* data();
-      virtual uint32_t size();
-      virtual void put_byte(uint8_t value);
-      virtual void put_bytes(const uint8_t* data, int size);
+      uint8_t* data();
+      uint32_t size();
+      int8_t put_byte(uint8_t value);
+      int8_t put_bytes(const uint8_t* data, int size);
 
     private:
       uint8_t* _buffer;
@@ -207,18 +207,23 @@ namespace cbor {
 
   class output_static : public output {
     public:
-      output_static(uint32_t capacity);
+      output_static(uint32_t capacity, uint8_t* buf = nullptr);
       ~output_static();
 
-      virtual uint8_t* getData();
-      virtual uint32_t getSize();
-      virtual void put_byte(uint8_t value);
-      virtual void put_bytes(const uint8_t* data, int size);
+      uint8_t* data();
+      uint32_t size();
+      int8_t put_byte(uint8_t value);
+      int8_t put_bytes(const uint8_t* data, int size);
+
+      inline bool shouldFree() {         return _should_free;  };
+      inline void shouldFree(bool x) {   _should_free = x;     };
+
 
     private:
       uint8_t* _buffer;
       uint32_t _capacity;
       uint32_t _offset;
+      bool     _should_free;
   };
 }
 
