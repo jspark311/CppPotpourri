@@ -51,7 +51,108 @@ const char* const ParsingConsole::errToStr(ConsoleErr err) {
 
 
 /*******************************************************************************
-* Class boilerplate
+* C3P_Console base implementation
+*******************************************************************************/
+
+/*
+* Destructor
+*/
+C3P_Console::~C3P_Console() {
+  while (0 < _cmd_list.size()) {
+    // Clear out all the command definitions.
+    ConsoleCommand* tmp_cmd = _cmd_list.remove(_cmd_list.size() - 1);
+    if (tmp_cmd->shouldFree()) {
+      delete tmp_cmd;
+    }
+  }
+}
+
+
+int8_t C3P_Console::defineCommand(const char* c, const char* h, const char* p, const uint8_t r, const consoleCallback ccb) {
+  ConsoleCommand* cmd = new ConsoleCommand(c, '\0', h, p, r, ccb, true);
+  if (nullptr != cmd) {
+    _max_cmd_len = strict_max(_max_cmd_len, (uint8_t) strlen(c));
+    _cmd_list.insert(cmd);
+    return 0;
+  }
+  return -1;
+}
+
+
+int8_t C3P_Console::defineCommand(const char* c, const char sc, const char* h, const char* p, const uint8_t r, const consoleCallback ccb) {
+  ConsoleCommand* cmd = new ConsoleCommand(c, sc, h, p, r, ccb, true);
+  if (nullptr != cmd) {
+    _max_cmd_len = strict_max(_max_cmd_len, (uint8_t) strlen(c));
+    _cmd_list.insert(cmd);
+    return 0;
+  }
+  return -1;
+}
+
+
+int8_t C3P_Console::defineCommand(const ConsoleCommand* cmd) {
+  if (nullptr != cmd) {
+    _max_cmd_len = strict_max(_max_cmd_len, (uint8_t) strlen(cmd->cmd));
+    _cmd_list.insert((ConsoleCommand*) cmd);
+    return 0;
+  }
+  return -1;
+}
+
+/*
+* This allows all commands to be defined in a single call from a (possibly) flash-resident array
+*   of ConsoleCommand objects.
+* NOTE: This is only providing API features at the moment. It is not saving any RAM.
+*/
+int8_t C3P_Console::defineCommands(const ConsoleCommand* cmds, const int cmd_count) {
+  if (nullptr != cmds) {
+    for (int i = 0; i < cmd_count; i++) {
+      _cmd_list.insert((ConsoleCommand*) cmds + i);
+      _max_cmd_len = strict_max(_max_cmd_len, (uint8_t) strlen(((ConsoleCommand*) cmds + i)->cmd));
+    }
+    return 0;
+  }
+  return -1;
+}
+
+
+/*
+* Lookup a command definition by its command string (case insensitive).
+* If the command is not found that way, try again by a case-sensitive shortcut.
+* Returns NULL if nothing was found.
+*/
+ConsoleCommand* C3P_Console::_cmd_def_lookup(char* str) {
+  ConsoleCommand* ret = nullptr;
+  if (nullptr != str) {
+    int i = 0;
+    int cmd_def_count = _cmd_list.size();
+    while ((nullptr == ret) && (i < cmd_def_count)) {
+      ConsoleCommand* tmp = _cmd_list.get(i);
+      if (0 == StringBuilder::strcasecmp(tmp->cmd, str)) {
+        ret = tmp;
+      }
+      i++;
+    }
+    if ((nullptr == ret) && (1 == strlen(str))) {
+      // If we failed on the whole string, and the input was only one character
+      //   long, look for shortcuts...
+      i = 0;
+      while ((nullptr == ret) && (i < cmd_def_count)) {
+        ConsoleCommand* tmp = _cmd_list.get(i);
+        if (tmp->shortcut == *(str)) {
+          ret = tmp;
+        }
+        i++;
+      }
+    }
+  }
+  return ret;
+}
+
+
+
+/*******************************************************************************
+* Class ParsingConsole
 *******************************************************************************/
 /*
 * Destructor
@@ -60,13 +161,6 @@ ParsingConsole::~ParsingConsole() {
   _buffer.clear();
   _log.clear();
   clearHistory();
-  while (0 < _cmd_list.size()) {
-    // Clear out all the command definitions.
-    ConsoleCommand* tmp_cmd = _cmd_list.remove(_cmd_list.size() - 1);
-    if (tmp_cmd->shouldFree()) {
-      delete tmp_cmd;
-    }
-  }
 }
 
 
@@ -223,54 +317,6 @@ void ParsingConsole::fetchLog(StringBuilder* l) {
 }
 
 
-int8_t ParsingConsole::defineCommand(const char* c, const char* h, const char* p, const uint8_t r, const consoleCallback ccb) {
-  ConsoleCommand* cmd = new ConsoleCommand(c, '\0', h, p, r, ccb, true);
-  if (nullptr != cmd) {
-    _max_cmd_len = strict_max(_max_cmd_len, (uint8_t) strlen(c));
-    _cmd_list.insert(cmd);
-    return 0;
-  }
-  return -1;
-}
-
-
-int8_t ParsingConsole::defineCommand(const char* c, const char sc, const char* h, const char* p, const uint8_t r, const consoleCallback ccb) {
-  ConsoleCommand* cmd = new ConsoleCommand(c, sc, h, p, r, ccb, true);
-  if (nullptr != cmd) {
-    _max_cmd_len = strict_max(_max_cmd_len, (uint8_t) strlen(c));
-    _cmd_list.insert(cmd);
-    return 0;
-  }
-  return -1;
-}
-
-
-int8_t ParsingConsole::defineCommand(const ConsoleCommand* cmd) {
-  if (nullptr != cmd) {
-    _max_cmd_len = strict_max(_max_cmd_len, (uint8_t) strlen(cmd->cmd));
-    _cmd_list.insert((ConsoleCommand*) cmd);
-    return 0;
-  }
-  return -1;
-}
-
-/*
-* This allows all commands to be defined in a single call from a (possibly) flash-resident array
-*   of ConsoleCommand objects.
-* NOTE: This is only providing API features at the moment. It is not saving any RAM.
-*/
-int8_t ParsingConsole::defineCommands(const ConsoleCommand* cmds, const int cmd_count) {
-  if (nullptr != cmds) {
-    for (int i = 0; i < cmd_count; i++) {
-      _cmd_list.insert((ConsoleCommand*) cmds + i);
-      _max_cmd_len = strict_max(_max_cmd_len, (uint8_t) strlen(((ConsoleCommand*) cmds + i)->cmd));
-    }
-    return 0;
-  }
-  return -1;
-}
-
-
 /*
 * Given a buffer, parse and execute the command it indicates.
 * This is the point where the command callback is invoked.
@@ -313,40 +359,6 @@ int8_t ParsingConsole::_exec_line(StringBuilder* line) {
   }
   else {
     _log.concatf("Command '%s' not supported.\n", cmd_str);
-  }
-  return ret;
-}
-
-
-/*
-* Lookup a command definition by its command string (case insensitive).
-* If the command is not found that way, try again by a case-sensitive shortcut.
-* Returns NULL if nothing was found.
-*/
-ConsoleCommand* ParsingConsole::_cmd_def_lookup(char* str) {
-  ConsoleCommand* ret = nullptr;
-  if (nullptr != str) {
-    int i = 0;
-    int cmd_def_count = _cmd_list.size();
-    while ((nullptr == ret) && (i < cmd_def_count)) {
-      ConsoleCommand* tmp = _cmd_list.get(i);
-      if (0 == StringBuilder::strcasecmp(tmp->cmd, str)) {
-        ret = tmp;
-      }
-      i++;
-    }
-    if ((nullptr == ret) && (1 == strlen(str))) {
-      // If we failed on the whole string, and the input was only one character
-      //   long, look for shortcuts...
-      i = 0;
-      while ((nullptr == ret) && (i < cmd_def_count)) {
-        ConsoleCommand* tmp = _cmd_list.get(i);
-        if (tmp->shortcut == *(str)) {
-          ret = tmp;
-        }
-        i++;
-      }
-    }
   }
   return ret;
 }

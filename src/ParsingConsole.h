@@ -102,9 +102,36 @@ typedef int (*consoleErrCallback)(StringBuilder*, const ConsoleErr, const Consol
 
 
 /*
+* This is the base for a console class.
+*/
+class C3P_Console : public BufferAccepter {
+  public:
+    /* Implementation of BufferAccepter is done by the child class. */
+    virtual int8_t  pushBuffer(StringBuilder*) =0;
+    virtual int32_t bufferAvailable()          =0;
+
+    int8_t defineCommand(const char* c, const char* h, const char* p, const uint8_t r, const consoleCallback);
+    int8_t defineCommand(const char* c, const char sc, const char* h, const char* p, const uint8_t r, const consoleCallback);
+    int8_t defineCommand(const ConsoleCommand* cmd);
+    int8_t defineCommands(const ConsoleCommand* cmds, const int cmd_count);
+
+  protected:
+    LinkedList<StringBuilder*>  _history;   // Stores a list of prior commands.
+    LinkedList<ConsoleCommand*> _cmd_list;  // Stores a list of command definitions.
+    uint8_t _max_cmd_len = 0;
+
+    C3P_Console() {};
+    ~C3P_Console();
+
+    ConsoleCommand* _cmd_def_lookup(char*);     // Get a command from our list by its name.
+};
+
+
+
+/*
 * This is the console class.
 */
-class ParsingConsole : public BufferAccepter {
+class ParsingConsole : public C3P_Console {
   public:
     ParsingConsole(const uint16_t max_len) : _MAX_LEN(max_len) {};
     ~ParsingConsole();
@@ -127,10 +154,6 @@ class ParsingConsole : public BufferAccepter {
     inline LineTerm getTXTerminator() {   return _tx_terminator;   };
     inline LineTerm getRXTerminator() {   return _rx_terminator;   };
 
-    int8_t defineCommand(const char* c, const char* h, const char* p, const uint8_t r, const consoleCallback);
-    int8_t defineCommand(const char* c, const char sc, const char* h, const char* p, const uint8_t r, const consoleCallback);
-    int8_t defineCommand(const ConsoleCommand* cmd);
-    int8_t defineCommands(const ConsoleCommand* cmds, const int cmd_count);
     inline void errorCallback(consoleErrCallback ecb) {  errCB = ecb;           };
     inline void setOutputTarget(BufferAccepter* obj) {   _output_target = obj;  };
 
@@ -167,7 +190,6 @@ class ParsingConsole : public BufferAccepter {
   private:
     const uint16_t _MAX_LEN;   // Maximum buffer length before we reject input.
     uint8_t _max_history = 8;
-    uint8_t _max_cmd_len = 0;
     uint8_t _history_idx = 0;
     uint8_t _flags       = 0;
     LineTerm _tx_terminator  = LineTerm::CRLF;
@@ -177,15 +199,12 @@ class ParsingConsole : public BufferAccepter {
     StringBuilder _buffer;     // Unused input is accumulated here.
     StringBuilder _log;        // Stores a log for retreival.
     BufferAccepter* _output_target = nullptr;
-    LinkedList<StringBuilder*>  _history;   // Stores a list of prior commands.
-    LinkedList<ConsoleCommand*> _cmd_list;  // Stores a list of command definitions.
 
     int8_t _relay_to_output_target();
 
     int8_t _exec_line(StringBuilder*);          // Executes a single entered line.
     void   _append_to_history(StringBuilder*);  // Appends a command to the history.
     void   _cull_history();                     // Trims the history list back to bounds.
-    ConsoleCommand* _cmd_def_lookup(char*);     // Get a command from our list by its name.
 
     bool _line_ending_rxd();
     int8_t _process_buffer();
