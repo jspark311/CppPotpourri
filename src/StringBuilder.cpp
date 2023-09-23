@@ -719,8 +719,7 @@ void StringBuilder::prependHandoff(StringBuilder* donar) {
 *   delegating responsibility to free() a (probably large) buffer.
 * For safety's sake, the last byte should be a '\0'.
 *
-* TODO: Merged-allocation will force the re-write or removal of this function.
-*   This function in among those that must be carefully considered when
+* This function in among those that must be carefully considered when
 *   before reworking the memory model.
 */
 void StringBuilder::concatHandoff(uint8_t* buf, int len) {

@@ -408,7 +408,7 @@ int test_stringbuilder_split() {
       if (p_count == 1) {
         printf("Pass.\n\tToken count equals the return value from implode... ");
         if (toks == retoks) {
-          printf("Pass.\n\timplode() tests pass:\n");
+          printf("Pass.\n\timplode() tests pass.\n");
           ret = 0;
         }
       }

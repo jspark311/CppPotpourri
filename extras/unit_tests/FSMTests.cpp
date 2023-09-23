@@ -53,7 +53,7 @@ const EnumDefList<StateTest> FSM_STATE_LIST(&_ENUM_LIST[0], (sizeof(_ENUM_LIST) 
 /*******************************************************************************
 * StateMachine variables
 *******************************************************************************/
-#define FSM_WAYPOINT_DEPTH  16
+#define FSM_WAYPOINT_DEPTH  8
 
 
 // The state machine was meant to be extended. Compositional use is
@@ -70,18 +70,38 @@ class Example_FSM : public StateMachine<StateTest> {
     ) {};
     ~Example_FSM() {};
 
-    inline bool isIdle() {   return (StateTest::IDLE == currentState());   };
+    inline bool isIdle() {   return ((StateTest::IDLE == currentState()) & _fsm_is_stable());   };
     inline int8_t poll() {   return _fsm_poll();     };
 
-    void dumpTypeSizes(StringBuilder* output) {
-      output->concatf("EnumDef<StateTest>       %u\n", sizeof(EnumDef<StateTest>));
-      output->concatf("EnumDefList<StateTest>   %u\n", sizeof(EnumDefList<StateTest>));
-      output->concatf("StateMachine<StateTest>  %u\n", sizeof(StateMachine<StateTest>));
+    void reset() {
+      counter_state_0 = 0;
+      counter_state_1 = 0;
+      counter_state_2 = 0;
+      counter_state_3 = 0;
+      counter_idle    = 0;
+      _fsm_reset(StateTest::UNINIT);
+    };
+
+    void printDebug(StringBuilder* output) {
+      output->concat("State counts:\n");
+      output->concatf("\tcounter_state_0:  %d\n", counter_state_0);
+      output->concatf("\tcounter_state_1:  %d\n", counter_state_1);
+      output->concatf("\tcounter_state_2:  %d\n", counter_state_2);
+      output->concatf("\tcounter_state_3:  %d\n", counter_state_3);
+      output->concatf("\tcounter_idle:     %d\n", counter_idle);
       output->concatf(
-        "Implementing a StateMachine on a novel enum costs:\n\t%u bytes of RAM\n\t%u bytes that can be segregated to flash\n",
-        (sizeof(Example_FSM) + FSM_WAYPOINT_DEPTH),
-        sizeof(FSM_STATE_LIST)
+        "\nImplementing a StateMachine on a novel enum costs:\n\t%u bytes of RAM\n\t%u bytes that can be segregated to flash\n",
+        (sizeof(Example_FSM) + FSM_WAYPOINT_DEPTH), sizeof(FSM_STATE_LIST)
       );
+    };
+
+    bool counters_match(const int A, const int B, const int C, const int D, const int I) {
+      bool ret = (A == counter_state_0);
+      ret &= (B == counter_state_1);
+      ret &= (C == counter_state_2);
+      ret &= (D == counter_state_3);
+      ret &= (I == counter_idle);
+      return ret;
     };
 
     int8_t test_passed_init_state() {
@@ -106,13 +126,25 @@ class Example_FSM : public StateMachine<StateTest> {
     //   requests can be wrapped up neatly...
     int run_business_loop() {
       if (isIdle()) {
-        return _fsm_set_route(3, StateTest::STATE_2, StateTest::STATE_3, StateTest::IDLE);
+        return _fsm_append_route(3, StateTest::STATE_2, StateTest::STATE_3, StateTest::IDLE);
       }
       return -1;
     };
 
+    // After the class has passed through its init stages, high-level asynchronous
+    //   requests can be wrapped up neatly...
+    int run_report_loop() {
+      return _fsm_append_route(2, StateTest::STATE_3, StateTest::IDLE);
+    };
+
 
   private:
+    int counter_state_0 = 0;
+    int counter_state_1 = 0;
+    int counter_state_2 = 0;
+    int counter_state_3 = 0;
+    int counter_idle    = 0;
+
     /* Mandatory overrides from StateMachine. */
     // These are the required functions to use the state machine. They ask the
     //   the driver implementation if it is ok to leave the current state (_fsm_poll()),
@@ -126,7 +158,7 @@ class Example_FSM : public StateMachine<StateTest> {
 
 
 int8_t Example_FSM::_fsm_poll() {
-  int8_t ret = -1;
+  int8_t ret = 0;
   bool fsm_advance = false;
   if (_fsm_is_waiting()) {
     return fsm_advance;
@@ -134,16 +166,14 @@ int8_t Example_FSM::_fsm_poll() {
 
   switch (currentState()) {
     // Exit conditions:
-    case StateTest::UNINIT:
+    case StateTest::UNINIT:    fsm_advance = true;               break;
+    case StateTest::IDLE:      fsm_advance = !_fsm_is_stable();  break;
+
     case StateTest::STATE_0:
     case StateTest::STATE_1:
     case StateTest::STATE_2:
     case StateTest::STATE_3:
-      fsm_advance = true;
-      break;
-
-    case StateTest::IDLE:
-      fsm_advance = !_fsm_is_stable();
+      fsm_advance = flip_coin();
       break;
 
     default:   // Can't exit from an unknown state.
@@ -164,13 +194,14 @@ int8_t Example_FSM::_fsm_set_position(StateTest new_state) {
   bool state_entry_success = false;   // Succeed by default.
   switch (new_state) {
     // Entry conditions:
-    case StateTest::UNINIT:
-    case StateTest::IDLE:
+    case StateTest::UNINIT:    state_entry_success = true;    break;
+    case StateTest::IDLE:      state_entry_success = true;    break;
+
     case StateTest::STATE_0:
     case StateTest::STATE_1:
     case StateTest::STATE_2:
     case StateTest::STATE_3:
-      state_entry_success = true;
+      state_entry_success = flip_coin();
       break;
 
     default:
@@ -178,8 +209,15 @@ int8_t Example_FSM::_fsm_set_position(StateTest new_state) {
   }
 
   if (state_entry_success) {
-    printf("State %s ---> %s", _fsm_state_string(currentState()), _fsm_state_string(new_state));
     ret = 0;  // By returning 0, the FSM template will update the states.
+    switch (new_state) {
+      case StateTest::IDLE:     counter_idle++;     break;
+      case StateTest::STATE_0:  counter_state_0++;  break;
+      case StateTest::STATE_1:  counter_state_1++;  break;
+      case StateTest::STATE_2:  counter_state_2++;  break;
+      case StateTest::STATE_3:  counter_state_3++;  break;
+      default:  break;
+    }
   }
   return ret;
 }
@@ -196,16 +234,17 @@ Example_FSM test_driver;
 
 int8_t test_enumlist_catchall() {
   int8_t ret = -1;
+  printf("Testing EnumDefList...\n");
   int8_t enum_found = 0;
-  // Asking for an enum that doesn't exist ought to return our designated catch-all.
+  printf("\tAsking for an enum that doesn't exist ought to return our designated catch-all... ");
   if (StateTest::INVALID == FSM_STATE_LIST.getEnumByStr("NON-EXISTANT-STATE", &enum_found)) {
-    ret--;
+    printf("Pass.\n\tenum_found parameter was properly modified by reference... ");
     if (0 == enum_found) {
+      printf("Pass.\n\tEnumDefList tests pass.\n");
       ret = 0;
     }
-    else printf("getEnumByStr() returned the catch-all, but found was set to an affirmative value.\n");
   }
-  else printf("getEnumByStr() failed to return the catch-all.\n");
+  if (0 != ret) {  printf("Fail.\n");  }
   return ret;
 }
 
@@ -213,24 +252,37 @@ int8_t test_enumlist_catchall() {
 /*******************************************************************************
 * StateMachine test routines
 *******************************************************************************/
+int8_t fsm_test_poll_until_idle() {
+  int max_count = 50000;
+  while (0 < max_count--) {
+    test_driver.poll();
+    if (test_driver.isIdle()) {
+      return 0;
+    }
+  }
+  return -1;
+}
+
 
 
 int test_fsm_init() {
   int ret = -1;
   int ret_local = -1;
+  printf("Testing StateMachine<StateTest> basics...\n");
   // The StateMachine object doesn't require explicit init, so it should come up
   //   in the state we declared.
+  printf("\tStateMachine is constructed with the correct initial state... ");
   if (StateTest::UNINIT == test_driver.currentState()) {
-    ret--;
+    printf("Pass.\n\tThe state machine's init state matches expectations... ");
     ret_local = test_driver.test_passed_init_state();
     if (0 == ret_local) {
+      printf("Pass.\n\tStateMachine<StateTest> basic tests pass.\n");
       ret = 0;
     }
-    else printf("test_passed_init_state() returned %d.\n", ret_local);
   }
-  else printf("currentState() is not UNINIT.\n");
 
   if (0 != ret) {
+    printf("Fail (ret_local = %d).\n", ret_local);
     StringBuilder output;
     test_driver.printFSM(&output);
     printf("%s\n", (char*) output.string());
@@ -239,8 +291,48 @@ int test_fsm_init() {
 }
 
 
-int test_fsm_execution_to_idle() {
-  int ret = 0;
+int test_fsm_evolution() {
+  int ret = -1;
+  printf("Testing StateMachine<StateTest> evolution...\n");
+  printf("\tStateMachine::_fsm_set_route() accepts new states... ");
+  if (0 == test_driver.example_init()) {
+    printf("Pass.\n\tTest class is no longer IDLE... ");
+    if (!test_driver.isIdle()) {
+      printf("Pass.\n\tPolling the FSM eventually returns to IDLE... ");
+      if (0 == fsm_test_poll_until_idle()) {
+        printf("Pass.\n\tAll impacted states were hit exactly once... ");
+        if (test_driver.counters_match(1, 1, 0, 0, 1)) {
+          printf("Pass.\n\tStateMachine::_fsm_append_route() accepts new states... ");
+          if (0 == test_driver.run_business_loop()) {
+            if (0 == test_driver.run_report_loop()) {
+              printf("Pass.\n\tPolling the FSM eventually returns to IDLE... ");
+              if (0 == fsm_test_poll_until_idle()) {
+                printf("Pass.\n\tAll impacted states were hit the expected number of times... ");
+                if (test_driver.counters_match(1, 1, 1, 2, 3)) {
+                  printf("Pass.\n\treset() works... ");
+                  test_driver.reset();
+                  if (test_driver.counters_match(0, 0, 0, 0, 0)) {
+                    if (StateTest::UNINIT == test_driver.currentState()) {
+                      printf("Pass.\n\tState evolution tests pass.\n");
+                      ret = 0;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
+  StringBuilder output;
+  test_driver.printFSM(&output);
+  test_driver.printDebug(&output);
+  printf("\n%s\n", (char*) output.string());
   return ret;
 }
 
@@ -263,13 +355,13 @@ int fsm_test_main() {
 
   if (0 == test_enumlist_catchall()) {
     if (0 == test_fsm_init()) {
-      if (0 == test_fsm_execution_to_idle()) {
+      if (0 == test_fsm_evolution()) {
         printf("**********************************\n");
         printf("*  StateMachine tests all pass   *\n");
         printf("**********************************\n");
         ret = 0;
       }
-      else printTestFailure(MODULE_NAME, "Execution to IDLE");
+      else printTestFailure(MODULE_NAME, "State evolution");
     }
     else printTestFailure(MODULE_NAME, "FSM initial states");
   }

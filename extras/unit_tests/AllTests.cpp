@@ -144,6 +144,9 @@ int64_t generate_random_int64() {
 }
 
 
+bool flip_coin() {
+  return (0 != (1 & randomUInt32()));
+}
 
 
 void printTestFailure(const char* module, const char* test) {
