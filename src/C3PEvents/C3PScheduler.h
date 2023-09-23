@@ -67,7 +67,6 @@ class C3PSchedule {
 
     virtual ~C3PSchedule() {};
 
-    //inline int8_t     executeNow() {       return -1;   };
     inline bool         enabled() {                 return _enabled;      };
     inline void         enabled(bool x) {           _enabled = x;         };
     inline int32_t      recurrence() {              return _recurrences;  };

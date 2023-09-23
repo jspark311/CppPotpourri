@@ -242,7 +242,7 @@ void C3PScheduler::advanceScheduler() {
   for (uint32_t i = 0; i < _active.count(); i++) {
     C3PSchedule* current = _active.get(i, false);
     if ((nullptr != current) && current->enabled()) {
-      if (current->_exec_at <= micros()) {   // TODO: Wrap handling.
+      if ((UINT_MAX >> 1) < micros_since(current->_exec_at)) {
         if (0 != _exec_queue.insertIfAbsent(current)) {
           // TODO: Anomaly tracking...
         }
