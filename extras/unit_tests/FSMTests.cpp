@@ -96,6 +96,21 @@ class Example_FSM : public StateMachine<StateTest> {
       return ret;
     };
 
+    // Things like hardware drivers often have several sophisticated things they
+    //   need to do before being able to present themselves as ready-for-use.
+    int example_init() {
+      return _fsm_set_route(3, StateTest::STATE_0, StateTest::STATE_1, StateTest::IDLE);
+    };
+
+    // After the class has passed through its init stages, high-level asynchronous
+    //   requests can be wrapped up neatly...
+    int run_business_loop() {
+      if (isIdle()) {
+        return _fsm_set_route(3, StateTest::STATE_2, StateTest::STATE_3, StateTest::IDLE);
+      }
+      return -1;
+    };
+
 
   private:
     /* Mandatory overrides from StateMachine. */
@@ -112,12 +127,60 @@ class Example_FSM : public StateMachine<StateTest> {
 
 int8_t Example_FSM::_fsm_poll() {
   int8_t ret = -1;
+  bool fsm_advance = false;
+  if (_fsm_is_waiting()) {
+    return fsm_advance;
+  }
+
+  switch (currentState()) {
+    // Exit conditions:
+    case StateTest::UNINIT:
+    case StateTest::STATE_0:
+    case StateTest::STATE_1:
+    case StateTest::STATE_2:
+    case StateTest::STATE_3:
+      fsm_advance = true;
+      break;
+
+    case StateTest::IDLE:
+      fsm_advance = !_fsm_is_stable();
+      break;
+
+    default:   // Can't exit from an unknown state.
+      ret = -1;
+      break;
+  }
+
+  // If the current state's exit criteria is met, we advance the FSM.
+  if (fsm_advance & (-1 != ret)) {
+    ret = (0 == _fsm_advance()) ? 1 : 0;
+  }
   return ret;
 }
 
 
 int8_t Example_FSM::_fsm_set_position(StateTest new_state) {
   int8_t ret = -1;
+  bool state_entry_success = false;   // Succeed by default.
+  switch (new_state) {
+    // Entry conditions:
+    case StateTest::UNINIT:
+    case StateTest::IDLE:
+    case StateTest::STATE_0:
+    case StateTest::STATE_1:
+    case StateTest::STATE_2:
+    case StateTest::STATE_3:
+      state_entry_success = true;
+      break;
+
+    default:
+      break;
+  }
+
+  if (state_entry_success) {
+    printf("State %s ---> %s", _fsm_state_string(currentState()), _fsm_state_string(new_state));
+    ret = 0;  // By returning 0, the FSM template will update the states.
+  }
   return ret;
 }
 

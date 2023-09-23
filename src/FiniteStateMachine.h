@@ -3,7 +3,19 @@ File:   FiniteStateMachine.h
 Author: J. Ian Lindsay
 Date:   2021.05.03
 
-Template for a (very) finite state machine with enum controlled states.
+A template for a (very) finite state machine with enum controlled states.
+
+It is envisioned that this class would be extended by a stateful class that
+  wants to delegate state logic to this template, and provides protected
+  overrides for the functions that amount to a check and a change callback.
+
+The state-planning functions check state codes for validity against the given
+  list, but do not error-check the validity of the state traversal order it is
+  instructed to take. It just adds valid state codes to the list of future
+  states. Knowledge of state maps, behaviors, and relations are the
+  responsibility of the child class.
+
+See the doc for a skeleton example suitable for copy-pasta.
 
 TODO: For the sake of controlling needless template bloat, we funnel all true
   enum types into uint8 for the sake of not replicating RingBuffer<T> needlessly.
@@ -21,9 +33,7 @@ TODO: For the sake of controlling needless template bloat, we funnel all true
 #include "EnumWrapper.h"
 #include "RingBuffer.h"
 #include "StringBuilder.h"
-#include "StopWatch.h"
 #include "AbstractPlatform.h"
-
 
 
 /*
@@ -32,9 +42,15 @@ TODO: For the sake of controlling needless template bloat, we funnel all true
 */
 template <class T> class StateMachine {
   public:
-    /**
-    * Constructor
-    */
+    inline T priorState() {      return _prior_state;     };
+    inline T currentState() {    return _current_state;   };
+
+    void printFSM(StringBuilder* output);
+    int8_t fsm_console_handler(StringBuilder*, StringBuilder*);  // TODO: Would be better if private.
+
+
+  protected:
+    /** Protected constructor */
     StateMachine(
       const char* FSM_NAME, const EnumDefList<T>* const EDEFS, const T I_STATE, const unsigned int MAX_DEPTH
     ) :
@@ -42,16 +58,9 @@ template <class T> class StateMachine {
       _lockout_timer(0), _slowdown_ms(0), _waypoints(MAX_DEPTH),
       _current_state(I_STATE), _prior_state(I_STATE) {};
 
+    /** Featureless destructor */
     ~StateMachine() {};
 
-    T priorState() {        return _prior_state;     };
-    T currentState() {      return _current_state;   };
-
-    void printFSM(StringBuilder* output);
-    int8_t fsm_console_handler(StringBuilder*, StringBuilder*);  // TODO: Would be better if private.
-
-
-  protected:
     /*
     * These functions are not provided by this header, and will need to be
     *   implemented by the class that makes this template a concrete object.
@@ -62,11 +71,12 @@ template <class T> class StateMachine {
     /* State machine functions usable by the extending class. */
     int8_t   _fsm_set_route(int count, ...);
     int8_t   _fsm_append_route(int count, ...);
-    //int8_t   _fsm_append_state(T);
+    int8_t   _fsm_append_state(T);
     int8_t   _fsm_prepend_state(T);
 
     int8_t   _fsm_advance();
     void     _fsm_reset(T);
+    void     _fsm_mark_current_state(T);
 
     inline void     _fsm_lockout(uint32_t x) {  _lockout_timer.reset(x);            };
     inline uint32_t _fsm_lockout() {            return _lockout_timer.remaining();  };
@@ -76,32 +86,31 @@ template <class T> class StateMachine {
     inline void     _fsm_slowdown(uint32_t x) { _slowdown_ms = x;                   };
     inline uint32_t _fsm_slowdown() {           return _slowdown_ms;                };
 
-    void   _fsm_mark_current_state(T new_state) {
-      _prior_state   = _current_state;
-      _current_state = new_state;
+    inline const char* _fsm_state_string(const T STATE_CODE) {
+      return _ENUM_DEFS->enumStr(STATE_CODE);
     };
 
 
   private:
-    const char*                 _NAME;
-    const EnumDefList<T>* const _ENUM_DEFS;
-    PeriodicTimeout             _lockout_timer;   // Used to enforce a delay between state transitions.
-    uint32_t                    _slowdown_ms;
-    RingBuffer<uint8_t>         _waypoints;
-    T                           _current_state;
-    T                           _prior_state;
+    const char*                 _NAME;            // The state machine is given a name...
+    const EnumDefList<T>* const _ENUM_DEFS;       // ...and a list of possible states.
+    PeriodicTimeout             _lockout_timer;   // Used to enforce a delay before the next state transition.
+    uint32_t                    _slowdown_ms;     // This is used to set the above delay for all state transitions.
+    RingBuffer<uint8_t>         _waypoints;       // Byte-consolidated enum values for the desired state traversal.
+    T                           _current_state;   // The current state.
+    T                           _prior_state;     // The state that preceeded the current.
 };
 
 
 
-/******************************************************************************
+/*******************************************************************************
 * StateMachine template follows...
-******************************************************************************/
+*******************************************************************************/
 
 /**
 * Internal function responsible for advancing the state machine.
-* NOTE: This function does no checks for IF the FSM should move forward. It only
-*   performs the actions required to do it.
+* NOTE: This function does no checks for IF the FSM should move forward. It
+*   only performs the actions required to do it.
 *
 * @return 0 on state change, -1 otherwise.
 */
@@ -123,9 +132,10 @@ template <class T> int8_t StateMachine<T>::_fsm_advance() {
 }
 
 
-/*
+/**
 * Internal function responsible for resetting the state machine.
 *
+* @param new_state is the desired initial state of the FSM.
 */
 template <class T> void StateMachine<T>::_fsm_reset(T new_state) {
   _prior_state   = _current_state;
@@ -136,9 +146,21 @@ template <class T> void StateMachine<T>::_fsm_reset(T new_state) {
 
 
 /**
-* This function checks each state codes for validity, but does not error-check
-*   the validity of the FSM traversal route specified in the arguments. It just
-*   adds them to the list if they all correspond to valid state codes.
+* Marks the prior state as the current state ahead of setting the new
+*   current state.
+* The extending class should probably never call this function directly, and it
+*   may be made private in the future.
+*
+* @param new_state is the desired initial state of the FSM.
+*/
+template <class T> void StateMachine<T>::_fsm_mark_current_state(T new_state) {
+  _prior_state   = _current_state;
+  _current_state = new_state;
+};
+
+
+
+/**
 * This function will accept a maximum of _waypoints.count() arguments, and
 *   will clobber the contents of that member if the call succeeds. Arguments
 *   provided in excess of the limit will be truncated with no error.
@@ -176,9 +198,6 @@ template <class T> int8_t StateMachine<T>::_fsm_set_route(int arg_count, ...) {
 
 
 /**
-* This function checks each state code for validity, but does not error-check
-*   the validity of the FSM traversal route specified in the arguments. It just
-*   adds them to the list if they all correspond to valid state codes.
 * This function will accept a maximum of _waypoints.count() arguments, and
 *   will append to the contents of that member if the call succeeds. Arguments
 *   provided in excess of the limit will be truncated with no error.
@@ -214,32 +233,26 @@ template <class T> int8_t StateMachine<T>::_fsm_append_route(int arg_count, ...)
 
 
 /**
-* This function checks the state code for validity, but does not error-check
-*   the validity of the FSM traversal route specified in the argument. It just
-*   adds it to the list if it corresponds to a valid state code.
 * This function will accept a single state code and will append it to the
 *   contents of the state traversal list.
 *
 * @return 0 on success, -1 on no params, -2 on invalid FSM code.
 */
-//template <class T> int8_t StateMachine<T>::_fsm_append_state(T final) {
-//  int8_t ret = -1;
-//  if (_ENUM_DEFS->enumValid(final)) {
-//    ret--;
-//    // We need at least enough space for our one addition.
-//    if (_waypoints.count() > _waypoints.capacity()) {
-//      _waypoints.insert((uint8_t) final);
-//      ret = 0;
-//    }
-//  }
-//  return ret;
-//}
+template <class T> int8_t StateMachine<T>::_fsm_append_state(T final) {
+ int8_t ret = -1;
+ if (_ENUM_DEFS->enumValid(final)) {
+   ret--;
+   // We need at least enough space for our one addition.
+   if (_waypoints.count() > _waypoints.capacity()) {
+     _waypoints.insert((uint8_t) final);
+     ret = 0;
+   }
+ }
+ return ret;
+}
 
 
 /**
-* This function checks the state code for validity, but does not error-check
-*   the validity of the FSM traversal route specified in the argument. It just
-*   adds it to the list if it corresponds to a valid state code.
 * This function will accept a single state code and will prepend it to the
 *   contents of the state traversal list.
 *
@@ -263,9 +276,9 @@ template <class T> int8_t StateMachine<T>::_fsm_prepend_state(T nxt) {
 }
 
 
-/******************************************************************************
+/*******************************************************************************
 * Console and debugging
-******************************************************************************/
+*******************************************************************************/
 
 // TODO: Is this causing string replication because it is templated? BusOp would also like to know...
 template <class T> void StateMachine<T>::printFSM(StringBuilder* output) {
@@ -294,12 +307,12 @@ template <class T> void StateMachine<T>::printFSM(StringBuilder* output) {
 }
 
 
-
 /**
 * @page console-handlers
 * @section state-machine-tools State Machine Tools
 *
 * This is a console subhandler, which might be exposed by any class which implements a finite state machine.
+* Invoked with no arguments, this function will print the FSM details.
 *
 * @subsection cmd-actions Actions
 *

@@ -14,7 +14,7 @@ The class can be reset by calling `reset()`.
 
 Timing is started by calling `markStart()`, which is as light-weight as possible.
 
-Timing is stoped (and processed) by calling `markStop()`. All the processing for timing data is then refreshed.
+Timing is stopped (and processed) by calling `markStop()`. All the processing for timing data is then refreshed.
 
 Many successive calls to `markStart()` will only discard the previous calls. Only the most recent `markStart()`
 is considered, and only once `markStop()` is called.
@@ -54,5 +54,5 @@ So if you care about the error to that level of detail, use `executions()` to co
 
 #### Dependencies
 
-  * This class needs StringBuilder for output. Excision of the print functions will eliminate the dependency.
+  * This class needs `StringBuilder` for output. Excision of the print functions will eliminate the dependency.
   * The platform must supply (or alias) an accurate `micros()` function.
