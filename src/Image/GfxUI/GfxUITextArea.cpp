@@ -163,6 +163,15 @@ int8_t GfxUITextArea::pushBuffer(StringBuilder* buf) {
 }
 
 
+/**
+*
+* @return the number of bytes available.
+*/
+int32_t GfxUITextArea::bufferAvailable() {
+  int32_t ret = 2048;  // TODO: Faind sensible value.
+  return ret;
+}
+
 
 void GfxUITextArea::clear() {
   _scrollback.clear();

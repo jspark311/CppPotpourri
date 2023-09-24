@@ -26,7 +26,7 @@ limitations under the License.
   #include <cbor-cpp/cbor.h>
 #endif
 
-
+#if false
 
 /*******************************************************************************
 *   ___ _              ___      _ _              _      _
@@ -259,3 +259,5 @@ void C3PValue::toString(StringBuilder* out) {
       break;
   }
 }
+
+#endif

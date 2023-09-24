@@ -26,6 +26,7 @@ An abstract typeless data container class. This is used to support type
 #include <inttypes.h>
 #include <stddef.h>
 #include "EnumeratedTypeCodes.h"
+#include "StringBuilder.h"
 #include "Vector3.h"
 
 

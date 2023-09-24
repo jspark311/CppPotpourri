@@ -222,7 +222,7 @@ class C3PScheduler {
     int8_t addSchedule(C3PSchedule*);
     int8_t removeSchedule(C3PSchedule*);
     bool   containsSchedule(C3PSchedule*);
-    inline C3PSchedule* getScheduleByIndex(unsigned int idx) {   return _active.get(idx, false);   };
+    inline C3PSchedule* getScheduleByIndex(unsigned int idx) {   return _active.peek(idx, false);   };
     inline unsigned int scheduleCount() {    return _active.count();    };
 
     void serviceSchedules();              // Execute any schedules that have come due.

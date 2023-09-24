@@ -29,7 +29,7 @@ void AsyncSequencer::printDebug(StringBuilder* output, const char* hdr) {
   uint32_t col_width_0 = OBLIGATORY_MIN_WIDTH_COL_0;
   for (uint32_t i = 0; i < _STEP_COUNT; i++) {
     const StepSequenceList* STEP = (_STEP_LIST + i);
-    col_width_0 = strict_max(col_width_0, strlen(STEP->LABEL));
+    col_width_0 = strict_max(col_width_0, (uint32_t) strlen(STEP->LABEL));
   }
   const uint32_t SPACER_LENGTH = (col_width_0 - OBLIGATORY_MIN_WIDTH_COL_0);
   // TODO: What follows is confusing and brittle. But it works. Might be nice

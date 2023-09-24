@@ -46,21 +46,27 @@ template <class T> class RingBuffer {
     ~RingBuffer();
 
     bool allocated();
+    bool contains(T);
+    void clear();                   // Wipe the buffer.
+    int  cull(const unsigned int);  // Discard so many elements.
+
     inline unsigned int capacity() {   return _CAPAC;              };
     inline unsigned int heap_use() {   return (_E_SIZE * _CAPAC);  };
     inline unsigned int vacancy() {    return (_CAPAC - _count);   };
 
     /* Returns an integer representing how many items are buffered. */
     inline unsigned int count() {      return _count;              };
+    inline bool         isEmpty() {    return (0 == count());      };
 
-    void clear();             // Wipe the buffer.
     int  insert(T);           // Insert an element.
     int  insert(T*, unsigned int len);   // Insert many elements.
     inline int  insertIfAbsent(T x) {  return (contains(x) ? -2 : insert(x));  };
-    bool contains(T);
-    T    get(unsigned int idx, bool absolute_index = false);
-    inline T get() {       return _get(true);              };
-    inline T peek() {      return _get(false);             };
+
+    inline T get() {         return _get(true);        };
+    inline T peek() {        return _get(false);       };
+    int  get(T*, unsigned int len);   // Get many elements.
+    T    peek(unsigned int idx, bool absolute_index = false);
+    int  peek(T*, unsigned int len);  // Get many elements.
 
 
   private:
@@ -109,6 +115,25 @@ template <class T> void RingBuffer<T>::clear() {
       *((uint8_t*) _pool + i) = 0x00;
     }
   }
+}
+
+
+/**
+* Drop a certain number of items from the buffer.
+* TODO: Does not zero the affected memory.
+*
+* @param CULL_COUNT the number of elements to drop.
+* @returns the number of elements dropped.
+*/
+template <class T> int RingBuffer<T>::cull(const unsigned int CULL_COUNT) {
+  int ret = 0;
+  if (allocated()) {
+    const int SAFE_CULL_COUNT = strict_min(CULL_COUNT, _count);
+    _r = ((_r + SAFE_CULL_COUNT) % _CAPAC);
+    _count -= SAFE_CULL_COUNT;
+    ret = SAFE_CULL_COUNT;
+  }
+  return ret;
 }
 
 
@@ -217,12 +242,50 @@ template <class T> T RingBuffer<T>::_get(bool also_remove) {
 * @param absolute_index Index is from memory offset 0 if true, or the next in line otherwise.
 * @return T(0) on failure, or the data at the given index.
 */
-template <class T> T RingBuffer<T>::get(unsigned int idx, bool absolute_index) {
+template <class T> T RingBuffer<T>::peek(unsigned int idx, bool absolute_index) {
   if (!allocated() || (0 == _count) || (idx > _CAPAC)) {
     return (T)0;
   }
   T* return_value = (T*) (_pool + ((((absolute_index ? 0 : _r) + idx) % _CAPAC) * _E_SIZE));
   return *return_value;
+}
+
+
+/**
+* Take up to a specified number of items from the buffer.
+*
+* @param buf is the buffer to receive the elements.
+* @param len is the maximum number of elements to be transfered.
+* @return The number of elements taken on success, or negative on error.
+*/
+template <class T> int RingBuffer<T>::get(T* buf, unsigned int len) {
+  if (!allocated() || (0 == len) || (nullptr == buf)) {
+    return -1;
+  }
+  const uint32_t XFER_LEN = strict_min((uint32_t) _count, (uint32_t) len);
+  for (uint32_t i = 0; i < XFER_LEN; i++) {
+    *(buf + i) = get();
+  }
+  return (int) XFER_LEN;
+}
+
+
+/**
+* Peek at a specified number of items from the buffer.
+*
+* @param buf is the buffer to receive the elements.
+* @param len is the maximum number of elements to be transfered.
+* @return The number of elements coped on success, or negative on error.
+*/
+template <class T> int RingBuffer<T>::peek(T* buf, unsigned int len) {
+  if (!allocated() || (0 == len) || (nullptr == buf)) {
+    return -1;
+  }
+  const uint32_t XFER_LEN = strict_min((uint32_t) _count, (uint32_t) len);
+  for (uint32_t i = 0; i < XFER_LEN; i++) {
+    *(buf + i) = peek(i);
+  }
+  return (int) XFER_LEN;
 }
 
 #endif // __DS_RING_BUFFER_H

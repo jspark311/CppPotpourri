@@ -187,7 +187,7 @@ int test_RingBuffer_general() {
               if (0 == a.get()) {
                 if (0 == a.count()) {
                   printf("done.\n\tEnsuring that OOB get() returns the trivial value... ");
-                  uint32_t should_be_zero = a.get(a.capacity() + 10);
+                  uint32_t should_be_zero = a.peek(a.capacity() + 10);
                   if (0 == should_be_zero) {
                     printf("it does.\n");
                     return_value = 0;

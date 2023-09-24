@@ -235,6 +235,7 @@ class GfxUITextArea : public GfxUIElement, public BufferAccepter {
 
     /* Implementation of BufferAccepter. */
     int8_t pushBuffer(StringBuilder*);
+    int32_t bufferAvailable();
 
     inline void wrapLines(bool x) {  _class_set_flag(GFXUI_TXTAREA_FLAG_LINE_WRAP, x);   };
     inline bool wrapLines() {        return _class_flag(GFXUI_TXTAREA_FLAG_LINE_WRAP);   };

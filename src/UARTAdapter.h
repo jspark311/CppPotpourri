@@ -62,6 +62,8 @@ typedef struct {
 
 /*
 * The UART driver class.
+* TODO: This should be a base class with pure-virtuals, rather than a
+*   hard-linked function provided by platform.
 */
 class UARTAdapter : public BufferAccepter {
   public:
@@ -73,7 +75,7 @@ class UARTAdapter : public BufferAccepter {
     int32_t bufferAvailable();
 
     int8_t init(const UARTOpts*);
-    int8_t poll();
+    int8_t poll();    // Provided by the platform-specific code.
     inline int8_t deinit() {  return _pf_deinit();  };
 
     // Basic management and init,
@@ -89,7 +91,6 @@ class UARTAdapter : public BufferAccepter {
     inline bool txCapable() {    return _adapter_flag(UART_FLAG_HAS_TX);     };
     inline bool rxCapable() {    return _adapter_flag(UART_FLAG_HAS_RX);     };
 
-    /* These functions are provided by the platform-specific code. */
     uint32_t write(uint8_t* buf, uint32_t len);
     uint32_t write(char c);
     uint32_t read(uint8_t* buf, uint32_t len);
@@ -124,6 +125,8 @@ class UARTAdapter : public BufferAccepter {
     BufferAccepter* _read_cb_obj       = nullptr;
     RingBuffer<uint8_t> _tx_buffer;
     RingBuffer<uint8_t> _rx_buffer;
+
+    int _handle_rx_push();
 
     /* These functions are provided by the platform-specific code. */
     int8_t _pf_init();

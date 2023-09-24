@@ -240,9 +240,9 @@ void C3PScheduler::serviceSchedules() {
 */
 void C3PScheduler::advanceScheduler() {
   for (uint32_t i = 0; i < _active.count(); i++) {
-    C3PSchedule* current = _active.get(i, false);
+    C3PSchedule* current = _active.peek(i, false);
     if ((nullptr != current) && current->enabled()) {
-      if ((UINT_MAX >> 1) < micros_since(current->_exec_at)) {
+      if ((ULONG_MAX >> 1) > micros_since(current->_exec_at)) {
         if (0 != _exec_queue.insertIfAbsent(current)) {
           // TODO: Anomaly tracking...
         }

@@ -81,7 +81,7 @@ template <class T> class StateMachine {
     inline void     _fsm_lockout(uint32_t x) {  _lockout_timer.reset(x);            };
     inline uint32_t _fsm_lockout() {            return _lockout_timer.remaining();  };
     inline bool     _fsm_is_waiting() {         return !_lockout_timer.expired();   };
-    inline T        _fsm_pos_next() {           return (T) _waypoints.get(false);   };
+    inline T        _fsm_pos_next() {           return (T) _waypoints.peek();       };
     inline bool     _fsm_is_stable() {          return (0 == _waypoints.count());   };
     inline void     _fsm_slowdown(uint32_t x) { _slowdown_ms = x;                   };
     inline uint32_t _fsm_slowdown() {           return _slowdown_ms;                };
@@ -293,7 +293,7 @@ template <class T> void StateMachine<T>::printFSM(StringBuilder* output) {
       keep_looping = false;
     }
     else {
-      output->concatf("%s, ", _ENUM_DEFS->enumStr((T) _waypoints.get(i)));
+      output->concatf("%s, ", _ENUM_DEFS->enumStr((T) _waypoints.peek(i)));
     }
     i++;
   }

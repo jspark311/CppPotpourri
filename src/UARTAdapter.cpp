@@ -108,6 +108,12 @@ void UARTAdapter::printDebug(StringBuilder* output) {
 }
 
 
+/*******************************************************************************
+* Implementation of BufferAccepter.
+* This is the self-managed interface to a UART, and is usually preferable to the
+*   direct read/write API (given below).
+*******************************************************************************/
+
 /**
 *
 * @param is the pointer to the managed container for the content.
@@ -115,9 +121,13 @@ void UARTAdapter::printDebug(StringBuilder* output) {
 */
 int8_t UARTAdapter::pushBuffer(StringBuilder* buf) {
   int8_t ret = -1;
-  if (buf) {
+  if ((nullptr != buf) & txCapable()) {
     const int32_t FULL_BUFFER_LEN = (int32_t) buf->length();
-    if (0 < FULL_BUFFER_LEN) {
+    const int32_t TXBUF_AVAILBLE = bufferAvailable();
+    // For this call to make sense, there must be at least some input data,
+    //   and some free buffer to accept it.
+    const int32_t BYTES_TO_TAKE = strict_min(TXBUF_AVAILBLE, FULL_BUFFER_LEN);
+    if (0 < BYTES_TO_TAKE) {
       // NOTE: The abstraction will not allow excursions past its declared buffer limit.
       //   In the event that it is requested, the UART driver will take all that it can,
       //   free that memory from the arguemnt, and return 0 to inform the caller that
@@ -126,15 +136,10 @@ int8_t UARTAdapter::pushBuffer(StringBuilder* buf) {
       //   StringBuilder and copy and free that way, versus this expedient. By
       //   calling StringBuilder::string(), we might force a reallocation. We
       //   should use the tokenizer API to consume it in-situ.
-      const int32_t TXBUF_AVAILBLE = bufferAvailable();
-      // For this call to make sense, there must be at least some input data,
-      //   and some free buffer to accept it.
-      if (txCapable() && (0 < TXBUF_AVAILBLE) && (0 < BYTES_TO_TAKE)) {
-        const int32_t BYTES_TAKEN = _tx_buffer.insert(buf->string(), FULL_BUFFER_LEN);
-        if (0 < BYTES_TAKEN) {
-          buf->cull(BYTES_TAKEN);
-          ret = (FULL_BUFFER_LEN > BYTES_TAKEN) ? 0 : 1;
-        }
+      const int32_t BYTES_TAKEN = _tx_buffer.insert(buf->string(), FULL_BUFFER_LEN);
+      if (0 < BYTES_TAKEN) {
+        buf->cull(BYTES_TAKEN);
+        ret = (FULL_BUFFER_LEN > BYTES_TAKEN) ? 0 : 1;
       }
     }
   }
@@ -153,6 +158,106 @@ int32_t UARTAdapter::bufferAvailable() {
   int32_t ret = -1;
   if (_tx_buffer.allocated()) {
     ret = (_tx_buffer.capacity() - _tx_buffer.count());
+  }
+  return ret;
+}
+
+
+/*******************************************************************************
+* Basic read//write API.
+* These are a simpler alternative to BufferAccepter, and are usually only used
+*   by classes that extend the UARTAdapter class, or manage a UARTAdapter
+*   directly.
+*******************************************************************************/
+
+/*
+* Write to the UART.
+*/
+uint32_t UARTAdapter::write(uint8_t* buf, uint32_t len) {
+  uint32_t ret = 0;
+  if (txCapable()) {
+    ret = _tx_buffer.insert(buf, len);
+    _flushed = false;
+  }
+  return ret;
+}
+
+
+/*
+* Write to the UART.
+*/
+uint UARTAdapter::write(char c) {
+  uint32_t ret = 0;
+  if (txCapable()) {
+    ret = ((0 == _tx_buffer.insert(c)) ? 1 : 0);
+    _flushed = false;
+  }
+  return ret;
+}
+
+
+/*
+* Read from the class buffer.
+*/
+uint32_t UARTAdapter::read(uint8_t* buf, uint32_t len) {
+  uint32_t XFER_LEN = strict_min(len, (uint32_t) _rx_buffer.count());
+  if (0 < XFER_LEN) {
+    for (uint32_t i = 0; i < XFER_LEN; i++) {
+      *(buf + i) = _rx_buffer.get();
+    }
+  }
+  return XFER_LEN;
+}
+
+
+/*
+* Read from the class buffer.
+*/
+uint32_t UARTAdapter::read(StringBuilder* buf) {
+  const uint32_t RX_COUNT = _rx_buffer.count();
+  uint32_t ret = 0;
+  if (0 < RX_COUNT) {
+    uint8_t* _temp_buf = (uint8_t*) malloc(RX_COUNT);
+    if (nullptr != _temp_buf) {
+      ret = _rx_buffer.get(_temp_buf, RX_COUNT);
+      buf->concatHandoff(_temp_buf, ret);
+    }
+  }
+  return ret;
+}
+
+
+/*******************************************************************************
+* Private implementations details.
+*******************************************************************************/
+
+/**
+* Read from the class buffer.
+*
+* @return the number of bytes from the RX buffer that were pushed downstream.
+*/
+int UARTAdapter::_handle_rx_push() {
+  int ret = 0;
+  const uint32_t RX_COUNT = _rx_buffer.count();
+  if (0 < RX_COUNT) {
+    if (nullptr != _read_cb_obj) {
+      const uint32_t BUF_AVAILABLE = _read_cb_obj->bufferAvailable();
+      const uint32_t SAFE_RX_COUNT = strict_min(BUF_AVAILABLE, RX_COUNT);
+      if (SAFE_RX_COUNT) {
+        StringBuilder  unpushed_rx;
+        uint8_t* temp_buf = (uint8_t*) malloc(SAFE_RX_COUNT);
+        if (nullptr != temp_buf) {
+          const uint32_t RX_BYTES_FROM_RB = _rx_buffer.get(temp_buf, SAFE_RX_COUNT);
+          unpushed_rx.concatHandoff(temp_buf, RX_BYTES_FROM_RB);
+          if (1 != _read_cb_obj->pushBuffer(&unpushed_rx)) {
+            // TODO: There is a contract violation here. The pushed buffer might
+            //   be at least partially rejected, in which case, the data will
+            //   be dropped.
+          }
+          ret = (RX_BYTES_FROM_RB - unpushed_rx.length());
+        }
+      }
+    }
   }
   return ret;
 }
