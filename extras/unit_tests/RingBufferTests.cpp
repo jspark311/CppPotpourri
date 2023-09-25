@@ -34,10 +34,12 @@ This program runs tests against the RingBuffer template.
 */
 int test_RingBuffer_multiple_insert() {
   int return_value = -1;
+  printf("Testing insert(T*, unsigned int)...\n");
   const int TEST_SIZE = 29;
   RingBuffer<uint32_t> a(TEST_SIZE);
-
+  printf("\tvacant() and capacity() should return the same number for an empty buffer... ");
   if (a.capacity() == a.vacancy()) {
+    printf("Pass.\n\tinsert(T*, unsigned int) takes all elements offered... ");
     const int MORE_THAN_HALF        = (TEST_SIZE >> 1) + 1;
     const int EXPECTED_PARTIAL_TAKE = (TEST_SIZE - MORE_THAN_HALF);
     // Generate a field of junk twice the size that we need and try to
@@ -46,11 +48,13 @@ int test_RingBuffer_multiple_insert() {
     int first_take_count = a.insert(junk_field, MORE_THAN_HALF);
     if (MORE_THAN_HALF == first_take_count) {
       // Try to overfill...
+      printf("Pass.\n\tinsert(T*, unsigned int) handles overfill attemps correctly... ");
       int second_take_count = a.insert(&junk_field[first_take_count], MORE_THAN_HALF);
       if (EXPECTED_PARTIAL_TAKE == second_take_count) {
-        // vacancy() should now read zero, and the take counts should equal capacity().
+        printf("Pass.\n\tvacancy() should now read zero, and the take counts should equal capacity()... ");
         if (((second_take_count + first_take_count) == a.capacity()) & (0 == a.vacancy())) {
           // Check for order and continuity...
+          printf("Pass.\n\tIndependent content record matches content... ");
           for (uint32_t i = 0; i < a.capacity(); i++) {
             if (a.get() != junk_field[i]) {
               printf("Failed: Resulting buffer doesn't match what was fed to it at index %u.\n", i);
@@ -59,14 +63,13 @@ int test_RingBuffer_multiple_insert() {
           }
           return_value = 0;
         }
-        else printf("Failed: vacancy() should now read zero, and the take counts should equal capacity().\n");
       }
-      else printf("Failed: insert(T*, %u) should have taken %u elements, but took %u instead.\n", MORE_THAN_HALF, EXPECTED_PARTIAL_TAKE, second_take_count);
     }
-    else printf("Failed: insert(T*, %u) should have taken %u elements, but took %u instead.\n", MORE_THAN_HALF, EXPECTED_PARTIAL_TAKE, first_take_count);
   }
-  else printf("Failed: vacant() and capacity() should return the same number for an empty buffer.\n");
 
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
   return return_value;
 }
 
