@@ -421,9 +421,6 @@ int async_seq_test_main() {
       if (0 == async_seq_test_simple_failures()) {
         if (0 == async_seq_test_full_execution()) {
           if (0 == async_seq_test_abuse()) {
-            printf("**********************************\n");
-            printf("*  AsyncSequencer tests all pass *\n");
-            printf("**********************************\n");
             ret = 0;
           }
           else printTestFailure(MODULE_NAME, "async_seq_test_abuse()");

@@ -224,6 +224,16 @@ int sensor_filter_teardown() {
 
 
 
+
+void print_types_sensorfilter() {
+  printf("\tSensorFilter<uint8_t>    %u\t%u\n", sizeof(SensorFilter<uint8_t>), alignof(SensorFilter<uint8_t>));
+  printf("\tSensorFilter<int32_t>    %u\t%u\n", sizeof(SensorFilter<int32_t>), alignof(SensorFilter<int32_t>));
+  printf("\tSensorFilter<float>      %u\t%u\n", sizeof(SensorFilter<float>),   alignof(SensorFilter<float>));
+  printf("\tSensorFilter<double>     %u\t%u\n", sizeof(SensorFilter<double>),  alignof(SensorFilter<double>));
+}
+
+
+
 /*******************************************************************************
 * SensorFilter main function.
 *******************************************************************************/

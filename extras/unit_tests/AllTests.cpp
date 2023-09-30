@@ -219,9 +219,9 @@ void printTypeSizes() {
   print_types_line_term_codec();
   print_types_parsing_console();
   print_types_kvp();
+  print_types_sensorfilter();
   print_types_m2mlink();
   printf("\tElementPool<void*>       %u\t%u\n", sizeof(ElementPool<void*>),   alignof(ElementPool<void*>));
-  printf("\tSensorFilter<float>      %u\t%u\n", sizeof(SensorFilter<float>),  alignof(SensorFilter<float>));
   printf("\tGPSWrapper               %u\t%u\n", sizeof(GPSWrapper),           alignof(GPSWrapper));
 }
 
@@ -255,6 +255,9 @@ void printTypeSizes() {
 #define CHKLST_CI_PLATFORM_TESTS      0x00080000  // Platform assurances for this test program.
 #define CHKLST_UUID_TESTS             0x00100000  // UUID
 #define CHKLST_ASYNC_SEQUENCER_TESTS  0x00200000  // AsyncSequencer
+#define CHKLST_LOGGER_TESTS           0x00400000  // The logging abstraction.
+#define CHKLST_GPS_PARSING_TESTS      0x00800000  //
+#define CHKLST_ELEMENT_POOL_TESTS     0x01000000  // ElementPool<T>
 
 /*
 * We're going to do a bit of clutter-control...
@@ -279,16 +282,16 @@ void printTypeSizes() {
 #define CHKLST_ALL_TIER_1_TESTS ( \
   CHKLST_STRINGBUILDER_TESTS | CHKLST_TIMER_UTILS_TESTS | CHKLST_RINGBUFFER_TESTS | \
   CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS | \
-  CHKLST_LINKED_LIST_TESTS | CHKLST_UUID_TESTS)
+  CHKLST_LINKED_LIST_TESTS | CHKLST_UUID_TESTS | CHKLST_IMAGE_TESTS)
 
 #define CHKLST_ALL_TIER_2_TESTS ( \
   CHKLST_FSM_TESTS | CHKLST_SCHEDULER_TESTS | CHKLST_IDENTITY_TESTS | \
   CHKLST_BUFFER_ACCEPTER_TESTS | CHKLST_MULT_STR_SEARCH_TESTS | \
-  CHKLST_KEY_VALUE_PAIR_TESTS | CHKLST_IMAGE_TESTS)
+  CHKLST_CODEC_LINE_TERM_TESTS | CHKLST_CODEC_B64_TESTS | CHKLST_KEY_VALUE_PAIR_TESTS)
 
 #define CHKLST_ALL_TIER_3_TESTS ( \
-  CHKLST_CODEC_LINE_TERM_TESTS | CHKLST_PARSINGCONSOLE_TESTS | \
-  CHKLST_SENSORFILTER_TESTS | CHKLST_M2MLINK_TESTS | CHKLST_CODEC_B64_TESTS)
+  CHKLST_PARSINGCONSOLE_TESTS | CHKLST_SENSORFILTER_TESTS | \
+  CHKLST_LOGGER_TESTS | CHKLST_M2MLINK_TESTS)
 
 #define CHKLST_ALL_TESTS ( \
   CHKLST_ALL_TIER_0_TESTS | CHKLST_ALL_TIER_1_TESTS | \
@@ -328,11 +331,25 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .POLL_FXN     = []() { return ((0 == c3p_header_test_main()) ? 1:-1);  }
   },
 
-  // Now, we can begin tier-1 and test our elements...
+  //////////////////////////////////////////////////////////////////////////////
+  // Now, we can begin TIER-1 tests. These tests usually require the RNG and/or
+  //   timer apperatus to be in good working order. So each should depend upon
+  //   all TIER-0 tests passing (in addition to whatever they need amongst each
+  //   other).
+
+  // Most programs need to implement simple delays and one-shots, and profile
+  //   execution. Fundamental needs based on timers are covered by these tests.
+  { .FLAG         = CHKLST_TIMER_UTILS_TESTS,
+    .LABEL        = "Timer tools",
+    .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == timer_utilities_main()) ? 1:-1);  }
+  },
+
   // 3-space is a really common thing to deal with. Test our vector class.
   { .FLAG         = CHKLST_VECTOR3_TESTS,
     .LABEL        = "Vector3<T>",
-    .DEP_MASK     = (CHKLST_C3P_HEADER_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == vector3_test_main()) ? 1:-1);  }
   },
@@ -340,7 +357,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   // UUID is a common thing to handle.
   { .FLAG         = CHKLST_UUID_TESTS,
     .LABEL        = "UUID",
-    .DEP_MASK     = (CHKLST_C3P_HEADER_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == uuid_test_main()) ? 1:-1);  }
   },
@@ -350,7 +367,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   //   dependency trees.
   { .FLAG         = CHKLST_ASYNC_SEQUENCER_TESTS,
     .LABEL        = "AsyncSequencer",
-    .DEP_MASK     = (CHKLST_C3P_HEADER_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == async_seq_test_main()) ? 1:-1);  }
   },
@@ -364,7 +381,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   //   the library. Prinable, null-terminated, or otherwise.
   { .FLAG         = CHKLST_STRINGBUILDER_TESTS,
     .LABEL        = "StringBuilder",
-    .DEP_MASK     = (CHKLST_C3P_HEADER_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == stringbuilder_main()) ? 1:-1);  }
   },
@@ -374,7 +391,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   //   many termini of BufferAccepter chains.
   { .FLAG         = CHKLST_RINGBUFFER_TESTS,
     .LABEL        = "RingBuffer<T>",
-    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == ringbuffer_main()) ? 1:-1);  }
   },
@@ -385,27 +402,31 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   //   of things.
   { .FLAG         = CHKLST_LINKED_LIST_TESTS,
     .LABEL        = "LinkedList<T>",
-    .DEP_MASK     = (CHKLST_C3P_HEADER_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_LinkedList()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_PRIORITY_QUEUE_TESTS,
     .LABEL        = "PriorityQueue<T>",
-    .DEP_MASK     = (CHKLST_C3P_HEADER_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_PriorityQueue()) ? 1:-1);  }
   },
 
-  // Most programs need to implement simple delays and one-shots, and profile
-  //   execution. Fundamental needs based on timers are covered by these tests.
-  { .FLAG         = CHKLST_TIMER_UTILS_TESTS,
-    .LABEL        = "Timer tools",
-    .DEP_MASK     = (CHKLST_C3P_HEADER_TESTS),
+  // Image is a high-complexity API that is used as the basis for frame-buffer
+  //   APIs, and wrapping specific image libraries.
+  { .FLAG         = CHKLST_IMAGE_TESTS,
+    .LABEL        = "Image",
+    .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS | CHKLST_STRINGBUILDER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == timer_utilities_main()) ? 1:-1);  }
+    .POLL_FXN     = []() { return ((0 == c3p_image_test_main()) ? 1:-1);  }
   },
 
-  /* Now moving into tier-2, where we start testing some higher-level things. */
+  //////////////////////////////////////////////////////////////////////////////
+  // Now moving into TIER-2, where we start testing some higher-level things.
+  // These classes (and possibly the tests themselves) depend upon one or more
+  //   elements from TIER-1.
+
   // These are the tests of the BufferAccepter interface (used to govern
   //   buffer transfer by contract).
   { .FLAG         = CHKLST_BUFFER_ACCEPTER_TESTS,
@@ -436,15 +457,6 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == c3p_multisearch_test_main()) ? 1:-1);  }
-  },
-
-  // Image is a high-complexity API that is used as the basis for frame-buffer
-  //   APIs, and wrapping specific image libraries.
-  { .FLAG         = CHKLST_IMAGE_TESTS,
-    .LABEL        = "Image",
-    .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == c3p_image_test_main()) ? 1:-1);  }
   },
 
   // Identity tests in this block are the trivial types, and base-class
@@ -486,12 +498,11 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   // CHKLST_CI_PLATFORM_TESTS:   Test needs the system time
   { .FLAG         = CHKLST_SCHEDULER_TESTS,
     .LABEL        = "C3PScheduler",
-    .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS | CHKLST_CI_PLATFORM_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == scheduler_tests_main()) ? 1:-1);  }
   },
 
-  /* Thusly begins tier-3. */
   // By now, we'll be able to test some of our top-level abstractions that deal
   //   with the outside world. It can be said that the true purpose of the unit
   //   tests is to have confidence in the things being tested below. Not only
@@ -523,6 +534,24 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .POLL_FXN     = []() { return ((0 == c3p_line_codec_test_main()) ? 1:-1);  }
   },
 
+  //////////////////////////////////////////////////////////////////////////////
+  // Thusly begins TIER-3.
+  // These classes are some of the top-turtles in the library, and any program
+  //   that uses them will be flexing significant features in C3P, possibly
+  //   without knowing it.
+
+  // Not all programs log. So this class is optional. But any logging done
+  //   within C3P will require routing and setup from the application.
+  // NOTE: This test program records class logs, and optionally saves them to
+  //   disk as a report. But it does not rely on the logging abstraction for
+  //   output in any way.
+  { .FLAG         = CHKLST_LOGGER_TESTS,
+    .LABEL        = "Logging abstraction",
+    .DEP_MASK     = (CHKLST_CODEC_LINE_TERM_TESTS | CHKLST_SCHEDULER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }   // TODO
+  },
+
   // Another common thing to have in firmware is a console relationship with
   //   the engineer (at least). Rather than forcing the consideration of a given
   //   program's needs from the console, this class is provided as a ready
@@ -541,7 +570,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   //   does more to eliminate the boilerplate of making a firmware program.
   { .FLAG         = CHKLST_PARSINGCONSOLE_TESTS,
     .LABEL        = "ParsingConsole",
-    .DEP_MASK     = (CHKLST_CODEC_LINE_TERM_TESTS),
+    .DEP_MASK     = (CHKLST_CODEC_LINE_TERM_TESTS | CHKLST_SCHEDULER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == parsing_console_main()) ? 1:-1);  }
   },
@@ -565,7 +594,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   //   KVP-supported types within the library.
   { .FLAG         = CHKLST_M2MLINK_TESTS,
     .LABEL        = "M2MLink",
-    .DEP_MASK     = (CHKLST_IDENTITY_TESTS | CHKLST_FSM_TESTS | CHKLST_BUFFER_ACCEPTER_TESTS | CHKLST_KEY_VALUE_PAIR_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_2_TESTS | CHKLST_PARSINGCONSOLE_TESTS | CHKLST_LOGGER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == manuvrlink_main()) ? 1:-1);  }
   },

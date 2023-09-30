@@ -30,7 +30,9 @@ This program tests Image.
 
 
 void print_types_image() {
-  printf("\tImage                 %u\t%u\n", sizeof(Image),   alignof(Image));
+  printf("\tImage                 %u\t%u\n", sizeof(Image),    alignof(Image));
+  printf("\tGFXfont               %u\t%u\n", sizeof(GFXfont),  alignof(GFXfont));
+  printf("\tGFXglyph              %u\t%u\n", sizeof(GFXglyph), alignof(GFXglyph));
 }
 
 /*******************************************************************************
