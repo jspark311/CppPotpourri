@@ -1,3 +1,24 @@
+/*
+File:   AllTests.cpp
+Author: J. Ian Lindsay
+Date:   2021.09.25
+
+
+Global unit-testing TODO list:
+--------------------------------------------------------------------------------
+TODO: Research testing frameworks for C++ again.
+
+TODO: If you won't do that, this is at least a good place to start doing some
+  dependency injection for GPIO. If we override the weak references in
+  AbstractPlatform, we can fake pin behaviors from a separate thread.
+
+TODO: About that... This program is presumably being run under linux, and so we
+  have threads. Apart from mortality, there is no good reason that some directed
+  concurrency testing of modules isn't already being done. This won't be an
+  _exact_ simulation of ISR behavior, but it is close enough to catch almost
+  everything that would happen in that context that C3P is concerned about.
+*/
+
 #include <cstdio>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -29,28 +50,6 @@
 #include "Identity/IdentityUUID.h"
 #include "Identity/Identity.h"
 #include "M2MLink/M2MLink.h"
-
-
-/*
-Global unit-testing TODO list:
-
-TODO: Research testing frameworks for C++ again.
-
-TODO: If you won't do that, this is at least a good place to start doing some
-  dependency injection for GPIO. If we override the weak references in
-  AbstractPlatform, we can fake pin behaviors from a separate thread.
-
-TODO: About that... This program is presumably being run under linux, and so we
-  have threads. Apart from mortality, there is no good reason that some directed
-  concurrency testing of modules isn't already being done. This won't be an
-  _exact_ simulation of ISR behavior, but it is close enough to catch almost
-  everything that would happen in that context that C3P is concerned about.
-*/
-
-/*******************************************************************************
-* Globals
-*******************************************************************************/
-struct timeval start_micros;
 
 
 /*******************************************************************************
@@ -165,12 +164,14 @@ void printTestFailure(const char* module, const char* test) {
 #include "GlueTests.cpp"
 #include "AsyncSequencerTests.cpp"
 #include "StringBuilderTest.cpp"
+#include "Vector3Tests.cpp"
+#include "UUIDTests.cpp"
 #include "RingBufferTests.cpp"
 #include "KVPTests.cpp"
 #include "LinkedListTests.cpp"
 #include "FSMTests.cpp"
 #include "SchedulerTests.cpp"
-#include "TestDataStructures.cpp"
+#include "TimerUtilityTests.cpp"
 #include "BufferAccepterTests.cpp"
 #include "Base64CoDecTests.cpp"
 #include "MultiStringSearchTests.cpp"
@@ -198,30 +199,28 @@ void printTypeSizes() {
   printf("\tFloat                    %u\t%u\n", sizeof(float),  alignof(float));
   printf("\tDouble                   %u\t%u\n", sizeof(double), alignof(double));
   printf("-- C3P types:\n");
-  printf("\tVector3<float>           %u\t%u\n", sizeof(Vector3<float>),       alignof(Vector3<float>));
-  printf("\tLinkedList<void*>        %u\t%u\n", sizeof(LinkedList<void*>),    alignof(LinkedList<void*>));
-  printf("\tElementPool<void*>       %u\t%u\n", sizeof(ElementPool<void*>),   alignof(ElementPool<void*>));
-  printf("\tPriorityQueue<void*>     %u\t%u\n", sizeof(PriorityQueue<void*>), alignof(PriorityQueue<void*>));
-  printf("\tSensorFilter<float>      %u\t%u\n", sizeof(SensorFilter<float>),  alignof(SensorFilter<float>));
-  printf("\tUUID                     %u\t%u\n", sizeof(UUID),                 alignof(UUID));
-  printf("\tStopWatch                %u\t%u\n", sizeof(StopWatch),            alignof(StopWatch));
-  printf("\tGPSWrapper               %u\t%u\n", sizeof(GPSWrapper),           alignof(GPSWrapper));
-  printf("\tIdentity                 %u\t%u\n", sizeof(Identity),             alignof(Identity));
-  printf("\tIdentityUUID             %u\t%u\n", sizeof(IdentityUUID),         alignof(IdentityUUID));
   print_types_platform();
-  print_types_async_sequencer();
+  print_types_vector3();
   print_types_stringbuilder();
+  print_types_uuid();
+  print_types_timer_utils();
+  print_types_async_sequencer();
   print_types_ringbuffer();
-  print_types_buffer_accepter();
-  print_types_c3p_b64();
-  print_types_multisearch();
-  print_types_line_term_codec();
+  print_types_linked_lists();
   print_types_image();
-  print_types_parsing_console();
   print_types_scheduler();
   print_types_state_machine();
+  print_types_identity();
+  print_types_multisearch();
+  print_types_buffer_accepter();
+  print_types_c3p_b64();
+  print_types_line_term_codec();
+  print_types_parsing_console();
   print_types_kvp();
   print_types_m2mlink();
+  printf("\tElementPool<void*>       %u\t%u\n", sizeof(ElementPool<void*>),   alignof(ElementPool<void*>));
+  printf("\tSensorFilter<float>      %u\t%u\n", sizeof(SensorFilter<float>),  alignof(SensorFilter<float>));
+  printf("\tGPSWrapper               %u\t%u\n", sizeof(GPSWrapper),           alignof(GPSWrapper));
 }
 
 
@@ -230,17 +229,18 @@ void printTypeSizes() {
 * Top-level tests are managed using AsyncSequencer.
 * The dependency graph will allow us to order tests in a bottom-up manner, with
 *   more sophisticated pieces being run only if base support passes.
+* NOTE: The flag value ordering is not important.
 *******************************************************************************/
-#define CHKLST_STRINGBUILDER_TESTS    0x00000001  //
-#define CHKLST_FSM_TESTS              0x00000002  //
+#define CHKLST_STRINGBUILDER_TESTS    0x00000001  // StringBuilder
+#define CHKLST_FSM_TESTS              0x00000002  // StateMachine
 #define CHKLST_SCHEDULER_TESTS        0x00000004  //
-#define CHKLST_DATA_STRUCT_TESTS      0x00000008  // Unorganized tests on data structures.
+#define CHKLST_TIMER_UTILS_TESTS      0x00000008  // Timer utils
 #define CHKLST_SENSORFILTER_TESTS     0x00000010  //
 #define CHKLST_IDENTITY_TESTS         0x00000020  //
 #define CHKLST_M2MLINK_TESTS          0x00000040  //
-#define CHKLST_PARSINGCONSOLE_TESTS   0x00000080  //
-#define CHKLST_RINGBUFFER_TESTS       0x00000100  //
-#define CHKLST_BUFFER_ACCEPTER_TESTS  0x00000200  //
+#define CHKLST_PARSINGCONSOLE_TESTS   0x00000080  // ParsingConsole
+#define CHKLST_RINGBUFFER_TESTS       0x00000100  // RingBuffer
+#define CHKLST_BUFFER_ACCEPTER_TESTS  0x00000200  // BufferAccepter contract and test harness.
 #define CHKLST_LINKED_LIST_TESTS      0x00000400  // LinkedList
 #define CHKLST_KEY_VALUE_PAIR_TESTS   0x00000800  // KeyValuePair
 #define CHKLST_PRIORITY_QUEUE_TESTS   0x00001000  // PriorityQueue
@@ -251,7 +251,8 @@ void printTypeSizes() {
 #define CHKLST_C3P_HEADER_TESTS       0x00020000  // CppPotpourri.h
 #define CHKLST_MULT_STR_SEARCH_TESTS  0x00040000  // MultiStringSearch
 #define CHKLST_CI_PLATFORM_TESTS      0x00080000  // Platform assurances for this test program.
-#define CHKLST_ASYNC_SEQUENCER_TESTS  0x80000000  //
+#define CHKLST_UUID_TESTS             0x00100000  // UUID
+#define CHKLST_ASYNC_SEQUENCER_TESTS  0x00200000  // AsyncSequencer
 
 /*
 * We're going to do a bit of clutter-control...
@@ -263,19 +264,25 @@ void printTypeSizes() {
 *   problems.
 * Tier-3: The composition of those contracts and abstractions into well-defined
 *   modules that solve high-value problems in firmware design.
+*
+* Complex, high-level tests are encouraged to cite one of these tiers as a
+*   dependency for brevity. This will save testing complexity by not
+*   requiring strict dep-knowledge for a given high-level capability (which
+*   probably relies on StringBuilder, and at least one other thing covered
+*   by CHKLST_ALL_TIER_1_TESTS).
 */
 #define CHKLST_ALL_TIER_0_TESTS ( \
   CHKLST_CI_PLATFORM_TESTS | CHKLST_C3P_HEADER_TESTS)
 
 #define CHKLST_ALL_TIER_1_TESTS ( \
-  CHKLST_STRINGBUILDER_TESTS | CHKLST_DATA_STRUCT_TESTS | CHKLST_RINGBUFFER_TESTS | \
+  CHKLST_STRINGBUILDER_TESTS | CHKLST_TIMER_UTILS_TESTS | CHKLST_RINGBUFFER_TESTS | \
   CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS | \
-  CHKLST_LINKED_LIST_TESTS | CHKLST_IMAGE_TESTS)
+  CHKLST_LINKED_LIST_TESTS | CHKLST_UUID_TESTS)
 
 #define CHKLST_ALL_TIER_2_TESTS ( \
   CHKLST_FSM_TESTS | CHKLST_SCHEDULER_TESTS | CHKLST_IDENTITY_TESTS | \
   CHKLST_BUFFER_ACCEPTER_TESTS | CHKLST_MULT_STR_SEARCH_TESTS | \
-  CHKLST_KEY_VALUE_PAIR_TESTS)
+  CHKLST_KEY_VALUE_PAIR_TESTS | CHKLST_IMAGE_TESTS)
 
 #define CHKLST_ALL_TIER_3_TESTS ( \
   CHKLST_CODEC_LINE_TERM_TESTS | CHKLST_PARSINGCONSOLE_TESTS | \
@@ -284,6 +291,7 @@ void printTypeSizes() {
 #define CHKLST_ALL_TESTS ( \
   CHKLST_ALL_TIER_0_TESTS | CHKLST_ALL_TIER_1_TESTS | \
   CHKLST_ALL_TIER_2_TESTS | CHKLST_ALL_TIER_3_TESTS)
+
 
 /*
 * Top level test definitions.
@@ -321,10 +329,18 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   // Now, we can begin tier-1 and test our elements...
   // 3-space is a really common thing to deal with. Test our vector class.
   { .FLAG         = CHKLST_VECTOR3_TESTS,
-    .LABEL        = "Vector3",
+    .LABEL        = "Vector3<T>",
     .DEP_MASK     = (CHKLST_C3P_HEADER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == vector3_test_main()) ? 1:-1);  }
+  },
+
+  // UUID is a common thing to handle.
+  { .FLAG         = CHKLST_UUID_TESTS,
+    .LABEL        = "UUID",
+    .DEP_MASK     = (CHKLST_C3P_HEADER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == uuid_test_main()) ? 1:-1);  }
   },
 
   // Test the data structure that we are using to execute these test blocks.
@@ -378,27 +394,21 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .POLL_FXN     = []() { return ((0 == test_PriorityQueue()) ? 1:-1);  }
   },
 
-  // This test is a tie-up block that has every test of an elemental data type
-  //   as a dependency (to assure they pass), and then proceeds to test any
-  //   classes that haven't yet undergone fission into their own test blocks.
-  // Complex, high-level tests are encouraged to cite CHKLST_DATA_STRUCT_TESTS
-  //   as a dependency for brevity. This will save testing complexity by not
-  //   requiring strict dep-knowledge for a given high-level capability (which
-  //   probably relies on StringBuilder, and at least one other thing covered
-  //   by this block).
-  { .FLAG         = CHKLST_DATA_STRUCT_TESTS,
-    .LABEL        = "Misc data structures",
-    .DEP_MASK     = (CHKLST_STRINGBUILDER_TESTS | CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_RINGBUFFER_TESTS | CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS | CHKLST_LINKED_LIST_TESTS),
+  // Most programs need to implement simple delays and one-shots, and profile
+  //   execution. Fundamental needs based on timers are covered by these tests.
+  { .FLAG         = CHKLST_TIMER_UTILS_TESTS,
+    .LABEL        = "Timer tools",
+    .DEP_MASK     = (CHKLST_C3P_HEADER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == data_structure_main()) ? 1:-1);  }
+    .POLL_FXN     = []() { return ((0 == timer_utilities_main()) ? 1:-1);  }
   },
 
-  // Now moving into tier-2, where we start testing some higher-level things...
+  /* Now moving into tier-2, where we start testing some higher-level things. */
   // These are the tests of the BufferAccepter interface (used to govern
   //   buffer transfer by contract).
   { .FLAG         = CHKLST_BUFFER_ACCEPTER_TESTS,
     .LABEL        = "BufferAccepter",
-    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == buffer_accepter_main()) ? 1:-1);  }
   },
@@ -411,7 +421,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   //   their local complexity out over a defined state-space and polling cycles.
   { .FLAG         = CHKLST_FSM_TESTS,
     .LABEL        = "StateMachine<T>",
-    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == fsm_test_main()) ? 1:-1);  }
   },
@@ -421,7 +431,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   //   solve, in practice.
   { .FLAG         = CHKLST_MULT_STR_SEARCH_TESTS,
     .LABEL        = "MultiStringSearch",
-    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == c3p_multisearch_test_main()) ? 1:-1);  }
   },
@@ -430,7 +440,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   //   APIs, and wrapping specific image libraries.
   { .FLAG         = CHKLST_IMAGE_TESTS,
     .LABEL        = "Image",
-    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == c3p_image_test_main()) ? 1:-1);  }
   },
@@ -440,7 +450,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   //   backing should be tested in the (TODO) cryptography tests,
   { .FLAG         = CHKLST_IDENTITY_TESTS,
     .LABEL        = "Identity",
-    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == identity_main()) ? 1:-1);  }
   },
@@ -456,7 +466,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   // NOTE: This test block also covers CBOR implementation.
   { .FLAG         = CHKLST_KEY_VALUE_PAIR_TESTS,
     .LABEL        = "KeyValuePair",
-    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_KeyValuePair()) ? 1:-1);  }
   },
@@ -474,12 +484,12 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   // CHKLST_CI_PLATFORM_TESTS:   Test needs the system time
   { .FLAG         = CHKLST_SCHEDULER_TESTS,
     .LABEL        = "C3PScheduler",
-    .DEP_MASK     = (CHKLST_DATA_STRUCT_TESTS | CHKLST_CI_PLATFORM_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS | CHKLST_CI_PLATFORM_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == scheduler_tests_main()) ? 1:-1);  }
   },
 
-  // Thusly begins tier-3.
+  /* Thusly begins tier-3. */
   // By now, we'll be able to test some of our top-level abstractions that deal
   //   with the outside world. It can be said that the true purpose of the unit
   //   tests is to have confidence in the things being tested below. Not only
@@ -568,7 +578,6 @@ AsyncSequencer checklist_unit_tests(TOP_LEVEL_TEST_LIST, (sizeof(TOP_LEVEL_TEST_
 int main(int argc, char *argv[]) {
   int exit_value = 1;   // Failure is the default result.
   srand(time(NULL));
-  gettimeofday(&start_micros, nullptr);
   printTypeSizes();
 
   checklist_unit_tests.requestSteps(CHKLST_ALL_TESTS);

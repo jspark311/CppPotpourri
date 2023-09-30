@@ -33,7 +33,7 @@ This program runs tests against the RingBuffer template.
 * int vacancy()
 */
 int test_RingBuffer_multiple_insert() {
-  int return_value = -1;
+  int ret = -1;
   printf("Testing insert(T*, unsigned int)...\n");
   const int TEST_SIZE = 29;
   RingBuffer<uint32_t> a(TEST_SIZE);
@@ -61,7 +61,7 @@ int test_RingBuffer_multiple_insert() {
               return -1;
             }
           }
-          return_value = 0;
+          ret = 0;
         }
       }
     }
@@ -70,7 +70,7 @@ int test_RingBuffer_multiple_insert() {
   if (0 != ret) {
     printf("Fail.\n");
   }
-  return return_value;
+  return ret;
 }
 
 
@@ -235,9 +235,6 @@ int ringbuffer_main() {
   if (0 == test_RingBuffer_general()) {
     if (0 == test_RingBuffer_contains()) {
       if (0 == test_RingBuffer_multiple_insert()) {
-        printf("**********************************\n");
-        printf("*  RingBuffer tests all pass     *\n");
-        printf("**********************************\n");
         ret = 0;
       }
       else printTestFailure(MODULE_NAME, "insert(T*, int)");

@@ -33,6 +33,7 @@ TODO: For the sake of controlling needless template bloat, we funnel all true
 #include "EnumWrapper.h"
 #include "RingBuffer.h"
 #include "StringBuilder.h"
+#include "StopWatch.h"
 #include "AbstractPlatform.h"
 
 
@@ -94,7 +95,7 @@ template <class T> class StateMachine {
   private:
     const char*                 _NAME;            // The state machine is given a name...
     const EnumDefList<T>* const _ENUM_DEFS;       // ...and a list of possible states.
-    PeriodicTimeout             _lockout_timer;   // Used to enforce a delay before the next state transition.
+    MillisTimeout               _lockout_timer;   // Used to enforce a delay before the next state transition.
     uint32_t                    _slowdown_ms;     // This is used to set the above delay for all state transitions.
     RingBuffer<uint8_t>         _waypoints;       // Byte-consolidated enum values for the desired state traversal.
     T                           _current_state;   // The current state.

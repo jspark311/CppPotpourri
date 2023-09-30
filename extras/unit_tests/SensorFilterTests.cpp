@@ -242,9 +242,6 @@ int sensor_filter_tests_main() {
                 if (0 == sensor_filter_data_sharing_0()) {
                   if (0 == sensor_filter_data_sharing_1()) {
                     if (0 == sensor_filter_teardown()) {
-                      printf("**********************************\n");
-                      printf("*  SensorFilter tests all pass   *\n");
-                      printf("**********************************\n");
                       ret = 0;
                     }
                     else printTestFailure(MODULE_NAME, "SensorFilter failed teardown.");

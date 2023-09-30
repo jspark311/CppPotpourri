@@ -81,6 +81,13 @@ int UUID_IDENT_TESTS() {
 }
 
 
+
+void print_types_identity() {
+  printf("\tIdentity                 %u\t%u\n", sizeof(Identity),      alignof(Identity));
+  printf("\tIdentityUUID             %u\t%u\n", sizeof(IdentityUUID),  alignof(IdentityUUID));
+}
+
+
 /*******************************************************************************
 * The main function.                                                           *
 *******************************************************************************/
@@ -90,9 +97,6 @@ int identity_main() {
   printf("===< %s >=======================================\n", MODULE_NAME);
 
   if (0 == UUID_IDENT_TESTS()) {
-    printf("**********************************\n");
-    printf("*  Identity tests all pass       *\n");
-    printf("**********************************\n");
     ret = 0;
   }
   else printTestFailure(MODULE_NAME, "UUID_IDENT_TESTS");

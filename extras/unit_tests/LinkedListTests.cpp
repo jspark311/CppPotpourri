@@ -180,6 +180,14 @@ int test_PriorityQueue() {
 }
 
 
+void print_types_linked_lists() {
+  printf("\tLinkedList<uint8_t>      %u\t%u\n", sizeof(LinkedList<uint8_t>),  alignof(LinkedList<uint8_t>));
+  printf("\tLinkedList<void*>        %u\t%u\n", sizeof(LinkedList<void*>),    alignof(LinkedList<void*>));
+  printf("\tPriorityQueue<uint8_t>   %u\t%u\n", sizeof(PriorityQueue<uint8_t>),  alignof(PriorityQueue<uint8_t>));
+  printf("\tPriorityQueue<void*>     %u\t%u\n", sizeof(PriorityQueue<void*>),    alignof(PriorityQueue<void*>));
+}
+
+
 /*******************************************************************************
 * LinkedList test routines
 *******************************************************************************/

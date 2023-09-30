@@ -1224,7 +1224,7 @@ AsyncSequencer sb_test_plan(TOP_LEVEL_SB_TEST_LIST, (sizeof(TOP_LEVEL_SB_TEST_LI
 *******************************************************************************/
 
 int stringbuilder_main() {
-  int ret = 1;   // Failure is the default result.
+  int ret = 0;   // Failure is the default result.
   const char* const MODULE_NAME = "StringBuilder";
 
   sb_test_plan.requestSteps(CHKLST_SB_TESTS_ALL);
