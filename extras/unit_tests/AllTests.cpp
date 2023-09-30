@@ -101,12 +101,12 @@ long unsigned micros() {
 /* Delay functions */
 void sleep_ms(uint32_t ms) {
   struct timespec t = {(long) (ms / 1000), (long) ((ms % 1000) * 1000000UL)};
-  nanosleep(&t, &t);
+  clock_nanosleep(CLOCK_MONOTONIC, 0, &t, &t);
 }
 
 void sleep_us(uint32_t us) {
-  struct timespec t = {(long) (us / 1000000), (long) ((us % 1000000) * 1000000UL)};
-  nanosleep(&t, &t);
+  struct timespec t = {(long) (us / 1000000), (long) ((us % 1000000) * 1000UL)};
+  clock_nanosleep(CLOCK_MONOTONIC, 0, &t, &t);
 }
 
 
@@ -196,6 +196,8 @@ void printTestFailure(const char* module, const char* test) {
 void printTypeSizes() {
   printf("===< Type sizes >=======================================\n-- Primitives:\n");
   printf("\tvoid*                    %u\t%u\n", sizeof(void*),  alignof(void*));
+  printf("\tunsigned int             %u\t%u\t%016x\n", sizeof(unsigned int),  alignof(unsigned int), UINT_MAX);
+  printf("\tunsigned long            %u\t%u\t%lu\n", sizeof(unsigned long),  alignof(unsigned long), ULONG_MAX);
   printf("\tFloat                    %u\t%u\n", sizeof(float),  alignof(float));
   printf("\tDouble                   %u\t%u\n", sizeof(double), alignof(double));
   printf("-- C3P types:\n");

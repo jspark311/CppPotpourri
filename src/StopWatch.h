@@ -63,56 +63,57 @@ limitations under the License.
 
   /*
   * A class to rate-limit periodic events. It is generalized, and must be
-  *   extended by one of the two specific classes that implement the timer logic 
+  *   extended by one of the two specific classes that implement the timer logic
   *   over either millis() or micros().
   */
   class PeriodicTimeout {
     public:
       ~PeriodicTimeout() {};      // Featureless destructor.
 
-      inline void     reset() {                 _mark = _now();               };
-      inline void     reset(unsigned int p) {   _mark = _now(); _period = p;  };
-      inline void     period(unsigned int p) {  _period = p;                  };
-      inline unsigned int period() {            return _period;               };
-      inline unsigned int remaining() {
-        return (expired() ? 0 : _until(_mark));
+      inline void reset() {                  _mark = _now();               };
+      inline void reset(unsigned long p) {   _mark = _now(); _period = p;  };
+      inline void period(unsigned long p) {  _period = p;                  };
+      inline bool enabled() {                return (0 < _period);         };
+      inline unsigned long period() {        return _period;               };
+      inline unsigned long remaining() {
+        return (expired() ? 0 : _until(_mark + _period));
       };
       inline bool     expired() {
         return ((0 == _period) || (_period <= _since(_mark)));
       };
 
     protected:
-      unsigned int _period;
-      unsigned int _mark;
+      unsigned long _period;
+      unsigned long _mark;
 
-      PeriodicTimeout(unsigned int p) : _period(p), _mark(0) {};
-      virtual unsigned int _now() =0;   // TODO: unspec uint width.
-      virtual unsigned int _until(unsigned int) =0;   // TODO: unspec uint width.
-      virtual unsigned int _since(unsigned int) =0;   // TODO: unspec uint width.
+      PeriodicTimeout(unsigned long p) : _period(p), _mark(0) {};
+      virtual unsigned long _now() =0;
+      virtual unsigned long _until(unsigned long) =0;
+      virtual unsigned long _since(unsigned long) =0;
   };
 
 
   /* A class to rate-limit periodic events. */
   class MillisTimeout : public PeriodicTimeout {
     public:
-      MillisTimeout(unsigned int p = 0) : PeriodicTimeout(p) {};
+      MillisTimeout(unsigned long p = 0) : PeriodicTimeout(p) {};
 
     protected:
-      unsigned int _now() {                     return millis();             };
-      unsigned int _until(unsigned int mark) {  return millis_until(mark);   };
-      unsigned int _since(unsigned int mark) {  return millis_since(mark);   };
+      unsigned long _now() {                      return millis();            };
+      unsigned long _until(unsigned long mark) {  return millis_until(mark);  };
+      unsigned long _since(unsigned long mark) {  return millis_since(mark);  };
   };
 
 
   /* A class to rate-limit periodic events. */
   class MicrosTimeout : public PeriodicTimeout {
     public:
-      MicrosTimeout(unsigned int p = 0) : PeriodicTimeout(p) {};
+      MicrosTimeout(unsigned long p = 0) : PeriodicTimeout(p) {};
 
     protected:
-      unsigned int _now() {                     return micros();             };
-      unsigned int _until(unsigned int mark) {  return micros_until(mark);   };
-      unsigned int _since(unsigned int mark) {  return micros_since(mark);   };
+      unsigned long _now() {                      return micros();            };
+      unsigned long _until(unsigned long mark) {  return micros_until(mark);  };
+      unsigned long _since(unsigned long mark) {  return micros_since(mark);  };
   };
 
 

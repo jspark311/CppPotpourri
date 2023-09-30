@@ -192,6 +192,7 @@ void print_types_vector3() {
 int vector3_test_main() {
   int ret = 1;   // Failure is the default result.
   const char* const MODULE_NAME = "Vector3";
+  printf("===< %s >=======================================\n", MODULE_NAME);
   if (0 == vector3_float_test()) {
     ret = 0;
   }

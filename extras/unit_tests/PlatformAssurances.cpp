@@ -127,38 +127,39 @@ int platform_system_time_tests() {
   //   microsecond scale. If testing anything tighter than this is required, the
   //   tests will need to leverage the test program's timer value-injector to
   //   directly specify values for micros() to return.
-  const int SYSTIME_EVOLUTION_MAX_ITERATIONS = 10000;
-  const int ALLOWABLE_SLOP_IN_MICROS         = 500;
+  const long SYSTIME_EVOLUTION_MAX_ITERATIONS = 10000;
+  const long ALLOWABLE_SLOP_IN_MICROS         = 500;
 
   // SPIN_UNTIL_MICROS should have some entropy. But we need to run this test
   //   for a minimum of two milliseconds for our later tests of millis() to be
   //   meaningful.
-  const unsigned int SPIN_UNTIL_MICROS = ((1000 * (2 + (randomUInt32() % 15))) + micros());
+  const unsigned long SPIN_UNTIL_MICROS = ((1000 * (2 + (randomUInt32() % 15))) + micros()) + ALLOWABLE_SLOP_IN_MICROS;
   int bailout_count = 0;
-  const unsigned int TEST_START_MICROS = micros();
-  const unsigned int TEST_START_MILLIS = millis();
-  unsigned int micros_return_0 = TEST_START_MICROS;
-  unsigned int micros_return_1 = TEST_START_MICROS;
+  const unsigned long TEST_START_MICROS = micros();
+  const unsigned long TEST_START_MILLIS = millis();
+  unsigned long micros_return_0 = TEST_START_MICROS;
+  unsigned long micros_return_1 = TEST_START_MICROS;
 
-  while ((SPIN_UNTIL_MICROS > micros_return_1) & (SYSTIME_EVOLUTION_MAX_ITERATIONS > bailout_count++)) {
+  while (((SPIN_UNTIL_MICROS - ALLOWABLE_SLOP_IN_MICROS) > micros_return_1) & (SYSTIME_EVOLUTION_MAX_ITERATIONS > bailout_count++)) {
     if (micros_return_0 != micros_return_1) {
       // If the micro state evolved, make sure it was both sequential and in
       //   the ascending direction.
       // Also make sure that our timer-mark wrappers do the advertised thing...
-      const unsigned int MICROS_SINCE_CHANGE       = micros_since(TEST_START_MICROS);
-      const unsigned int MICROS_UNTIL_RETURN       = micros_until(SPIN_UNTIL_MICROS);
-      const unsigned int MICROS_SINCE_TEST_START   = (micros_return_1 - TEST_START_MICROS);
-      const unsigned int MICROS_UNTIL_TEST_ENDS    = (SPIN_UNTIL_MICROS - micros_return_1);
+      const unsigned long MICROS_SINCE_CHANGE       = micros_since(TEST_START_MICROS);
+      const unsigned long MICROS_UNTIL_RETURN       = micros_until(SPIN_UNTIL_MICROS);
+      const unsigned long MICROS_SINCE_TEST_START   = (micros_return_1 - TEST_START_MICROS);
+      const unsigned long MICROS_UNTIL_TEST_ENDS    = (SPIN_UNTIL_MICROS - micros_return_1);
+
       if (micros_return_1 < micros_return_0) {
         printf("Fail. Timer is not ascending, and it is too early for wrap to be the reason.\n");
         return -1;
       }
-      if (ALLOWABLE_SLOP_IN_MICROS < strict_abs_delta(MICROS_SINCE_CHANGE, MICROS_SINCE_TEST_START)) {
-        printf("Fail. (%u = micros_since(%u)) disagrees with our own notions of elapsed time (%u = %u - %u).\n", MICROS_SINCE_CHANGE, TEST_START_MICROS, MICROS_SINCE_TEST_START, micros_return_1, TEST_START_MICROS);
+      if (ALLOWABLE_SLOP_IN_MICROS < strict_abs_delta((uint32_t) MICROS_SINCE_CHANGE, (uint32_t) MICROS_SINCE_TEST_START)) {
+        printf("Fail. (%lu = micros_since(%lu)) disagrees with our own notions of elapsed time (%lu = %lu - %lu).\n", MICROS_SINCE_CHANGE, TEST_START_MICROS, MICROS_SINCE_TEST_START, micros_return_1, TEST_START_MICROS);
         return -1;
       }
-      if (ALLOWABLE_SLOP_IN_MICROS < strict_abs_delta(MICROS_UNTIL_RETURN, MICROS_UNTIL_TEST_ENDS)) {
-        printf("Fail. (%u = micros_until(%u)) disagrees with our own notions of elapsed time (%u = %u - %u).\n", MICROS_UNTIL_RETURN, SPIN_UNTIL_MICROS, MICROS_UNTIL_TEST_ENDS, SPIN_UNTIL_MICROS, micros_return_1);
+      if (ALLOWABLE_SLOP_IN_MICROS < strict_abs_delta((uint32_t) MICROS_UNTIL_RETURN, (uint32_t) MICROS_UNTIL_TEST_ENDS)) {
+        printf("Fail. (%lu = micros_until(%lu)) disagrees with our own notions of elapsed time (%lu = %lu - %lu).\n", MICROS_UNTIL_RETURN, SPIN_UNTIL_MICROS, MICROS_UNTIL_TEST_ENDS, SPIN_UNTIL_MICROS, micros_return_1);
         return -1;
       }
       micros_return_0 = micros_return_1;
@@ -174,11 +175,11 @@ int platform_system_time_tests() {
   }
   printf("Pass. Execution rate was %d loops-per-us.\n\tVerifying that micros() and millis() evolve at the same rate... ", bailout_count);
 
-  const unsigned int TEST_STOP_MICROS    = micros();
-  const unsigned int TEST_STOP_MILLIS    = millis();
-  const int MICROS_SPENT        = (TEST_STOP_MICROS - TEST_START_MICROS);
-  const int MILLIS_SPENT        = (TEST_STOP_MILLIS - TEST_START_MILLIS);
-  const int MS_SPENT_VIA_MICROS = (MICROS_SPENT / 1000);
+  const unsigned long TEST_STOP_MICROS    = micros();
+  const unsigned long TEST_STOP_MILLIS    = millis();
+  const long MICROS_SPENT        = (TEST_STOP_MICROS - TEST_START_MICROS);
+  const long MILLIS_SPENT        = (TEST_STOP_MILLIS - TEST_START_MILLIS);
+  const long MS_SPENT_VIA_MICROS = (MICROS_SPENT / 1000);
   int ret = -1;
   if (MICROS_SPENT > 0) {
     if (MILLIS_SPENT > 0) {
@@ -188,11 +189,11 @@ int platform_system_time_tests() {
         printf("Pass.\n\tmillis() and micros() appear to be adequate for testing.\n");
         ret = 0;
       }
-      else printf("Fail. It appears that a different number of ms and us have passed (%d versus %d).\n", MILLIS_SPENT, MICROS_SPENT);
+      else printf("Fail. It appears that a different number of ms and us have passed (%ld versus %ld).\n", MILLIS_SPENT, MICROS_SPENT);
     }
-    else printf("Fail. MILLIS_SPENT came out negative (%d) with test beginning at mark (%u).\n", MILLIS_SPENT, TEST_START_MILLIS);
+    else printf("Fail. MILLIS_SPENT came out negative (%ld) with test beginning at mark (%lu).\n", MILLIS_SPENT, TEST_START_MILLIS);
   }
-  else printf("Fail. MICROS_SPENT came out negative (%d) with test beginning at mark (%u).\n", MICROS_SPENT, TEST_START_MICROS);
+  else printf("Fail. MICROS_SPENT came out negative (%ld) with test beginning at mark (%lu).\n", MICROS_SPENT, TEST_START_MICROS);
 
   return ret;
 }
