@@ -76,7 +76,7 @@ template <class T> class GfxUITimeSeriesDetail : public GfxUITabbedContentPane {
         &_running_stdev,
         (GFXUI_SENFILT_FLAG_SHOW_RANGE | GFXUI_FLAG_TRACK_POINTER | GFXUI_SENFILT_FLAG_SHOW_VALUE | GFXUI_FLAG_ALWAYS_REDRAW)
       ),
-      _pane_config(0, 0, 0, 0)
+      _pane_config(lay, sty)
     {
       // Note our subordinate objects...
       //_pane_config.add_child(&_txt1);
@@ -104,7 +104,7 @@ template <class T> class GfxUITimeSeriesDetail : public GfxUITabbedContentPane {
     uint32_t             _skipped_samples;
     GfxUISensorFilter<T> _pane_data;
     GfxUISensorFilter<float> _pane_stats;
-    GfxUIGroup           _pane_config;
+    GfxUIOptionsView     _pane_config;
 
     int8_t _filter_alignment_check();
 };

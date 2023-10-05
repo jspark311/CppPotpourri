@@ -246,19 +246,6 @@ void UIGfxWrapper::drawVector(
 * Functions for rendering common UI elements
 *******************************************************************************/
 
-void UIGfxWrapper::drawButton(int x, int y, int w, int h, uint32_t color, bool pressed) {
-  const uint32_t ELEMENT_RADIUS = 4;
-  if (pressed) {
-    _img->fillRoundRect(x, y, w, h, ELEMENT_RADIUS, color);
-    _img->drawRoundRect(x, y, w, h, ELEMENT_RADIUS, fg_color);
-  }
-  else {
-    _img->fillRect(x, y, w, h, bg_color);
-    _img->drawRoundRect(x, y, w, h, ELEMENT_RADIUS, fg_color);
-  }
-}
-
-
 
 /*
 * Draw the data view selector widget.

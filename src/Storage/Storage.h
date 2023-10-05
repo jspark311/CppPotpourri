@@ -42,40 +42,31 @@ class Storage;
 class DataRecord;
 class StorageBlock;
 
-/* Storage driver flags */
-#define PL_FLAG_USES_FILESYSTEM      0x0001  // Medium is on top of a filesystem.
-#define PL_FLAG_BLOCK_ACCESS         0x0002  // I/O operations must occur blockwise.
-#define PL_FLAG_ENCRYPTED            0x0004  // Data stored in this medium is encrypted at rest.
-#define PL_FLAG_REMOVABLE            0x0008  // Media are removable.
-#define PL_FLAG_BATTERY_DEPENDENT    0x0010  // Data-retention is contingent on constant current, IE: RTC RAM.
-#define PL_FLAG_MEDIUM_MOUNTED       0x0020  // Medium is ready for use.
-#define PL_FLAG_MEDIUM_READABLE      0x0040  // Can be read.
-#define PL_FLAG_MEDIUM_WRITABLE      0x0080  // Can be written.
-#define PL_FLAG_BUSY_READ            0x4000  // There is a read operation pending completion.
-#define PL_FLAG_BUSY_WRITE           0x8000  // There is a write operation pending completion.
-
-/* Transfer option flags */
-#define PL_FLAG_XFER_CLOBBER_KEY     0x0001  // A write operation should clobber the key if it already exists.
-
 /* DataRecord flags */
 #define DATA_RECORD_FLAG_PENDING_IO     0x01  // We are in the process of saving or loading.
 #define DATA_RECORD_FLAG_PENDING_ALLOC  0x02  // We are waiting on an allocation to happen.
+#define DATA_RECORD_READ_ONLY           0x04  // Set for records which will not be written as a matter of policy.
 
-/* DataRecord types that are reserved for the driver's use. */
-#define STORAGE_RECORD_TYPE_UNINIT           0  // Reserved. Uninitalized.
-#define STORAGE_RECORD_TYPE_ROOT             1  // The root storage block.
-#define STORAGE_RECORD_TYPE_KEY_LISTING      2  // A listing of DataRecord keys.
-#define STORAGE_RECORD_TYPE_LOG              3  // A firmware-generated log.
-#define STORAGE_RECORD_TYPE_USER_CONF        4  // User configuration.
-#define STORAGE_RECORD_TYPE_LOCATION         5  // Location on Earth.
-#define STORAGE_RECORD_TYPE_CAL_DATA         6
-#define STORAGE_RECORD_TYPE_FIRMWARE_BLOB   10  // A versioned firmware blob.
-#define STORAGE_RECORD_TYPE_AUDIO           14  // Audio stream.
 
-/* DataRecord constants for serializer. */
-#define DATARECORD_SERIALIZER_VERSION  1  // Makes record migration possible.
-#define DATARECORD_BASE_SIZE          40  // How many bytes that are independent of block address size?
-
+/*
+* DataRecord types. Although laregly arbitrary, this 8-bit enum space must be
+*   construed as write-only. Once assigned to a record type, that assignment
+*   should not be changed, lest back-compat be broken.
+* NOTE: This enum need not be exapnded for most kinds of storage support, and is
+*   mostly used to aid rapid sorting of records by a storage driver without
+*   implying knowledge of anything and everything that might be held in a record
+*   payload. Most storage needs can be tunneled within the C3POBJ_ON_ICE record.
+*/
+enum class StorageRecordType : uint8_t {
+  UNINIT        = 0,   // RESERVED: Uninitalized.
+  ROOT          = 1,   // RESERVED (Storage driver): The root storage block.
+  KEY_LISTING   = 2,   // RESERVED (Storage driver): A listing of DataRecord keys.
+  C3POBJ_ON_ICE = 3,   // A direct-to-disk C3P object, which should cover any serializable type in C3P.
+  LOG           = 4,   // A firmware-generated log.
+  CONFIG_OBJ    = 5,   // User configuration.
+  FIRMWARE_BLOB = 6,   // A versioned firmware blob.
+  INVALID       = 255  // RESERVED: Catch-all for unsupported types.
+};
 
 
 /* Error codes for the storage class. */
@@ -96,6 +87,10 @@ enum class StorageErr : int8_t {
 };
 
 
+/* DataRecord constants for serializer. */
+#define DATARECORD_SERIALIZER_VERSION  1  // Makes record migration possible.
+#define DATARECORD_BASE_SIZE          40  // How many bytes that are independent of block address size?
+
 /**
 * A general data record that doesn't carry any implications of asynchronous
 *   block I/O. This is useful in cases where you want data abstraction,
@@ -104,10 +99,10 @@ enum class StorageErr : int8_t {
 */
 class SimpleDataRecord {
   public:
-    inline uint32_t hash() {         return _calculate_hash();             };
-    inline uint8_t  recordType() {   return _record_type;                  };
-    inline uint64_t timestamp() {    return _timestamp;                    };
-    inline bool     isDirty() {      return (_hash != _calculate_hash());  };
+    inline uint32_t          hash() {         return _calculate_hash();             };
+    inline StorageRecordType recordType() {   return _record_type;                  };
+    inline uint64_t          timestamp() {    return _timestamp;                    };
+    inline bool              isDirty() {      return (_hash != _calculate_hash());  };
 
     void printDebug(StringBuilder*);
     int8_t save(uint32_t storage_tag, const char* name, StringBuilder* outbound_buf);
@@ -119,8 +114,10 @@ class SimpleDataRecord {
 
   protected:
     SimpleDataRecord() {};
-    SimpleDataRecord(uint32_t storage_tag, uint8_t rtype) : _record_type(rtype) {};
+    SimpleDataRecord(uint32_t storage_tag, StorageRecordType rtype) : _record_type(rtype) {};
     ~SimpleDataRecord() {};
+
+    int serialize_cbor_kvp_for_record(cbor::encoder*);
 
     inline uint32_t _get_storage_tag() {        return _storage_tag;     };
     inline char*    _record_name() {            return (char*) _key;     };
@@ -141,21 +138,21 @@ class SimpleDataRecord {
     //   bytes of any record.
     // All block address fields are 32-bit for class simplicity, but will be
     //   truncated to the size appropriate for the storage driver.
-    uint32_t _storage_tag  = 0;      // Used by the storage apparatus.
-    uint8_t  _version      = 0;      // Serializer version for this record.
-    uint8_t  _flags        = 0;      // Flags to describe this record.
-    uint8_t  _record_type  = 0;      // What this means is mostly up to the application.
-    TCode    _format       = TCode::CBOR;
-    uint8_t  _key[16]      = {0, };  // Application-provided name for this record.
-    uint32_t _data_length  = 0;      // How many bytes does the record occupy?
-    uint64_t _timestamp    = 0;      // Epoch timestamp of the record creation.
-    uint32_t _hash         = 0;      // Autogenerated payload hash.
+    uint32_t          _storage_tag  = 0;      // Used by the storage apparatus.
+    uint8_t           _version      = 0;      // Serializer version for this record.
+    uint8_t           _flags        = 0;      // Flags to describe this record.
+    StorageRecordType _record_type  = StorageRecordType::UNINIT;
+    TCode             _format       = TCode::CBOR;  // Default serialization format for payload is CBOR.
+    uint8_t           _key[16]      = {0, };  // Application-provided name for this record.
+    uint32_t          _data_length  = 0;      // How many bytes does the record occupy?
+    uint64_t          _timestamp    = 0;      // Epoch timestamp of the record creation.
+    uint32_t          _hash         = 0;      // Autogenerated payload hash.
 
     int8_t        _descriptor_serialize(StringBuilder*);
     int8_t        _descriptor_deserialize(StringBuilder*);
     int8_t        _sanitize_name(const char*);
     uint32_t      _calculate_hash();
-    inline void   _mark_clean() {  _hash = _calculate_hash();            };
+    inline void   _mark_clean() {  _hash = _calculate_hash();  };
 };
 
 
@@ -225,7 +222,7 @@ class DataRecord {
     inline bool     isDirty() {      return (_hash != _calculate_hash());             };
     inline bool     pendingIO() {    return _dr_flag(DATA_RECORD_FLAG_PENDING_IO);    };
     inline bool     pendingAlloc() { return _dr_flag(DATA_RECORD_FLAG_PENDING_ALLOC); };
-    inline uint8_t  recordType() {   return _record_type;   };
+    inline StorageRecordType recordType() {   return _record_type;   };
     inline uint64_t timestamp() {    return _timestamp;     };
     inline void setStorage(Storage* x) {    _storage = x;   };
 
@@ -251,7 +248,7 @@ class DataRecord {
     StringBuilder _outbound_buf;        // Data on its way to the Storage driver.
 
     DataRecord() {};
-    DataRecord(uint8_t rtype) : _record_type(rtype) {};
+    DataRecord(StorageRecordType rtype) : _record_type(rtype) {};
     ~DataRecord() {};
 
     uint32_t _calculate_hash();
@@ -275,7 +272,7 @@ class DataRecord {
     //   truncated to the size appropriate for the storage driver.
     uint8_t  _version      = 0;      // Serializer version for this record.
     uint8_t  _flags        = 0;      // Flags to describe this record.
-    uint8_t  _record_type  = 0;      // What this means is mostly up to the application.
+    StorageRecordType  _record_type  = StorageRecordType::UNINIT;
     uint8_t  _key[9]       = {0, };  // Application-provided name for this record.
     uint32_t _hash         = 0;      // Autogenerated payload hash.
     uint32_t _data_length  = 0;      // How many bytes does the record occupy?
@@ -293,6 +290,22 @@ class DataRecord {
     int8_t  _fill_from_descriptor_block(uint8_t*);
 };
 
+
+
+/* Storage driver flags */
+#define PL_FLAG_USES_FILESYSTEM      0x0001  // Medium is on top of a filesystem.
+#define PL_FLAG_BLOCK_ACCESS         0x0002  // I/O operations must occur blockwise.
+#define PL_FLAG_ENCRYPTED            0x0004  // Data stored in this medium is encrypted at rest.
+#define PL_FLAG_REMOVABLE            0x0008  // Media are removable.
+#define PL_FLAG_BATTERY_DEPENDENT    0x0010  // Data-retention is contingent on constant current, IE: RTC RAM.
+#define PL_FLAG_MEDIUM_MOUNTED       0x0020  // Medium is ready for use.
+#define PL_FLAG_MEDIUM_READABLE      0x0040  // Can be read.
+#define PL_FLAG_MEDIUM_WRITABLE      0x0080  // Can be written.
+#define PL_FLAG_BUSY_READ            0x4000  // There is a read operation pending completion.
+#define PL_FLAG_BUSY_WRITE           0x8000  // There is a write operation pending completion.
+
+/* Transfer option flags */
+#define PL_FLAG_XFER_CLOBBER_KEY     0x0001  // A write operation should clobber the key if it already exists.
 
 
 /**

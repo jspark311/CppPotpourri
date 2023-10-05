@@ -9,6 +9,17 @@ TODO: First-principles first. Mechanics will follow.
 #include "Storage.h"
 
 
+uint32_t static_hash_wrapper_fxn(const uint8_t* BUF, const uint32_t LEN) {
+    #if defined(__HAS_CRYPT_WRAPPER)
+      // We'd prefer a cryptographic hash...
+    #else
+      // But we'll fall back to something simple if we don't have one.
+      // https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+    #endif  // __HAS_CRYPT_WRAPPER
+  return (0xAAAAAAAA ^ LEN);  // TODO
+}
+
+
 /*******************************************************************************
 * SimpleDataRecord base-class functions
 *******************************************************************************/
@@ -38,7 +49,7 @@ int8_t SimpleDataRecord::_descriptor_serialize(StringBuilder* outbound_buf) {
   *(rec_desc + idx++) = (uint8_t) (_storage_tag >> 24);
   *(rec_desc + idx++) = DATARECORD_SERIALIZER_VERSION;
   *(rec_desc + idx++) = 0;
-  *(rec_desc + idx++) = _record_type;
+  *(rec_desc + idx++) = (uint8_t) _record_type;
   *(rec_desc + idx++) = (uint8_t) _format;
   for (uint8_t i = 0; i < sizeof(_key); i++) {  *(rec_desc + idx++) = _key[i]; }
   // Record length field (excluding this descriptor).
@@ -94,7 +105,7 @@ int8_t SimpleDataRecord::_descriptor_deserialize(StringBuilder* sb_buf) {
       //   necessary.
       ret--;
       _flags       = *(buf + buf_idx++);
-      if (_record_type == *(buf + buf_idx++)) {
+      if ((uint8_t) _record_type == *(buf + buf_idx++)) {
         ret--;
         _format      = (TCode) *(buf + buf_idx++);
         for (uint8_t i = 0; i < sizeof(_key); i++) {  _key[i] = *(buf + buf_idx++);  }
@@ -138,7 +149,7 @@ int8_t SimpleDataRecord::save(uint32_t storage_tag, const char* name, StringBuil
     _storage_tag = storage_tag;
     if (0 == serialize(outbound_buf, _format)) {
       ret--;
-      _hash = crc16(outbound_buf->string(), outbound_buf->length());
+      _hash = static_hash_wrapper_fxn(outbound_buf->string(), outbound_buf->length());
       _data_length = outbound_buf->length();
       if (0 == _descriptor_serialize(outbound_buf)) {
         ret = 0;
@@ -162,7 +173,7 @@ int8_t SimpleDataRecord::load(uint32_t storage_tag, StringBuilder* inbound_buf) 
     ret--;
     if (_storage_tag == storage_tag) {
       ret--;
-      if (_hash == crc16((inbound_buf->string()+DATARECORD_BASE_SIZE), _data_length)) {
+      if (_hash == static_hash_wrapper_fxn((inbound_buf->string()+DATARECORD_BASE_SIZE), _data_length)) {
         // Hash matches. Cull the useless edges of the buffer...
         inbound_buf->cull(DATARECORD_BASE_SIZE);
         ret--;
@@ -209,14 +220,33 @@ uint32_t SimpleDataRecord::_calculate_hash() {
   uint32_t ret = 0;
   StringBuilder _record_bin;
   if (0 == serialize(&_record_bin, _format)) {
-    #if defined(__HAS_CRYPT_WRAPPER)
-      // We'd prefer a cryptographic hash...
-      ret = -1;  // TODO
-    #else
-      // But we'll fall back to something simple if we don't have one.
-      // https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
-      ret = -1;  // TODO
-    #endif  // __HAS_CRYPT_WRAPPER
+    ret = static_hash_wrapper_fxn(_record_bin.string(), _record_bin.length());
   }
+  return ret;
+}
+
+
+
+/*
+* TODO: This might get cut. Presently, this concern is being mostly handled by
+*   the binary header code (which is simpler and more bounded). We will retain
+*   this for now, since it is harmless, and makes results easy to decipher.
+*/
+int SimpleDataRecord::serialize_cbor_kvp_for_record(cbor::encoder* encoder) {
+  int8_t ret = 0;
+  encoder->write_string("meta");
+  encoder->write_map(2);
+    encoder->write_string("type");
+    switch (recordType()) {
+      case StorageRecordType::ROOT:           encoder->write_string("ROOT");           break;
+      case StorageRecordType::KEY_LISTING:    encoder->write_string("KEY_LISTING");    break;
+      case StorageRecordType::C3POBJ_ON_ICE:  encoder->write_string("C3POBJ_ON_ICE");  break;
+      case StorageRecordType::LOG:            encoder->write_string("LOG");            break;
+      case StorageRecordType::CONFIG_OBJ:     encoder->write_string("CONFIG_OBJ");     break;
+      case StorageRecordType::FIRMWARE_BLOB:  encoder->write_string("FIRMWARE_BLOB");  break;
+      default:                                encoder->write_string("unknwn");         break;
+    }
+    encoder->write_string("ts");
+    encoder->write_int((uint64_t) timestamp());
   return ret;
 }

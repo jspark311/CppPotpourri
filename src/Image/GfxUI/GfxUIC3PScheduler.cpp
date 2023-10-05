@@ -65,7 +65,7 @@ int GfxUIC3PScheduler::_render(UIGfxWrapper* ui_gfx) {
   if (scheduler) {
     tmp_str.concatf("Schedule count:   %u\n", scheduler->scheduleCount());
     //tmp_str.concatf("\tLoops (SVC/ISR):  %u / %u\n\n", profiler_service.executions(), _isr_count);
-    if (scheduler->scheduleCount() != _dyn_elements.size()) {
+    if ((int) scheduler->scheduleCount() != (int) _dyn_elements.size()) {
       const uint32_t SCH_GUI_HEIGHT = 64;
       uint32_t i_x = internalPosX();
       uint32_t sch_list_y = (internalPosY() + _tab_bar.elementHeight());
@@ -181,7 +181,7 @@ int GfxUIC3PSchedule::_render(UIGfxWrapper* ui_gfx) {
       uint32_t i_x = internalPosX();
       uint32_t i_y = internalPosY();
       uint16_t i_w = internalWidth();
-      uint16_t i_h = internalHeight();
+      //uint16_t i_h = internalHeight();
 
       ui_gfx->img()->setCursor(i_x, i_y);
       ui_gfx->img()->setTextSize(_style.text_size);

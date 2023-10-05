@@ -105,8 +105,6 @@ class UIGfxWrapper {
       DataVis selected
     );
 
-    void drawButton(int x, int y, int w, int h, uint32_t color, bool pressed);
-
 
   private:
     Image* _img;

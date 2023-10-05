@@ -4,17 +4,30 @@ Author: J. Ian Lindsay
 Date:   2023.02.11
 
 Meditation: What is the difference (if any) between semantics and syntax?
+Axiom:      Naming a thing is a form of control over the thing named.
 
 This template is intended to extend the sematic assurances provided at
-  compile-time (via enums) to the syntax of what actually happens in certain
-  classes that use them.
+  compile-time (via enums) into assurances about actual run-time
+  behavior of classes that use those enums in a way that can't be directly
+  validated at build time. That is: an enum sanitizer.
 
-This template is being undertaken as an experiment. Mostly for the benefit of
-  templating finite state-machines.
+It does this mainly by providing a string anchor to the compiler's notion of the
+  value of the enum itself (expressed as the enum, and not whatever underlying
+  integral type is used to store it). But individual enums can be configured to
+  act as a defined "fallback" value in the event that the sanitizer fails to
+  validate a up-cast integer. In practice, this usually happens in cases where
+  raw values of integral type are imported from outside sources at runtime, and
+  then improperly construed as enum-controlled data by simple casting.
+For this purpose, "Outside sources" might be a prior version our own program
+  that wrote a value of an enum out to a file as a down-cast integer, and is now
+  trying to unpack that file into a live object following changes to the enum's
+  specific values.
+
+EnumDef also provides an optional opaque context byte for use by whatever
+  software is defining the enum.
 
 NOTE: Use of this mechanism does NOT constrain the specific values of the enums,
-  as assigned in their proper definitions. The list is null-terminated, and
-  indicies are unimportant.
+  as assigned in their proper definitions. Indicies within the list are unimportant.
 
 
 TODO: I think I can now use the compiler to force the definition of an INVALID
@@ -29,10 +42,12 @@ TODO: I think I can now use the compiler to force the definition of an INVALID
 #ifndef __C3P_ENUM_WRAPPER
 #define __C3P_ENUM_WRAPPER
 
+/* Flags pertaining to a given enum */
 #define ENUM_WRAPPER_FLAG_CATCHALL  0x01   // If set, the associated enum will be a catch-all.
 
 /*
-* A wrapper object to tie enums to their string representations.
+* A wrapper object to tie enums to their string representations and an optional
+*   context byte.
 * This is to save us the obnoxious task of re-writing this support code for all
 *   exposed enums in the program. It should be entirely const so that builds can
 *   confidently isolate it to flash.
@@ -41,11 +56,11 @@ template <class T> class EnumDef {
   public:
     const T VAL;
     const uint8_t FLAGS;
+    const uint8_t CONTEXT;
     const char* const STR;
 
-    EnumDef(const T EVAL, const char* const STR_REP, const uint32_t EFLAGS) : VAL(EVAL), FLAGS(EFLAGS), STR(STR_REP) {};
-    EnumDef(const T EVAL, const char* const STR_REP) : VAL(EVAL), FLAGS(0), STR(STR_REP) {};
-    EnumDef(const T EVAL) : VAL(EVAL), FLAGS(0), STR("<NO STR>") {};
+    EnumDef(const T EVAL, const char* const STR_REP, const uint8_t EFLAGS = 0, const uint8_t CNTXT = 0)
+      : VAL(EVAL), FLAGS(EFLAGS), CONTEXT(CNTXT), STR(STR_REP) {};
 };
 
 
@@ -55,7 +70,18 @@ template <class T> class EnumDef {
 */
 template <class T> class EnumDefList {
   public:
-    EnumDefList(const EnumDef<T>* const DEFS, const uint32_t DEF_COUNT) : LIST_PTR(DEFS), COUNT(DEF_COUNT) {};
+    const EnumDef<T>* const LIST_PTR;
+    const uint32_t COUNT;
+    const char* const LIST_NAME;
+
+    /**
+    * Constructor
+    */
+    EnumDefList(
+      const EnumDef<T>* const DEFS,    // A pointer to the first item in the list.
+      const uint32_t DEF_COUNT,        // The size of the list must be explicit.
+      const char* const LNAME = ""     // An optional name for this list?
+    ) : LIST_PTR(DEFS), COUNT(DEF_COUNT), LIST_NAME(LNAME) {};
 
     /**
     * Is the supplied argument in the enum list? We have to ask, because the
@@ -79,7 +105,7 @@ template <class T> class EnumDefList {
     * NOTE: Does not respect catch-all logic.
     * TODO: Should it stay that way?
     *
-    * @param The enum value to test.
+    * @param The enum for which to fetch the definition string.
     * @return Always returns a valid string.
     */
     const char* const enumStr(const T ENUM) const {  // Also: const
@@ -90,12 +116,76 @@ template <class T> class EnumDefList {
     };
 
 
-    /*
+    /**
+    * Used to retrieve the extra context byte for a given enum.
+    * NOTE: Does not respect catch-all logic. A failed look-up will return 0.
+    *
+    * @param The enum for which to fetch the context byte.
+    * @return The requested context byte, or 0 on failed lookup.
+    */
+    const uint8_t enumExtra(const T ENUM) const {
+      for (uint32_t i = 0; i < COUNT; i++) {
+        if ((LIST_PTR + i)->VAL == ENUM) return (LIST_PTR + i)->CONTEXT;
+      }
+      return "<NO ENUM>";
+    };
+
+
+    /**
+    * Used to print strings representing enums.
+    * NOTE: Does not respect catch-all logic.
+    *
+    * @param The enum for which to fetch the definition.
+    * @return The definition container for the matching enum (if found), or nullptr.
+    */
+    const EnumDef<T>* enumDef(const T ENUM) const {
+      for (uint32_t i = 0; i < COUNT; i++) {
+        if ((LIST_PTR + i)->VAL == ENUM) return (LIST_PTR + i);
+      }
+      return nullptr;
+    };
+
+
+    /**
     * Find the enum represented by the given string.
     * If the entire enum set is exhausted without finding the search string but
-    *   there an enum marked as a catch-all, the last catch-all defined in the
-    *   enum list will be returned. In such a case, the `found` parameter will
-    *   still be set to 0 to allow the caller to maintain semantic hygiene.
+    *   there exists an enum marked as a catch-all, the last catch-all defined
+    *   in the enum list will be returned. In such a case, the `found` parameter
+    *   will still be set to 0 to allow the caller to maintain semantic hygiene.
+    *
+    * TODO: Consolidate fetch function as a private member with a parameter
+    *   that selects catch-all observation.
+    *
+    * @param NEEDLE is definition string for the enum we want.
+    * @return The definition container for the matching enum (if found),
+    *           or that of the catch-all (if one is defined), or nullptr.
+    */
+    const EnumDef<T>* getEnumDefByStr(const char* NEEDLE) const {
+      uint32_t catchall_idx = 0xFFFFFFFF;
+      for (uint32_t i = 0; i < COUNT; i++) {
+        if (0 == StringBuilder::strcasecmp(NEEDLE, (LIST_PTR + i)->STR)) {
+          return (LIST_PTR + i);
+        }
+        else if ((LIST_PTR + i)->FLAGS & ENUM_WRAPPER_FLAG_CATCHALL) {
+          catchall_idx = i;
+        }
+      }
+
+      return ((0xFFFFFFFF != catchall_idx) ? (LIST_PTR + catchall_idx) : nullptr);
+    };
+
+
+    /**
+    * Find the enum represented by the given string.
+    * If the entire enum set is exhausted without finding the search string but
+    *   there exists an enum marked as a catch-all, the last catch-all defined
+    *   in the enum list will be returned. In such a case, the `found` parameter
+    *   will still be set to 0 to allow the caller to maintain semantic hygiene.
+    *
+    * @param NEEDLE is definition string for the enum we want.
+    * @param found is a pass-by-reference return code for the look-up.
+    * @return The matching enum (if found), or the catch-all (if one is
+    *           defined), or the last enum in the list.
     */
     const T getEnumByStr(const char* NEEDLE, int8_t* found = nullptr) const {
       uint32_t catchall_idx = 0xFFFFFFFF;
@@ -124,8 +214,6 @@ template <class T> class EnumDefList {
 
 
   private:
-    const EnumDef<T>* const LIST_PTR;
-    const uint32_t COUNT;
 };
 
 #endif  // __C3P_ENUM_WRAPPER

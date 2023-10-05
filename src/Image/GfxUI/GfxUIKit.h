@@ -4,6 +4,10 @@ Author: J. Ian Lindsay
 Date:   2023.03.11
 
 NOTE: Do not include this file directly. Only via GfxUI.h.
+TODO: This^ partly because this file is long and terribly hard to read, and I
+  don't want you to make fun of me. But seriously, spread this out, tier it, or
+  force it to undergo fission. Anything to prevent having to maintain _this_.
+
 
 These classes are built on top of the GfxUI classes, and implement higher-level
   functional elements of a UI.
@@ -16,18 +20,13 @@ These classes are built on top of the GfxUI classes, and implement higher-level
 #include "../ImageUtils.h"
 #include "../../M2MLink/M2MLink.h"
 #include "../../Identity/Identity.h"
-#include "../../Storage.h"
+#include "../../Storage/Storage.h"
 #include "../../TripleAxisPipe/TripleAxisPipe.h"
 #include "../../C3PEvents/C3PScheduler.h"
 
 /*******************************************************************************
-* Pure UI modules.
-* These have no backing to deeper objects, and represent a simple shared state
-*   between the user and the program.
-*******************************************************************************/
-
-/*******************************************************************************
-* Non-interacting utility shims
+* Non-interacting utility shims. These are invisibile classes used to
+*   facilitate grouping, connection, and flow of GfxUIElements.
 *******************************************************************************/
 /**
 * A class to group UI elements into a single GfxUIElement. Only useful for
@@ -67,6 +66,13 @@ class GfxUIRoot : public GfxUIGroup {
     UIGfxWrapper* _ui_gfx;
 };
 
+
+
+/*******************************************************************************
+* Pure UI modules.
+* These have no backing to deeper objects, and represent a simple shared state
+*   between the user and the program.
+*******************************************************************************/
 
 
 /*******************************************************************************
@@ -189,6 +195,8 @@ class GfxUISlider : public GfxUIElement {
 * NOTE: If this class is configured to draw pixels outside of its own bounds, it
 *   is best used with an overlay image to avoid ghosting. This element should
 *   render to the overlay, and take the source image as a constructor parameter.
+* TODO: This class is unique, and should probably be in its own header, or at
+*   least tiered differently within this one.
 *******************************************************************************/
 class GfxUIMagnifier : public GfxUIElement {
   public:
@@ -284,9 +292,28 @@ class GfxUI3AxisRender : public GfxUIElement, public TripleAxisPipe {
 
 
 /*******************************************************************************
-* Data and module control.
-* These act as state and control breakouts for specific kinds of objects in C3P.
+* Graphical breakouts for basic C3P object representation.
+* Although these can be used alone, they are mostly useful as compositional
+*   elements of higher-order views.
 *******************************************************************************/
+
+/* A graphical representation of the StopWatch class. */
+class GfxUIStopWatch : public GfxUIElement {
+  public:
+    GfxUIStopWatch(const char*, StopWatch*, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
+    ~GfxUIStopWatch() {};
+
+    inline StopWatch* stopwatch() {    return _stopwatch;  };
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+
+  private:
+    const char* _name;
+    StopWatch* _stopwatch;
+};
+
 
 /*******************************************************************************
 * Graphical representations for identities
@@ -347,24 +374,6 @@ class GfxUIMLink : public GfxUITabbedContentPane {
 * Graphical tools for C3PScheduler.
 * This is mostly used to demo the Scheduler and verify features.
 *******************************************************************************/
-/* A graphical representation of the StopWatch class. */
-class GfxUIStopWatch : public GfxUIElement {
-  public:
-    GfxUIStopWatch(const char*, StopWatch*, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
-    ~GfxUIStopWatch() {};
-
-    inline StopWatch* stopwatch() {    return _stopwatch;  };
-
-    /* Implementation of GfxUIElement. */
-    virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
-
-  private:
-    const char* _name;
-    StopWatch* _stopwatch;
-};
-
-
 /* A discrete Schedule. */
 class GfxUIC3PSchedule : public GfxUIElement {
   public:
@@ -410,10 +419,6 @@ class GfxUIC3PScheduler : public GfxUITabbedContentPane {
 * These act as state and control breakouts for classes in the Storage apparatus.
 *******************************************************************************/
 
-/*******************************************************************************
-* Graphical representation of a DataRecord.
-*******************************************************************************/
-
 /* Storage */
 class GfxUIStorage : public GfxUIElement {
   public:
@@ -429,10 +434,11 @@ class GfxUIStorage : public GfxUIElement {
     Storage* _storage;
 };
 
+
 /* DataRecord */
-class GfxUIDataRecord : public GfxUIElement {
+class GfxUIDataRecord : public GfxUITabbedContentPane {
   public:
-    GfxUIDataRecord(DataRecord* record, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0);
+    GfxUIDataRecord(DataRecord*, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
     ~GfxUIDataRecord() {};
 
     /* Implementation of GfxUIElement. */
@@ -442,10 +448,26 @@ class GfxUIDataRecord : public GfxUIElement {
 
   private:
     DataRecord* _record;
-    GfxUITabBar _tab_bar;
-    GfxUITextArea _txt;
 };
 
+
+
+/*******************************************************************************
+* A graphical breakdown of a top-level configuration object.
+*******************************************************************************/
+
+class GfxUIOptionsView : public GfxUIElement {
+  public:
+    GfxUIOptionsView(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
+    ~GfxUIOptionsView() {};
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+
+
+  protected:
+};
 
 
 

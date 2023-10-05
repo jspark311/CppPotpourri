@@ -29,7 +29,7 @@ This program tests StateMachine<T>, which underpins many drivers and application
 * We'll need an enum to represent the states used for the test.
 *******************************************************************************/
 enum class StateTest : uint8_t {
-  UNINIT =  0,  // The init state of the board is unknown.
+  UNINIT =  0, 
   STATE_0,
   STATE_1,
   IDLE,
