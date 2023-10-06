@@ -786,13 +786,20 @@ struct sb_contains_kat_case {
   const bool        RESULT;
 };
 const char* const SB_CONTAINS_KAT_0 = "Glucose weighs 180g/mol with an enthalpy of -670 kcal/mol.";
+const char* const SB_CONTAINS_KAT_1 = "Index reset within locate() has a weeeeeak spot.";
 
 struct sb_contains_kat_case sb_contains_kat_cases[] = {
   { SB_CONTAINS_KAT_0, "Glucose", true  },
   { SB_CONTAINS_KAT_0, "mol.", true  },
   { SB_CONTAINS_KAT_0, "no match", false  },
-  { SB_CONTAINS_KAT_0, "1180g", true  },
+  { SB_CONTAINS_KAT_0, "1180g", false  },
   { SB_CONTAINS_KAT_0, "", false  },
+  { SB_CONTAINS_KAT_1, "weeeeeak", true  },
+  { SB_CONTAINS_KAT_1, "eeeeeak", true  },
+  { SB_CONTAINS_KAT_1, "eeeeak", true  },
+  { SB_CONTAINS_KAT_1, "eeeak", true  },
+  { SB_CONTAINS_KAT_1, "eeak", true  },
+  { SB_CONTAINS_KAT_1, "eak", true  },
   { "hi1", "hi1", true  },
   { "hi1", "h",   true  },
   { "hi1", "i",   true  },

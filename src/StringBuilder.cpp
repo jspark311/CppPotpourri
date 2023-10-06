@@ -967,18 +967,31 @@ void StringBuilder::trim() {
 int StringBuilder::locate(const uint8_t* NEEDLE, int NEEDLE_LEN, int start_offset) {
   int ret = -1;
   if ((nullptr != _root) & (nullptr != NEEDLE) & (NEEDLE_LEN > 0)) {
-    int search_offset = start_offset;
-    int strll_offset  = start_offset;
-    int match_length  = 0;
-    StrLL* src_ll = _get_ll_containing_offset(_root, &strll_offset);
+    int match_length   = 0;
+    int search_offset  = start_offset;
+    int strll_offset   = start_offset;
+    StrLL* src_ll      = _get_ll_containing_offset(_root, &strll_offset);
+    StrLL* retrace_ll  = src_ll;
+    int retrace_offset = start_offset;
     while ((nullptr != src_ll) & (-1 == ret)) {
       if (*(src_ll->str + strll_offset) == *(NEEDLE + match_length++)) {
         if (match_length == NEEDLE_LEN) {
-          ret = (search_offset);
+          ret = (search_offset);  // Search concludes with a find.
+        }
+        else if (1 == match_length) {
+          // First hit on the needle. Store the current search state just in
+          //   case we need to roll back to it after a failure to find a long needle.
+          retrace_ll  = src_ll;
+          retrace_offset = search_offset;
         }
       }
       else {
-        search_offset += match_length;
+        if (match_length > 1) {
+          search_offset = retrace_offset;
+          strll_offset  = search_offset;
+          src_ll = _get_ll_containing_offset(retrace_ll, &strll_offset);
+        }
+        search_offset++;
         match_length  = 0;
       }
       strll_offset++;
