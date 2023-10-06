@@ -255,9 +255,12 @@ int StringBuilder::length() {
 * @return True if this StringBuilder is empty (or zero-length).
 */
 bool StringBuilder::isEmpty(const bool strict) {
-  switch ((nullptr == _root) ? 0 : _root->len) {
+  if (nullptr == _root) {  return true;   }
+  if (_fragged()) {        return false;  }  // A frag'd string will have more than one byte.
+
+  switch (_root->len) {
     case 0:   return true;  // No length means no string, strict or not.
-    case 1:   return ((0 == *(_root->str)) & strict);
+    case 1:   return ((0 == *(_root->str)) & !strict);
     default:  return false;  // Many bytes means "not-empty" in all cases.
   }
 }

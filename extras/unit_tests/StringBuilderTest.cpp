@@ -724,9 +724,7 @@ int test_StringBuilderHeapVersusStack() {
   heap_obj->concat(" And stuff tackt onto the end.");
 
   stack_obj.concatHandoff(heap_obj);
-
   delete heap_obj;
-
   stack_obj.split(" ");
 
   printf("Final Stack obj:          %s\n", stack_obj.string());
@@ -736,47 +734,105 @@ int test_StringBuilderHeapVersusStack() {
 
 /*
 * Many use-cases that would otherwise need to call length() will be happy with
-*  the (much cheaper) isEmpty().
+*  the (cheaper) isEmpty().
 */
 int test_stringbuilder_isempty() {
-  int return_value = -1;
+  int ret = -1;
   printf("Testing isEmpty()...\n");
-  uint8_t tmp_buf[8] = {0, };
-  StringBuilder should_be_empty;
-  StringBuilder should_have_things(&tmp_buf[0], 8);
+  uint8_t tmp_buf[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  StringBuilder strictly_empty;
+  StringBuilder might_be_empty;
+  StringBuilder will_not_be_empty(&tmp_buf[0], 8);
+  might_be_empty.concat((uint8_t) 0);
 
-  if (should_be_empty.isEmpty()) {
-    if (should_be_empty.isEmpty(true)) {
-      //should_be_empty.concat(&tmp_buf[0], 1);   // Causes segfault
-      should_be_empty.concat('\0');  // Passes isEmpty(true), and it shouldn't.
-      if (should_be_empty.isEmpty()) {
-        if (((true))) {   // TODO
-        //if (!should_be_empty.isEmpty(true)) {
-          should_be_empty.string();   // Collapse the string.
-          if (should_be_empty.isEmpty()) {
-            if (should_be_empty.isEmpty(true)) {
-              if (!should_have_things.isEmpty()) {
-                if (!should_have_things.isEmpty(true)) {
-                  printf("\tisEmpty() passes.\n");
-                  return_value = 0;
-                }
-                else printf("should_have_things.isEmpty(true) found nothing.\n");
-              }
-              else printf("should_have_things.isEmpty() found nothing. Bad.\n");
+  printf("\tNewly-allocated StringBuilders should report as empty for a lax check... ");
+  if (strictly_empty.isEmpty(false)) {
+    printf("Pass.\n\tNewly-allocated StringBuilders should report as empty for a strict check... ");
+    if (strictly_empty.isEmpty(true)) {
+      printf("Pass.\n\tA StringBuilder that contains only a null-terminator should report as empty for a lax check... ");
+      if (might_be_empty.isEmpty(false)) {
+        printf("Pass.\n\tA StringBuilder that contains only a null-terminator should report as NOT empty for a strict check... ");
+        if (!might_be_empty.isEmpty(true)) {
+          printf("Pass.\n\tNot-empty StringBuilder returns false for a lax check... ");
+          if (!will_not_be_empty.isEmpty(false)) {
+            printf("Pass.\n\tNot-empty StringBuilder returns false for a strict check... ");
+            if (!will_not_be_empty.isEmpty(true)) {
+              printf("Pass.\n\tisEmpty() passes all tests.\n");
+              ret = 0;
             }
-            else printf("should_be_empty.isEmpty(true) failed to find bytes after adding a null-terminator.\n");
           }
-          else printf("should_be_empty.isEmpty() found bytes after adding a null-terminator.\n");
         }
-        else printf("should_be_empty.isEmpty(true) returned true after adding a null-terminator.\n");
       }
-      else printf("should_be_empty.isEmpty() found bytes after adding a null-terminator.\n");
     }
-    else printf("should_be_empty.isEmpty(true) found bytes.\n");
   }
-  else printf("should_be_empty.isEmpty() found bytes. Bad.\n");
 
-  return return_value;
+  if (0 != ret) {
+    printf("Fail.\n");
+    printf("strictly_empty.length():     %u\tisEmpty(false): %c\tisEmpty(true): %c\n", strictly_empty.length(),     (strictly_empty.isEmpty(false)?'Y':'N'),     (strictly_empty.isEmpty(true)?'Y':'N'));
+    printf("might_be_empty.length():     %u\tisEmpty(false): %c\tisEmpty(true): %c\n", might_be_empty.length(),     (might_be_empty.isEmpty(false)?'Y':'N'),     (might_be_empty.isEmpty(true)?'Y':'N'));
+    printf("will_not_be_empty.length():  %u\tisEmpty(false): %c\tisEmpty(true): %c\n", will_not_be_empty.length(),  (will_not_be_empty.isEmpty(false)?'Y':'N'),  (will_not_be_empty.isEmpty(true)?'Y':'N'));
+  }
+  return ret;
+}
+
+
+
+/*
+* A one-off struct to hold test cases for contains(const char*).
+*/
+struct sb_contains_kat_case {
+  const char* const HAYSTACK;
+  const char* const NEEDLE;
+  const bool        RESULT;
+};
+const char* const SB_CONTAINS_KAT_0 = "Glucose weighs 180g/mol with an enthalpy of -670 kcal/mol.";
+
+struct sb_contains_kat_case sb_contains_kat_cases[] = {
+  { SB_CONTAINS_KAT_0, "Glucose", true  },
+  { SB_CONTAINS_KAT_0, "mol.", true  },
+  { SB_CONTAINS_KAT_0, "no match", false  },
+  { SB_CONTAINS_KAT_0, "1180g", true  },
+  { SB_CONTAINS_KAT_0, "", false  },
+  { "hi1", "hi1", true  },
+  { "hi1", "h",   true  },
+  { "hi1", "i",   true  },
+  { "hi1", "1",   true  },
+  { "hhi2", "hi", true  },
+  { "hhi2", "hi2", true  },
+};
+
+
+/*
+  bool contains(const char*)
+*/
+int test_stringbuilder_contains_1() {
+  printf("Testing contains(const char*)...\n");
+  const int CASE_COUNT = (sizeof(sb_contains_kat_cases) / sizeof(sb_contains_kat_case));
+  int i = 0;
+  bool continue_test = true;
+
+  while (continue_test & (CASE_COUNT > i)) {
+    const char* HAYSTACK      = sb_contains_kat_cases[i].HAYSTACK;
+    const char* NEEDLE        = sb_contains_kat_cases[i].NEEDLE;
+    const bool  RESULT_EXPECT = sb_contains_kat_cases[i].RESULT;
+    StringBuilder haystack(HAYSTACK);
+    printf("\t%3d:  \"%s\".contains(\"%s\") should return %s... ", i, HAYSTACK, NEEDLE, (RESULT_EXPECT ? "true":"false"));
+
+    const bool  RESULT_ACTUAL = haystack.contains(NEEDLE);
+    continue_test = (RESULT_EXPECT == RESULT_ACTUAL);
+    if (continue_test) {
+      printf("Pass.\n");
+      i++;
+    }
+    else {
+      printf("Fail.\n");
+    }
+  }
+
+  if (continue_test) {
+    printf("contains(const char*) passes all tests.\n");
+  }
+  return (continue_test ? 0 : -1);
 }
 
 
@@ -1101,13 +1157,13 @@ const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
     .POLL_FXN     = []() { return ((0 == test_stringbuilder_locate()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_SB_TEST_CONTAINS_1,
-    .LABEL        = "contains(char)",
+    .LABEL        = "contains(const char*)",
     .DEP_MASK     = (CHKLST_SB_TEST_LOCATE),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return 1;  }    // TODO: Separate
+    .POLL_FXN     = []() { return ((0 == test_stringbuilder_contains_1()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_SB_TEST_CONTAINS_2,
-    .LABEL        = "contains(const char*)",
+    .LABEL        = "contains(char)",
     .DEP_MASK     = (CHKLST_SB_TEST_LOCATE),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return 1;  }    // TODO: Separate
