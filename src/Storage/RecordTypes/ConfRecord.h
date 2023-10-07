@@ -27,7 +27,7 @@ template <class T> class ConfRecord : public SimpleDataRecord {
   public:
     ConfRecord(uint32_t storage_tag, const EnumDefList<T>* const KDEFS) :
       SimpleDataRecord(storage_tag, StorageRecordType::CONFIG_OBJ),
-      _KEY_DEFS(KDEFS) {};
+      _KEY_DEFS(KDEFS), _kvp(nullptr) {};
     ~ConfRecord() {};
 
     int8_t setConf(T, const char*);
@@ -63,6 +63,7 @@ template <class T> class ConfRecord : public SimpleDataRecord {
 
   protected:
     const EnumDefList<T>* const _KEY_DEFS;   // A list of possible value keys, and their types.
+    KeyValuePair* _kvp;
 
     int serialize_cbor_kvp_for_conf(cbor::encoder*);
 };
@@ -310,7 +311,7 @@ template <class T> void ConfRecord<T>::printConf(StringBuilder* output, const ch
     const EnumDef<T>* const C_DEF = _KEY_DEFS->getEnumDefByStr(spec_key);
     if (nullptr != C_DEF) {
       const T KY = C_DEF->VAL;
-      output->concatf("%24s = ", C_DEF->STR);
+      output->concatf("%24s (0x%02x) = ", C_DEF->STR, C_DEF->CONTEXT);
       switch ((TCode) C_DEF->CONTEXT) {
         case TCode::INT64:
           {
@@ -424,6 +425,7 @@ template <class T> void ConfRecord<T>::printConf(StringBuilder* output, const ch
 * Parsing and packing
 *******************************************************************************/
 
+
 template <class T> int8_t ConfRecord<T>::serialize(StringBuilder* out, TCode format) {
   int8_t ret = -1;
   switch (format) {
@@ -452,8 +454,11 @@ template <class T> int8_t ConfRecord<T>::deserialize(StringBuilder* raw, TCode f
   switch (format) {
     case TCode::CBOR:
       {
+        CBORArgListener cl(&_kvp);
         cbor::input input(raw->string(), raw->length());
-        ret = -2;
+        cbor::decoder decoder(input, cl);
+        decoder.run();
+        ret = (cl.failed() ? -2 : 0);
       }
       break;
 

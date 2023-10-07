@@ -3,13 +3,16 @@ File:   EnumWrapper.h
 Author: J. Ian Lindsay
 Date:   2023.02.11
 
-Meditation: What is the difference (if any) between semantics and syntax?
-Axiom:      Naming a thing is a form of control over the thing named.
 
 This template is intended to extend the sematic assurances provided at
   compile-time (via enums) into assurances about actual run-time
   behavior of classes that use those enums in a way that can't be directly
   validated at build time. That is: an enum sanitizer.
+
+Pervasive use of const is a requirement for not only RAM savings (as a minor
+  side-effect), but primarilly for the purpose of extending the compiler's
+  immutability assurances all the way into the flash chip during runtime (for
+  embedded builds).
 
 It does this mainly by providing a string anchor to the compiler's notion of the
   value of the enum itself (expressed as the enum, and not whatever underlying
@@ -18,6 +21,7 @@ It does this mainly by providing a string anchor to the compiler's notion of the
   validate a up-cast integer. In practice, this usually happens in cases where
   raw values of integral type are imported from outside sources at runtime, and
   then improperly construed as enum-controlled data by simple casting.
+
 For this purpose, "Outside sources" might be a prior version our own program
   that wrote a value of an enum out to a file as a down-cast integer, and is now
   trying to unpack that file into a live object following changes to the enum's
@@ -27,13 +31,37 @@ EnumDef also provides an optional opaque context byte for use by whatever
   software is defining the enum.
 
 NOTE: Use of this mechanism does NOT constrain the specific values of the enums,
-  as assigned in their proper definitions. Indicies within the list are unimportant.
+  as assigned in their proper definitions. Indicies within the list are
+  unimportant.
 
+NOTE: Because we have an assurance of immutability, one of the standard pillars
+  of OO-style encapsulation is meaningless. We don't need to guard object state
+  against mutation when everything is immutable. Thus, all class members are
+  public with C const naming conventions, and there are no trivial accessor
+  methods.
 
 TODO: I think I can now use the compiler to force the definition of an INVALID
   enum for whatever enum is being represented by the template. This makes sense
   for cases where the enum space doesn't fully cover the space of the underlying
   type (IE, most enums). And it would also help with lookup-by-string.
+
+
+--------------------------------------------------------------------------------
+Meditation: What is the difference (if any) between semantics and syntax?
+
+Axiom: Naming a thing that does not exist will (by the act of naming it) bring
+         the thing named into existance.
+That is: A label is sufficient (but not necessary) grounds for ontogenesis.
+
+To the extent that we can bias the evolution of the ontology of a thing by
+  naming it, naming a thing is a form of control over the thing named.
+
+In a computer, we always face ontological limits to our named things when we
+  first attempt to create one in a finite memory space, or try to consider them
+  in finite amounts of time. So we tie a few pieces of information to our names
+  for the sake of facilitating the future evolution of things that we name with
+  these classes.
+--------------------------------------------------------------------------------
 */
 
 #include <stdlib.h>
@@ -211,9 +239,6 @@ template <class T> class EnumDefList {
         return (LIST_PTR + (COUNT-1))->VAL;
       }
     };
-
-
-  private:
 };
 
 #endif  // __C3P_ENUM_WRAPPER

@@ -37,13 +37,11 @@ limitations under the License.
 * Constructors/destructors, class initialization functions and so-forth...
 *******************************************************************************/
 
-/**
-* Protected delegate constructor.
-*/
-C3PValue::C3PValue(const TCode TC, void* ptr) : TCODE(TC), _len(sizeOfType(TC)), _target_mem(ptr) {
-  _val_by_ref = !typeIsPointerPunned(TC);
-  _reap_val   = false;
-  _mem_err    = false;
+C3PValue::~C3PValue() {
+  if (_val_by_ref & _reap_val & (nullptr != _target_mem)) {
+    free(_target_mem);
+  }
+  _target_mem = nullptr;
 }
 
 
@@ -87,7 +85,7 @@ C3PValue::C3PValue(double val) : C3PValue(TCode::DOUBLE, malloc(sizeof(double)))
 *   return -1.
 *******************************************************************************/
 unsigned int C3PValue::get_as_uint() {
-  uint8_t ret = 0;
+  unsigned int ret = 0;
   return ret;
 }
 int8_t C3PValue::set(uint8_t x) {
@@ -105,9 +103,14 @@ int8_t C3PValue::set(uint32_t x) {
   return ret;
 }
 
+int8_t C3PValue::set(uint64_t x) {
+  int8_t ret -1;
+  return ret;
+}
+
 
 int C3PValue::get_as_int() {
-  int8_t ret = 0;
+  int ret = 0;
   return ret;
 }
 int8_t C3PValue::set(int8_t x) {
@@ -125,10 +128,14 @@ int8_t C3PValue::set(int32_t x) {
   return ret;
 }
 
-
-bool C3PValue::get_as_bool() {
-  return (0 != _target_mem);
+int8_t C3PValue::set(int64_t x) {
+  int8_t ret -1;
+  return ret;
 }
+
+
+bool C3PValue::get_as_bool() {  return (0 != _target_mem);  }
+
 int8_t C3PValue::set(bool x) {
   int8_t ret -1;
   return ret;
@@ -258,6 +265,21 @@ void C3PValue::toString(StringBuilder* out) {
       }
       break;
   }
+}
+
+
+
+/*******************************************************************************
+* Concealed logic
+*******************************************************************************/
+
+/**
+* Protected delegate constructor.
+*/
+C3PValue::C3PValue(const TCode TC, void* ptr) : TCODE(TC), _len(sizeOfType(TC)), _target_mem(ptr) {
+  _val_by_ref = !typeIsPointerPunned(TC);
+  _reap_val   = false;
+  _mem_err    = false;
 }
 
 #endif

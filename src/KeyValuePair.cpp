@@ -955,6 +955,39 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
 }
 
 
+/**
+* Return the RAM use of this string.
+* By passing true to deep, the return value will also factor in concealed heap
+*   overhead and the StringBuilder itself.
+* Return value accounts for padding due to alignment constraints.
+*
+* @param deep will also factor in heap overhead, and the StringBuilder itself.
+* @return 0 on success, or negative on failure.
+*/
+int StringBuilder::memoryCost(bool deep) {
+  // TODO: sizeof(intptr_t) for OVERHEAD_PER_MALLOC is an assumption based on a
+  //   specific build of newlib. Find a way to discover it from the build.
+  const uint32_t OVERHEAD_PER_CLASS  = (deep ? sizeof(StringBuilder) : 0);
+  const uint32_t OVERHEAD_PER_MALLOC = (deep ? sizeof(intptr_t) : 0);
+  const uint32_t OVERHEAD_PER_FRAG   = (sizeof(StrLL) + OVERHEAD_PER_MALLOC);
+  int32_t ret = OVERHEAD_PER_CLASS;
+  StrLL* current = _root;
+  while (nullptr != current) {
+    ret += (current->len + OVERHEAD_PER_FRAG);
+    const bool WAS_MERGED_MALLOC = (current->str == (((uint8_t*) current) + sizeof(StrLL)));
+    if (!WAS_MERGED_MALLOC) {
+      ret += 4;  // The heap handoff fxn will stub out 4 extra bytes.
+      ret += OVERHEAD_PER_MALLOC;  // Plus the extra malloc that had to be done.
+    }
+    else {
+      ret += 1;   // Merged-allocation overdoes it by 1 byte.
+    }
+    current = current->next;
+  }
+  return ret;
+}
+
+
 
 /*******************************************************************************
 * CBORArgListener
@@ -1109,10 +1142,10 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
     case TCode::UINT8:           ret = new KeyValuePair(*((uint8_t*)data));   break;
     case TCode::UINT16:          ret = new KeyValuePair(*((uint16_t*)data));  break;
     case TCode::UINT32:          ret = new KeyValuePair(*((uint32_t*)data));  break;
-    case TCode::INT64:           break;   
-    case TCode::INT128:          break;    
-    case TCode::UINT64:          break;    
-    case TCode::UINT128:         break;              
+    case TCode::INT64:           break;
+    case TCode::INT128:          break;
+    case TCode::UINT64:          break;
+    case TCode::UINT128:         break;
     case TCode::BOOLEAN:         ret = new KeyValuePair((0 != *data));  break;
     case TCode::FLOAT:           ret = new KeyValuePair(*((float*)data));   break;
     case TCode::DOUBLE:          ret = new KeyValuePair(*((double*)data));  break;

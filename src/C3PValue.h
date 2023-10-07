@@ -21,6 +21,40 @@ limitations under the License.
 An abstract typeless data container class. This is used to support type
   abstraction of our internal types, and cuts down on templating elsewhere. It
   is also used as an intermediary for parsers and packers.
+
+
+NOTE: Design rationale, and (TODO) possible alternative choices
+--------------------------------------------------------------------------------
+Each instance of C3PValue bears a TCode so we can know things about the nature
+  of the content without including complicated (expensive) features from the
+  C++ standard. Namely, runtime type inference or reflection techniques. As cool
+  as those things are, they don't often fit comfortably into a mint tin.
+This class requires heap allocation to hold values that are larger than the
+  size of a pointer for the given target. That is, on a 32-bit microcontroller,
+  asking for a uint64 container will result in a heap allocation (and possibly
+  a free). Either of which might go wrong if care isn't taken with the container
+  itself. Values that will fit into the object's data pointer slot directly will
+  be type-coerced into it.
+This extra memory overhead buys us freedom from the burden of doing that
+  allocation logic and management in any class that might want to use
+  heterogeneously typed data but can't easilly plan allocation ahead of time.
+TODO: That^ said, it would be nice to have a means of providing space in an
+  outside pool, rather than forcing the matter of allocation down to a level of
+  granularity where we spend 12-bytes of heap to abstractly store a boolean
+  value.
+
+We could probably also do all of this with pure templates and (maybe) a single
+  inheritance step, and reduce the heap and the type-punning out of the picture.
+  And honestly, I would prefer that as the end-result. But at potentially large
+  cost to build sizes. Whatever the size of the compiled template is, it would
+  be multplied by as many supported TCodes as the build would be capable of
+  handling. Possibly hundreds of them.
+  Flash is cheap... but it is not inexhaustable. Mint tin. $0.74/ea
+
+For now, just know what the costs are, and don't expend the overhead unless you
+  are going to reap a return. And if you end up scraping for memory to power
+  this abstraction, it means the memory is worth expending, and you should
+  optimize on that day.
 */
 
 #include <inttypes.h>
@@ -73,35 +107,46 @@ class C3PValue {
     #if defined(CONFIG_C3P_IMG_SUPPORT)
     C3PValue(Image* val) : C3PValue(TCode::IMAGE,  (void*) val) {   _len = val->bytesUsed();   };
     #endif   // CONFIG_C3P_IMG_SUPPORT
-    ~C3PValue() {};
+    ~C3PValue();
 
     /*
     * Type-coercion functions.
-    * Getters and setters return T(0) or -1 on failure, repsectively.
     * Getters and setters return T(val) or 0 on success, repsectively.
+    * Getters and setters return T(0) or -1 on failure, repsectively.
     */
-    unsigned int get_as_uint();
+    int8_t set(bool);
     int8_t set(uint8_t);
     int8_t set(uint16_t);
     int8_t set(uint32_t);
-    int    get_as_int();
+    int8_t set(uint64_t);
     int8_t set(int8_t);
     int8_t set(int16_t);
     int8_t set(int32_t);
-    bool   get_as_bool();
-    int8_t set(bool);
-    float  get_as_float();
+    int8_t set(int64_t);
     int8_t set(float);
-    double get_as_double();
     int8_t set(double);
 
-    int compare(C3PValue*);
+    bool     get_as_bool();
+    unsigned int get_as_uint();
+    int      get_as_int();
+    uint64_t get_as_uint64();
+    int64_t  get_as_int64();
+    float    get_as_float();
+    double   get_as_double();
+    void     toString(StringBuilder*);
+
+    // TODO: Very easy to become mired in your own bad definitions. Be careful.
+    //   You need not define algebra across operands of Image and string, but
+    //   plan, maintain, and adhere to a strict type validity matrix with full
+    //   case coverage for any cross-type comparisons that are allowed.
+    // Also, return codes must follow a strict convention to be of any use at
+    //   all. Such should also be specified in the type matrix.
+    //int compare(C3PValue*);
 
     /* Parsing/Packing */
     int8_t serialize(StringBuilder*, TCode);
     int8_t deserialize(StringBuilder*, TCode);
 
-    void   toString(StringBuilder*);
     inline void    reapValue(bool x) {  _reap_val = x;      };
     inline bool    reapValue() {        return _reap_val;   };
     inline bool    hasError() {         return _mem_err;    };
@@ -112,8 +157,9 @@ class C3PValue {
     bool          _val_by_ref;   // If true, _target_mem's native type is a pointer to something.
     bool          _reap_val;     // If true, _target_mem is not only a pointer, but is our responsibility to free it.
     bool          _mem_err;      // If true, _target_mem is invalid due to (usually) an allocation error.
-    int32_t       _len;   // TODO: might drop.
     void*         _target_mem;   // Type-punned memory. Will be the same size as the arch's pointers.
 
     C3PValue(const TCode, void*);
+
+    void _reap_existing_value();
 };

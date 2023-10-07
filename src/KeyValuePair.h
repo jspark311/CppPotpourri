@@ -182,6 +182,7 @@ class KeyValuePair {
     void   valToString(StringBuilder*);
     void   printDebug(StringBuilder*);
     int8_t serialize(StringBuilder*, TCode);
+    int memoryCost(bool deep = false);   // Get the memory use for this object.
 
     /* Statics */
     static KeyValuePair* unserialize(uint8_t*, unsigned int, const TCode);
