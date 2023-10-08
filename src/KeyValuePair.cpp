@@ -435,6 +435,37 @@ int8_t KeyValuePair::valueWithKey(const char* k, void* trg_buf) {
 }
 
 
+// TODO: Memory implications... Type conversion matrix... But this is the
+//   outward-facing API.
+int8_t KeyValuePair::convertToType(const TCode TCODE_POST) {
+  int8_t ret = -1;
+  switch (_t_code) {
+    case TCode::NONE:
+    case TCode::INVALID:
+      // In such (common) cases, blindly set the TCode, and don't attempt any
+      //   conversion.
+      ret = 0;
+      break;
+    default:
+      switch (TCODE_POST) {
+        case TCode::NONE:
+        case TCode::INVALID:
+          break;
+        default:
+          // The existing TCode is amneable to coercion into the new TCode.
+          ret = 0;
+          break;
+      }
+      break;
+  }
+
+  if (0 <= ret) {
+    _t_code = TCODE_POST;
+  }
+  return ret;
+}
+
+
 /**
 * All of the type-specialized getValueAs() fxns boil down to this. Which is private.
 *

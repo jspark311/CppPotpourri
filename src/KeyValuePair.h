@@ -29,9 +29,13 @@ The use of this class should be restricted to working as an intermediary
   between the serialized and the in-memory forms of class data. Unless/until
   the API can be made to work without the problems it grew the last time.
 
+TODO: Part of the problem it had last time was that it was (and still is) doing
+  too much. C3PValue should handle the type abstraction, and this should be
+  concerned with typing those objects into a shape for aggregate handling.
+
 TODO: Since this class renders large chains of function calls opaque to the
   linker, it would be nice to put bounds on binary size with pre-processor
-  case-offs.
+  case-offs. Eventually, that will be C3PValue's ambit.
 */
 
 
@@ -177,6 +181,7 @@ class KeyValuePair {
     inline void*    pointer() {      return _target_mem; };
     inline uint16_t length() {       return _len;        };
     inline TCode    typeCode() {     return _t_code;     };
+    int8_t convertToType(const TCode);
 
     /* String processing and debug. */
     void   valToString(StringBuilder*);

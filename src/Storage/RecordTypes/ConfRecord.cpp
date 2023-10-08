@@ -203,7 +203,18 @@ int32_t ConfRecord::_allocated() {
         }
       }
       else {
+        // The key was already found in the data. Make sure that it is properly
+        //   type-constrained.
         alloc_count++;
+        // TODO: This is probably better done by the KVP API, but it doesn't
+        //   presently have a flexible-enough parser/packer to cope with this
+        //   task. It needs to store TCodes in its map to make the code below
+        //   unnecessary.
+        const TCode CONSTRAINED_TCODE = _key_tcode(key_str);
+        if (_tmp->typeCode() != CONSTRAINED_TCODE) {
+          // Convert the existing data to the constrained limits.
+          _tmp->convertToType(CONSTRAINED_TCODE);
+        }
       }
     }
     key_export.drop_position(0);
@@ -232,7 +243,7 @@ int8_t ConfRecord::serialize(StringBuilder* out, TCode format) {
         encoder.write_map(2);
           serialize_cbor_kvp_for_record(&encoder);  // Accounts for the first KVP.
           encoder.write_string(_list_name());    // Accounts for the second KVP.
-          encoder.write_map(_key_count());
+          encoder.write_array(_key_count());
           _kvp->serialize(out, format);
 
         ret = 0;  // TODO: Error handling?

@@ -615,7 +615,6 @@ template <class T> T PriorityQueue<T>::get(int pos) {
 #endif
 #pragma GCC diagnostic ignored "-Wconversion-null"
 template <class T> T PriorityQueue<T>::getByPriority(int pri) {
-  int i = 0;
   PriorityNode<T>* current = root;
   while (current != nullptr) {
     if (pri == current->priority) {
