@@ -66,7 +66,7 @@ class StringBuilder;
 #define TCODE_FLAG_VALUE_IS_PUNNED_PTR 0x02  // This type is small enough to fit inside a void* on this platform.
 #define TCODE_FLAG_VARIABLE_LEN        0x04  // Some types do not have a fixed-length.
 #define TCODE_FLAG_IS_NULL_DELIMITED   0x08  // Various string types are variable-length, yet self-delimiting.
-#define TCODE_FLAG_HAS_DESTRUCTOR      0x10  // This type is allocated with new().
+#define TCODE_FLAG_RESERVED_2          0x10  // 
 #define TCODE_FLAG_LEGAL_FOR_ENCODING  0x20  // This type is a legal argument to (de)serializers.
 #define TCODE_FLAG_RESERVED_1          0x40  // Reserved for future use.
 #define TCODE_FLAG_RESERVED_0          0x80  // Reserved for future use.
@@ -136,7 +136,7 @@ enum class TCode : uint8_t {
   GEOLOCATION   = 0xE5,    // A pointer to a location class
 
   RESERVED      = 0xFE,    // Reserved for custom extension.
-  //INVALID       = 0xFF     // A code denoting TCode invalidity.
+  INVALID       = 0xFF     // A code denoting TCode invalidity.
 };
 
 
@@ -148,6 +148,7 @@ const char* const typecodeToStr(const TCode);
 const bool typeIsFixedLength(const TCode);
 const int typeIsPointerPunned(const TCode);
 const int sizeOfType(const TCode);
+const int typeConversionRisk(const TCode FROM, const TCode INTO);
 
 
 

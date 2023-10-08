@@ -11,8 +11,8 @@ Date:   2023.10.04
 /*******************************************************************************
 * GfxUIDataRecord
 *******************************************************************************/
-GfxUIOptionsView::GfxUIOptionsView(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f) :
-  GfxUIElement(lay, sty, f)
+GfxUIOptionsView::GfxUIOptionsView(ConfRecord* conf_record, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f) :
+  GfxUITabbedContentPane(lay, sty, (f | GFXUI_FLAG_ALWAYS_REDRAW)), _conf(conf_record)
 {
 };
 

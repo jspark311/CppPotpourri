@@ -527,6 +527,8 @@ void KeyValuePair::valToString(StringBuilder* out) {
     case TCode::UINT64:
     case TCode::UINT128:
       out->concatf("%u", (uintptr_t) pointer());
+      // TODO: Newlib-nano will not have support for 64-bit ints.
+      //output->concatf("0x%08x%08x\n", ((uint32_t) (val >> 32)), ((uint32_t) (val & 0xFFFFFFFFULL)));
       break;
     case TCode::FLOAT:
       {
@@ -767,7 +769,7 @@ int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
 #if defined(CONFIG_C3P_CBOR)
 
 int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
-  cbor::output_dynamic output;
+  cbor::output_stringbuilder output(out);
   cbor::encoder encoder(output);
   KeyValuePair* src = this;
   int8_t ret = 0;
@@ -947,10 +949,6 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
     }
     src = src->_next;
   }
-  int final_size = output.size();
-  if (final_size) {
-    out->concat(output.data(), final_size);
-  }
   return ret;
 }
 
@@ -964,25 +962,17 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
 * @param deep will also factor in heap overhead, and the StringBuilder itself.
 * @return 0 on success, or negative on failure.
 */
-int StringBuilder::memoryCost(bool deep) {
+int KeyValuePair::memoryCost(bool deep) {
   // TODO: sizeof(intptr_t) for OVERHEAD_PER_MALLOC is an assumption based on a
   //   specific build of newlib. Find a way to discover it from the build.
-  const uint32_t OVERHEAD_PER_CLASS  = (deep ? sizeof(StringBuilder) : 0);
+  const uint32_t OVERHEAD_PER_CLASS  = (deep ? sizeof(KeyValuePair) : 0);
   const uint32_t OVERHEAD_PER_MALLOC = (deep ? sizeof(intptr_t) : 0);
-  const uint32_t OVERHEAD_PER_FRAG   = (sizeof(StrLL) + OVERHEAD_PER_MALLOC);
+
   int32_t ret = OVERHEAD_PER_CLASS;
-  StrLL* current = _root;
-  while (nullptr != current) {
-    ret += (current->len + OVERHEAD_PER_FRAG);
-    const bool WAS_MERGED_MALLOC = (current->str == (((uint8_t*) current) + sizeof(StrLL)));
-    if (!WAS_MERGED_MALLOC) {
-      ret += 4;  // The heap handoff fxn will stub out 4 extra bytes.
-      ret += OVERHEAD_PER_MALLOC;  // Plus the extra malloc that had to be done.
-    }
-    else {
-      ret += 1;   // Merged-allocation overdoes it by 1 byte.
-    }
-    current = current->next;
+  ret += (_direct_value() ? 0 : OVERHEAD_PER_MALLOC);
+  ret += length();
+  if (nullptr != _next) {
+    ret += _next->memoryCost(deep);
   }
   return ret;
 }

@@ -71,7 +71,10 @@ In a computer, we always face ontological limits to our named things when we
 #define __C3P_ENUM_WRAPPER
 
 /* Flags pertaining to a given enum */
-#define ENUM_WRAPPER_FLAG_CATCHALL  0x01   // If set, the associated enum will be a catch-all.
+#define ENUM_WRAPPER_FLAG_CATCHALL   0x01  // The associated enum will be a catch-all.
+#define ENUM_WRAPPER_FLAG_IS_INVALID 0x02  // The associated enum will be treated as invalid, if asked.
+
+#define ENUM_FLAG_MASK_INVALID_CATCHALL (ENUM_WRAPPER_FLAG_CATCHALL | ENUM_WRAPPER_FLAG_IS_INVALID)
 
 /*
 * A wrapper object to tie enums to their string representations and an optional
@@ -122,7 +125,8 @@ template <class T> class EnumDefList {
     */
     const bool enumValid(const T ENUM_TO_TEST) const {
       for (uint32_t i = 0; i < COUNT; i++) {
-        if ((LIST_PTR + i)->VAL == ENUM_TO_TEST) return true;
+        const EnumDef<T>* DEF = (LIST_PTR + i);
+        if (DEF->VAL == ENUM_TO_TEST) return !(DEF->FLAGS & ENUM_WRAPPER_FLAG_IS_INVALID);
       }
       return false;
     };
@@ -145,6 +149,36 @@ template <class T> class EnumDefList {
 
 
     /**
+    * Used to export a list of keys into a StringBuilder.
+    * NOTE: Will not export any enums with the IS_INVALID flag.
+    *
+    * @param key_list will be filled with string keys.
+    */
+    void exportKeys(StringBuilder* key_list) const {
+      for (uint32_t i = 0; i < COUNT; i++) {
+        if (0 == ((LIST_PTR + i)->FLAGS & ENUM_WRAPPER_FLAG_IS_INVALID)) {
+          key_list->concat((LIST_PTR + i)->STR);
+        }
+      }
+    };
+
+    /**
+    * Counts the number of enums that will be exported as valid.
+    *
+    * @param key_list will be filled with string keys.
+    */
+    uint32_t exportCount() const {
+      uint32_t ret = COUNT;
+      for (uint32_t i = 0; i < COUNT; i++) {
+        if ((LIST_PTR + i)->FLAGS & ENUM_WRAPPER_FLAG_IS_INVALID) {
+          ret--;
+        }
+      }
+      return ret;
+    };
+
+
+    /**
     * Used to retrieve the extra context byte for a given enum.
     * NOTE: Does not respect catch-all logic. A failed look-up will return 0.
     *
@@ -155,7 +189,7 @@ template <class T> class EnumDefList {
       for (uint32_t i = 0; i < COUNT; i++) {
         if ((LIST_PTR + i)->VAL == ENUM) return (LIST_PTR + i)->CONTEXT;
       }
-      return "<NO ENUM>";
+      return 0;
     };
 
 

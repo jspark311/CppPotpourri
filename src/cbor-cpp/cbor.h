@@ -128,6 +128,7 @@ namespace cbor {
 
       void run();
       void set_listener(listener &listener_instance);
+      inline bool failed() {  return (_state == STATE_ERROR);  };
 
 
     private:

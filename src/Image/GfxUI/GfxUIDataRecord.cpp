@@ -14,7 +14,7 @@ This is a view that should be used to represent a single DataRecord, generally.
 /*******************************************************************************
 * GfxUIDataRecord
 *******************************************************************************/
-GfxUIDataRecord::GfxUIDataRecord(DataRecord* record, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f)
+GfxUIDataRecord::GfxUIDataRecord(SimpleDataRecord* record, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f)
   : GfxUITabbedContentPane(lay, sty, (f | GFXUI_FLAG_ALWAYS_REDRAW)), _record(record)
 {
   // Note our subordinate objects...
@@ -40,6 +40,7 @@ int GfxUIDataRecord::_render(UIGfxWrapper* ui_gfx) {
   }
   return 1;
 }
+
 
 bool GfxUIDataRecord::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;

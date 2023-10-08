@@ -33,10 +33,12 @@ TODO: Might-should adopt some IANA standard code-spaces here? Is there a
 *   we should strive to be consistent.
 */
 typedef struct typecode_def_t {
-  const TCode    type_code;   // This identifies the type to parsers/packers.
-  const uint8_t  type_flags;  // Fixed metadata about a type, as this build implements it.
-  const uint16_t fixed_len;   // If this type has a fixed length, it will be set here. 0 if no fixed length.
-  const char* const t_name;   // The name of the type.
+  const TCode    type_code;     // This identifies the type to parsers/packers.
+  const uint8_t  type_flags;    // Fixed metadata about a type, as this build implements it.
+  const uint16_t fixed_len;     // If this type has a fixed length, it will be set here. 0 if no fixed length.
+  const char* const  t_name;    // The name of the type.
+  //const TCode* const conv_map;  // The map of valid conversions from this type.
+  // TODO: Take the unfinished function below and code it into a single string.
 } TypeCodeDef;
 
 
@@ -71,10 +73,10 @@ static const TypeCodeDef static_type_codes[] = {
   {TCode::VECT_3_UINT16,  (0),                                                       6,  "VEC3_UINT16"},
   {TCode::VECT_3_INT32,   (0),                                                       12, "VEC3_INT32"},
   {TCode::VECT_3_UINT32,  (0),                                                       12, "VEC3_UINT32"},
-  {TCode::IDENTITY,       (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_HAS_DESTRUCTOR),     0,  "IDENTITY"},
-  {TCode::KVP,            (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_HAS_DESTRUCTOR),     0,  "KVP"},
+  {TCode::IDENTITY,       (TCODE_FLAG_VARIABLE_LEN),                                 0,  "IDENTITY"},
+  {TCode::KVP,            (TCODE_FLAG_VARIABLE_LEN),                                 0,  "KVP"},
   {TCode::STR,            (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_IS_NULL_DELIMITED),  0,  "STR"},
-  {TCode::IMAGE,          (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_HAS_DESTRUCTOR),     0,  "IMAGE"},
+  {TCode::IMAGE,          (TCODE_FLAG_VARIABLE_LEN),                                 0,  "IMAGE"},
   {TCode::COLOR8,         (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          1,  "COLOR8"},
   {TCode::COLOR16,        (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          2,  "COLOR16"},
   {TCode::COLOR24,        (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          3,  "COLOR24"},
@@ -84,8 +86,8 @@ static const TypeCodeDef static_type_codes[] = {
   {TCode::JSON,           (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "JSON"},
   {TCode::CBOR,           (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "CBOR"},
 
-  {TCode::STR_BUILDER,    (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_HAS_DESTRUCTOR),     0,  "STR_BLDR"},
-  {TCode::GEOLOCATION,    (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_HAS_DESTRUCTOR),     0,  "GEOLOCATION"},
+  {TCode::STR_BUILDER,    (TCODE_FLAG_VARIABLE_LEN),                                 0,  "STR_BLDR"},
+  {TCode::GEOLOCATION,    (TCODE_FLAG_VARIABLE_LEN),                                 0,  "GEOLOCATION"},
   {TCode::RESERVED,       (TCODE_FLAG_NON_EXPORTABLE),                               0,  "RESERVED"},
   //{TCode::VECT_2_FLOAT,   (0),                                                       0,  "VEC2_FLOAT"};
   //{TCode::VECT_2_DOUBLE,  (0),                                                       0,  "VEC2_DOUBLE"};
@@ -99,7 +101,7 @@ static const TypeCodeDef static_type_codes[] = {
   //{TCode::VECT_4_FLOAT,   (0),                                                       16, "VEC4_FLOAT"},
   //{TCode::IPV4_ADDR,      (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          4,  "IPV4_ADDR"};
   //{TCode::URL,            (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_IS_NULL_DELIMITED),  1,  "URL"},
-  //{TCode::AUDIO,          (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_HAS_DESTRUCTOR),     0,  "AUDIO"},
+  //{TCode::AUDIO,          (TCODE_FLAG_VARIABLE_LEN),                                 0,  "AUDIO"},
 };
 
 
@@ -181,6 +183,108 @@ const int sizeOfType(const TCode TC) {
     return def->fixed_len;
   }
   return -1;
+}
+
+
+/**
+* Given two type codes, return a scalar that reflects the risk of doing a value
+*   conversion from one into the other.
+* NOTE: Parameter order matters here. The type conversio nmatrix is not
+*   symmetrical, and a value that is a zero-risk conversion in one direction
+*   probably will not be in the other.
+* NOTE: It is not really this function's place to make assumptions regarding
+*   trade-offs that the caller is willing to make. All that we care about is
+*   that a conversion makes sense, and can be performed unambiguously, provided
+*   the caller measures bounds.
+*
+* @param  FROM is the type code of the data's origin.
+* @param  INTO is the type code of the proposed conversion.
+* @return -1 for a conversion that is not possible (IE, IDENTITY into FLOAT)
+*          0 if conversion is free of risk (IE, INT8 into INT16).
+*          1 if conversion is possible, but might reduce fidelity or truncate (IE, INT16 into INT8).
+*/
+const int typeConversionRisk(const TCode FROM, const TCode INTO) {
+  if (FROM == INTO) {  return 0;  }  // There is no risk if there is no conversion.
+
+  switch (FROM) {
+    case TCode::INT8:
+      switch (INTO) {
+        case TCode::INT16:  case TCode::INT32:  case TCode::INT64:  case TCode::INT128:
+        case TCode::UINT16: case TCode::UINT32: case TCode::UINT64: case TCode::UINT128:
+        case TCode::FLOAT:  case TCode::DOUBLE:
+          return 0;
+        case TCode::UINT8:
+        case TCode::BOOLEAN:
+          return 1;
+        default:  return -1;  // Conversion is not possible.
+      }
+
+    case TCode::INT16:
+      switch (INTO) {
+        case TCode::INT32:  case TCode::INT64:  case TCode::INT128:
+        case TCode::UINT32: case TCode::UINT64: case TCode::UINT128:
+        case TCode::FLOAT:  case TCode::DOUBLE:
+          return 0;
+        case TCode::INT8:
+        case TCode::UINT8:  case TCode::UINT16:
+        case TCode::BOOLEAN:
+          return 1;
+        default:  return -1;  // Conversion is not possible.
+      }
+
+    case TCode::INT32:
+      switch (INTO) {
+        case TCode::INT64:  case TCode::INT128:
+        case TCode::UINT64: case TCode::UINT128:
+        case TCode::FLOAT:  case TCode::DOUBLE:
+          return 0;
+        case TCode::INT8:   case TCode::INT16:
+        case TCode::UINT8:  case TCode::UINT16:  case TCode::UINT32:
+        case TCode::BOOLEAN:
+          return 1;
+        default:  return -1;  // Conversion is not possible.
+      }
+
+    case TCode::UINT8:
+      switch (INTO) {
+        case TCode::INT16:  case TCode::INT32:  case TCode::INT64:  case TCode::INT128:
+        case TCode::UINT16: case TCode::UINT32: case TCode::UINT64: case TCode::UINT128:
+        case TCode::FLOAT:  case TCode::DOUBLE:
+          return 0;
+        case TCode::INT8:
+        case TCode::BOOLEAN:
+          return 1;
+        default:  return -1;  // Conversion is not possible.
+      }
+
+    case TCode::UINT16:
+      switch (INTO) {
+        case TCode::INT32:  case TCode::INT64:  case TCode::INT128:
+        case TCode::UINT32: case TCode::UINT64: case TCode::UINT128:
+        case TCode::FLOAT:  case TCode::DOUBLE:
+          return 0;
+        case TCode::INT8:
+        case TCode::UINT8:  case TCode::INT16:
+        case TCode::BOOLEAN:
+          return 1;
+        default:  return -1;  // Conversion is not possible.
+      }
+
+    case TCode::UINT32:
+      switch (INTO) {
+        case TCode::INT64:  case TCode::INT128:
+        case TCode::UINT64: case TCode::UINT128:
+        case TCode::FLOAT:  case TCode::DOUBLE:
+          return 0;
+        case TCode::INT8:   case TCode::INT16:
+        case TCode::UINT8:  case TCode::UINT16:  case TCode::INT32:
+        case TCode::BOOLEAN:
+          return 1;
+        default:  return -1;  // Conversion is not possible.
+      }
+
+    default:  return -1;  // Conversion is not possible.
+  }
 }
 
 

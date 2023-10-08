@@ -25,9 +25,6 @@ This is the basal implementation of the storage interface.
 #include "cbor-cpp/cbor.h"
 
 
-/*******************************************************************************
-* Statics
-*******************************************************************************/
 
 const char* DataRecord::recordTypeStr(uint8_t e) {
   switch (e) {
@@ -59,8 +56,6 @@ const char* Storage::errStr(const StorageErr e) {
   }
   return "UNKNOWN";
 }
-
-
 
 /*******************************************************************************
 * Storage base-class functions

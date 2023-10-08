@@ -21,6 +21,7 @@ These classes are built on top of the GfxUI classes, and implement higher-level
 #include "../../M2MLink/M2MLink.h"
 #include "../../Identity/Identity.h"
 #include "../../Storage/Storage.h"
+#include "../../Storage/RecordTypes/ConfRecord.h"
 #include "../../TripleAxisPipe/TripleAxisPipe.h"
 #include "../../C3PEvents/C3PScheduler.h"
 
@@ -420,25 +421,25 @@ class GfxUIC3PScheduler : public GfxUITabbedContentPane {
 *******************************************************************************/
 
 /* Storage */
-class GfxUIStorage : public GfxUIElement {
-  public:
-    GfxUIStorage(Storage* storage, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0);
-    ~GfxUIStorage() {};
-
-    /* Implementation of GfxUIElement. */
-    virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
-
-
-  private:
-    Storage* _storage;
-};
+//class GfxUIStorage : public GfxUIElement {
+//  public:
+//    GfxUIStorage(Storage* storage, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0);
+//    ~GfxUIStorage() {};
+//
+//    /* Implementation of GfxUIElement. */
+//    virtual int  _render(UIGfxWrapper* ui_gfx);
+//    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+//
+//
+//  private:
+//    Storage* _storage;
+//};
 
 
 /* DataRecord */
 class GfxUIDataRecord : public GfxUITabbedContentPane {
   public:
-    GfxUIDataRecord(DataRecord*, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
+    GfxUIDataRecord(SimpleDataRecord*, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
     ~GfxUIDataRecord() {};
 
     /* Implementation of GfxUIElement. */
@@ -447,7 +448,7 @@ class GfxUIDataRecord : public GfxUITabbedContentPane {
 
 
   private:
-    DataRecord* _record;
+    SimpleDataRecord* _record;
 };
 
 
@@ -456,9 +457,9 @@ class GfxUIDataRecord : public GfxUITabbedContentPane {
 * A graphical breakdown of a top-level configuration object.
 *******************************************************************************/
 
-class GfxUIOptionsView : public GfxUIElement {
+class GfxUIOptionsView : public GfxUITabbedContentPane {
   public:
-    GfxUIOptionsView(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
+    GfxUIOptionsView(ConfRecord*, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
     ~GfxUIOptionsView() {};
 
     /* Implementation of GfxUIElement. */
@@ -467,6 +468,7 @@ class GfxUIOptionsView : public GfxUIElement {
 
 
   protected:
+    ConfRecord* _conf;
 };
 
 
