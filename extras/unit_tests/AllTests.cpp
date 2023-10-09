@@ -119,7 +119,7 @@ int generate_random_text_buffer(StringBuilder* buf, const int RANDOM_BUF_LEN) {
   if ((RANDOM_BUF_LEN > 0) && (nullptr != buf)) {
     uint8_t tmp_buf[RANDOM_BUF_LEN+1] = {0, };
     random_fill(tmp_buf, RANDOM_BUF_LEN);
-    for (uint32_t i = 0; i < RANDOM_BUF_LEN; i++) {
+    for (int i = 0; i < RANDOM_BUF_LEN; i++) {
       tmp_buf[i] = (0x30 + (tmp_buf[i] % 0x4E));
     }
     ret = RANDOM_BUF_LEN;

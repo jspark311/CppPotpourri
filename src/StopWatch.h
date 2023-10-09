@@ -68,7 +68,7 @@ limitations under the License.
   */
   class PeriodicTimeout {
     public:
-      ~PeriodicTimeout() {};      // Featureless destructor.
+      virtual ~PeriodicTimeout() {};      // Featureless destructor.
 
       inline void reset() {                  _mark = _now();               };
       inline void reset(unsigned long p) {   _mark = _now(); _period = p;  };

@@ -343,7 +343,7 @@ int numeric_helper_tests() {
     printf("\tBeginning case %d (%s)...\n", case_idx, typecodeToStr(NUMERIC_TEST_TYPES[case_idx]));
     C3PHeaderTestCase test_case(NUMERIC_TEST_TYPES[case_idx]);
     test_failed = true;
-    printf("\t\tEndian flip... ", case_idx);
+    printf("\t\tEndian flip... ");
     if (0 == test_case.run_test_endian_flip()) {
       printf("Pass.\n\t\tstrict_swap()... ");
       if (0 == test_case.run_test_swap()) {

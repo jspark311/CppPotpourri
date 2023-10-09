@@ -172,7 +172,7 @@ bool BufAcceptTestSource::callCountsBalance() {
 int8_t BufAcceptTestSink::pushBuffer(StringBuilder* buf) {
   int8_t ret = -1;
   if (nullptr != buf) {
-    int taken_len = 0;
+    int32_t taken_len = 0;
     const int32_t BUF_AVAILABLE  = bufferAvailable();
     if (0 < BUF_AVAILABLE) {
       const int32_t OFFERED_LENGTH = buf->length();
@@ -252,7 +252,7 @@ int8_t BufAcceptTestSink::pushBuffer(StringBuilder* buf) {
       //   expectations must include the length of any terminator, and the
       //   termination check requires some implication of length.
       if (0 < _expected_length) {
-        if (taken_len == _expected_length) {  _expectations_met++;  }
+        if (taken_len == (int32_t) _expected_length) {  _expectations_met++;  }
         else {  _expectations_violated++;  }
       }
       if (LineTerm::ZEROBYTE != _expected_terminator) {

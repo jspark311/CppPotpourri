@@ -128,7 +128,7 @@ template <class T> void RingBuffer<T>::clear() {
 template <class T> int RingBuffer<T>::cull(const unsigned int CULL_COUNT) {
   int ret = 0;
   if (allocated()) {
-    const int SAFE_CULL_COUNT = strict_min(CULL_COUNT, _count);
+    const uint32_t SAFE_CULL_COUNT = strict_min((uint32_t) CULL_COUNT, (uint32_t) _count);
     _r = ((_r + SAFE_CULL_COUNT) % _CAPAC);
     _count -= SAFE_CULL_COUNT;
     ret = SAFE_CULL_COUNT;
@@ -173,7 +173,7 @@ template <class T> int RingBuffer<T>::insert(T* d_ptr, unsigned int added_elemen
   if ((nullptr == d_ptr) | (0 >= added_elements)) {  return -1;   }  // Parameter sanity.
   if (!allocated() || (_count >= _CAPAC)) {          return -1;   }  // Allocation and capacity.
 
-  const int32_t COUNT_TO_TAKE = strict_min(added_elements, vacancy());
+  const unsigned int COUNT_TO_TAKE = strict_min(added_elements, vacancy());
   int count_taken = 0;
   // TODO: It would be marginally more efficient to copy the inner-loop into
   //   this function, and re-write it to handle chunks of multiples of _E_SIZE
@@ -181,7 +181,7 @@ template <class T> int RingBuffer<T>::insert(T* d_ptr, unsigned int added_elemen
   //   of elements would make two calls to memcpy(), at most. And no outer loop.
   //   Until someone cares, we keep with an outer loop (the one below), and wrap
   //   our byte-wise function.
-  for (int32_t i = 0; i < COUNT_TO_TAKE; i++) {
+  for (unsigned int i = 0; i < COUNT_TO_TAKE; i++) {
     if (0 != insert(*(d_ptr + i))) {   break;   }
     else {    count_taken++;    }
   }
@@ -262,8 +262,8 @@ template <class T> int RingBuffer<T>::get(T* buf, unsigned int len) {
   if (!allocated() || (0 == len) || (nullptr == buf)) {
     return -1;
   }
-  const uint32_t XFER_LEN = strict_min((uint32_t) _count, (uint32_t) len);
-  for (uint32_t i = 0; i < XFER_LEN; i++) {
+  const unsigned int XFER_LEN = strict_min(_count, len);
+  for (unsigned int i = 0; i < XFER_LEN; i++) {
     *(buf + i) = get();
   }
   return (int) XFER_LEN;
@@ -281,8 +281,8 @@ template <class T> int RingBuffer<T>::peek(T* buf, unsigned int len) {
   if (!allocated() || (0 == len) || (nullptr == buf)) {
     return -1;
   }
-  const uint32_t XFER_LEN = strict_min((uint32_t) _count, (uint32_t) len);
-  for (uint32_t i = 0; i < XFER_LEN; i++) {
+  const unsigned int XFER_LEN = strict_min(_count, len);
+  for (unsigned int i = 0; i < XFER_LEN; i++) {
     *(buf + i) = peek(i);
   }
   return (int) XFER_LEN;

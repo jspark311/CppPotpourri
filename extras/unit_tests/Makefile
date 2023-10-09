@@ -6,7 +6,25 @@
 OPTIMIZATION       = -O0 -g -fprofile-arcs -ftest-coverage --coverage
 C_STANDARD         = gnu99
 CPP_STANDARD       = c++17
-CFLAGS             = -Wall
+
+
+###########################################################################
+# This is the build policy for the behavior of warnings in the library,
+#   and should reflect the contractual assurances given at that level.
+###########################################################################
+WARNING_BEHAVIOR   = -Wall -Wextra              # Enable all non-ABI warnings.
+WARNING_BEHAVIOR  += -Wno-unused-variable       # Sloppy, but not a risk.
+WARNING_BEHAVIOR  += -Wno-unused-parameter      # Not a problem.
+WARNING_BEHAVIOR  += -Wno-unused-value          # Sometimes things are volatile.
+WARNING_BEHAVIOR  += -Wno-ignored-qualifiers    # We might want to ignore qualifiers.
+WARNING_BEHAVIOR  += -Wno-implicit-fallthrough  # Code often reads better with this.
+
+# The warnings below will be considered build-failing problems.
+WARNING_BEHAVIOR  += -Werror=delete-non-virtual-dtor  # Unacceptable risk that is easy to close.
+WARNING_BEHAVIOR  += -Werror=format-extra-args        # Something else is broken.
+WARNING_BEHAVIOR  += -Werror=type-limits              # Exposes bad assumptions about type suitability.
+WARNING_BEHAVIOR  += -Werror=parentheses              # Algebra and C aren't the same thing.
+#WARNING_BEHAVIOR  += -Werror=sign-compare
 
 ###########################################################################
 # Environmental awareness...
@@ -61,8 +79,8 @@ SOURCES_CPP += ../../src/TripleAxisPipe/*.cpp
 SOURCES_CPP += ../../src/M2MLink/*.cpp
 SOURCES_CPP += ../../src/Identity/*.cpp
 
-CXXFLAGS  = -fsingle-precision-constant -Wdouble-promotion -fno-rtti -fno-exceptions
-CXXFLAGS += -D_GNU_SOURCE -fprofile-dir=$(COVERAGE_PATH)
+CXXFLAGS  = $(WARNING_BEHAVIOR) -D_GNU_SOURCE -fprofile-dir=$(COVERAGE_PATH)
+CXXFLAGS += -fsingle-precision-constant -Wdouble-promotion -fno-rtti -fno-exceptions
 CXXFLAGS += -DCONFIG_C3P_CBOR -DCONFIG_C3P_M2M_SUPPORT
 CXXFLAGS += -DCONFIG_C3P_IMG_SUPPORT
 
