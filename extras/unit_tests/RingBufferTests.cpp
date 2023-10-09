@@ -52,7 +52,7 @@ int test_RingBuffer_multiple_insert() {
       int second_take_count = a.insert(&junk_field[first_take_count], MORE_THAN_HALF);
       if (EXPECTED_PARTIAL_TAKE == second_take_count) {
         printf("Pass.\n\tvacancy() should now read zero, and the take counts should equal capacity()... ");
-        if (((second_take_count + first_take_count) == a.capacity()) & (0 == a.vacancy())) {
+        if (((second_take_count + first_take_count) == (int) a.capacity()) & (0 == a.vacancy())) {
           // Check for order and continuity...
           printf("Pass.\n\tIndependent content record matches content... ");
           for (uint32_t i = 0; i < a.capacity(); i++) {

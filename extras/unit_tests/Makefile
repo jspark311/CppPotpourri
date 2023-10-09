@@ -55,19 +55,19 @@ INCLUDES    = -I$(BUILD_ROOT)/../../src
 #SOURCES_TESTS_CPP  = StringBuilderTest.cpp TestDataStructures.cpp ParsingConsoleTest.cpp IdentityTest.cpp
 SOURCES_TESTS_CPP  = AllTests.cpp
 
-SOURCES_CPP  = ../../src/SensorFilter.cpp
+SOURCES_CPP  = ../../src/AsyncSequencer.cpp
+SOURCES_CPP += ../../src/AbstractPlatform.cpp
+SOURCES_CPP += ../../src/SensorFilter.cpp
 SOURCES_CPP += ../../src/StopWatch.cpp
 SOURCES_CPP += ../../src/StringBuilder.cpp
 SOURCES_CPP += ../../src/EnumeratedTypeCodes.cpp
 SOURCES_CPP += ../../src/KeyValuePair.cpp
-SOURCES_CPP += ../../src/AsyncSequencer.cpp
 SOURCES_CPP += ../../src/uuid.cpp
 SOURCES_CPP += ../../src/BusQueue.cpp
 SOURCES_CPP += ../../src/GPSWrapper.cpp
 SOURCES_CPP += ../../src/ParsingConsole.cpp
 SOURCES_CPP += ../../src/Quaternion.cpp
 SOURCES_CPP += ../../src/Storage/SimpleDataRecord.cpp
-SOURCES_CPP += ../../src/AbstractPlatform.cpp
 SOURCES_CPP += ../../src/BufferAccepter/*.cpp
 SOURCES_CPP += ../../src/BufferAccepter/Base64/*.cpp
 SOURCES_CPP += ../../src/BufferAccepter/LineCoDec/*.cpp
@@ -78,6 +78,14 @@ SOURCES_CPP += ../../src/C3PEvents/*.cpp
 SOURCES_CPP += ../../src/TripleAxisPipe/*.cpp
 SOURCES_CPP += ../../src/M2MLink/*.cpp
 SOURCES_CPP += ../../src/Identity/*.cpp
+
+# TODO: These things are not yet under unit tests, but we build them anyway so
+#   we can at least get the benefit of basic compilability checking.
+#SOURCES_CPP += ../../src/BusQueue.cpp
+#SOURCES_CPP += ../../src/I2CAdapter.cpp
+#SOURCES_CPP += ../../src/SPIBusOp.cpp
+#SOURCES_CPP += ../../src/SPIAdapter.cpp
+#SOURCES_CPP += ../../src/UARTAdapter.cpp
 
 CXXFLAGS  = $(WARNING_BEHAVIOR) -D_GNU_SOURCE -fprofile-dir=$(COVERAGE_PATH)
 CXXFLAGS += -fsingle-precision-constant -Wdouble-promotion -fno-rtti -fno-exceptions

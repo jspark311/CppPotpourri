@@ -947,16 +947,16 @@ int test_stringbuilder_concat_handoff_limit() {
   printf("\tGenerating test string (%d bytes): %s\n", TEST_BUF_LEN, (char*) src.string());
   printf("\tconcatHandoffLimit() should take no action if passed a length of 0... ");
   dest.concatHandoffLimit(&src, 0);
-  if ((dest.length() == 0) & (src.length() == TEST_BUF_LEN)) {
+  if ((dest.length() == 0) & (src.length() == (int) TEST_BUF_LEN)) {
     printf("Pass.\n\tdest.length() should return %d... ", LIMIT_LEN);
     dest.concatHandoffLimit(&src, LIMIT_LEN);
-    if (dest.length() == LIMIT_LEN) {
+    if (dest.length() == (int) LIMIT_LEN) {
       const int REMAINING_SRC_LEN = (TEST_BUF_LEN - LIMIT_LEN);
       printf("Pass.\n\tsrc.length() should return %d... ", REMAINING_SRC_LEN);
       if (src.length() == REMAINING_SRC_LEN) {
         printf("Pass.\n\tconcatHandoffLimit() should be able to copy less than the directed length... ");
         dest.concatHandoffLimit(&src, TEST_BUF_LEN);
-        if ((TEST_BUF_LEN == dest.length()) & (0 == src.length())) {
+        if (((int) TEST_BUF_LEN == dest.length()) & (0 == src.length())) {
           printf("Pass.\n");
           dest.clear();
           const int      FRAGMENTS_IN_SRC   = 4;
@@ -964,17 +964,17 @@ int test_stringbuilder_concat_handoff_limit() {
           const uint32_t LIMIT_LEN_TIMES_4  = (LIMIT_LEN * FRAGMENTS_IN_SRC);
           printf("\tGenerating fragmented test string (%d bytes over %d fragments)... ", LIMIT_LEN_TIMES_4, FRAGMENTS_IN_SRC);
           while (src.count() < FRAGMENTS_IN_SRC) {  generate_random_text_buffer(&src, LIMIT_LEN);  }
-          if ((src.length() == LIMIT_LEN_TIMES_4) & (src.count() == FRAGMENTS_IN_SRC)) {
+          if ((src.length() == (int) LIMIT_LEN_TIMES_4) & (src.count() == FRAGMENTS_IN_SRC)) {
             printf("Pass.\n\tLimit falling cleanly on the first fragment of a multipart source... ");
             dest.concatHandoffLimit(&src, LIMIT_LEN);
-            if ((dest.length() == LIMIT_LEN) & (src.length() == (LIMIT_LEN_TIMES_4 - LIMIT_LEN))) {
+            if ((dest.length() == (int) LIMIT_LEN) & (src.length() == (int) (LIMIT_LEN_TIMES_4 - LIMIT_LEN))) {
               printf("Pass.\n\tAre the source and destimation counts (1 and %d) correct?... ", (FRAGMENTS_IN_SRC - 1));
               if ((dest.count() == 1) & (src.count() == (FRAGMENTS_IN_SRC - 1))) {
                 printf("Pass.\n\tLimit falling cleanly on a middle fragment boundary... ");
                 dest.clear();
                 while (src.count() < FRAGMENTS_IN_SRC) {  generate_random_text_buffer(&src, LIMIT_LEN);  }
                 dest.concatHandoffLimit(&src, (LIMIT_LEN * FRAGMENTS_TO_MOVE));
-                if ((dest.length() == (LIMIT_LEN * FRAGMENTS_TO_MOVE)) & (src.length() == (LIMIT_LEN_TIMES_4 - (LIMIT_LEN * FRAGMENTS_TO_MOVE)))) {
+                if ((dest.length() == (int) (LIMIT_LEN * FRAGMENTS_TO_MOVE)) & (src.length() == (int) (LIMIT_LEN_TIMES_4 - (LIMIT_LEN * FRAGMENTS_TO_MOVE)))) {
                   printf("Pass.\n\tAre the source and destimation counts (%d and %d) correct?... ", (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE), FRAGMENTS_TO_MOVE);
                   if ((dest.count() == FRAGMENTS_TO_MOVE) & (src.count() == (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE))) {
                     dest.clear();
@@ -982,7 +982,7 @@ int test_stringbuilder_concat_handoff_limit() {
                     const int BYTES_TO_MOVE = (FRAGMENTS_TO_MOVE * LIMIT_LEN) + (2 + (randomUInt32() % (LIMIT_LEN - 4)));
                     printf("Pass.\n\tLimit falling in a messy place in the middle (%d byte offset)... ", BYTES_TO_MOVE);
                     dest.concatHandoffLimit(&src, BYTES_TO_MOVE);
-                    if ((dest.length() == BYTES_TO_MOVE) & (src.length() == (LIMIT_LEN_TIMES_4 - BYTES_TO_MOVE))) {
+                    if ((dest.length() == (int) BYTES_TO_MOVE) & (src.length() == (int) (LIMIT_LEN_TIMES_4 - BYTES_TO_MOVE))) {
                       const int DEST_SPLIT_FRAG_COUNT = (FRAGMENTS_TO_MOVE+1);
                       printf("Pass.\n\tAre the source and destimation counts (%d and %d) correct?... ", (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE), DEST_SPLIT_FRAG_COUNT);
                       if ((dest.count() == DEST_SPLIT_FRAG_COUNT) & (src.count() == (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE))) {
