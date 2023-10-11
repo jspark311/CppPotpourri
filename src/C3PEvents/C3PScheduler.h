@@ -113,7 +113,6 @@ class C3PSchedule {
     int32_t      _recurrences;    // How many times will execution occur? See notes.
     bool         _enabled;        // If true, this schedule will be processed.
     bool         _executing;      // If true, this schedule is presently executing.
-    bool         _wrap_control;   // If true, the next execution time will happen after a timer wrap.
     //bool       _run_in_isr;     // If true, this schedule will be processed in the ISR stack frame. Very dangerous.
     //bool       _autoclear;      // If true, this schedule will be removed after its last execution.
 };

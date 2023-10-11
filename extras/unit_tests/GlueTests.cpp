@@ -313,7 +313,7 @@ void C3PHeaderTestCase::printDebug(StringBuilder* out) {
   profiler_max.printDebug("strict_max()", out);
   profiler_abs_delta.printDebug("strict_abs_delta()", out);
   profiler_wrap_delta.printDebug("delta_assume_wrap()", out);
-  profiler_range_bind.printDebug("range_bind()", out);
+  profiler_range_bind.printDebug("strict_range_bind()", out);
   switch (test_type) {
     case TCode::UINT8:   profiler_end_flip.printDebug("endianSwap8()",  out);  break;
     case TCode::UINT16:  profiler_end_flip.printDebug("endianSwap16()", out);  break;

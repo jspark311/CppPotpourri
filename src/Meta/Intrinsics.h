@@ -44,6 +44,10 @@ The API and CortexM implementations were taken from Paul Stoffregen's Audio
 #if !defined(C3P_INTRINSICS_META_HEADER)
 #define C3P_INTRINSICS_META_HEADER
 
+#include "Meta/Rationalizer.h"     // Include build options checking.
+#include "Meta/Compilers.h"        // Include compiler support.
+
+
 #if defined(__MK20DX256__) | defined(__MK20DX128__) | defined(STM32F4XX)
 // computes limit((val >> rshift), 2**bits)
 static inline int32_t signed_saturate_rshift(int32_t val, int bits, int rshift) __attribute__((always_inline, unused));

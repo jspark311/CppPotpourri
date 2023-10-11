@@ -76,7 +76,7 @@ bool GfxUITextArea::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, P
         //_top_line = (uint32_t) strict_min((int32_t)(_scrollback.count() - _max_rows), (int32_t)(_top_line + 1));
         if (_top_line < (_scrollback.count() - _max_rows)) {
           _top_line++;
-          //_top_line = range_bind(_top_line, 0, (_max_rows - _top_line));
+          //_top_line = strict_range_bind(_top_line, 0, (_max_rows - _top_line));
           ret = true;
         }
       }
@@ -87,7 +87,7 @@ bool GfxUITextArea::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, P
         //_top_line = (uint32_t) strict_max((int32_t) 0, (int32_t) (_top_line - 1));
         if (_top_line > 0) {
           _top_line--;
-          //_top_line = range_bind(_top_line, 0, (_max_rows - _top_line));
+          //_top_line = strict_range_bind(_top_line, 0, (_max_rows - _top_line));
           ret = true;
         }
       }
@@ -147,7 +147,7 @@ int8_t GfxUITextArea::pushBuffer(StringBuilder* buf) {
       //   it was already there, but scroll ceases under additional input
       //   otherwise (up to the buffering limits).
       // TODO: Not quite there....
-      //_top_line = range_bind(lines, 0, (_max_rows - lines));
+      //_top_line = strict_range_bind(lines, 0, (_max_rows - lines));
     }
     else {
       // We may as well drop any lines that will never be viewed again.

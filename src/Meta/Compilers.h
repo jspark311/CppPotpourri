@@ -30,9 +30,16 @@ The library was originally written under GCC, but others have reported broad
 #if !defined(C3P_COMPILERS_META_HEADER)
 #define C3P_COMPILERS_META_HEADER
 
+#include "Meta/Rationalizer.h"     // Include build options checking.
+
 /*******************************************************************************
 * Compiler-specific glue
 *******************************************************************************/
+
+/* Endian conversion wrappers */
+inline uint16_t endianSwap16(uint16_t x) {   return __builtin_bswap16(x);    };
+inline uint32_t endianSwap32(uint32_t x) {   return __builtin_bswap32(x);    };
+inline uint64_t endianSwap64(uint64_t x) {   return __builtin_bswap64(x);    };
 
 
 /*******************************************************************************

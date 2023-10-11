@@ -21,7 +21,7 @@ int GfxUIMagnifier::setBoands(float min_mag, float max_mag) {
   if (max_mag > min_mag) {
     _min_mag = min_mag;
     _max_mag = max_mag;
-    _scale = range_bind(_scale, _min_mag, _max_mag);
+    _scale = strict_range_bind(_scale, _min_mag, _max_mag);
     ret = 0;
   }
   return ret;
@@ -35,8 +35,8 @@ int GfxUIMagnifier::_render(UIGfxWrapper* ui_gfx) {
   const int   INSET_FEED_OFFSET_Y = (INSET_FEED_SIZE_Y/2) + 1;
   const uint32_t INSET_X_POS = (ui_gfx->img()->x() - elementWidth()) - 1;
   const uint32_t INSET_Y_POS = (ui_gfx->img()->y() - elementHeight()) - 1;
-  const uint32_t INSET_FEED_X_POS  = (uint) range_bind((int) _pointer_x, INSET_FEED_OFFSET_X, (int) (ui_gfx->img()->x() - INSET_FEED_OFFSET_X)) - INSET_FEED_OFFSET_X;
-  const uint32_t INSET_FEED_Y_POS  = (uint) range_bind((int) _pointer_y, INSET_FEED_OFFSET_Y, (int) (ui_gfx->img()->y() - INSET_FEED_OFFSET_Y)) - INSET_FEED_OFFSET_Y;
+  const uint32_t INSET_FEED_X_POS  = (uint32_t) strict_range_bind((int) _pointer_x, INSET_FEED_OFFSET_X, (int) (ui_gfx->img()->x() - INSET_FEED_OFFSET_X)) - INSET_FEED_OFFSET_X;
+  const uint32_t INSET_FEED_Y_POS  = (uint32_t) strict_range_bind((int) _pointer_y, INSET_FEED_OFFSET_Y, (int) (ui_gfx->img()->y() - INSET_FEED_OFFSET_Y)) - INSET_FEED_OFFSET_Y;
   reposition(INSET_X_POS, INSET_Y_POS);
 
   // Scale from the source image.
@@ -83,7 +83,7 @@ bool GfxUIMagnifier::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, 
   }
   if (ret) {
     // Maximum magnification is 40x. Minimum magnification is 1x.
-    _scale = range_bind(_scale, _min_mag, _max_mag);
+    _scale = strict_range_bind(_scale, _min_mag, _max_mag);
     _need_redraw(true);
   }
   return ret;

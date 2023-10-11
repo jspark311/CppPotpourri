@@ -255,9 +255,13 @@ void printTypeSizes() {
 #define CHKLST_CI_PLATFORM_TESTS      0x00080000  // Platform assurances for this test program.
 #define CHKLST_UUID_TESTS             0x00100000  // UUID
 #define CHKLST_ASYNC_SEQUENCER_TESTS  0x00200000  // AsyncSequencer
-#define CHKLST_LOGGER_TESTS           0x00400000  // The logging abstraction.
-#define CHKLST_GPS_PARSING_TESTS      0x00800000  //
-#define CHKLST_ELEMENT_POOL_TESTS     0x01000000  // ElementPool<T>
+
+#define CHKLST_LOGGER_TESTS           0x00400000  // TODO: The logging abstraction.
+#define CHKLST_GPS_PARSING_TESTS      0x00800000  // TODO:
+#define CHKLST_ELEMENT_POOL_TESTS     0x01000000  // TODO: ElementPool<T>
+#define CHKLST_ENUM_WRAPPER           0x02000000  // TODO: 
+#define CHKLST_CONF_RECORD            0x04000000  // TODO:
+
 
 /*
 * We're going to do a bit of clutter-control...

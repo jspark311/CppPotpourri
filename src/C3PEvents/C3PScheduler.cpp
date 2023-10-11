@@ -51,11 +51,9 @@ int8_t C3PSchedule::execute() {
   if (willRunAgain()) {
     const unsigned int OLD_EXEC_AT = _exec_at;
     _exec_at = (_period + NOW);
-    _wrap_control = (_exec_at < OLD_EXEC_AT);
   }
   else {
     _exec_at = 0;
-    _wrap_control = false;
   }
 
   profiler.markStop();
@@ -72,7 +70,6 @@ void C3PSchedule::delay(unsigned int by_us) {
     }
     const unsigned int OLD_EXEC_AT = _exec_at;
     _exec_at += by_us;
-    _wrap_control = (_exec_at < OLD_EXEC_AT);
   }
 }
 
@@ -81,7 +78,6 @@ void C3PSchedule::delay() {
   if (!_executing) {
     const unsigned int OLD_EXEC_AT = _exec_at;
     _exec_at = ((unsigned int) micros() + _period);
-    _wrap_control = (_exec_at < OLD_EXEC_AT);
     _enabled = true;
   }
 }

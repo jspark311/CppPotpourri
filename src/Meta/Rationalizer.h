@@ -24,95 +24,83 @@ This is a header file for error-checking combinations of options at compile-time
   build-global user configuration files.
 The only inclusion in this file should be headers with similar tasks.
 
-TODO: It would be nice to be able to wrap malloc here...
 
-TODO: Until the build system migration to kconfig is complete,
-  this is where we will (try to) itemize all the build options to
-  make the future migration easier.
-
-  __BUILD_HAS_THREADS
-    __BUILD_HAS_PTHREADS
-    __BUILD_HAS_FREERTOS
-    __BUILD_HAS_ZEPHYR
-    __BUILD_HAS_RIOTOS
-    __BUILD_HAS_CONTIKI
-
-
-  __BUILD_HAS_BASE64
-
-  __HAS_CRYPT_WRAPPER
-    __BUILD_HAS_ASYMMETRIC
-    __BUILD_HAS_SYMMETRIC
-    __BUILD_HAS_DIGEST
-
-  __HAS_IDENT_CERT
-
+C3P wants the following capabilities, which will probably implicate this file.
+--------------------------------------------------------------------------------
+  TODO: It would be nice to be able to wrap malloc here...
+  TODO: Signature for firmware integrity (with cryptographic support).
+  TODO: Reliable, unified feature maps at runtime.
 */
 
-#ifndef BUILD_RATIONALIZER_METAHEADER
-#define BUILD_RATIONALIZER_METAHEADER
+#ifndef BUILD_RATIONALIZER_META_HEADER
+#define BUILD_RATIONALIZER_META_HEADER
 
-/* To override the defaults, supply this at build time. */
-#if defined(MANUVR_CONF_FILE)
-  #include MANUVR_CONF_FILE
-#else
-  #include "ManuvrConf.h"
+/* Some programs might prefer to configure C3P via header file. */
+#if defined(C3P_CONF_FILE)
+  #include C3P_CONF_FILE
 #endif
 
-/* Cryptographic stuff... */
-#include <Platform/Cryptographic/CryptOptUnifier.h>
+/*******************************************************************************
+* Cryptographic options and concerns are handled in their own file.
+*******************************************************************************/
+#include "../CryptoBurrito/CryptOptUnifier.h"
 
-#ifndef __MANUVR_OPTION_RATIONALIZER_H__
-#define __MANUVR_OPTION_RATIONALIZER_H__
-
-
-// This is the string that identifies this Manuvrable to other Manuvrables.
-//   In MHB's case, this value will select the mEngine.
-#ifndef FIRMWARE_NAME
-  #error You need to name the firmware by providing FIRMWARE_NAME.
+/*******************************************************************************
+* Supported encoding for parser/packers.
+* These tend to multiply build size costs, and most programs only need
+*   one (if any). Because their call-chains are often opaque to the linker, we
+*   require them to be enabled this way.
+*******************************************************************************/
+// CBOR
+#if defined(CONFIG_C3P_CBOR)
+  #define __BUILD_HAS_CBOR
 #endif
 
-// Who made the hardware?
-#ifndef MANUFACTURER_NAME
-  #define MANUFACTURER_NAME   "Manuvr"
+// JSON
+#if defined(CONFIG_C3P_JSON)
+  #define __BUILD_HAS_JSON
 #endif
 
+// Base64, which we wrap if we are already sitting on cryptographic support and
+//   is present. This prevents code replication, and the implementation used in
+//   conjunction with cryptographic support is almost certainly harder. If no
+//   B64 support was available elsewhere, and the program requests it, we will
+//   lean on the local C3P implementation.
+#if defined(CONFIG_C3P_BASE64)
+  #define __BUILD_HAS_BASE64
+  #if defined(CONFIG_C3P_WITH_MBEDTLS) && defined(MBEDTLS_BASE64_C)
+    #define __BUILD_HAS_BASE64_VIA_MBEDTLS
+  #elif defined (CONFIG_C3P_WITH_OPENSSL)
+    //#define __BUILD_HAS_BASE64_VIA_OPENSSL
+  #endif
+#endif  // CONFIG_C3P_BASE64
+
+
+/*******************************************************************************
+* Supported type support for C3PValue.
+* These options govern which high-level types can be handled by C3PValue. These
+*   choices will impact support for parsing/packing specific types.
+* These tend to multiply build size costs, and most programs don't need to parse
+*   or pack all of the high-level types that they might support internally.
+*   Because their call-chains are often opaque to the linker, we allow them to
+*   be disabled this way, following the enablement of their respective types.
+*******************************************************************************/
+// TODO: Image
+// TODO: EnumWrapper
+// TODO:
+
+
+/*******************************************************************************
+* Assumptions about platform properties.
+* NOTE: This abstraction strategy relies on the platform being built with
+*   the same options as C3P.
+*******************************************************************************/
 // How many random numbers should be cached? Must be > 0.
 #ifndef PLATFORM_RNG_CARRY_CAPACITY
   #define PLATFORM_RNG_CARRY_CAPACITY 32
 #endif
 
-// How large a preallocation buffer should we keep?
-#ifndef EVENT_MANAGER_PREALLOC_COUNT
-  #define EVENT_MANAGER_PREALLOC_COUNT 8
-#endif
-
-#ifndef MAXIMUM_SEQUENTIAL_SKIPS
-  #define MAXIMUM_SEQUENTIAL_SKIPS 20
-#endif
-
-// Debug support requires Console.
-// NOTE: If your Makefile passes the MANUVR_DEBUG option, this will be enabled regardless.
-#if defined(MANUVR_DEBUG) && !defined(MANUVR_CONSOLE_SUPPORT)
-  #define MANUVR_CONSOLE_SUPPORT
-#endif
-
-// Use the build system to set default logging levels for modules.
-#if defined(MANUVR_CONSOLE_SUPPORT)
-  #if defined(MANUVR_DEBUG)
-    #define DEFAULT_CLASS_VERBOSITY    6
-  #else
-    #define DEFAULT_CLASS_VERBOSITY    4
-  #endif
-#else
-  #define DEFAULT_CLASS_VERBOSITY      0
-#endif
-
-
-/*
-* Threading models...
-* Threading choice exists independently of platform.
-*/
+// Thread models. Threading choice exists independently of platform.
 #if defined(__MANUVR_LINUX) || defined(__MANUVR_APPLE)
   //#pragma message "Building with pthread support."
   #define __BUILD_HAS_THREADS
@@ -124,91 +112,67 @@ TODO: Until the build system migration to kconfig is complete,
 #elif defined(__MANUVR_ZEPHYR)
   //#pragma message "Building with Zephyr support."
   #define __BUILD_HAS_THREADS
+#elif defined(__MANUVR_YOCTO)
+  //#pragma message "Building with Yocto support."
+  // This is basically just linux for all we care.
+  #define __BUILD_HAS_THREADS
+  #define __BUILD_HAS_PTHREADS
 #elif defined(__MANUVR_RIOTOS)
   //#pragma message "Building with RIOT support."
+  // RIOT is a light-weight tickless multitasking environment.
   #define __BUILD_HAS_THREADS
 #elif defined(__MANUVR_CONTIKI)
   //#pragma message "Building with no threading support."
+  // Contiki is a threadless cooperative multitasking environment.
   #define MANUVR_PLATFORM_TIMER_PERIOD_MS 1
 #endif
 
 #if defined(__BUILD_HAS_THREADS)
-  // If we have threads, set the latency of the idel state. This is a choice
-  //   between power usage and event response latency.
+  // If we have threads, set the latency of the idle state. This is a choice
+  //   between power usage and event response latency. Any program built on
+  //   a threading model needs to define this, or the default value of 10ms
+  //   will be used.
+  // Local modules are free to NOT use this value for any threads they create,
+  //   but modules that specify thread idle thresholds too-tightly will drain
+  //   power and CPU time faster than necessary. So modules that specify thier
+  //   own threading idle times should still consult this value, and ensure that
+  //   their own choices are greater than this number.
+  // The default value of 20 is fairly easy to meet on $10 linux systems that
+  //   are built carefully. But it might be too aggressive for a high-end MCU
+  //   that is doing lots of work.
   #ifndef CONFIG_C3P_IDLE_PERIOD_MS
     #define CONFIG_C3P_IDLE_PERIOD_MS 20
   #endif
 #endif
 
 
-// What is the granularity of our scheduler?
-#ifndef MANUVR_PLATFORM_TIMER_PERIOD_MS
-  #define MANUVR_PLATFORM_TIMER_PERIOD_MS 10
-#endif
-
-/* Encodings... */
-// CBOR
-#if defined(CONFIG_C3P_CBOR)
-  #define __BUILD_HAS_CBOR
-#endif
-
-// JSON
-#if defined(MANUVR_JSON)
-  #define __BUILD_HAS_JSON
-  // We do this to prevent the Makefile having to do it....
-  #define HAVE_CONFIG_H
-#endif
-
-// Base64. The wrapper can only route a single implementation.
-//   so we case-off exclusively, in order of preference. If we
-//   are already sitting on cryptographic support, check those
-//   libraries first.
-#if defined(WITH_MBEDTLS) && defined(MBEDTLS_BASE64_C)
-  #define __BUILD_HAS_BASE64
-#elif defined (WITH_OPENSSL)
-
+// What is the granularity of our system timer?
+#ifndef CONFIG_C3P_TIMER_PERIOD_MS
+  #define CONFIG_C3P_TIMER_PERIOD_MS 10
 #endif
 
 
 
-/* BufferPipe support... */
-
-/* IP support... */
-// LWIP
-// Arduino
-// *nix
-
-/*
-  Now that we've done all that work, we can provide some flags to the build
-    system to give high-value assurances at compile-time such as....
-    * Presence of cryptographic hardware.
-    * Signature for firmware integrity.
-    * Reliable feature maps at runtime.
-    * Allowing modules written against Manuvr to easilly leverage supported
-        capabilities, and providing an easy means to write fall-back code if
-        a given option is not present at compile-time.
-*/
-
-/*
- Notions of Identity:
- If we have cryptographic wrappers, we can base these choices from those flags.
-*/
+/*******************************************************************************
+* Notions of Identity
+* If we have cryptographic wrappers, we can base these choices from those flags.
+*******************************************************************************/
 #if defined(__BUILD_HAS_ASYMMETRIC)
   #define __HAS_IDENT_CERT        // We support X509 identity.
 #endif   // __HAS_CRYPT_WRAPPER
 
 
-/*
- PMICs:
-*/
+/*******************************************************************************
+* Feature map
+*******************************************************************************/
+
+// The presence of a PMIC implies we have a battery.
 #if defined(CONFIG_C3P_BQ24155) || \
     defined(CONFIG_C3P_LTC294X)
-  #define __HAS_BATTERY        // Safe to assume we have a battery.
+  #define __HAS_BATTERY
 #endif
 
-/*
- Drivers that pull in GPIO message codes...
-*/
+// Drivers that pull in GPIO message codes.
 #if defined(CONFIG_C3P_SX8634) || \
     defined(CONFIG_C3P_GPIO_ER)
   #ifndef __HAS_GPIO_MESSAGES
@@ -216,17 +180,14 @@ TODO: Until the build system migration to kconfig is complete,
   #endif    // __HAS_GPIO_MESSAGES
 #endif
 
-/*
- Drivers that pull in button message codes...
-*/
+// Drivers that pull in button message codes...
 #if defined(CONFIG_C3P_SX8634)
   #ifndef __HAS_USER_INPUT_MESSAGES
     #define __HAS_USER_INPUT_MESSAGES
   #endif    // __HAS_USER_INPUT_MESSAGES
 #endif
 
-
-/* Framebuffer and display driver support... */
+// Framebuffer and display driver support...
 #if defined(CONFIG_C3P_SSD1331)
   #ifndef CONFIG_C3P_IMG_SUPPORT
     #define CONFIG_C3P_IMG_SUPPORT  // Framebuffers need this class.
@@ -234,4 +195,4 @@ TODO: Until the build system migration to kconfig is complete,
 #endif   // CONFIG_C3P_SSD1331
 
 
-#endif // BUILD_RATIONALIZER_METAHEADER
+#endif  // BUILD_RATIONALIZER_META_HEADER

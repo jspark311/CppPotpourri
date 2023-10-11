@@ -22,7 +22,8 @@ The TCode enum and surrounding functions should not be needed outside of a few
   special-cases in parser/packer code. Most of it is abstracted away by type
   polymorphism in classes that need to distinguish types. Notably: KeyValuePair.
 
-This is also the correct place to store constants commonly used in programs.
+This is also the correct place to store constants and enumerated types commonly
+  used in programs.
 
 TODO: Might-should adopt some IANA standard code-spaces here? Is there a
   painless way to get better inter-op? Dig...
@@ -66,7 +67,7 @@ class StringBuilder;
 #define TCODE_FLAG_VALUE_IS_PUNNED_PTR 0x02  // This type is small enough to fit inside a void* on this platform.
 #define TCODE_FLAG_VARIABLE_LEN        0x04  // Some types do not have a fixed-length.
 #define TCODE_FLAG_IS_NULL_DELIMITED   0x08  // Various string types are variable-length, yet self-delimiting.
-#define TCODE_FLAG_RESERVED_2          0x10  // 
+#define TCODE_FLAG_RESERVED_2          0x10  //
 #define TCODE_FLAG_LEGAL_FOR_ENCODING  0x20  // This type is a legal argument to (de)serializers.
 #define TCODE_FLAG_RESERVED_1          0x40  // Reserved for future use.
 #define TCODE_FLAG_RESERVED_0          0x80  // Reserved for future use.

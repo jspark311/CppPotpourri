@@ -20,11 +20,14 @@ WARNING_BEHAVIOR  += -Wno-ignored-qualifiers    # We might want to ignore qualif
 WARNING_BEHAVIOR  += -Wno-implicit-fallthrough  # Code often reads better with this.
 
 # The warnings below will be considered build-failing problems.
+#WARNING_BEHAVIOR  += -Werror   # One day....
+#WARNING_BEHAVIOR  += -Werror=sign-compare
+#WARNING_BEHAVIOR  += -Werror=strict-aliasing          # Type-punning needs to be explicitly noted.
 WARNING_BEHAVIOR  += -Werror=delete-non-virtual-dtor  # Unacceptable risk that is easy to close.
 WARNING_BEHAVIOR  += -Werror=format-extra-args        # Something else is broken.
 WARNING_BEHAVIOR  += -Werror=type-limits              # Exposes bad assumptions about type suitability.
 WARNING_BEHAVIOR  += -Werror=parentheses              # Algebra and C aren't the same thing.
-#WARNING_BEHAVIOR  += -Werror=sign-compare
+
 
 ###########################################################################
 # Environmental awareness...
@@ -81,7 +84,6 @@ SOURCES_CPP += ../../src/Identity/*.cpp
 
 # TODO: These things are not yet under unit tests, but we build them anyway so
 #   we can at least get the benefit of basic compilability checking.
-#SOURCES_CPP += ../../src/BusQueue.cpp
 #SOURCES_CPP += ../../src/I2CAdapter.cpp
 #SOURCES_CPP += ../../src/SPIBusOp.cpp
 #SOURCES_CPP += ../../src/SPIAdapter.cpp

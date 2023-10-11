@@ -18,22 +18,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+#ifndef __CPPPOTPOURRI_H__
+#define __CPPPOTPOURRI_H__
+
 #include <inttypes.h>
 #include <stdint.h>
 #include <limits.h>
+#include "Meta/Compilers.h"        // Include compiler support.
 #include "EnumeratedTypeCodes.h"
-
-#ifndef __CPPPOTPOURRI_H__
-#define __CPPPOTPOURRI_H__
 
 class StringBuilder;  // Forward declaration for buffer interchange.
 
 
-/*
+/*******************************************************************************
+* Anti-macro functions
 * Using macros for these purposes can generate some hilarious bugs. Using
 *   inlines gives us the benefit of strict type-checking at compile time, and
 *   carries no costs.
-*/
+*******************************************************************************/
+
+/* Return the maximum of two values. */
 inline double   strict_max(double   a, double   b) {  return (a > b) ? a : b; };
 inline float    strict_max(float    a, float    b) {  return (a > b) ? a : b; };
 inline uint64_t strict_max(uint64_t a, uint64_t b) {  return (a > b) ? a : b; };
@@ -45,6 +49,7 @@ inline int32_t  strict_max(int32_t  a, int32_t  b) {  return (a > b) ? a : b; };
 inline int16_t  strict_max(int16_t  a, int16_t  b) {  return (a > b) ? a : b; };
 inline int8_t   strict_max(int8_t   a, int8_t   b) {  return (a > b) ? a : b; };
 
+/* Return the minimum of two values. */
 inline double   strict_min(double   a, double   b) {  return (a < b) ? a : b; };
 inline float    strict_min(float    a, float    b) {  return (a < b) ? a : b; };
 inline uint64_t strict_min(uint64_t a, uint64_t b) {  return (a < b) ? a : b; };
@@ -56,9 +61,7 @@ inline int32_t  strict_min(int32_t  a, int32_t  b) {  return (a < b) ? a : b; };
 inline int16_t  strict_min(int16_t  a, int16_t  b) {  return (a < b) ? a : b; };
 inline int8_t   strict_min(int8_t   a, int8_t   b) {  return (a < b) ? a : b; };
 
-/*
-* Type-strict value swap.
-*/
+/* Type-strict value swap. */
 inline void strict_swap(double*   a, double*   b) {  double   t = *a; *a = *b; *b = t;  };
 inline void strict_swap(float*    a, float*    b) {  float    t = *a; *a = *b; *b = t;  };
 inline void strict_swap(uint64_t* a, uint64_t* b) {  uint64_t t = *a; *a = *b; *b = t;  };
@@ -81,6 +84,23 @@ inline int64_t  strict_abs_delta(int64_t  a, int64_t  b) {   return (a > b) ? (a
 inline int32_t  strict_abs_delta(int32_t  a, int32_t  b) {   return (a > b) ? (a - b) : (b - a);   };
 inline int16_t  strict_abs_delta(int16_t  a, int16_t  b) {   return (a > b) ? (a - b) : (b - a);   };
 inline int8_t   strict_abs_delta(int8_t   a, int8_t   b) {   return (a > b) ? (a - b) : (b - a);   };
+
+/*
+* Given a value and a range, gives the saturated result.
+* TODO: If the compiler gives this, it will likely be ASM optimized using no
+*   branches. Until I care enough, I'll use a double-nested ternary. Suffer.
+*   Promote to either Compilers.h or Intrinsics.h, as appropriate.
+*/
+inline double   strict_range_bind(const double   VAL, const double   MIN, const double   MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline float    strict_range_bind(const float    VAL, const float    MIN, const float    MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline uint64_t strict_range_bind(const uint64_t VAL, const uint64_t MIN, const uint64_t MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline uint32_t strict_range_bind(const uint32_t VAL, const uint32_t MIN, const uint32_t MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline uint16_t strict_range_bind(const uint16_t VAL, const uint16_t MIN, const uint16_t MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline uint8_t  strict_range_bind(const uint8_t  VAL, const uint8_t  MIN, const uint8_t  MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline int64_t  strict_range_bind(const int64_t  VAL, const int64_t  MIN, const int64_t  MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline int32_t  strict_range_bind(const int32_t  VAL, const int32_t  MIN, const int32_t  MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline int16_t  strict_range_bind(const int16_t  VAL, const int16_t  MIN, const int16_t  MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
+inline int8_t   strict_range_bind(const int8_t   VAL, const int8_t   MIN, const int8_t   MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
 
 /**
 * Given two values (NOW and THEN), returns the displacement of NOW from THEN.
@@ -105,33 +125,11 @@ inline uint16_t delta_assume_wrap(const uint16_t NOW, const uint16_t THEN) {   r
 inline uint8_t  delta_assume_wrap(const uint8_t  NOW, const uint8_t  THEN) {   return ((NOW >= THEN) ? (NOW - THEN) : (1 + (0xFF - (THEN - NOW))));                };
 
 
-/*
-* Given a value and a range, gives the saturated result.
-* TODO: If the compiler gives this, it will likely be ASM optimized using no
-*   branches. Until I care enough, I'll use a double-nested ternary. Suffer.
-*/
-inline double   range_bind(const double   VAL, const double   MIN, const double   MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
-inline float    range_bind(const float    VAL, const float    MIN, const float    MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
-inline uint64_t range_bind(const uint64_t VAL, const uint64_t MIN, const uint64_t MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
-inline uint32_t range_bind(const uint32_t VAL, const uint32_t MIN, const uint32_t MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
-inline uint16_t range_bind(const uint16_t VAL, const uint16_t MIN, const uint16_t MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
-inline uint8_t  range_bind(const uint8_t  VAL, const uint8_t  MIN, const uint8_t  MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
-inline int64_t  range_bind(const int64_t  VAL, const int64_t  MIN, const int64_t  MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
-inline int32_t  range_bind(const int32_t  VAL, const int32_t  MIN, const int32_t  MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
-inline int16_t  range_bind(const int16_t  VAL, const int16_t  MIN, const int16_t  MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
-inline int8_t   range_bind(const int8_t   VAL, const int8_t   MIN, const int8_t   MAX) {   return strict_min(strict_max(VAL, MIN), MAX);   };
 
-/**
-* Endian conversion wrappers.
-*/
-inline uint16_t endianSwap16(uint16_t x) {   return __builtin_bswap16(x);    };
-inline uint32_t endianSwap32(uint32_t x) {   return __builtin_bswap32(x);    };
-inline uint64_t endianSwap64(uint64_t x) {   return __builtin_bswap64(x);    };
-
-/**
+/*******************************************************************************
 * High-level string operations.
 * TODO: These feel like they are in the wrong place.
-*/
+*******************************************************************************/
 void timestampToString(StringBuilder*, uint64_t);
 uint64_t stringToTimestamp(const char*);
 int randomArt(uint8_t* dgst_raw, unsigned int dgst_raw_len, const char* title, StringBuilder*);

@@ -52,12 +52,12 @@ int ba_sb_sink_test() {
   printf("Done (%d bytes):  %s\n", TEST_BUF_LEN, (char*) check_string.string());
 
   printf("\tbufferAvailable() returns the size of CAPTURE_MAX_LEN (%d)... ", CAPTURE_MAX_LEN);
-  if (CAPTURE_MAX_LEN == sb_sink.bufferAvailable()) {
+  if (CAPTURE_MAX_LEN == (uint32_t) sb_sink.bufferAvailable()) {
     printf("Pass.\n\tPushing %d bytes to StringBuilderSink returns 1... ", TEST_BUF_LEN);
     if (1 == sb_sink.pushBuffer(&offering)) {
       const int LENGTH_CHECK_1 = (CAPTURE_MAX_LEN - TEST_BUF_LEN);
       printf("Pass.\n\tbufferAvailable() now reports (%d) bytes... ", LENGTH_CHECK_1);
-      if (LENGTH_CHECK_1 == sb_sink.bufferAvailable()) {
+      if (LENGTH_CHECK_1 == (uint32_t) sb_sink.bufferAvailable()) {
         printf("Pass.\n\tThe pushed buffer left the source (strictly empty)... ");
         if (offering.isEmpty(true)) {
           printf("Pass.\n\tThe pushed buffer wound up in the sink... ");
@@ -67,7 +67,7 @@ int ba_sb_sink_test() {
             if (1 == sb_sink.pushBuffer(&offering)) {
               const int LENGTH_CHECK_2 = (CAPTURE_MAX_LEN - (TEST_BUF_LEN * 2));
               printf("Pass.\n\tPushing the second buffer had the predicted results (%d bytes available)... ", LENGTH_CHECK_2);
-              if (offering.isEmpty(true) && (LENGTH_CHECK_2 == sb_sink.bufferAvailable())) {
+              if (offering.isEmpty(true) && (LENGTH_CHECK_2 == (uint32_t) sb_sink.bufferAvailable())) {
                 printf("Pass.\n\tOver-capacity pushBuffer() returns 0... ");
                 generate_random_text_buffer(&offering, TEST_BUF_LEN);
                 if (0 == sb_sink.pushBuffer(&offering)) {
@@ -75,14 +75,14 @@ int ba_sb_sink_test() {
                   printf("Pass.\n\tThe source buffer still contains %d bytes following the incomplete claim... ", LENGTH_CHECK_3);
                   if (LENGTH_CHECK_3 == offering.length()) {
                     printf("Pass.\n\tbufferAvailable() returns 0 and length() returns (%d)... ", CAPTURE_MAX_LEN);
-                    if ((0 == sb_sink.bufferAvailable()) & (CAPTURE_MAX_LEN == sb_sink.length())) {
+                    if ((0 == sb_sink.bufferAvailable()) & (CAPTURE_MAX_LEN == (uint32_t) sb_sink.length())) {
                       sb_sink.clear();
                       offering.clear();
                       printf("Pass.\n\tAble to sink its full advertised length (%d bytes)... ", sb_sink.bufferAvailable());
                       generate_random_text_buffer(&offering, sb_sink.bufferAvailable());
                       if (1 == sb_sink.pushBuffer(&offering)) {
                         printf("Pass.\n\tbufferAvailable() returns 0... ");
-                        if ((0 == sb_sink.bufferAvailable()) & (CAPTURE_MAX_LEN == sb_sink.length())) {
+                        if ((0 == sb_sink.bufferAvailable()) & (CAPTURE_MAX_LEN == (uint32_t) sb_sink.length())) {
                           printf("Pass.\n\tStringBuilderSink passes tests.\n");
                           ret = 0;
                         }
@@ -135,7 +135,7 @@ int ba_fork_single_test(bool is_right) {
     ba_fork.rightHand(nullptr);
   }
   printf("\tbufferAvailable() returns the limit of the only attached sink (%d)... ", SINK_LIMIT);
-  if ((SINK_LIMIT == ba_fork.bufferAvailable()) && (sb_sink.bufferAvailable() == ba_fork.bufferAvailable())) {
+  if ((SINK_LIMIT == (uint32_t) ba_fork.bufferAvailable()) && (sb_sink.bufferAvailable() == ba_fork.bufferAvailable())) {
     printf("Pass.\n\tPushing %d bytes to BufferAccepterFork returns 1... ", TEST_BUF_LEN);
     if (1 == ba_fork.pushBuffer(&offering)) {
       const int LENGTH_CHECK_1 = (SINK_LIMIT - TEST_BUF_LEN);
@@ -240,10 +240,10 @@ int ba_fork_test() {
     printf("Done (%d bytes),\n", TEST_BUF_LEN);
 
     printf("\tA fork with both efferants returns the minimum bufferAvailable() between them... left: ");
-    const uint32_t PRELOAD_LEN_L = (3 + (randomUInt32() % 43));
-    const uint32_t PRELOAD_LEN_R = (PRELOAD_LEN_L + 1 + (randomUInt32() % 10));
-    const int      LEN_CHECK_L_0 = (TEST_BUF_LEN - PRELOAD_LEN_L);
-    const int      LEN_CHECK_R_0 = (TEST_BUF_LEN - PRELOAD_LEN_R);
+    const int PRELOAD_LEN_L = (int) (3 + (randomUInt32() % 43));
+    const int PRELOAD_LEN_R = (int) (PRELOAD_LEN_L + 1 + (randomUInt32() % 10));
+    const int LEN_CHECK_L_0 = (TEST_BUF_LEN - PRELOAD_LEN_L);
+    const int LEN_CHECK_R_0 = (TEST_BUF_LEN - PRELOAD_LEN_R);
     StringBuilder garbage_prefill;
     generate_random_text_buffer(&garbage_prefill, PRELOAD_LEN_L);
     sink_left.concatHandoff(&garbage_prefill);
@@ -288,7 +288,7 @@ int ba_fork_test() {
                             StringBuilder check_string(offering.string(), offering.length());
                             if (1 == ba_fork.pushBuffer(&offering)) {
                               printf("Pass.\n\tBoth halves of the fork are the same (correct) length... ");
-                              if ((TEST_BUF_LEN == sink_left.length()) & (TEST_BUF_LEN == sink_right.length())) {
+                              if ((TEST_BUF_LEN == (uint32_t) sink_left.length()) & (TEST_BUF_LEN == (uint32_t) sink_right.length())) {
                                 printf("Pass.\n\tBoth halves of the fork have different copies of the content... ");
                                 char* str_ptr_l = (char*) sink_left.string();
                                 char* str_ptr_r = (char*) sink_right.string();
@@ -540,7 +540,7 @@ int ba_harness_source_trivial_tests() {
   printf("\tbufferAvailable() with no efferant returns 0... ");
   if (0 == ba_test_source.bufferAvailable()) {
     printf("Pass.\n\tPush to BufAcceptTestSource with no efferant returns -1... ");
-    if ((-1 == ba_test_source.pushBuffer(&offering)) && (TEST_BUF_LEN == offering.length())) {
+    if ((-1 == ba_test_source.pushBuffer(&offering)) && (TEST_BUF_LEN == (uint32_t) offering.length())) {
       printf("Pass.\n\tConnecting to an efferant BufferAccepter... ");
       ba_test_source.setEfferant(&sb_sink);
       printf("Done.\n\tBufAcceptTestSource->bufferAvailable() passes through to efferant... ");
