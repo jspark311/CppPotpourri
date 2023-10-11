@@ -86,6 +86,7 @@ class C3PSchedule {
     void delay();                // Reset the given schedule to its period and enable it.
     bool willRunAgain();         // Returns true if the indicated schedule will fire again.
     void printSchedule(StringBuilder*);
+    void printProfiler(StringBuilder*);
 
 
   protected:

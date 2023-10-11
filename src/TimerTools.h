@@ -93,7 +93,7 @@ limitations under the License.
   };
 
 
-  /* A class to rate-limit periodic events. */
+  /* A class to rate-limit periodic events at the millisecond scale. */
   class MillisTimeout : public PeriodicTimeout {
     public:
       MillisTimeout(unsigned long p = 0) : PeriodicTimeout(p) {};
@@ -105,7 +105,7 @@ limitations under the License.
   };
 
 
-  /* A class to rate-limit periodic events. */
+  /* A class to rate-limit periodic events at the microsecond scale. */
   class MicrosTimeout : public PeriodicTimeout {
     public:
       MicrosTimeout(unsigned long p = 0) : PeriodicTimeout(p) {};

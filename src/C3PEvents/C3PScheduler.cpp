@@ -108,6 +108,11 @@ void C3PSchedule::printSchedule(StringBuilder* output) {
 }
 
 
+void C3PSchedule::printProfiler(StringBuilder* output) {
+  profiler.printDebug(_handle, output);
+}
+
+
 
 /*******************************************************************************
 * Kinds of Schedules
@@ -257,4 +262,10 @@ void C3PScheduler::printDebug(StringBuilder* output) {
   StopWatch::printDebugHeader(output);
   profiler_service.printDebug("Service", output);
   profiler_deadband.printDebug("Deadband", output);
+  for (uint32_t i = 0; i < _active.count(); i++) {
+    C3PSchedule* current = _active.peek(i, false);
+    if (nullptr != current) {
+      current->printProfiler(output);
+    }
+  }
 }

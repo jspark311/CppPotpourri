@@ -78,9 +78,9 @@ int test_scheduler_init() {
     StringBuilder text_return;
     text_return.concat("schedule_test_0:\n");
     schedule_test_0.printSchedule(&text_return);
-    text_return.concat("schedule_test_1:\n");
+    text_return.concat("\nschedule_test_1:\n");
     schedule_test_1.printSchedule(&text_return);
-    printf("Adding schedules...\n%s\n", text_return.string());
+    printf("\nAdding schedules...\n%s\n", text_return.string());
     int8_t add_ret = scheduler->addSchedule(&schedule_test_0);
     if (0 == add_ret) {
       add_ret = scheduler->addSchedule(&schedule_test_1);
@@ -112,7 +112,7 @@ int test_scheduler_init() {
 int test_scheduler_initial_conditions() {
   int ret = -1;
   StringBuilder text_return;
-  scheduler->printDebug(&text_return);
+  //scheduler->printDebug(&text_return);
   // At this point, the scheduler should be constructed and schedules added, but
   //   advanceScheduler() hasn't been called yet. So serviceSchedules() should
   //   do nothing. Spam the service function and verify...
@@ -175,6 +175,7 @@ int test_scheduler_run_count_checks() {
       schedule_test_1.profiler.executions()
     );
   }
+  scheduler->printDebug(&text_return);
   printf("%s\n", text_return.string());
   return ret;
 }
