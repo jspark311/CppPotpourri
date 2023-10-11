@@ -251,8 +251,8 @@ int8_t C3PHeaderTestCase::run_test_wrap_delta() {
       // NOTE: Slight methodology difference to account for the fact that
       //   we aren't running tests on 8 or 16-bit ALUs, but don't know if the
       //   ALU is 32 or 64.
-      test_failed |= (ULONG_MAX != (delta_assume_wrap(C_NOW_U32, C_BEHIND_U32) + (delta_assume_wrap(C_BEHIND_U32, C_NOW_U32) - 1)));
-      test_failed |= (ULONG_MAX != (delta_assume_wrap(C_NOW_U32, C_AHEAD_U32)  + (delta_assume_wrap(C_AHEAD_U32, C_NOW_U32) - 1)));
+      test_failed |= (0xFFFFFFFF != (delta_assume_wrap(C_NOW_U32, C_BEHIND_U32) + (delta_assume_wrap(C_BEHIND_U32, C_NOW_U32) - 1)));
+      test_failed |= (0xFFFFFFFF != (delta_assume_wrap(C_NOW_U32, C_AHEAD_U32)  + (delta_assume_wrap(C_AHEAD_U32, C_NOW_U32) - 1)));
       test_failed |= (C_NOW_U32 != (delta_assume_wrap(C_NOW_U32, (uint32_t) 0)));
       test_failed |= (0 != (delta_assume_wrap((uint32_t) 0, (uint32_t) 0)));
       test_failed |= (0 != (delta_assume_wrap(C_NOW_U32, C_NOW_U32)));
@@ -262,8 +262,8 @@ int8_t C3PHeaderTestCase::run_test_wrap_delta() {
       // NOTE: Slight methodology difference to account for the fact that
       //   we aren't running tests on 8 or 16-bit ALUs, but don't know if the
       //   ALU is 32 or 64.
-      test_failed |= (ULLONG_MAX != (delta_assume_wrap(C_NOW_U64, C_BEHIND_U64) + (delta_assume_wrap(C_BEHIND_U64, C_NOW_U64) - 1)));
-      test_failed |= (ULLONG_MAX != (delta_assume_wrap(C_NOW_U64, C_AHEAD_U64)  + (delta_assume_wrap(C_AHEAD_U64, C_NOW_U64) - 1)));
+      test_failed |= (0xFFFFFFFFFFFFFFFF != (delta_assume_wrap(C_NOW_U64, C_BEHIND_U64) + (delta_assume_wrap(C_BEHIND_U64, C_NOW_U64) - 1)));
+      test_failed |= (0xFFFFFFFFFFFFFFFF != (delta_assume_wrap(C_NOW_U64, C_AHEAD_U64)  + (delta_assume_wrap(C_AHEAD_U64, C_NOW_U64) - 1)));
       test_failed |= (C_NOW_U64 != (delta_assume_wrap(C_NOW_U64, (uint64_t) 0)));
       test_failed |= (0 != (delta_assume_wrap((uint64_t) 0, (uint64_t) 0)));
       test_failed |= (0 != (delta_assume_wrap(C_NOW_U64, C_NOW_U64)));

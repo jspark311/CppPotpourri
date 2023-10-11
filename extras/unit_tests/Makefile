@@ -71,6 +71,7 @@ SOURCES_CPP += ../../src/GPSWrapper.cpp
 SOURCES_CPP += ../../src/ParsingConsole.cpp
 SOURCES_CPP += ../../src/Quaternion.cpp
 SOURCES_CPP += ../../src/Storage/SimpleDataRecord.cpp
+SOURCES_CPP += ../../src/Storage/RecordTypes/*.cpp
 SOURCES_CPP += ../../src/BufferAccepter/*.cpp
 SOURCES_CPP += ../../src/BufferAccepter/Base64/*.cpp
 SOURCES_CPP += ../../src/BufferAccepter/LineCoDec/*.cpp

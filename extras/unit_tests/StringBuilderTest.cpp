@@ -925,7 +925,7 @@ int test_stringbuilder_print_buffer() {
   printf("Testing printBuffer(StringBuilder*, uint8_t*, uint32_t, const char*)...\n");
   StringBuilder log;
   uint8_t buf[83];
-  random_fill(buf, sizeof(buf));
+  random_fill(buf, (uint32_t) sizeof(buf));
   StringBuilder::printBuffer(&log, nullptr, 0, "\t");
   StringBuilder::printBuffer(&log, buf, sizeof(buf), "\t");
   printf("%s\n", (const char*) log.string());

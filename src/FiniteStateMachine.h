@@ -125,7 +125,7 @@ template <class T> int8_t StateMachine<T>::_fsm_advance() {
       if (0 < _slowdown_ms) {
         // Be sure to preserve at least as much margin as the transistion code
         //   might have asked for by calling _fsm_lockout(uint32).
-        _lockout_timer.reset(strict_max(_slowdown_ms, _lockout_timer.remaining()));
+        _lockout_timer.reset(strict_max(_slowdown_ms, (uint32_t) _lockout_timer.remaining()));
       }
     }
   }

@@ -3,6 +3,10 @@ File:   AllTests.cpp
 Author: J. Ian Lindsay
 Date:   2021.09.25
 
+This is the top-level testing program for CppPotpourri (or, C3P, for short).
+
+NOTE: CryptoBurrito has its own test program. All of these tests must pass
+  before testing CryptoBurrito.
 
 Global unit-testing TODO list:
 --------------------------------------------------------------------------------
@@ -68,7 +72,7 @@ uint32_t randomUInt32() {
   return ret;
 }
 
-int8_t random_fill(uint8_t* buf, uint len) {
+int8_t random_fill(uint8_t* buf, uint32_t len) {
   uint i = 0;
   while (i < len) {
     *(buf + i++) = ((uint8_t) rand());
@@ -118,7 +122,7 @@ int generate_random_text_buffer(StringBuilder* buf, const int RANDOM_BUF_LEN) {
   int ret = 0;
   if ((RANDOM_BUF_LEN > 0) && (nullptr != buf)) {
     uint8_t tmp_buf[RANDOM_BUF_LEN+1] = {0, };
-    random_fill(tmp_buf, RANDOM_BUF_LEN);
+    random_fill(tmp_buf, (uint32_t) RANDOM_BUF_LEN);
     for (int i = 0; i < RANDOM_BUF_LEN; i++) {
       tmp_buf[i] = (0x30 + (tmp_buf[i] % 0x4E));
     }
@@ -131,14 +135,14 @@ int generate_random_text_buffer(StringBuilder* buf, const int RANDOM_BUF_LEN) {
 
 uint64_t generate_random_uint64() {
   uint64_t ret = 0;
-  random_fill((uint8_t*) &ret, sizeof(uint64_t));
+  random_fill((uint8_t*) &ret, (uint32_t) sizeof(uint64_t));
   return ret;
 }
 
 
 int64_t generate_random_int64() {
   int64_t ret = 0;
-  random_fill((uint8_t*) &ret, sizeof(int64_t));
+  random_fill((uint8_t*) &ret, (uint32_t) sizeof(int64_t));
   return ret;
 }
 
@@ -182,6 +186,7 @@ void printTestFailure(const char* module, const char* test) {
 #include "ParsingConsoleTest.cpp"
 #include "IdentityTest.cpp"
 #include "M2MLinkTests.cpp"
+#include "TestModules/ConfRecordTests.cpp"
 
 
 /*******************************************************************************
@@ -219,6 +224,7 @@ void printTypeSizes() {
   print_types_buffer_accepter();
   print_types_c3p_b64();
   print_types_line_term_codec();
+  print_types_conf_record();
   print_types_parsing_console();
   print_types_kvp();
   print_types_sensorfilter();
@@ -257,12 +263,17 @@ void printTypeSizes() {
 #define CHKLST_CI_PLATFORM_TESTS      0x00080000  // Platform assurances for this test program.
 #define CHKLST_UUID_TESTS             0x00100000  // UUID
 #define CHKLST_ASYNC_SEQUENCER_TESTS  0x00200000  // AsyncSequencer
+#define CHKLST_ENUM_WRAPPER_TESTS     0x00400000  // EnumWrapper
+#define CHKLST_CONF_RECORD            0x00800000  // ConfRecord
 
-#define CHKLST_LOGGER_TESTS           0x00400000  // TODO: The logging abstraction.
-#define CHKLST_GPS_PARSING_TESTS      0x00800000  // TODO:
-#define CHKLST_ELEMENT_POOL_TESTS     0x01000000  // TODO: ElementPool<T>
-#define CHKLST_ENUM_WRAPPER           0x02000000  // EnumWrapper
-#define CHKLST_CONF_RECORD            0x04000000  // TODO:
+#define CHKLST_LOGGER_TESTS           0x01000000  // TODO: The logging abstraction.
+#define CHKLST_GPS_PARSING_TESTS      0x02000000  // TODO:
+#define CHKLST_ELEMENT_POOL_TESTS     0x04000000  // TODO: ElementPool<T>
+#define CHKLST_BUS_QUEUE_TESTS        0x08000000  // TODO:
+#define CHKLST_UNIT_HANDLING_TESTS    0x10000000  // TODO:
+#define CHKLST_TYPE_CONTAINER_TESTS   0x20000000  // TODO: C3PValue
+#define CHKLST_3_AXIS_PIPE_TESTS      0x40000000  // TODO:
+
 
 
 /*
@@ -288,7 +299,7 @@ void printTypeSizes() {
 #define CHKLST_ALL_TIER_1_TESTS ( \
   CHKLST_STRINGBUILDER_TESTS | CHKLST_TIMER_UTILS_TESTS | CHKLST_RINGBUFFER_TESTS | \
   CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS | \
-  CHKLST_LINKED_LIST_TESTS | CHKLST_UUID_TESTS | CHKLST_ENUM_WRAPPER | \
+  CHKLST_LINKED_LIST_TESTS | CHKLST_UUID_TESTS | CHKLST_ENUM_WRAPPER_TESTS | \
   CHKLST_IMAGE_TESTS)
 
 #define CHKLST_ALL_TIER_2_TESTS ( \
@@ -298,7 +309,7 @@ void printTypeSizes() {
 
 #define CHKLST_ALL_TIER_3_TESTS ( \
   CHKLST_PARSINGCONSOLE_TESTS | CHKLST_SENSORFILTER_TESTS | \
-  CHKLST_LOGGER_TESTS | CHKLST_M2MLINK_TESTS)
+  CHKLST_LOGGER_TESTS | CHKLST_M2MLINK_TESTS | CHKLST_CONF_RECORD)
 
 #define CHKLST_ALL_TESTS ( \
   CHKLST_ALL_TIER_0_TESTS | CHKLST_ALL_TIER_1_TESTS | \
@@ -431,7 +442,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
 
   // EnumWrapper is used to extend certain compile-time enum value assurances
   //   into run-time.
-  { .FLAG         = CHKLST_ENUM_WRAPPER,
+  { .FLAG         = CHKLST_ENUM_WRAPPER_TESTS,
     .LABEL        = "EnumDefList",
     .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS | CHKLST_STRINGBUILDER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
@@ -566,6 +577,16 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .DEP_MASK     = (CHKLST_CODEC_LINE_TERM_TESTS | CHKLST_SCHEDULER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return 1;  }   // TODO
+  },
+
+  // Not all programs want to store non-volatile KVP data in a type-safe,
+  //   high-assurance manner. But those that do can do so with a minimum of
+  //   concern by using the ConfRecord class.
+  { .FLAG         = CHKLST_CONF_RECORD,
+    .LABEL        = "ConfRecord",
+    .DEP_MASK     = (CHKLST_KEY_VALUE_PAIR_TESTS | CHKLST_ENUM_WRAPPER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_conf_record_test_main()) ? 1:-1);  }
   },
 
   // Another common thing to have in firmware is a console relationship with
