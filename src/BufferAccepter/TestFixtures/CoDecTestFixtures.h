@@ -23,7 +23,7 @@ Test fixtures for CoDecs. Only programs concerned with unit testing need to
 */
 
 #include "../BufferAccepter.h"
-#include "../../StopWatch.h"
+#include "../../TimerTools.h"
 
 #ifndef __C3P_CODEC_TEST_FIXTURES_H__
 #define __C3P_CODEC_TEST_FIXTURES_H__

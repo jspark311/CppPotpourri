@@ -1,5 +1,5 @@
 /*
-File:   StopWatch.h
+File:   TimerTools.h
 Author: J. Ian Lindsay
 Date:   2015.12.01
 

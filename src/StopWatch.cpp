@@ -19,7 +19,7 @@ limitations under the License.
 */
 
 #include "CppPotpourri.h"
-#include "StopWatch.h"
+#include "TimerTools.h"
 #include "StringBuilder.h"
 
 /**

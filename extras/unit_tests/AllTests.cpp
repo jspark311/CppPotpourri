@@ -47,7 +47,7 @@ TODO: About that... This program is presumably being run under linux, and so we
 #include "SensorFilter.h"
 #include "AsyncSequencer.h"
 #include "Vector3.h"
-#include "StopWatch.h"
+#include "TimerTools.h"
 #include "uuid.h"
 #include "cbor-cpp/cbor.h"
 #include "Image/Image.h"
@@ -149,6 +149,15 @@ int64_t generate_random_int64() {
 
 bool flip_coin() {
   return (0 != (1 & randomUInt32()));
+}
+
+
+float generate_random_float() {
+  return ((float) randomUInt32() / (float) randomUInt32());
+}
+
+double generate_random_double() {
+  return ((double) generate_random_uint64() / (double) generate_random_uint64());
 }
 
 

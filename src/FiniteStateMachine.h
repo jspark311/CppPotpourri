@@ -33,7 +33,7 @@ TODO: For the sake of controlling needless template bloat, we funnel all true
 #include "EnumWrapper.h"
 #include "RingBuffer.h"
 #include "StringBuilder.h"
-#include "StopWatch.h"
+#include "TimerTools.h"
 #include "AbstractPlatform.h"
 
 
