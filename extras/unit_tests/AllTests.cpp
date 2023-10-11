@@ -169,6 +169,7 @@ void printTestFailure(const char* module, const char* test) {
 #include "RingBufferTests.cpp"
 #include "KVPTests.cpp"
 #include "LinkedListTests.cpp"
+#include "EnumWrapperTests.cpp"
 #include "FSMTests.cpp"
 #include "SchedulerTests.cpp"
 #include "TimerUtilityTests.cpp"
@@ -210,6 +211,7 @@ void printTypeSizes() {
   print_types_ringbuffer();
   print_types_linked_lists();
   print_types_image();
+  print_types_enum_wrapper();
   print_types_scheduler();
   print_types_state_machine();
   print_types_identity();
@@ -259,7 +261,7 @@ void printTypeSizes() {
 #define CHKLST_LOGGER_TESTS           0x00400000  // TODO: The logging abstraction.
 #define CHKLST_GPS_PARSING_TESTS      0x00800000  // TODO:
 #define CHKLST_ELEMENT_POOL_TESTS     0x01000000  // TODO: ElementPool<T>
-#define CHKLST_ENUM_WRAPPER           0x02000000  // TODO: 
+#define CHKLST_ENUM_WRAPPER           0x02000000  // EnumWrapper
 #define CHKLST_CONF_RECORD            0x04000000  // TODO:
 
 
@@ -286,7 +288,8 @@ void printTypeSizes() {
 #define CHKLST_ALL_TIER_1_TESTS ( \
   CHKLST_STRINGBUILDER_TESTS | CHKLST_TIMER_UTILS_TESTS | CHKLST_RINGBUFFER_TESTS | \
   CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS | \
-  CHKLST_LINKED_LIST_TESTS | CHKLST_UUID_TESTS | CHKLST_IMAGE_TESTS)
+  CHKLST_LINKED_LIST_TESTS | CHKLST_UUID_TESTS | CHKLST_ENUM_WRAPPER | \
+  CHKLST_IMAGE_TESTS)
 
 #define CHKLST_ALL_TIER_2_TESTS ( \
   CHKLST_FSM_TESTS | CHKLST_SCHEDULER_TESTS | CHKLST_IDENTITY_TESTS | \
@@ -424,6 +427,15 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS | CHKLST_STRINGBUILDER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == c3p_image_test_main()) ? 1:-1);  }
+  },
+
+  // EnumWrapper is used to extend certain compile-time enum value assurances
+  //   into run-time.
+  { .FLAG         = CHKLST_ENUM_WRAPPER,
+    .LABEL        = "EnumDefList",
+    .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS | CHKLST_STRINGBUILDER_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_enum_wrapper_test_main()) ? 1:-1);  }
   },
 
   //////////////////////////////////////////////////////////////////////////////
