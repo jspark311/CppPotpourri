@@ -165,6 +165,13 @@ class C3PValue {
     float    get_as_float(int8_t* success = nullptr);
     double   get_as_double(int8_t* success = nullptr);
 
+    /*
+    * Fuzzy type discovery functions.
+    */
+    inline const TCode tcode() {            return _TCODE;              };
+    inline bool        is_fixed_length() {  return sizeOfType(_TCODE);  };
+    bool is_numeric();
+
 
     // TODO: Very easy to become mired in your own bad definitions. Be careful.
     //   You need not define algebra across operands of Image and string, but
@@ -174,18 +181,21 @@ class C3PValue {
     //   all. Such should also be specified in the type matrix.
     //int compare(C3PValue*);
 
+    /* Memory handling options. */
     inline void    reapValue(bool x) {  _reap_val = x;      };
     inline bool    reapValue() {        return _reap_val;   };
-    uint32_t length();   // Returns the length (in bytes) of the value.
-    void     toString(StringBuilder*, bool include_type = false);
+    inline uint8_t trace() {            return _set_trace;  };
 
     /* Parsing/Packing */
-    int8_t serialize(StringBuilder*, TCode);
-    int8_t deserialize(StringBuilder*, TCode);
+    int8_t   serialize(StringBuilder*, TCode);
+    int8_t   deserialize(StringBuilder*, TCode);
+    void     toString(StringBuilder*, bool include_type = false);
+    uint32_t length();    // Returns the length (in bytes) of the value.
 
 
   private:
     const TCode _TCODE;        // The hard-declared type of this Value.
+    uint8_t     _set_trace;    // This byte is updated each time the set function is called, to allow dirty-tracing.
     bool        _val_by_ref;   // If true, _target_mem's native type is a pointer to something.
     bool        _reap_val;     // If true, _target_mem is not only a pointer, but is our responsibility to free it.
     void*       _target_mem;   // Type-punned memory. Will be the same size as the arch's pointers.

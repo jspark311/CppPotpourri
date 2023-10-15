@@ -65,16 +65,32 @@ C3PValue::C3PValue(double val) : C3PValue(TCode::DOUBLE, malloc(sizeof(double)))
     _val_by_ref = true;
     _reap_val   = true;
     uint8_t* src = (uint8_t*) &val;                  // To avoid inducing bugs
-    *(((uint8_t*) &_target_mem) + 0) = *(src + 0);   //   related to alignment,
-    *(((uint8_t*) &_target_mem) + 1) = *(src + 1);   //   we copy the value
-    *(((uint8_t*) &_target_mem) + 2) = *(src + 2);   //   byte-wise into our own
-    *(((uint8_t*) &_target_mem) + 3) = *(src + 3);   //   storage.
-    *(((uint8_t*) &_target_mem) + 4) = *(src + 4);
-    *(((uint8_t*) &_target_mem) + 5) = *(src + 5);
-    *(((uint8_t*) &_target_mem) + 6) = *(src + 6);
-    *(((uint8_t*) &_target_mem) + 7) = *(src + 7);
+    *(((uint8_t*) _target_mem) + 0) = *(src + 0);    //   related to alignment,
+    *(((uint8_t*) _target_mem) + 1) = *(src + 1);    //   we copy the value
+    *(((uint8_t*) _target_mem) + 2) = *(src + 2);    //   byte-wise into our own
+    *(((uint8_t*) _target_mem) + 3) = *(src + 3);    //   storage.
+    *(((uint8_t*) _target_mem) + 4) = *(src + 4);
+    *(((uint8_t*) _target_mem) + 5) = *(src + 5);
+    *(((uint8_t*) _target_mem) + 6) = *(src + 6);
+    *(((uint8_t*) _target_mem) + 7) = *(src + 7);
   }
 }
+
+
+int8_t C3PValue::set_from(const TCode, void* type_pointer) {
+  int8_t ret = 0;
+  _set_trace++;
+  return ret;
+}
+
+
+int8_t C3PValue::get_as(const TCode, void* type_pointer) {
+  int8_t ret = 0;
+  return ret;
+}
+
+
+
 
 
 
@@ -149,21 +165,86 @@ int8_t C3PValue::set(bool x) {
 
 
 float C3PValue::get_as_float(int8_t* success) {
+  int8_t suc = 0;
   float ret = 0.0f;
+  switch (_TCODE) {
+    case TCode::FLOAT:
+      *(((uint8_t*) &ret) + 0) = *(((uint8_t*) &_target_mem) + 0);
+      *(((uint8_t*) &ret) + 1) = *(((uint8_t*) &_target_mem) + 1);
+      *(((uint8_t*) &ret) + 2) = *(((uint8_t*) &_target_mem) + 2);
+      *(((uint8_t*) &ret) + 3) = *(((uint8_t*) &_target_mem) + 3);
+      suc = 1;
+      break;
+    default:
+      break;
+  }
+  if (success) {  *success = suc;  }
   return ret;
 }
+
 int8_t C3PValue::set(float x) {
   int8_t ret = -1;
+  switch (_TCODE) {
+    case TCode::FLOAT:
+      *(((uint8_t*) &_target_mem) + 0) = *((uint8_t*) &x + 0);
+      *(((uint8_t*) &_target_mem) + 1) = *((uint8_t*) &x + 1);
+      *(((uint8_t*) &_target_mem) + 2) = *((uint8_t*) &x + 2);
+      *(((uint8_t*) &_target_mem) + 3) = *((uint8_t*) &x + 3);
+      ret = 0;
+      break;
+    case TCode::DOUBLE:
+    default:
+      break;
+  }
+  if (0 == ret) {  _set_trace++;  }
   return ret;
 }
 
 
 double C3PValue::get_as_double(int8_t* success) {
+  int8_t suc = 0;
   double ret = 0.0d;
+  switch (_TCODE) {
+    case TCode::FLOAT:
+      ret = (double) get_as_float();
+      suc = 1;
+      break;
+    case TCode::DOUBLE:
+      *(((uint8_t*) &ret) + 0) = *((uint8_t*) _target_mem + 0);
+      *(((uint8_t*) &ret) + 1) = *((uint8_t*) _target_mem + 1);
+      *(((uint8_t*) &ret) + 2) = *((uint8_t*) _target_mem + 2);
+      *(((uint8_t*) &ret) + 3) = *((uint8_t*) _target_mem + 3);
+      *(((uint8_t*) &ret) + 4) = *((uint8_t*) _target_mem + 4);
+      *(((uint8_t*) &ret) + 5) = *((uint8_t*) _target_mem + 5);
+      *(((uint8_t*) &ret) + 6) = *((uint8_t*) _target_mem + 6);
+      *(((uint8_t*) &ret) + 7) = *((uint8_t*) _target_mem + 7);
+      suc = 1;
+      break;
+    default:
+      break;
+  }
+  if (success) {  *success = suc;  }
   return ret;
 }
+
 int8_t C3PValue::set(double x) {
   int8_t ret = -1;
+  switch (_TCODE) {
+    case TCode::DOUBLE:
+      *(((uint8_t*) _target_mem) + 0) = *((uint8_t*) &x + 0);
+      *(((uint8_t*) _target_mem) + 1) = *((uint8_t*) &x + 1);
+      *(((uint8_t*) _target_mem) + 2) = *((uint8_t*) &x + 2);
+      *(((uint8_t*) _target_mem) + 3) = *((uint8_t*) &x + 3);
+      *(((uint8_t*) _target_mem) + 4) = *((uint8_t*) &x + 4);
+      *(((uint8_t*) _target_mem) + 5) = *((uint8_t*) &x + 5);
+      *(((uint8_t*) _target_mem) + 6) = *((uint8_t*) &x + 6);
+      *(((uint8_t*) _target_mem) + 7) = *((uint8_t*) &x + 7);
+      ret = 0;
+      break;
+    default:
+      break;
+  }
+  if (0 == ret) {  _set_trace++;  }
   return ret;
 }
 
@@ -182,7 +263,26 @@ int8_t C3PValue::deserialize(StringBuilder* input, TCode fmt) {
 
 
 /*
+* @return true if the type is a simple single-value numeric.
+*/
+bool C3PValue::is_numeric() {
+  switch (_TCODE) {
+    case TCode::INT8:     case TCode::INT16:   case TCode::INT32:
+    case TCode::INT64:    case TCode::INT128:
+    case TCode::UINT8:    case TCode::UINT16:  case TCode::UINT32:
+    case TCode::UINT64:   case TCode::UINT128:
+    case TCode::BOOLEAN:  case TCode::FLOAT:   case TCode::DOUBLE:
+    // Semantic wrappers for numeric types.
+    case TCode::COLOR8:   case TCode::COLOR16: case TCode::COLOR24:
+    case TCode::IPV4_ADDR:
+      return true;
+    default:  break;
+  }
+  return false;
+}
 
+
+/*
 */
 uint32_t C3PValue::length() {
   uint32_t ret = sizeOfType(_TCODE);
@@ -299,7 +399,7 @@ void C3PValue::toString(StringBuilder* out, bool include_type) {
 /**
 * Protected delegate constructor.
 */
-C3PValue::C3PValue(const TCode TC, void* ptr) : _TCODE(TC), _target_mem(ptr) {
+C3PValue::C3PValue(const TCode TC, void* ptr) : _TCODE(TC), _set_trace(1), _target_mem(ptr) {
   _val_by_ref = !typeIsPointerPunned(_TCODE);
   _reap_val   = false;
 }

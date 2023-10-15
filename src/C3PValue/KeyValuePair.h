@@ -39,22 +39,22 @@ TODO: Since this class renders large chains of function calls opaque to the
 */
 
 
-#ifndef __MANUVR_DS_ARGUMENT_H
-#define __MANUVR_DS_ARGUMENT_H
+#ifndef __C3P_KVP_H
+#define __C3P_KVP_H
 
 #include <string.h>
 
-#include <EnumeratedTypeCodes.h>
-#include <Vector3.h>
-#include <StringBuilder.h>
+#include "../EnumeratedTypeCodes.h"
+#include "../Vector3.h"
+#include "../StringBuilder.h"
 
 #if defined(CONFIG_C3P_CBOR)
-  #include <cbor-cpp/cbor.h>
+  #include "../cbor-cpp/cbor.h"
 #endif
 
 /* Forward declarations of classes that this type will handle. */
 #if defined(CONFIG_C3P_IMG_SUPPORT)
-  #include <Image/Image.h>
+  #include "../Image/Image.h"
 #endif
 
 class Identity;
@@ -294,4 +294,4 @@ class KeyValuePair {
   };
 #endif  // CONFIG_C3P_CBOR
 
-#endif  // __MANUVR_DS_ARGUMENT_H
+#endif  // __C3P_KVP_H

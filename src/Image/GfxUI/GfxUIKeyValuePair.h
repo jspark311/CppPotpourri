@@ -14,11 +14,28 @@ These classes are built on top of the GfxUI classes, and implement higher-level
 
 #include "../Image.h"
 #include "../ImageUtils.h"
-#include "../../KeyValuePair.h"
+#include "../../C3PValue/C3PValue.h"
+#include "../../C3PValue/KeyValuePair.h"
 
 /*******************************************************************************
-* Graphical tool for looking at KVP data.
+* Graphical rendering of a type-abstracted value.
 *******************************************************************************/
+class GfxUIC3PValue : public GfxUIElement {
+  public:
+    GfxUIC3PValue(C3PValue* value, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
+    ~GfxUIC3PValue() {};
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+
+
+  private:
+    C3PValue* _value;
+    uint8_t _last_trace;
+};
+
+
 class GfxUIKeyValuePair : public GfxUIElement {
   public:
     GfxUIKeyValuePair(KeyValuePair* kvp, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
