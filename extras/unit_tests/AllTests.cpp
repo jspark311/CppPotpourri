@@ -39,7 +39,6 @@ TODO: About that... This program is presumably being run under linux, and so we
 #include "StringBuilder.h"
 #include "ParsingConsole.h"
 #include "ElementPool.h"
-#include "GPSWrapper.h"
 #include "RingBuffer.h"
 #include "PriorityQueue.h"
 #include "KeyValuePair.h"
@@ -223,6 +222,7 @@ void printTypeSizes() {
   print_types_timer_utils();
   print_types_async_sequencer();
   print_types_ringbuffer();
+  printf("\tElementPool<void*>       %u\t%u\n", sizeof(ElementPool<void*>),   alignof(ElementPool<void*>));
   print_types_linked_lists();
   print_types_image();
   print_types_enum_wrapper();
@@ -238,8 +238,6 @@ void printTypeSizes() {
   print_types_kvp();
   print_types_sensorfilter();
   print_types_m2mlink();
-  printf("\tElementPool<void*>       %u\t%u\n", sizeof(ElementPool<void*>),   alignof(ElementPool<void*>));
-  printf("\tGPSWrapper               %u\t%u\n", sizeof(GPSWrapper),           alignof(GPSWrapper));
 }
 
 

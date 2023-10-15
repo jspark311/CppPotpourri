@@ -1,6 +1,6 @@
 #include <inttypes.h>
 #include <stdint.h>
-#include "BusQueue.h"
+#include "BusQueue/BusQueue.h"
 #include "StringBuilder.h"
 #include "RingBuffer.h"
 #include "AbstractPlatform.h"

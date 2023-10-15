@@ -19,7 +19,7 @@ limitations under the License.
 */
 
 #include "M2MLink.h"
-#include "../BusQueue.h"
+#include "../BusQueue/BusQueue.h"
 
 #if defined(CONFIG_C3P_M2M_SUPPORT)
 

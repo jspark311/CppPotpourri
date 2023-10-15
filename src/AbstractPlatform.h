@@ -5,7 +5,7 @@
 #include <inttypes.h>
 #include <stdint.h>
 #include <limits.h>
-#include "BusQueue.h"
+#include "BusQueue/BusQueue.h"
 #include "StringBuilder.h"
 #include "CryptoBurrito/Cryptographic.h"
 
