@@ -19,9 +19,21 @@ limitations under the License.
 
 
 An abstract typeless data container class. This is used to support type
-  abstraction of our internal types, and cuts down on templating elsewhere. It
-  is also used as an intermediary for parsers and packers.
+  abstraction of our internal types and cuts down on templating elsewhere. It
+  is primarilly used as an intermediary for parsers and packers.
 
+NOTE: The TCode of a C3PValue is const for assurance reasons, and cannot be
+  changed once set. This fact precludes the use of C3PValue in any milieu that
+  would see it allocated prior to the TCode being known.
+NOTE: This^ does NOT imply that C3PValue must do its value-containing allocation
+  at construction time. But presently, it does.
+
+NOTE: The length() member.
+  If the type of the container is of a fixed length (integers, float, etc), that
+  length will be returned. If the type is of a dynamic length (string, Image,
+  Identity, etc), the results of a call to that object's length() function will
+  be returned. Implementation of length() (or equivilent) is a requirement for
+  the contract governing serializability.
 
 NOTE: Design rationale, and (TODO) possible alternative choices
 --------------------------------------------------------------------------------
@@ -57,28 +69,37 @@ For now, just know what the costs are, and don't expend the overhead unless you
   optimize on that day.
 */
 
+#ifndef __C3P_VALUE_WRAPPER_H
+#define __C3P_VALUE_WRAPPER_H
+
 #include <inttypes.h>
 #include <stddef.h>
-#include "EnumeratedTypeCodes.h"
-#include "StringBuilder.h"
-#include "Vector3.h"
+#include "../EnumeratedTypeCodes.h"
 
-
-/* Image support costs code size. Don't support it unless requested. */
-#if defined(CONFIG_C3P_IMG_SUPPORT)
-  #include <Image/Image.h>
-#endif
-
+/*
+* Including within a header file costs build time and muddies static analysis.
+* Because this class handles many of our major types in C3P as pointers, we save
+*   some grief by including them in the CPP file, but forward-declaring their
+*   types for the sake of handling their pointers.
+* This will prevent the entire library becoming included whenever a trivial
+*   class wants to include C3PValue.
+*/
 class StringBuilder;
 class KeyValuePair;
 class Identity;
+#include "../Vector3.h"  // Templates are more onerous...
+
+/* Image support costs code size. Don't support it unless requested. */
+#if defined(CONFIG_C3P_IMG_SUPPORT)
+  #include "../Image/Image.h"
+#endif
 
 
 // TODO: This needs to eat all of the type polymorphism in KeyValuePair.
+// TODO: Split the type-handling apart from the container class. Maybe with a
+//   concealed template?
 class C3PValue {
   public:
-    const TCode TCODE;
-
     /* Public constructors, appropriate for types as the compiler sees them. */
     C3PValue(const TCode TC) : C3PValue(TC, nullptr) {};
     C3PValue(uint8_t  val) : C3PValue(TCode::UINT8,    (void*)(uintptr_t) val) {};
@@ -90,10 +111,10 @@ class C3PValue {
     C3PValue(bool     val) : C3PValue(TCode::BOOLEAN,  (void*)(uintptr_t) val) {};
     C3PValue(float    val);
     C3PValue(double   val);
-    C3PValue(void* v, size_t l) : C3PValue(TCode::BINARY,        v) {            _len = l;                };
-    C3PValue(const char* val)   : C3PValue(TCode::STR,           (void*) val) {  _len = (strlen(val)+1);  };
-    C3PValue(char* val)         : C3PValue(TCode::STR,           (void*) val) {  _len = (strlen(val)+1);  };
-    C3PValue(StringBuilder* v)  : C3PValue(TCode::STR_BUILDER,   (void*) v) {    _len = v->length();      };
+    C3PValue(void* v, size_t l) : C3PValue(TCode::BINARY,        v) {};             // _len = l;
+    C3PValue(const char* val)   : C3PValue(TCode::STR,           (void*) val) {};   // _len = (strlen(val)+1);
+    C3PValue(char* val)         : C3PValue(TCode::STR,           (void*) val) {};   // _len = (strlen(val)+1);
+    C3PValue(StringBuilder* v)  : C3PValue(TCode::STR_BUILDER,   (void*) v) {};     // _len = v->length();
     C3PValue(Vector3ui32* val)  : C3PValue(TCode::VECT_3_UINT32, (void*) val) {};
     C3PValue(Vector3ui16* val)  : C3PValue(TCode::VECT_3_UINT16, (void*) val) {};
     C3PValue(Vector3ui8*  val)  : C3PValue(TCode::VECT_3_UINT8,  (void*) val) {};
@@ -105,14 +126,20 @@ class C3PValue {
     C3PValue(Identity* val)     : C3PValue(TCode::IDENTITY,      (void*) val) {};
     // Conditional types.
     #if defined(CONFIG_C3P_IMG_SUPPORT)
-    C3PValue(Image* val) : C3PValue(TCode::IMAGE,  (void*) val) {   _len = val->bytesUsed();   };
+    C3PValue(Image* val) : C3PValue(TCode::IMAGE,  (void*) val) {};
     #endif   // CONFIG_C3P_IMG_SUPPORT
     ~C3PValue();
 
     /*
-    * Type-coercion functions.
-    * Getters and setters return T(val) or 0 on success, repsectively.
-    * Getters and setters return T(0) or -1 on failure, repsectively.
+    * Type-punned accessor functions. These are the basis of all
+    *   value transaction with this class.
+    */
+    int8_t   set_from(const TCode, void* type_pointer);
+    int8_t   get_as(const TCode, void* type_pointer);
+
+    /*
+    * Type-coercion convenience functions for setting values.
+    * Setters return 0 on success or -1 on failure.
     */
     int8_t set(bool);
     int8_t set(uint8_t);
@@ -126,14 +153,18 @@ class C3PValue {
     int8_t set(float);
     int8_t set(double);
 
-    bool     get_as_bool();
-    unsigned int get_as_uint();
-    int      get_as_int();
-    uint64_t get_as_uint64();
-    int64_t  get_as_int64();
-    float    get_as_float();
-    double   get_as_double();
-    void     toString(StringBuilder*);
+    /*
+    * Type-coercion convenience functions for getting values.
+    * Getters return T(val) on success or T(val) on failure.
+    */
+    bool     get_as_bool(int8_t* success = nullptr);
+    unsigned int get_as_uint(int8_t* success = nullptr);
+    int      get_as_int(int8_t* success = nullptr);
+    uint64_t get_as_uint64(int8_t* success = nullptr);
+    int64_t  get_as_int64(int8_t* success = nullptr);
+    float    get_as_float(int8_t* success = nullptr);
+    double   get_as_double(int8_t* success = nullptr);
+
 
     // TODO: Very easy to become mired in your own bad definitions. Be careful.
     //   You need not define algebra across operands of Image and string, but
@@ -143,23 +174,27 @@ class C3PValue {
     //   all. Such should also be specified in the type matrix.
     //int compare(C3PValue*);
 
+    inline void    reapValue(bool x) {  _reap_val = x;      };
+    inline bool    reapValue() {        return _reap_val;   };
+    uint32_t length();   // Returns the length (in bytes) of the value.
+    void     toString(StringBuilder*, bool include_type = false);
+
     /* Parsing/Packing */
     int8_t serialize(StringBuilder*, TCode);
     int8_t deserialize(StringBuilder*, TCode);
 
-    inline void    reapValue(bool x) {  _reap_val = x;      };
-    inline bool    reapValue() {        return _reap_val;   };
-    inline bool    hasError() {         return _mem_err;    };
-    int32_t length();   // Returns the length (in bytes) of the value.
-
 
   private:
-    bool          _val_by_ref;   // If true, _target_mem's native type is a pointer to something.
-    bool          _reap_val;     // If true, _target_mem is not only a pointer, but is our responsibility to free it.
-    bool          _mem_err;      // If true, _target_mem is invalid due to (usually) an allocation error.
-    void*         _target_mem;   // Type-punned memory. Will be the same size as the arch's pointers.
+    const TCode _TCODE;        // The hard-declared type of this Value.
+    bool        _val_by_ref;   // If true, _target_mem's native type is a pointer to something.
+    bool        _reap_val;     // If true, _target_mem is not only a pointer, but is our responsibility to free it.
+    void*       _target_mem;   // Type-punned memory. Will be the same size as the arch's pointers.
+    //uint32_t    _len;        // Avoid this, even if it means an intermediary private object to hold the length.
 
     C3PValue(const TCode, void*);
 
     void _reap_existing_value();
 };
+
+
+#endif  // __C3P_VALUE_WRAPPER_H

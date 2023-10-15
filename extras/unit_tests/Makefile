@@ -64,6 +64,7 @@ SOURCES_CPP += ../../src/SensorFilter.cpp
 SOURCES_CPP += ../../src/StopWatch.cpp
 SOURCES_CPP += ../../src/StringBuilder.cpp
 SOURCES_CPP += ../../src/EnumeratedTypeCodes.cpp
+SOURCES_CPP += ../../src/C3PValue/C3PValue.cpp
 SOURCES_CPP += ../../src/C3PValue/KeyValuePair.cpp
 SOURCES_CPP += ../../src/uuid.cpp
 SOURCES_CPP += ../../src/BusQueue/BusQueue.cpp
@@ -85,10 +86,11 @@ SOURCES_CPP += ../../src/Identity/*.cpp
 
 # TODO: These things are not yet under unit tests, but we build them anyway so
 #   we can at least get the benefit of basic compilability checking.
-#SOURCES_CPP += ../../src/I2CAdapter.cpp
-#SOURCES_CPP += ../../src/SPIBusOp.cpp
-#SOURCES_CPP += ../../src/SPIAdapter.cpp
-#SOURCES_CPP += ../../src/UARTAdapter.cpp
+# TODO: Need a bit of dep-injection before this is workable...
+#SOURCES_CPP += ../../src/BusQueue/I2CAdapter.cpp
+#SOURCES_CPP += ../../src/BusQueue/SPIBusOp.cpp
+#SOURCES_CPP += ../../src/BusQueue/SPIAdapter.cpp
+#SOURCES_CPP += ../../src/BusQueue/UARTAdapter.cpp
 
 CXXFLAGS  = $(WARNING_BEHAVIOR) -D_GNU_SOURCE -fprofile-dir=$(COVERAGE_PATH)
 CXXFLAGS += -fsingle-precision-constant -Wdouble-promotion -fno-rtti -fno-exceptions

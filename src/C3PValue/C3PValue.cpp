@@ -18,15 +18,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#include "C3PValue.h"
-#include "StringBuilder.h"
+#include "../C3PValue/C3PValue.h"
+#include "../StringBuilder.h"
+#include "../Identity/Identity.h"
+#include "../StringBuilder.h"
 
 /* CBOR support should probably be required to parse/pack. */
 #if defined(CONFIG_C3P_CBOR)
-  #include <cbor-cpp/cbor.h>
+  #include "../cbor-cpp/cbor.h"
 #endif
 
-#if false
 
 /*******************************************************************************
 *   ___ _              ___      _ _              _      _
@@ -63,10 +64,15 @@ C3PValue::C3PValue(double val) : C3PValue(TCode::DOUBLE, malloc(sizeof(double)))
   if (nullptr != _target_mem) {
     _val_by_ref = true;
     _reap_val   = true;
-    *((double*) _target_mem) = val;
-  }
-  else {
-    _mem_err = true;
+    uint8_t* src = (uint8_t*) &val;                  // To avoid inducing bugs
+    *(((uint8_t*) &_target_mem) + 0) = *(src + 0);   //   related to alignment,
+    *(((uint8_t*) &_target_mem) + 1) = *(src + 1);   //   we copy the value
+    *(((uint8_t*) &_target_mem) + 2) = *(src + 2);   //   byte-wise into our own
+    *(((uint8_t*) &_target_mem) + 3) = *(src + 3);   //   storage.
+    *(((uint8_t*) &_target_mem) + 4) = *(src + 4);
+    *(((uint8_t*) &_target_mem) + 5) = *(src + 5);
+    *(((uint8_t*) &_target_mem) + 6) = *(src + 6);
+    *(((uint8_t*) &_target_mem) + 7) = *(src + 7);
   }
 }
 
@@ -84,80 +90,80 @@ C3PValue::C3PValue(double val) : C3PValue(TCode::DOUBLE, malloc(sizeof(double)))
 *   result in a differnt value than intended, set() should change nothing and
 *   return -1.
 *******************************************************************************/
-unsigned int C3PValue::get_as_uint() {
+unsigned int C3PValue::get_as_uint(int8_t* success) {
   unsigned int ret = 0;
   return ret;
 }
 int8_t C3PValue::set(uint8_t x) {
-  int8_t ret -1;
+  int8_t ret = -1;
   return ret;
 }
 
 int8_t C3PValue::set(uint16_t x) {
-  int8_t ret -1;
+  int8_t ret = -1;
   return ret;
 }
 
 int8_t C3PValue::set(uint32_t x) {
-  int8_t ret -1;
+  int8_t ret = -1;
   return ret;
 }
 
 int8_t C3PValue::set(uint64_t x) {
-  int8_t ret -1;
+  int8_t ret = -1;
   return ret;
 }
 
 
-int C3PValue::get_as_int() {
+int C3PValue::get_as_int(int8_t* success) {
   int ret = 0;
   return ret;
 }
 int8_t C3PValue::set(int8_t x) {
-  int8_t ret -1;
+  int8_t ret = -1;
   return ret;
 }
 
 int8_t C3PValue::set(int16_t x) {
-  int8_t ret -1;
+  int8_t ret = -1;
   return ret;
 }
 
 int8_t C3PValue::set(int32_t x) {
-  int8_t ret -1;
+  int8_t ret = -1;
   return ret;
 }
 
 int8_t C3PValue::set(int64_t x) {
-  int8_t ret -1;
+  int8_t ret = -1;
   return ret;
 }
 
 
-bool C3PValue::get_as_bool() {  return (0 != _target_mem);  }
+bool C3PValue::get_as_bool(int8_t* success) {  return (0 != _target_mem);  }
 
 int8_t C3PValue::set(bool x) {
-  int8_t ret -1;
+  int8_t ret = -1;
   return ret;
 }
 
 
-float C3PValue::get_as_float() {
-  float ret 0.0f;
+float C3PValue::get_as_float(int8_t* success) {
+  float ret = 0.0f;
   return ret;
 }
 int8_t C3PValue::set(float x) {
-  int8_t ret -1;
+  int8_t ret = -1;
   return ret;
 }
 
 
-double C3PValue::get_as_double() {
-  double ret 0.0d;
+double C3PValue::get_as_double(int8_t* success) {
+  double ret = 0.0d;
   return ret;
 }
 int8_t C3PValue::set(double x) {
-  int8_t ret -1;
+  int8_t ret = -1;
   return ret;
 }
 
@@ -175,12 +181,20 @@ int8_t C3PValue::deserialize(StringBuilder* input, TCode fmt) {
 }
 
 
+/*
+
+*/
 uint32_t C3PValue::length() {
-  uint32_t ret = 0;
-  switch (TCODE) {
-    default:
-      ret = sizeOfType(TCODE);
-      break;
+  uint32_t ret = sizeOfType(_TCODE);
+  if (0 == ret) {
+    switch (_TCODE) {
+      case TCode::STR_BUILDER:
+      case TCode::STR:
+      case TCode::IDENTITY:
+      case TCode::IMAGE:
+      default:
+        break;
+    }
   }
   return ret;
 }
@@ -192,20 +206,31 @@ uint32_t C3PValue::length() {
 *
 * @param out is the buffer to receive the printed value.
 */
-void C3PValue::toString(StringBuilder* out) {
-  switch (_t_code) {
+void C3PValue::toString(StringBuilder* out, bool include_type) {
+  if (include_type) {
+    out->concatf("(%s) ", typecodeToStr(_TCODE));
+  }
+  switch (_TCODE) {
     case TCode::INT8:
     case TCode::INT16:
     case TCode::INT32:
+      out->concatf("%d", (uintptr_t) _target_mem);
+      break;
     case TCode::INT64:
     case TCode::INT128:
+      // TODO: Large integers won't render this way under newlib-nano. Add a
+      //   lib-check/conf step to help handle this case?
       out->concatf("%d", (uintptr_t) _target_mem);
       break;
     case TCode::UINT8:
     case TCode::UINT16:
     case TCode::UINT32:
+      out->concatf("%u", (uintptr_t) _target_mem);
+      break;
     case TCode::UINT64:
     case TCode::UINT128:
+      // TODO: Large integers won't render this way under newlib-nano. Add a
+      //   lib-check/conf step to help handle this case?
       out->concatf("%u", (uintptr_t) _target_mem);
       break;
     case TCode::FLOAT:
@@ -217,9 +242,7 @@ void C3PValue::toString(StringBuilder* out) {
       break;
     case TCode::DOUBLE:
       {
-        double tmp;
-        getValueAs((void*) &tmp);
-        out->concatf("%.6f", tmp);
+        out->concatf("%.6f", get_as_double());
       }
       break;
 
@@ -251,15 +274,15 @@ void C3PValue::toString(StringBuilder* out) {
     //  }
     //  break;
     case TCode::KVP:
-      if (nullptr != _target_mem) ((KeyValuePair*) _target_mem)->printDebug(out);
+      //if (nullptr != _target_mem) ((KeyValuePair*) _target_mem)->printDebug(out);
       break;
     case TCode::IDENTITY:
       if (nullptr != _target_mem) ((Identity*) _target_mem)->toString(out);
       break;
     default:
       {
-        int l_ender = (_len < 16) ? _len : 16;
-        for (int n = 0; n < l_ender; n++) {
+        const uint32_t L_ENDER = length();
+        for (uint32_t n = 0; n < L_ENDER; n++) {
           out->concatf("%02x ", *((uint8_t*) _target_mem + n));
         }
       }
@@ -276,10 +299,7 @@ void C3PValue::toString(StringBuilder* out) {
 /**
 * Protected delegate constructor.
 */
-C3PValue::C3PValue(const TCode TC, void* ptr) : TCODE(TC), _len(sizeOfType(TC)), _target_mem(ptr) {
-  _val_by_ref = !typeIsPointerPunned(TC);
+C3PValue::C3PValue(const TCode TC, void* ptr) : _TCODE(TC), _target_mem(ptr) {
+  _val_by_ref = !typeIsPointerPunned(_TCODE);
   _reap_val   = false;
-  _mem_err    = false;
 }
-
-#endif

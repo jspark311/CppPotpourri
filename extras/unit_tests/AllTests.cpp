@@ -179,6 +179,7 @@ void printTestFailure(const char* module, const char* test) {
 #include "TestModules/Vector3Tests.cpp"
 #include "TestModules/UUIDTests.cpp"
 #include "TestModules/RingBufferTests.cpp"
+#include "TestModules/C3PValueTests.cpp"
 #include "TestModules/KVPTests.cpp"
 #include "TestModules/LinkedListTests.cpp"
 #include "TestModules/EnumWrapperTests.cpp"
@@ -228,6 +229,8 @@ void printTypeSizes() {
   print_types_enum_wrapper();
   print_types_scheduler();
   print_types_state_machine();
+  print_types_c3p_value();
+  print_types_kvp();
   print_types_identity();
   print_types_multisearch();
   print_types_buffer_accepter();
@@ -235,7 +238,6 @@ void printTypeSizes() {
   print_types_line_term_codec();
   print_types_conf_record();
   print_types_parsing_console();
-  print_types_kvp();
   print_types_sensorfilter();
   print_types_m2mlink();
 }
@@ -272,14 +274,14 @@ void printTypeSizes() {
 #define CHKLST_ASYNC_SEQUENCER_TESTS  0x00200000  // AsyncSequencer
 #define CHKLST_ENUM_WRAPPER_TESTS     0x00400000  // EnumWrapper
 #define CHKLST_CONF_RECORD            0x00800000  // ConfRecord
+#define CHKLST_TYPE_CONTAINER_TESTS   0x01000000  // C3PValue
 
-#define CHKLST_LOGGER_TESTS           0x01000000  // TODO: The logging abstraction.
 #define CHKLST_GPS_PARSING_TESTS      0x02000000  // TODO:
 #define CHKLST_ELEMENT_POOL_TESTS     0x04000000  // TODO: ElementPool<T>
 #define CHKLST_BUS_QUEUE_TESTS        0x08000000  // TODO:
 #define CHKLST_UNIT_HANDLING_TESTS    0x10000000  // TODO:
-#define CHKLST_TYPE_CONTAINER_TESTS   0x20000000  // TODO: C3PValue
 #define CHKLST_3_AXIS_PIPE_TESTS      0x40000000  // TODO:
+#define CHKLST_LOGGER_TESTS           0x80000000  // TODO: The logging abstraction.
 
 
 
@@ -503,6 +505,22 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .POLL_FXN     = []() { return ((0 == identity_main()) ? 1:-1);  }
   },
 
+  // C3PValue is the class that facilitates type-wrapping for single values.
+  // C++ wouldn't be worth using if not for its hard-types. But for simplicity
+  //   elsewhere, we often like to forget that fact and write code that handles
+  //   data generally (or en masse) no matter its specific type composition.
+  //
+  // NOTE: This test block also covers parsing and packing of all supported
+  //   types. So don't be confused if changes in a seemingly unrelated place
+  //   break these tests. In such a case, check the type's parse/pack functions.
+  // NOTE: This test block also covers CBOR implementation.
+  { .FLAG         = CHKLST_TYPE_CONTAINER_TESTS,
+    .LABEL        = "C3PValue",
+    .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_main()) ? 1:-1);  }
+  },
+
   // KVP is responsible for implementing a map data type with full
   //   type-resolution and memory management of the library's
   //   internally-enumerated types. It is thus the library's highest complexity
@@ -514,7 +532,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   // NOTE: This test block also covers CBOR implementation.
   { .FLAG         = CHKLST_KEY_VALUE_PAIR_TESTS,
     .LABEL        = "KeyValuePair",
-    .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS),
+    .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS | CHKLST_TYPE_CONTAINER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_KeyValuePair()) ? 1:-1);  }
   },
