@@ -29,7 +29,7 @@ This class makes extensive use of the heap, low-level memory assumptions, and is
   be extensively unit-tested.
 */
 
-#include "BufferAccepter/TestFixtures/CoDecTestFixtures.h"
+#include "Pipes/BufferAccepter/TestFixtures/CoDecTestFixtures.h"
 
 
 /*******************************************************************************

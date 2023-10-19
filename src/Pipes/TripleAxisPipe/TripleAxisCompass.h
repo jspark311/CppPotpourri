@@ -1,10 +1,10 @@
 #ifndef __3_AXIS_COMPASS_H__
 #define __3_AXIS_COMPASS_H__
 
-#include "../CppPotpourri.h"
-#include "../StringBuilder.h"
-#include "../SensorFilter.h"
-#include "../Vector3.h"
+#include "../../CppPotpourri.h"
+#include "../../StringBuilder.h"
+#include "../../SensorFilter.h"
+#include "../../Vector3.h"
 #include "TripleAxisPipe.h"
 
 

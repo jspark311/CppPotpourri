@@ -1,6 +1,5 @@
-#include "../CppPotpourri.h"
-#include "../Vector3.h"
-#include "../AbstractPlatform.h"
+#include "../../CppPotpourri.h"
+#include "../../AbstractPlatform.h"
 #include "TripleAxisPipe.h"
 
 

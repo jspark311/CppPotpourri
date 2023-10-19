@@ -30,7 +30,7 @@ Platforms that have built-in faculties for logging should not use this class,
 */
 
 #include "StringBuilder.h"
-#include "BufferAccepter/BufferAccepter.h"
+#include "Pipes/BufferAccepter/BufferAccepter.h"
 
 #ifndef __CPPPOTPOURRI_LOGGER_H__
 #define __CPPPOTPOURRI_LOGGER_H__

@@ -35,8 +35,8 @@ This class in unidirectional in the sense that it only reads from the
 #include <time.h>
 #include <math.h>
 
-#include "CppPotpourri.h"
-#include "BufferAccepter/BufferAccepter.h"
+#include "../../../CppPotpourri.h"
+#include "../BufferAccepter.h"
 
 #define MINMEA_MAX_LENGTH          140
 

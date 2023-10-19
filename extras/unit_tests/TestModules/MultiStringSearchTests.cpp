@@ -25,7 +25,7 @@ Lingo used in this test file:
 "KAT":          "Known-answer test"
 */
 
-#include "BufferAccepter/LineCoDec/LineCoDec.h"
+#include "Pipes/BufferAccepter/LineCoDec/LineCoDec.h"
 
 #define MULT_SRCH_TEST_MAX_SEARCHES  5   // How many needles should the tests support?
 #define NEEDLE_BASE_LEN              4   // How big should the smallest test needle be?

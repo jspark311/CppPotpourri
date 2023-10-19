@@ -1,6 +1,6 @@
-#include "../CppPotpourri.h"
-#include "../Vector3.h"
-#include "../AbstractPlatform.h"
+#include "../../CppPotpourri.h"
+#include "../../Vector3.h"
+#include "../../AbstractPlatform.h"
 #include "TripleAxisCompass.h"
 #include "TripleAxisPipe.h"
 

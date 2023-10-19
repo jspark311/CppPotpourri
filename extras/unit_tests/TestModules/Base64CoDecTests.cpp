@@ -22,8 +22,8 @@ limitations under the License.
 This program tests C3P_B64.
 */
 
-#include "BufferAccepter/Base64/C3P_B64.h"
-#include "BufferAccepter/TestFixtures/CoDecTestFixtures.h"
+#include "Pipes/BufferAccepter/Base64/C3P_B64.h"
+#include "Pipes/BufferAccepter/TestFixtures/CoDecTestFixtures.h"
 
 /*******************************************************************************
 * Tests for base64 codec

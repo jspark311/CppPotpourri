@@ -20,10 +20,10 @@ limitations under the License.
 
 #include <inttypes.h>
 #include <stdint.h>
-#include "../Vector3.h"
-#include "../StringBuilder.h"
-#include "../SensorFilter.h"
-#include "../FlagContainer.h"
+#include "../../Vector3.h"
+#include "../../StringBuilder.h"
+#include "../../SensorFilter.h"
+#include "../../FlagContainer.h"
 
 #ifndef __TRIPLE_AXIS_PIPE_H__
 #define __TRIPLE_AXIS_PIPE_H__

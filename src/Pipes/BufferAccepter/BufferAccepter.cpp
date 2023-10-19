@@ -18,7 +18,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 
-An abstract interface for buffers.
+A few helpful utility objects for buffer pipelines.
 */
 
 #include "BufferAccepter.h"

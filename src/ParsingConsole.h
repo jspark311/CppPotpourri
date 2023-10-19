@@ -22,7 +22,7 @@ limitations under the License.
 #include <stdint.h>
 #include "StringBuilder.h"
 #include "CppPotpourri.h"
-#include "BufferAccepter/BufferAccepter.h"
+#include "Pipes/BufferAccepter/BufferAccepter.h"
 #include "LightLinkedList.h"
 #include "EnumeratedTypeCodes.h"
 

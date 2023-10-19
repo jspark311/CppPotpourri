@@ -28,8 +28,8 @@ Lingo used in this test file:
                 bytes that corresponds to a line ending.
 */
 
-#include "BufferAccepter/LineCoDec/LineCoDec.h"
-#include "BufferAccepter/TestFixtures/CoDecTestFixtures.h"
+#include "Pipes/BufferAccepter/LineCoDec/LineCoDec.h"
+#include "Pipes/BufferAccepter/TestFixtures/CoDecTestFixtures.h"
 
 /*******************************************************************************
 * Known-answers for line-termination codec tests.
