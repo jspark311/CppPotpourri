@@ -22,7 +22,7 @@ These classes are built on top of the GfxUI classes, and implement higher-level
 #include "../../Identity/Identity.h"
 #include "../../Storage/Storage.h"
 #include "../../Storage/RecordTypes/ConfRecord.h"
-#include "../../TripleAxisPipe/TripleAxisPipe.h"
+#include "../../Pipes/TripleAxisPipe/TripleAxisPipe.h"
 #include "../../C3PEvents/C3PScheduler.h"
 
 /*******************************************************************************
