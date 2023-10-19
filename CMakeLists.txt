@@ -6,7 +6,11 @@ message(STATUS "CppPotpourri")
 message(STATUS "==============================================")
 
 idf_component_register(
-  SRC_DIRS "src" "src/cbor-cpp" "src/BusQueue" "src/C3PValue" "src/Storage" "src/Image" "src/Image/ImageUtils" "src/Identity" "src/M2MLink" "src/TripleAxisPipe"
+  SRC_DIRS "src" "src/cbor-cpp" "src/BusQueue" "src/C3PValue" "src/Storage"
+    "src/Image" "src/Image/ImageUtils" "src/Identity" "src/M2MLink"
+    "src/Pipes/TripleAxisPipe" "src/Pipes/BufferAccepter"  "src/Pipes/BufferAccepter/GPSWrapper"
+     "src/Pipes/BufferAccepter/Base64" "src/Pipes/BufferAccepter/LineCoDec"
+      "src/Pipes/ScalarPipe"
   INCLUDE_DIRS "src"
   REQUIRES ManuvrPlatform
 )
