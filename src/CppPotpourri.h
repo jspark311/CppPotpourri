@@ -115,6 +115,17 @@ inline int8_t   strict_range_bind(const int8_t   VAL, const int8_t   MIN, const 
 *   be adjusted accordingly. No type-shifting is required, and a value of 0 will
 *   be returned if the same number is given for both NOW and THEN.
 *
+* NOTE: This function generated controversy amongst a group of engineers until
+*   it was noted that integer over/underflow is undefined behavior in C/C++. The
+*   reasons for that are beyond scope here, but suffice it to say that we don't
+*   want the compiler to take optimization options that would be available under
+*   such conditions. Similarly to why we don't use a macro for this purpose.
+* By using an extra conditional, two extra additions, and algebraically
+*   superfluous parentheticals, we we are trying to disallow integer wrap, and
+*   thus prevent the compiler from optimizing away our intention: to understand
+*   the (very well-defined) wrapping behavior of hardware registers without that
+*   behavior being defined by the language itself.
+*
 * @param NOW is the present position on the clockface.
 * @param THEN is the position on the clockface against which we will compare.
 * @return the positive-going displacement of NOW from THEN
@@ -153,33 +164,13 @@ typedef void (*PinCallback)(uint8_t pin, uint8_t level);
 
 
 /*******************************************************************************
-* ScalarAccepter is the same composable pipeline idea as BufferAccepter, but
-*   applied to data that is controlled for both error and units.
-*
-* TODO: Nothing has been written against this. It should probably be a template,
-*   rather than up-scaling a numeric type.
-*******************************************************************************/
-
-class SIValueAccepter {
-  public:
-    /**
-    * A class would implement this class to provide an interface for accepting a
-    *   value from outside tagged with a real-world unit and error bars.
-    *
-    * @return -1 to reject value, 0 to accept.
-    */
-    virtual int8_t provideSIValue(SIUnit*, double value, double error) =0;
-};
-
-
-/**
 * For simplicity, many classes are writen in such a way as to benefit (or
 *   require) periodic polling for them to update their own states. The more
 *   complicated the class, the more likely it is to require this.
 * To keep that complexity bounded, it is advised that such classes implement the
 *   PollableObj interface to allow themselves to be recomposed into higher-level
 *   logic without complicated APIs or "special treatment".
-*/
+*******************************************************************************/
 enum class PollingResult : int8_t {
   /*
   Code       Value   Semantics

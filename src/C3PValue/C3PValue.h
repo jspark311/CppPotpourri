@@ -168,8 +168,8 @@ class C3PValue {
     /*
     * Fuzzy type discovery functions.
     */
-    inline const TCode tcode() {            return _TCODE;              };
-    inline bool        is_fixed_length() {  return sizeOfType(_TCODE);  };
+    inline const TCode tcode() {            return _TCODE;                    };
+    inline bool        is_fixed_length() {  return (0 != sizeOfType(_TCODE)); };
     bool is_numeric();
 
 
