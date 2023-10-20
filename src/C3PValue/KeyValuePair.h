@@ -92,9 +92,9 @@ class KeyValuePair {
     KeyValuePair(char* val,       const char* key = nullptr) : KeyValuePair((void*) val, (strlen(val)+1), TCode::STR, key) {};
     KeyValuePair(void* v, size_t l, const char* k = nullptr) : KeyValuePair(v, l, TCode::BINARY, k) {};
     KeyValuePair(StringBuilder* v, const char* key = nullptr) : KeyValuePair(v, v->length(),  TCode::STR_BUILDER, key)  {};
-    KeyValuePair(Vector3ui32* val, const char* key = nullptr) : KeyValuePair((void*) val, 12, TCode::VECT_3_UINT32, key) {};
-    KeyValuePair(Vector3ui16* val, const char* key = nullptr) : KeyValuePair((void*) val, 6,  TCode::VECT_3_UINT16, key) {};
-    KeyValuePair(Vector3ui8*  val, const char* key = nullptr) : KeyValuePair((void*) val, 3,  TCode::VECT_3_UINT8, key)  {};
+    KeyValuePair(Vector3u32* val, const char* key = nullptr) : KeyValuePair((void*) val, 12, TCode::VECT_3_UINT32, key) {};
+    KeyValuePair(Vector3u16* val, const char* key = nullptr) : KeyValuePair((void*) val, 6,  TCode::VECT_3_UINT16, key) {};
+    KeyValuePair(Vector3u8*  val, const char* key = nullptr) : KeyValuePair((void*) val, 3,  TCode::VECT_3_UINT8, key)  {};
     KeyValuePair(Vector3i32*  val, const char* key = nullptr) : KeyValuePair((void*) val, 12, TCode::VECT_3_INT32, key)  {};
     KeyValuePair(Vector3i16*  val, const char* key = nullptr) : KeyValuePair((void*) val, 6,  TCode::VECT_3_INT16, key)  {};
     KeyValuePair(Vector3i8*   val, const char* key = nullptr) : KeyValuePair((void*) val, 3,  TCode::VECT_3_INT8, key)   {};
@@ -115,9 +115,9 @@ class KeyValuePair {
     inline KeyValuePair* append(char* val, const char* key = nullptr) {                 return link(new KeyValuePair(val, key));   };
     inline KeyValuePair* append(void* v, size_t l, const char* k = nullptr) {           return link(new KeyValuePair(v, l, k));    };
     inline KeyValuePair* append(StringBuilder* val, const char* key = nullptr) {        return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(Vector3ui32* val, const char* key = nullptr) {          return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(Vector3ui16* val, const char* key = nullptr) {          return link(new KeyValuePair(val, key));   };
-    inline KeyValuePair* append(Vector3ui8* val, const char* key = nullptr) {           return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(Vector3u32* val, const char* key = nullptr) {           return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(Vector3u16* val, const char* key = nullptr) {           return link(new KeyValuePair(val, key));   };
+    inline KeyValuePair* append(Vector3u8* val, const char* key = nullptr) {            return link(new KeyValuePair(val, key));   };
     inline KeyValuePair* append(Vector3i32* val, const char* key = nullptr) {           return link(new KeyValuePair(val, key));   };
     inline KeyValuePair* append(Vector3i16* val, const char* key = nullptr) {           return link(new KeyValuePair(val, key));   };
     inline KeyValuePair* append(Vector3i8* val, const char* key = nullptr) {            return link(new KeyValuePair(val, key));   };
@@ -138,9 +138,9 @@ class KeyValuePair {
     inline int8_t setValue(char* val) {            return setValue((void*) val, strlen(val),                      TCode::STR);            };
     inline int8_t setValue(void* val, int len) {   return setValue((void*) val, len,                              TCode::BINARY);         };
     inline int8_t setValue(StringBuilder* val) {   return setValue((void*) val, val->length(),                    TCode::STR_BUILDER);    };
-    inline int8_t setValue(Vector3ui32* val) {     return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT32), TCode::VECT_3_UINT32);  };
-    inline int8_t setValue(Vector3ui16* val) {     return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT16), TCode::VECT_3_UINT16);  };
-    inline int8_t setValue(Vector3ui8* val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT8),  TCode::VECT_3_UINT8);   };
+    inline int8_t setValue(Vector3u32* val) {     return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT32), TCode::VECT_3_UINT32);  };
+    inline int8_t setValue(Vector3u16* val) {     return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT16), TCode::VECT_3_UINT16);  };
+    inline int8_t setValue(Vector3u8* val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT8),  TCode::VECT_3_UINT8);   };
     inline int8_t setValue(Vector3i32* val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_INT32),  TCode::VECT_3_INT32);   };
     inline int8_t setValue(Vector3i16* val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_INT16),  TCode::VECT_3_INT16);   };
     inline int8_t setValue(Vector3i8* val) {       return setValue((void*) val, sizeOfType(TCode::VECT_3_INT8),   TCode::VECT_3_INT8);    };

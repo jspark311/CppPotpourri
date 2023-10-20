@@ -114,8 +114,9 @@ C3PValue::C3PValue(void* val, uint32_t len) : C3PValue(TCode::BINARY, malloc(siz
 
 /*******************************************************************************
 * Basal accessors
+* These functions ultimately wrap the C3PTypeConstraint template that handles
+*   the type conversion matrix.
 *******************************************************************************/
-
 int8_t C3PValue::set_from(const TCode SRC_TYPE, void* src) {
   int8_t ret = -1;
   C3PType* t_helper = getTypeHelper(_TCODE);
@@ -156,15 +157,28 @@ int8_t C3PValue::get_as(const TCode DEST_TYPE, void* dest) {
 *******************************************************************************/
 unsigned int C3PValue::get_as_uint(int8_t* success) {
   uint32_t ret = 0;
+  int8_t suc = get_as(TCode::UINT32, (void*) &ret) + 1;
+  if (success) {  *success = suc;  }
+  return ret;
+}
+
+int C3PValue::get_as_int(int8_t* success) {
+  int32_t ret = 0;
   int8_t suc = get_as(TCode::INT32, (void*) &ret) + 1;
   if (success) {  *success = suc;  }
   return ret;
 }
 
+uint64_t C3PValue::get_as_uint64(int8_t* success) {
+  uint64_t ret = 0;
+  int8_t suc = get_as(TCode::UINT64, (void*) &ret) + 1;
+  if (success) {  *success = suc;  }
+  return ret;
+}
 
-int C3PValue::get_as_int(int8_t* success) {
+int64_t C3PValue::get_as_int64(int8_t* success) {
   int32_t ret = 0;
-  int8_t suc = get_as(TCode::INT32, (void*) &ret) + 1;
+  int8_t suc = get_as(TCode::INT64, (void*) &ret) + 1;
   if (success) {  *success = suc;  }
   return ret;
 }
@@ -195,32 +209,23 @@ double C3PValue::get_as_double(int8_t* success) {
 /*******************************************************************************
 * Parsing/Packing
 *******************************************************************************/
-int8_t C3PValue::serialize(StringBuilder* output, TCode fmt) {
-  switch (fmt) {
-    case TCode::BINARY:
-      if (_val_by_ref) {
-      }
-      else {
-        output->concat((uint8_t*) &_target_mem, length());
-      }
-      break;
-
-    case TCode::CBOR:
-    default:
-      break;
+int8_t C3PValue::serialize(StringBuilder* output, const TCode FORMAT) {
+  int8_t ret = -1;
+  C3PType* t_helper = getTypeHelper(_TCODE);
+  if (nullptr != t_helper) {
+    ret = t_helper->serialize(&_target_mem, output, FORMAT);
   }
-  return -1;
+  return ret;
 }
 
 
-int8_t C3PValue::deserialize(StringBuilder* input, TCode fmt) {
-  switch (fmt) {
-    case TCode::BINARY:
-    case TCode::CBOR:
-    default:
-      break;
+int8_t C3PValue::deserialize(StringBuilder* input, const TCode FORMAT) {
+  int8_t ret = -1;
+  C3PType* t_helper = getTypeHelper(_TCODE);
+  if (nullptr != t_helper) {
+    ret = t_helper->deserialize(&_target_mem, input, FORMAT);
   }
-  return -1;
+  return ret;
 }
 
 
@@ -250,19 +255,8 @@ uint32_t C3PValue::length() {
   uint32_t ret = 0;
   C3PType* t_helper = getTypeHelper(_TCODE);
   if (nullptr != t_helper) {
-    ret = t_helper->length(_val_by_ref ? _target_mem : &_target_mem);
-  }
-
-  if (0 == ret) {
-    switch (_TCODE) {
-      // We +1 for all c-style string types to account for the storage of a null-terminator.
-      case TCode::STR_BUILDER:  ret = (((StringBuilder*) _target_mem)->length() + 1);  break;
-      case TCode::STR:          ret = (strlen((const char*) _target_mem) + 1);         break;
-      case TCode::IDENTITY:
-      case TCode::IMAGE:
-      default:
-        break;
-    }
+    //ret = t_helper->length(_val_by_ref ? _target_mem : &_target_mem);
+    ret = t_helper->length(&_target_mem);
   }
   return ret;
 }
@@ -278,56 +272,15 @@ void C3PValue::toString(StringBuilder* out, bool include_type) {
   if (include_type) {
     out->concatf("(%s) ", typecodeToStr(_TCODE));
   }
-  switch (_TCODE) {
-    case TCode::INT8:
-    case TCode::INT16:
-    case TCode::INT32:
-      out->concatf("%d", (uintptr_t) _target_mem);
-      break;
-    case TCode::INT64:
-    case TCode::INT128:
-      // TODO: Large integers won't render this way under newlib-nano. Add a
-      //   lib-check/conf step to help handle this case?
-      out->concatf("%d", (uintptr_t) _target_mem);
-      break;
-    case TCode::UINT8:
-    case TCode::UINT16:
-    case TCode::UINT32:
-      out->concatf("%u", (uintptr_t) _target_mem);
-      break;
-    case TCode::UINT64:
-    case TCode::UINT128:
-      // TODO: Large integers won't render this way under newlib-nano. Add a
-      //   lib-check/conf step to help handle this case?
-      out->concatf("%u", (uintptr_t) _target_mem);
-      break;
-    case TCode::FLOAT:
-      out->concatf("%.4f", (double) get_as_float());
-      break;
-    case TCode::DOUBLE:
-      out->concatf("%.6f", get_as_double());
-      break;
+  C3PType* t_helper = getTypeHelper(_TCODE);
+  if (nullptr != t_helper) {
+    //t_helper->to_string(_val_by_ref ? _target_mem : &_target_mem, out);
+    t_helper->to_string(&_target_mem, out);
+  }
 
-    case TCode::BOOLEAN:
-      out->concatf("%s", ((uintptr_t) _target_mem ? "true" : "false"));
-      break;
+  switch (_TCODE) {
     case TCode::STR_BUILDER:
       out->concat((StringBuilder*) _target_mem);
-      break;
-    case TCode::STR:
-      out->concatf("%s", (const char*) _target_mem);
-      break;
-    case TCode::VECT_3_FLOAT:
-      {
-        Vector3<float>* v = (Vector3<float>*) _target_mem;
-        out->concatf("(%.4f, %.4f, %.4f)", (double)(v->x), (double)(v->y), (double)(v->z));
-      }
-      break;
-    case TCode::VECT_3_UINT32:
-      {
-        Vector3<uint32_t>* v = (Vector3<uint32_t>*) _target_mem;
-        out->concatf("(%u, %u, %u)", v->x, v->y, v->z);
-      }
       break;
     //case TCode::VECT_4_FLOAT:
     //  {

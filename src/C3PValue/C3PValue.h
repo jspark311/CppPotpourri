@@ -118,9 +118,9 @@ class C3PValue {
     C3PValue(char* val)         : C3PValue(TCode::STR,           (void*) val) {};
     C3PValue(StringBuilder* v)  : C3PValue(TCode::STR_BUILDER,   (void*) v) {};
 
-    C3PValue(Vector3ui32* val)  : C3PValue(TCode::VECT_3_UINT32, (void*) val) {};
-    C3PValue(Vector3ui16* val)  : C3PValue(TCode::VECT_3_UINT16, (void*) val) {};
-    C3PValue(Vector3ui8*  val)  : C3PValue(TCode::VECT_3_UINT8,  (void*) val) {};
+    C3PValue(Vector3u32* val)   : C3PValue(TCode::VECT_3_UINT32, (void*) val) {};
+    C3PValue(Vector3u16* val)   : C3PValue(TCode::VECT_3_UINT16, (void*) val) {};
+    C3PValue(Vector3u8*  val)   : C3PValue(TCode::VECT_3_UINT8,  (void*) val) {};
     C3PValue(Vector3i32*  val)  : C3PValue(TCode::VECT_3_INT32,  (void*) val) {};
     C3PValue(Vector3i16*  val)  : C3PValue(TCode::VECT_3_INT16,  (void*) val) {};
     C3PValue(Vector3i8*   val)  : C3PValue(TCode::VECT_3_INT8,   (void*) val) {};

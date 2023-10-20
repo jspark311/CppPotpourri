@@ -208,6 +208,9 @@ static C3PTypeConstraint<float>       c3p_type_helper_float;
 static C3PTypeConstraint<double>      c3p_type_helper_double;
 static C3PTypeConstraint<char*>       c3p_type_helper_str;
 
+static C3PTypeConstraint<Vector3u32*>     c3p_type_helper_vect3_u32;
+static C3PTypeConstraint<Vector3f*>       c3p_type_helper_vect3_float;
+
 
 /**
 * Given type code, find the helper object.
@@ -251,8 +254,8 @@ C3PType* getTypeHelper(const TCode TC) {
     case TCode::VECT_3_INT16:       return nullptr;
     case TCode::VECT_3_UINT16:      return nullptr;
     case TCode::VECT_3_INT32:       return nullptr;
-    case TCode::VECT_3_UINT32:      return nullptr;
-    case TCode::VECT_4_FLOAT:       return nullptr;
+    case TCode::VECT_3_UINT32:      return (C3PType*) &c3p_type_helper_vect3_u32;
+    case TCode::VECT_4_FLOAT:       return (C3PType*) &c3p_type_helper_vect3_float;
     case TCode::URL:                return nullptr;
     case TCode::JSON:               return nullptr;
     case TCode::CBOR:               return nullptr;
@@ -1464,3 +1467,152 @@ template <> int8_t      C3PTypeConstraint<char*>::deserialize(void* obj, StringB
   int8_t ret = -1;
   return ret;
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// Vector3f
+template <> const TCode C3PTypeConstraint<Vector3f*>::tcode() {            return TCode::VECT_3_FLOAT;  }
+template <> uint32_t    C3PTypeConstraint<Vector3f*>::length(void* obj) {  return sizeOfType(tcode());  }
+template <> void        C3PTypeConstraint<Vector3f*>::to_string(void* obj, StringBuilder* out) {
+  Vector3f* v = *((Vector3f**) obj);
+  out->concatf("(%.4f, %.4f, %.4f)", (double)(v->x), (double)(v->y), (double)(v->z));
+}
+
+template <> int8_t      C3PTypeConstraint<Vector3f*>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+  Vector3f* d = *((Vector3f**) dest);
+  switch (SRC_TYPE) {
+    case TCode::VECT_3_FLOAT:     d->set((Vector3f*) src);   return 0;
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int8_t      C3PTypeConstraint<Vector3f*>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+  Vector3f* s = *((Vector3f**) src);
+  switch (DEST_TYPE) {
+    case TCode::VECT_3_FLOAT:     s->set((Vector3f*) dest);   return 0;
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int8_t C3PTypeConstraint<Vector3f*>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  int8_t ret = -1;
+  switch (FORMAT) {
+    case TCode::BINARY:
+      //out->concat(*((const char**) obj));
+      break;
+
+    case TCode::CBOR:
+      {
+        cbor::output_stringbuilder output(out);
+        cbor::encoder encoder(output);
+        // NOTE: This ought to work for any types retaining portability isn't important.
+        // TODO: Gradually convert types out of this block. As much as possible should
+        //   be portable. VECT_3_FLOAT ought to be an array of floats, for instance.
+        encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(tcode()));
+        encoder.write_bytes((uint8_t*) obj, length(obj));
+      }
+      break;
+
+    default:  break;
+  }
+  return ret;
+}
+
+template <> int8_t C3PTypeConstraint<Vector3f*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  int8_t ret = -1;
+  return ret;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// Vector3u32
+template <> const TCode C3PTypeConstraint<Vector3u32*>::tcode() {            return TCode::VECT_3_UINT32;  }
+template <> uint32_t    C3PTypeConstraint<Vector3u32*>::length(void* obj) {  return sizeOfType(tcode());  }
+template <> void        C3PTypeConstraint<Vector3u32*>::to_string(void* obj, StringBuilder* out) {
+  Vector3u32* v = *((Vector3u32**) obj);
+  out->concatf("(%u, %u, %u)", v->x, v->y, v->z);
+}
+
+template <> int8_t      C3PTypeConstraint<Vector3u32*>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+  Vector3u32* d = *((Vector3u32**) dest);
+  switch (SRC_TYPE) {
+    case TCode::VECT_3_UINT32:     d->set((Vector3u32*) src);   return 0;
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int8_t      C3PTypeConstraint<Vector3u32*>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+  Vector3u32* s = *((Vector3u32**) src);
+  switch (DEST_TYPE) {
+    case TCode::VECT_3_UINT32:     s->set((Vector3u32*) dest);   return 0;
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int8_t C3PTypeConstraint<Vector3u32*>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  int8_t ret = -1;
+  switch (FORMAT) {
+    case TCode::BINARY:
+      //out->concat(*((const char**) obj));
+      break;
+
+    case TCode::CBOR:
+      {
+        cbor::output_stringbuilder output(out);
+        cbor::encoder encoder(output);
+        // NOTE: This ought to work for any types retaining portability isn't important.
+        // TODO: Gradually convert types out of this block. As much as possible should
+        //   be portable. VECT_3_FLOAT ought to be an array of floats, for instance.
+        encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(tcode()));
+        encoder.write_bytes((uint8_t*) obj, length(obj));
+      }
+      break;
+
+    default:  break;
+  }
+  return ret;
+}
+
+template <> int8_t C3PTypeConstraint<Vector3u32*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  int8_t ret = -1;
+  return ret;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// Vector3<T>
+/// NOTE: At this level, template implementation is isomorphic for all of
+///   Vector3. So we allow the compiler to autogenerate.
+// template <class T> int8_t C3PTypeConstraint<Vector3<T>*>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+//   int8_t ret = -1;
+//   switch (FORMAT) {
+//     case TCode::BINARY:
+//       //out->concat(*((const char**) obj));
+//       break;
+//
+//     case TCode::CBOR:
+//       {
+//         cbor::output_stringbuilder output(out);
+//         cbor::encoder encoder(output);
+//         // NOTE: This ought to work for any types retaining portability isn't important.
+//         // TODO: Gradually convert types out of this block. As much as possible should
+//         //   be portable. VECT_3_FLOAT ought to be an array of floats, for instance.
+//         encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(tcode()));
+//         encoder.write_bytes((uint8_t*) obj, length(obj));
+//       }
+//       break;
+//
+//     default:  break;
+//   }
+//   return ret;
+// }
+//
+// template <class T> int8_t C3PTypeConstraint<Vector3<T>*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+//   int8_t ret = -1;
+//   return ret;
+// }
+//
