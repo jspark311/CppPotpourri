@@ -49,7 +49,6 @@ int8_t C3PSchedule::execute() {
   }
 
   if (willRunAgain()) {
-    const unsigned int OLD_EXEC_AT = _exec_at;
     _exec_at = (_period + NOW);
   }
   else {
@@ -68,7 +67,6 @@ void C3PSchedule::delay(unsigned int by_us) {
       _exec_at = (unsigned int) micros();
       _enabled = true;
     }
-    const unsigned int OLD_EXEC_AT = _exec_at;
     _exec_at += by_us;
   }
 }
@@ -76,7 +74,6 @@ void C3PSchedule::delay(unsigned int by_us) {
 
 void C3PSchedule::delay() {
   if (!_executing) {
-    const unsigned int OLD_EXEC_AT = _exec_at;
     _exec_at = ((unsigned int) micros() + _period);
     _enabled = true;
   }

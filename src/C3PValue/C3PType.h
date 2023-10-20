@@ -137,22 +137,45 @@ typedef struct c3p_bin_binder_t {
 } C3PBinBinder;
 
 
+/*******************************************************************************
+* Template for helper functions, and an interface for their concealment.       *
+*******************************************************************************/
+
+/*
+* This class describes the interface to the type-wrapper helper functions. It
+*   must be implemented (and instanced) as a template, but this is the API for
+*   its use.
+*/
+class C3PType {
+  public:
+    virtual const TCode tcode()                                                    =0;
+    virtual uint32_t    length(void* obj)                                          =0;
+    virtual void        to_string(void* obj, StringBuilder*)                       =0;
+    virtual int8_t      set_from(void* dest, const TCode SRC_TYPE, void* src)      =0;
+    virtual int8_t      get_as(void* src, const TCode DEST_TYPE, void* dest)       =0;
+    virtual int8_t      serialize(void* obj, StringBuilder*, const TCode FORMAT)   =0;
+    virtual int8_t      deserialize(void* obj, StringBuilder*, const TCode FORMAT) =0;
+};
+
+
 /*
 * The template below contains helper functions for each TCode.
 * This is a concealed template for containment of per-type complexity in C3P's
 *   type-wrapping system. Supported types should have a 1-to-1 implementation
 *   for each TCode.
 */
-template <class T> class C3PTypeConstraint {
+template <class T> class C3PTypeConstraint : public C3PType {
   public:
-    C3PTypeConstraint();
+    C3PTypeConstraint() {};
+    ~C3PTypeConstraint() {};
 
-    uint32_t length();
-    void     to_string(T*, StringBuilder*);
-    int8_t   set_from(T*, const TCode, void* type_pointer);
-    int8_t   get_as(T*, const TCode, void* type_pointer);
-    int8_t   serialize(T*, StringBuilder*, TCode);
-    int8_t   deserialize(T*, StringBuilder*, TCode);
+    const TCode tcode();
+    uint32_t    length(void* obj);
+    void        to_string(void* obj, StringBuilder*);
+    int8_t      set_from(void* dest, const TCode SRC_TYPE, void* src);
+    int8_t      get_as(void* src, const TCode DEST_TYPE, void* dest);
+    int8_t      serialize(void* obj, StringBuilder*, const TCode FORMAT);
+    int8_t      deserialize(void* obj, StringBuilder*, const TCode FORMAT);
 };
 
 #endif  // __C3P_TYPE_WRAPPER_H

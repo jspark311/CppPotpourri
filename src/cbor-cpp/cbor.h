@@ -78,6 +78,9 @@ namespace cbor {
       virtual void on_map(int size)                  =0;
       virtual void on_tag(unsigned int tag)          =0;
       virtual void on_special(unsigned int code)     =0;
+      virtual void on_bool(bool)                     =0;
+      virtual void on_null()                         =0;
+      virtual void on_undefined()                    =0;
       virtual void on_error(const char *error)       =0;
 
       virtual void on_extra_integer(uint64_t value, int sign) {}
@@ -153,6 +156,7 @@ namespace cbor {
       inline void write_array(uint32_t size) {     write_type_value(4, size);  };
       inline void write_map(uint32_t size) {       write_type_value(5, size);  };
       inline void write_special(uint32_t v) {      write_type_value(7, v);     };
+      inline void write_bool(bool v) {             write_type_value(7, (v?21:20));   };
 
       void write_float(float value);
       void write_double(double value);

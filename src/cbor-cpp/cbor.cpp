@@ -521,25 +521,26 @@ void decoder::run() {
           }
           break;
           case 7: // special
-          if(minorType < 24) {
-            _listener->on_special(minorType);
-          } else if(minorType == 24) {
-            _state = STATE_SPECIAL;
-            _currentLength = 1;
-          } else if(minorType == 25) { // 2 byte
-            _currentLength = 2;
-            _state = STATE_SPECIAL;
-          } else if(minorType == 26) { // 4 byte
-            _currentLength = 4;
-            _state = STATE_SPECIAL;
-          } else if(minorType == 27) { // 8 byte
-            _currentLength = 8;
-            _state = STATE_SPECIAL;
-          } else {
-            _state = STATE_ERROR;
-            _listener->on_error("invalid special type");
-          }
-          break;
+            switch (minorType) {
+              case 20:  _listener->on_bool(false);         break;
+              case 21:  _listener->on_bool(true);          break;
+              case 22:  _listener->on_null();              break;
+              case 23:  _listener->on_undefined();         break;
+              case 24:  _state = STATE_SPECIAL;  _currentLength = 1;  break;
+              case 25:  _state = STATE_SPECIAL;  _currentLength = 2;  break;
+              case 26:  _state = STATE_SPECIAL;  _currentLength = 4;  break;
+              case 27:  _state = STATE_SPECIAL;  _currentLength = 8;  break;
+              default:
+                if (minorType < 20) {
+                  _listener->on_special(minorType);
+                }
+                else {
+                  _state = STATE_ERROR;
+                  _listener->on_error("invalid special type");
+                }
+                break;
+            }
+            break;
         }
       } else break;
     } else if(_state == STATE_PINT) {
