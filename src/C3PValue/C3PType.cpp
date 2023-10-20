@@ -206,6 +206,7 @@ static C3PTypeConstraint<uint64_t>    c3p_type_helper_uint64;
 static C3PTypeConstraint<bool>        c3p_type_helper_bool;
 static C3PTypeConstraint<float>       c3p_type_helper_float;
 static C3PTypeConstraint<double>      c3p_type_helper_double;
+static C3PTypeConstraint<char*>       c3p_type_helper_str;
 
 
 /**
@@ -234,7 +235,7 @@ C3PType* getTypeHelper(const TCode TC) {
     case TCode::FLOAT:              return (C3PType*) &c3p_type_helper_float;
     case TCode::DOUBLE:             return (C3PType*) &c3p_type_helper_double;
     case TCode::BINARY:             return nullptr;
-    case TCode::STR:                return nullptr;
+    case TCode::STR:                return (C3PType*) &c3p_type_helper_str;
     case TCode::VECT_2_FLOAT:       return nullptr;
     case TCode::VECT_2_DOUBLE:      return nullptr;
     case TCode::VECT_2_INT8:        return nullptr;
@@ -1408,6 +1409,58 @@ template <> int8_t      C3PTypeConstraint<double>::serialize(void* obj, StringBu
 }
 
 template <> int8_t      C3PTypeConstraint<double>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  int8_t ret = -1;
+  return ret;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// char*
+/// NOTE: length() always returns +1 for all c-style string types to account for
+///   the storage overhead of a null-terminator.
+template <> const TCode C3PTypeConstraint<char*>::tcode() {            return TCode::STR;  }
+template <> uint32_t    C3PTypeConstraint<char*>::length(void* obj) {  return (strlen((const char*) obj) + 1);  }
+template <> void        C3PTypeConstraint<char*>::to_string(void* obj, StringBuilder* out) {  out->concatf("%s", *((const char**) obj));  }
+
+template <> int8_t      C3PTypeConstraint<char*>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+  char** d = (char**) dest;
+  switch (SRC_TYPE) {
+    case TCode::STR:     *d = *((char**) src);    return 0;
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int8_t      C3PTypeConstraint<char*>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+  char* s = *((char**) src);
+  switch (DEST_TYPE) {
+    case TCode::STR:     *((char**) dest) = s;    return 0;
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int8_t      C3PTypeConstraint<char*>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  int8_t ret = -1;
+  switch (FORMAT) {
+    case TCode::BINARY:
+      //out->concat(*((const char**) obj));
+      break;
+
+    case TCode::CBOR:
+      {
+        cbor::output_stringbuilder output(out);
+        cbor::encoder encoder(output);
+        encoder.write_string(*((const char**) obj));
+      }
+      break;
+
+    default:  break;
+  }
+  return ret;
+}
+
+template <> int8_t      C3PTypeConstraint<char*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }

@@ -33,6 +33,7 @@ TODO: Might-should adopt some IANA standard code-spaces here? Is there a
 #include <inttypes.h>
 #include <stddef.h>
 class StringBuilder;
+class C3PType;
 
 /*******************************************************************************
 * Type codes, flags, and other surrounding fixed values.                       *
@@ -126,7 +127,7 @@ const char* const typecodeToStr(const TCode);
 const bool typeIsFixedLength(const TCode);
 const int typeIsPointerPunned(const TCode);
 const int sizeOfType(const TCode);
-const int typeConversionRisk(const TCode FROM, const TCode INTO);
+C3PType* getTypeHelper(const TCode);
 
 
 

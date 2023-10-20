@@ -140,19 +140,19 @@ class C3PValue {
     *   truncation.
     * Setters return 0 on success or -1 on failure.
     */
-    int8_t set_from(const TCode, void* type_pointer);
-    inline int8_t set(uint8_t x) {       return set_from(TCode::UINT8,       (void*) &x);  };
-    inline int8_t set(uint16_t x) {      return set_from(TCode::UINT16,      (void*) &x);  };
-    inline int8_t set(uint32_t x) {      return set_from(TCode::UINT32,      (void*) &x);  };
-    inline int8_t set(uint64_t x) {      return set_from(TCode::UINT64,      (void*) &x);  };
-    inline int8_t set(int8_t x) {        return set_from(TCode::INT8,        (void*) &x);  };
-    inline int8_t set(int16_t x) {       return set_from(TCode::INT16,       (void*) &x);  };
-    inline int8_t set(int32_t x) {       return set_from(TCode::INT32,       (void*) &x);  };
-    inline int8_t set(int64_t x) {       return set_from(TCode::INT64,       (void*) &x);  };
-    inline int8_t set(bool x) {          return set_from(TCode::BOOLEAN,     (void*) &x);  };
-    inline int8_t set(float x) {         return set_from(TCode::FLOAT,       (void*) &x);  };
-    inline int8_t set(double x) {        return set_from(TCode::DOUBLE,      (void*) &x);  };
-    inline int8_t set(const char* x) {   return set_from(TCode::STR,         (void*) &x);  };
+    int8_t set_from(const TCode SRC_TYPE, void* src);
+    inline int8_t set(uint8_t x) {       return set_from(TCode::UINT8,        (void*) &x);  };
+    inline int8_t set(uint16_t x) {      return set_from(TCode::UINT16,       (void*) &x);  };
+    inline int8_t set(uint32_t x) {      return set_from(TCode::UINT32,       (void*) &x);  };
+    inline int8_t set(uint64_t x) {      return set_from(TCode::UINT64,       (void*) &x);  };
+    inline int8_t set(int8_t x) {        return set_from(TCode::INT8,         (void*) &x);  };
+    inline int8_t set(int16_t x) {       return set_from(TCode::INT16,        (void*) &x);  };
+    inline int8_t set(int32_t x) {       return set_from(TCode::INT32,        (void*) &x);  };
+    inline int8_t set(int64_t x) {       return set_from(TCode::INT64,        (void*) &x);  };
+    inline int8_t set(bool x) {          return set_from(TCode::BOOLEAN,      (void*) &x);  };
+    inline int8_t set(float x) {         return set_from(TCode::FLOAT,        (void*) &x);  };
+    inline int8_t set(double x) {        return set_from(TCode::DOUBLE,       (void*) &x);  };
+    inline int8_t set(const char* x) {   return set_from(TCode::STR,          (void*) &x);  };
     // TODO: Requires memory semantics...
     //inline int8_t set(char* x) {   return set_from(TCode::STR,         (void*) &x);  };
 
@@ -160,7 +160,7 @@ class C3PValue {
     * Type-coercion convenience functions for getting values.
     * Getters return T(val) on success or T(val) on failure.
     */
-    int8_t   get_as(const TCode, void* type_pointer);
+    int8_t   get_as(const TCode DEST_TYPE, void* dest);
 
     bool     get_as_bool(int8_t* success = nullptr);
     unsigned int get_as_uint(int8_t* success = nullptr);
