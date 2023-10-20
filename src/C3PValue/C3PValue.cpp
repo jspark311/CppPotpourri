@@ -18,7 +18,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#include "../C3PValue/C3PValue.h"
+#include "C3PValue.h"
 #include "../StringBuilder.h"
 #include "../Identity/Identity.h"
 #include "../StringBuilder.h"
@@ -38,9 +38,34 @@ limitations under the License.
 * Constructors/destructors, class initialization functions and so-forth...
 *******************************************************************************/
 
+/**
+* Protected delegate constructor.
+* If _val_by_ref is false, it means there is no allocation, since the data can
+*   be copied by value into the pointer space. This will also be true for types
+*   that are passed as pointers anyway (Image*, Identity*, etc).
+* If _val_by_ref is true, it means that _target_mem is a pointer to whatever
+*   type is declared.
+*/
+C3PValue::C3PValue(const TCode TC, void* ptr) : _TCODE(TC), _set_trace(1), _target_mem(ptr) {
+  _val_by_ref = !typeIsPointerPunned(_TCODE);
+  _reap_val   = false;
+}
+
+
 C3PValue::~C3PValue() {
-  if (_val_by_ref & _reap_val & (nullptr != _target_mem)) {
-    free(_target_mem);
+  if (nullptr != _target_mem) {
+    // Some types have a shim to hold an explicit length, or other data. We
+    //   construe the reap member to refer to the data itself, and not the shim.
+    //   We will always free the shim.
+    if (_TCODE == TCode::BINARY) {
+      if (_reap_val) {
+        free(((C3PBinBinder*) _target_mem)->buf);
+      }
+      free(_target_mem);
+    }
+    else if (_val_by_ref & _reap_val) {
+      free(_target_mem);
+    }
   }
   _target_mem = nullptr;
 }
@@ -77,20 +102,142 @@ C3PValue::C3PValue(double val) : C3PValue(TCode::DOUBLE, malloc(sizeof(double)))
 }
 
 
+C3PValue::C3PValue(void* val, uint32_t len) : C3PValue(TCode::BINARY, malloc(sizeof(C3PBinBinder))) {
+  if (nullptr != _target_mem) {
+    ((C3PBinBinder*) _target_mem)->buf = (uint8_t*) val;
+    ((C3PBinBinder*) _target_mem)->len = len;
+    _val_by_ref = true;
+    _reap_val   = false;
+  }
+}
+
+
+/*******************************************************************************
+* Basal accessors
+*******************************************************************************/
+
 int8_t C3PValue::set_from(const TCode, void* type_pointer) {
-  int8_t ret = 0;
-  _set_trace++;
+  int8_t ret = -1;
+  switch (_TCODE) {
+    case TCode::NONE:
+    case TCode::INT8:
+    case TCode::INT16:
+    case TCode::INT32:
+    case TCode::UINT8:
+    case TCode::UINT16:
+    case TCode::UINT32:
+    case TCode::INT64:
+    case TCode::INT128:
+    case TCode::UINT64:
+    case TCode::UINT128:
+    case TCode::BOOLEAN:
+    case TCode::FLOAT:
+    case TCode::DOUBLE:
+    case TCode::BINARY:
+    case TCode::STR:
+    case TCode::VECT_2_FLOAT:
+    case TCode::VECT_2_DOUBLE:
+    case TCode::VECT_2_INT8:
+    case TCode::VECT_2_UINT8:
+    case TCode::VECT_2_INT16:
+    case TCode::VECT_2_UINT16:
+    case TCode::VECT_2_INT32:
+    case TCode::VECT_2_UINT32:
+    case TCode::VECT_3_FLOAT:
+    case TCode::VECT_3_DOUBLE:
+    case TCode::VECT_3_INT8:
+    case TCode::VECT_3_UINT8:
+    case TCode::VECT_3_INT16:
+    case TCode::VECT_3_UINT16:
+    case TCode::VECT_3_INT32:
+    case TCode::VECT_3_UINT32:
+    case TCode::VECT_4_FLOAT:
+    case TCode::URL:
+    case TCode::JSON:
+    case TCode::CBOR:
+    case TCode::LATLON:
+    case TCode::COLOR8:
+    case TCode::COLOR16:
+    case TCode::COLOR24:
+    case TCode::SI_UNIT:
+    case TCode::BASE64:
+    case TCode::IPV4_ADDR:
+    case TCode::KVP:
+    case TCode::STR_BUILDER:
+    case TCode::IDENTITY:
+    case TCode::AUDIO:
+    case TCode::IMAGE:
+    case TCode::GEOLOCATION:
+    default:
+      break;
+  }
+  if (0 == ret) {
+    _set_trace++;
+  }
   return ret;
 }
 
 
 int8_t C3PValue::get_as(const TCode, void* type_pointer) {
-  int8_t ret = 0;
+  int8_t ret = -1;
+  switch (_TCODE) {
+    case TCode::NONE:
+    case TCode::INT8:
+    case TCode::INT16:
+    case TCode::INT32:
+    case TCode::UINT8:
+    case TCode::UINT16:
+    case TCode::UINT32:
+    case TCode::INT64:
+    case TCode::INT128:
+    case TCode::UINT64:
+    case TCode::UINT128:
+    case TCode::BOOLEAN:
+    case TCode::FLOAT:
+    case TCode::DOUBLE:
+    case TCode::BINARY:
+    case TCode::STR:
+    case TCode::VECT_2_FLOAT:
+    case TCode::VECT_2_DOUBLE:
+    case TCode::VECT_2_INT8:
+    case TCode::VECT_2_UINT8:
+    case TCode::VECT_2_INT16:
+    case TCode::VECT_2_UINT16:
+    case TCode::VECT_2_INT32:
+    case TCode::VECT_2_UINT32:
+    case TCode::VECT_3_FLOAT:
+    case TCode::VECT_3_DOUBLE:
+    case TCode::VECT_3_INT8:
+    case TCode::VECT_3_UINT8:
+    case TCode::VECT_3_INT16:
+    case TCode::VECT_3_UINT16:
+    case TCode::VECT_3_INT32:
+    case TCode::VECT_3_UINT32:
+    case TCode::VECT_4_FLOAT:
+    case TCode::URL:
+    case TCode::JSON:
+    case TCode::CBOR:
+    case TCode::LATLON:
+    case TCode::COLOR8:
+    case TCode::COLOR16:
+    case TCode::COLOR24:
+    case TCode::SI_UNIT:
+    case TCode::BASE64:
+    case TCode::IPV4_ADDR:
+    case TCode::KVP:
+    case TCode::STR_BUILDER:
+    case TCode::IDENTITY:
+    case TCode::AUDIO:
+    case TCode::IMAGE:
+    case TCode::GEOLOCATION:
+    default:
+      break;
+  }
+  if (0 == ret) {
+    _set_trace++;
+  }
   return ret;
 }
-
-
-
 
 
 
@@ -110,58 +257,15 @@ unsigned int C3PValue::get_as_uint(int8_t* success) {
   unsigned int ret = 0;
   return ret;
 }
-int8_t C3PValue::set(uint8_t x) {
-  int8_t ret = -1;
-  return ret;
-}
-
-int8_t C3PValue::set(uint16_t x) {
-  int8_t ret = -1;
-  return ret;
-}
-
-int8_t C3PValue::set(uint32_t x) {
-  int8_t ret = -1;
-  return ret;
-}
-
-int8_t C3PValue::set(uint64_t x) {
-  int8_t ret = -1;
-  return ret;
-}
 
 
 int C3PValue::get_as_int(int8_t* success) {
   int ret = 0;
   return ret;
 }
-int8_t C3PValue::set(int8_t x) {
-  int8_t ret = -1;
-  return ret;
-}
 
-int8_t C3PValue::set(int16_t x) {
-  int8_t ret = -1;
-  return ret;
-}
-
-int8_t C3PValue::set(int32_t x) {
-  int8_t ret = -1;
-  return ret;
-}
-
-int8_t C3PValue::set(int64_t x) {
-  int8_t ret = -1;
-  return ret;
-}
-
-
-bool C3PValue::get_as_bool(int8_t* success) {  return (0 != _target_mem);  }
-
-int8_t C3PValue::set(bool x) {
-  int8_t ret = -1;
-  return ret;
-}
+/* Casts the value into (!/= 0). */
+bool C3PValue::get_as_bool(int8_t* success) {    return (0 != _target_mem);    }
 
 
 float C3PValue::get_as_float(int8_t* success) {
@@ -182,23 +286,23 @@ float C3PValue::get_as_float(int8_t* success) {
   return ret;
 }
 
-int8_t C3PValue::set(float x) {
-  int8_t ret = -1;
-  switch (_TCODE) {
-    case TCode::FLOAT:
-      *(((uint8_t*) &_target_mem) + 0) = *((uint8_t*) &x + 0);
-      *(((uint8_t*) &_target_mem) + 1) = *((uint8_t*) &x + 1);
-      *(((uint8_t*) &_target_mem) + 2) = *((uint8_t*) &x + 2);
-      *(((uint8_t*) &_target_mem) + 3) = *((uint8_t*) &x + 3);
-      ret = 0;
-      break;
-    case TCode::DOUBLE:
-    default:
-      break;
-  }
-  if (0 == ret) {  _set_trace++;  }
-  return ret;
-}
+// int8_t C3PValue::set(float x) {
+//   int8_t ret = -1;
+//   switch (_TCODE) {
+//     case TCode::FLOAT:
+//       *(((uint8_t*) &_target_mem) + 0) = *((uint8_t*) &x + 0);
+//       *(((uint8_t*) &_target_mem) + 1) = *((uint8_t*) &x + 1);
+//       *(((uint8_t*) &_target_mem) + 2) = *((uint8_t*) &x + 2);
+//       *(((uint8_t*) &_target_mem) + 3) = *((uint8_t*) &x + 3);
+//       ret = 0;
+//       break;
+//     case TCode::DOUBLE:
+//     default:
+//       break;
+//   }
+//   if (0 == ret) {  _set_trace++;  }
+//   return ret;
+// }
 
 
 double C3PValue::get_as_double(int8_t* success) {
@@ -227,37 +331,56 @@ double C3PValue::get_as_double(int8_t* success) {
   return ret;
 }
 
-int8_t C3PValue::set(double x) {
-  int8_t ret = -1;
-  switch (_TCODE) {
-    case TCode::DOUBLE:
-      *(((uint8_t*) _target_mem) + 0) = *((uint8_t*) &x + 0);
-      *(((uint8_t*) _target_mem) + 1) = *((uint8_t*) &x + 1);
-      *(((uint8_t*) _target_mem) + 2) = *((uint8_t*) &x + 2);
-      *(((uint8_t*) _target_mem) + 3) = *((uint8_t*) &x + 3);
-      *(((uint8_t*) _target_mem) + 4) = *((uint8_t*) &x + 4);
-      *(((uint8_t*) _target_mem) + 5) = *((uint8_t*) &x + 5);
-      *(((uint8_t*) _target_mem) + 6) = *((uint8_t*) &x + 6);
-      *(((uint8_t*) _target_mem) + 7) = *((uint8_t*) &x + 7);
-      ret = 0;
-      break;
-    default:
-      break;
-  }
-  if (0 == ret) {  _set_trace++;  }
-  return ret;
-}
+// int8_t C3PValue::set(double x) {
+//   int8_t ret = -1;
+//   switch (_TCODE) {
+//     case TCode::DOUBLE:
+//       *(((uint8_t*) _target_mem) + 0) = *((uint8_t*) &x + 0);
+//       *(((uint8_t*) _target_mem) + 1) = *((uint8_t*) &x + 1);
+//       *(((uint8_t*) _target_mem) + 2) = *((uint8_t*) &x + 2);
+//       *(((uint8_t*) _target_mem) + 3) = *((uint8_t*) &x + 3);
+//       *(((uint8_t*) _target_mem) + 4) = *((uint8_t*) &x + 4);
+//       *(((uint8_t*) _target_mem) + 5) = *((uint8_t*) &x + 5);
+//       *(((uint8_t*) _target_mem) + 6) = *((uint8_t*) &x + 6);
+//       *(((uint8_t*) _target_mem) + 7) = *((uint8_t*) &x + 7);
+//       ret = 0;
+//       break;
+//     default:
+//       break;
+//   }
+//   if (0 == ret) {  _set_trace++;  }
+//   return ret;
+// }
 
 
 /*******************************************************************************
 * Parsing/Packing
 *******************************************************************************/
 int8_t C3PValue::serialize(StringBuilder* output, TCode fmt) {
+  switch (fmt) {
+    case TCode::BINARY:
+      if (_val_by_ref) {
+      }
+      else {
+        output->concat((uint8_t*) &_target_mem, length());
+      }
+      break;
+
+    case TCode::CBOR:
+    default:
+      break;
+  }
   return -1;
 }
 
 
 int8_t C3PValue::deserialize(StringBuilder* input, TCode fmt) {
+  switch (fmt) {
+    case TCode::BINARY:
+    case TCode::CBOR:
+    default:
+      break;
+  }
   return -1;
 }
 
@@ -288,8 +411,9 @@ uint32_t C3PValue::length() {
   uint32_t ret = sizeOfType(_TCODE);
   if (0 == ret) {
     switch (_TCODE) {
-      case TCode::STR_BUILDER:
-      case TCode::STR:
+      // We +1 for all c-style string types to account for the storage of a null-terminator.
+      case TCode::STR_BUILDER:  ret = (((StringBuilder*) _target_mem)->length() + 1);  break;
+      case TCode::STR:          ret = (strlen((const char*) _target_mem) + 1);         break;
       case TCode::IDENTITY:
       case TCode::IMAGE:
       default:
@@ -334,16 +458,10 @@ void C3PValue::toString(StringBuilder* out, bool include_type) {
       out->concatf("%u", (uintptr_t) _target_mem);
       break;
     case TCode::FLOAT:
-      {
-        float tmp;
-        memcpy((void*) &tmp, &_target_mem, 4);
-        out->concatf("%.4f", (double) tmp);
-      }
+      out->concatf("%.4f", (double) get_as_float());
       break;
     case TCode::DOUBLE:
-      {
-        out->concatf("%.6f", get_as_double());
-      }
+      out->concatf("%.6f", get_as_double());
       break;
 
     case TCode::BOOLEAN:
@@ -388,18 +506,4 @@ void C3PValue::toString(StringBuilder* out, bool include_type) {
       }
       break;
   }
-}
-
-
-
-/*******************************************************************************
-* Concealed logic
-*******************************************************************************/
-
-/**
-* Protected delegate constructor.
-*/
-C3PValue::C3PValue(const TCode TC, void* ptr) : _TCODE(TC), _set_trace(1), _target_mem(ptr) {
-  _val_by_ref = !typeIsPointerPunned(_TCODE);
-  _reap_val   = false;
 }

@@ -72,9 +72,7 @@ For now, just know what the costs are, and don't expend the overhead unless you
 #ifndef __C3P_VALUE_WRAPPER_H
 #define __C3P_VALUE_WRAPPER_H
 
-#include <inttypes.h>
-#include <stddef.h>
-#include "../EnumeratedTypeCodes.h"
+#include "C3PType.h"
 
 /*
 * Including within a header file costs build time and muddies static analysis.
@@ -94,14 +92,18 @@ class Identity;
   #include "../Image/Image.h"
 #endif
 
-
-// TODO: This needs to eat all of the type polymorphism in KeyValuePair.
-// TODO: Split the type-handling apart from the container class. Maybe with a
-//   concealed template?
+/*
+*
+* TODO: This needs to eat all of the type polymorphism in KeyValuePair.
+* TODO: Split the type-handling apart from the container class. Maybe with a
+*   concealed template?
+*/
 class C3PValue {
   public:
-    /* Public constructors, appropriate for types as the compiler sees them. */
+    /* No-value constructor. */
     C3PValue(const TCode TC) : C3PValue(TC, nullptr) {};
+
+    /* Public constructors, appropriate for types as the compiler sees them. */
     C3PValue(uint8_t  val) : C3PValue(TCode::UINT8,    (void*)(uintptr_t) val) {};
     C3PValue(uint16_t val) : C3PValue(TCode::UINT16,   (void*)(uintptr_t) val) {};
     C3PValue(uint32_t val) : C3PValue(TCode::UINT32,   (void*)(uintptr_t) val) {};
@@ -111,10 +113,11 @@ class C3PValue {
     C3PValue(bool     val) : C3PValue(TCode::BOOLEAN,  (void*)(uintptr_t) val) {};
     C3PValue(float    val);
     C3PValue(double   val);
-    C3PValue(void* v, size_t l) : C3PValue(TCode::BINARY,        v) {};             // _len = l;
-    C3PValue(const char* val)   : C3PValue(TCode::STR,           (void*) val) {};   // _len = (strlen(val)+1);
-    C3PValue(char* val)         : C3PValue(TCode::STR,           (void*) val) {};   // _len = (strlen(val)+1);
-    C3PValue(StringBuilder* v)  : C3PValue(TCode::STR_BUILDER,   (void*) v) {};     // _len = v->length();
+    C3PValue(void* v, uint32_t l);
+    C3PValue(const char* val)   : C3PValue(TCode::STR,           (void*) val) {};
+    C3PValue(char* val)         : C3PValue(TCode::STR,           (void*) val) {};
+    C3PValue(StringBuilder* v)  : C3PValue(TCode::STR_BUILDER,   (void*) v) {};
+
     C3PValue(Vector3ui32* val)  : C3PValue(TCode::VECT_3_UINT32, (void*) val) {};
     C3PValue(Vector3ui16* val)  : C3PValue(TCode::VECT_3_UINT16, (void*) val) {};
     C3PValue(Vector3ui8*  val)  : C3PValue(TCode::VECT_3_UINT8,  (void*) val) {};
@@ -130,33 +133,35 @@ class C3PValue {
     #endif   // CONFIG_C3P_IMG_SUPPORT
     ~C3PValue();
 
-    /*
-    * Type-punned accessor functions. These are the basis of all
-    *   value transaction with this class.
-    */
-    int8_t   set_from(const TCode, void* type_pointer);
-    int8_t   get_as(const TCode, void* type_pointer);
 
     /*
-    * Type-coercion convenience functions for setting values.
+    * Type-coercion convenience functions for setting values. Types that can be
+    *   mutually coerced will fail to set if the conversion results in
+    *   truncation.
     * Setters return 0 on success or -1 on failure.
     */
-    int8_t set(bool);
-    int8_t set(uint8_t);
-    int8_t set(uint16_t);
-    int8_t set(uint32_t);
-    int8_t set(uint64_t);
-    int8_t set(int8_t);
-    int8_t set(int16_t);
-    int8_t set(int32_t);
-    int8_t set(int64_t);
-    int8_t set(float);
-    int8_t set(double);
+    int8_t set_from(const TCode, void* type_pointer);
+    inline int8_t set(uint8_t x) {       return set_from(TCode::UINT8,       (void*) &x);  };
+    inline int8_t set(uint16_t x) {      return set_from(TCode::UINT16,      (void*) &x);  };
+    inline int8_t set(uint32_t x) {      return set_from(TCode::UINT32,      (void*) &x);  };
+    inline int8_t set(uint64_t x) {      return set_from(TCode::UINT64,      (void*) &x);  };
+    inline int8_t set(int8_t x) {        return set_from(TCode::INT8,        (void*) &x);  };
+    inline int8_t set(int16_t x) {       return set_from(TCode::INT16,       (void*) &x);  };
+    inline int8_t set(int32_t x) {       return set_from(TCode::INT32,       (void*) &x);  };
+    inline int8_t set(int64_t x) {       return set_from(TCode::INT64,       (void*) &x);  };
+    inline int8_t set(bool x) {          return set_from(TCode::BOOLEAN,     (void*) &x);  };
+    inline int8_t set(float x) {         return set_from(TCode::FLOAT,       (void*) &x);  };
+    inline int8_t set(double x) {        return set_from(TCode::DOUBLE,      (void*) &x);  };
+    inline int8_t set(const char* x) {   return set_from(TCode::STR,         (void*) &x);  };
+    // TODO: Requires memory semantics...
+    //inline int8_t set(char* x) {   return set_from(TCode::STR,         (void*) &x);  };
 
     /*
     * Type-coercion convenience functions for getting values.
     * Getters return T(val) on success or T(val) on failure.
     */
+    int8_t   get_as(const TCode, void* type_pointer);
+
     bool     get_as_bool(int8_t* success = nullptr);
     unsigned int get_as_uint(int8_t* success = nullptr);
     int      get_as_int(int8_t* success = nullptr);
@@ -170,7 +175,7 @@ class C3PValue {
     */
     inline const TCode tcode() {            return _TCODE;                    };
     inline bool        is_fixed_length() {  return (0 != sizeOfType(_TCODE)); };
-    bool is_numeric();
+    bool               is_numeric();
 
 
     // TODO: Very easy to become mired in your own bad definitions. Be careful.
@@ -185,26 +190,33 @@ class C3PValue {
     inline void    reapValue(bool x) {  _reap_val = x;      };
     inline bool    reapValue() {        return _reap_val;   };
     inline uint8_t trace() {            return _set_trace;  };
+    inline void*   memPtr() {           return (void*) &_target_mem;  };
 
     /* Parsing/Packing */
+    void     toString(StringBuilder*, bool include_type = false);
+    uint32_t length();
     int8_t   serialize(StringBuilder*, TCode);
     int8_t   deserialize(StringBuilder*, TCode);
-    void     toString(StringBuilder*, bool include_type = false);
-    uint32_t length();    // Returns the length (in bytes) of the value.
 
 
-  private:
+  protected:
     const TCode _TCODE;        // The hard-declared type of this Value.
     uint8_t     _set_trace;    // This byte is updated each time the set function is called, to allow dirty-tracing.
     bool        _val_by_ref;   // If true, _target_mem's native type is a pointer to something.
     bool        _reap_val;     // If true, _target_mem is not only a pointer, but is our responsibility to free it.
     void*       _target_mem;   // Type-punned memory. Will be the same size as the arch's pointers.
-    //uint32_t    _len;        // Avoid this, even if it means an intermediary private object to hold the length.
 
     C3PValue(const TCode, void*);
 
     void _reap_existing_value();
-};
 
+    /* Polyfill from the concealed template for type constraints. */
+    //virtual uint32_t _length() =0;
+    //virtual void     _to_string(StringBuilder*) =0;
+    //virtual int8_t   _set_from(const TCode, void* type_pointer) =0;
+    //virtual int8_t   _get_as(const TCode, void* type_pointer) =0;
+    //virtual int8_t   _serialize(StringBuilder*, TCode) =0;
+    //virtual int8_t   _deserialize(StringBuilder*, TCode) =0;
+};
 
 #endif  // __C3P_VALUE_WRAPPER_H

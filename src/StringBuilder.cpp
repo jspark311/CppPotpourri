@@ -809,7 +809,13 @@ void StringBuilder::concat(double nu) {
 */
 void StringBuilder::concat(StringBuilder* nu) {
   if (nu != nullptr) {
-    concat(nu->string(), nu->length());
+    const uint32_t DONAR_LENGTH = nu->length();
+    if (DONAR_LENGTH > 0) {
+      StrLL* frag = _create_str_ll(DONAR_LENGTH, nu->_root, 0);
+      if (nullptr != frag) {
+        _stack_str_onto_list(frag);
+      }
+    }
   }
 }
 
