@@ -164,6 +164,9 @@ class C3PType {
 * This is a concealed template for containment of per-type complexity in C3P's
 *   type-wrapping system. Supported types should have a 1-to-1 implementation
 *   for each TCode.
+*
+* Functions implemented in this header will be isomorphic for all TCodes. So we
+*   allow the compiler to autogenerate them for each type.
 */
 template <class T> class C3PTypeConstraint : public C3PType {
   public:
@@ -177,6 +180,22 @@ template <class T> class C3PTypeConstraint : public C3PType {
     int8_t      get_as(void* src, const TCode DEST_TYPE, void* dest);
     int8_t      serialize(void* obj, StringBuilder*, const TCode FORMAT);
     int8_t      deserialize(void* obj, StringBuilder*, const TCode FORMAT);
+
+  private:
+    // Values of some real types (particularly float and double) are
+    //   highly-sensitive to alignment. These two functions allow the compiler
+    //   to make whatever types's alignment concerns an independent matter from
+    //   its storage address.
+    T _load_from_mem(void* src) {
+      T aligned;
+      memcpy((void*) &aligned, src, length(src));
+      return aligned;
+    };
+
+    bool _store_in_mem(void* dest, T src) {
+      memcpy(dest, (void*) &src, length((void*) &src));
+      return true;  // NOTE: Place-holder. This layer not responsible for null-checks.
+    };
 };
 
 #endif  // __C3P_TYPE_WRAPPER_H

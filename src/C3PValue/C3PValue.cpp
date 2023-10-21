@@ -121,8 +121,7 @@ int8_t C3PValue::set_from(const TCode SRC_TYPE, void* src) {
   int8_t ret = -1;
   C3PType* t_helper = getTypeHelper(_TCODE);
   if (nullptr != t_helper) {
-    //ret = t_helper->set_from((_val_by_ref ? _target_mem : &_target_mem), SRC_TYPE, src);
-    ret = t_helper->set_from(&_target_mem, SRC_TYPE, src);
+    ret = t_helper->set_from(_type_pun(), SRC_TYPE, src);
   }
   if (0 == ret) {
     _set_trace++;
@@ -135,11 +134,11 @@ int8_t C3PValue::get_as(const TCode DEST_TYPE, void* dest) {
   int8_t ret = -1;
   C3PType* t_helper = getTypeHelper(_TCODE);
   if (nullptr != t_helper) {
-    //ret = t_helper->get_as((_val_by_ref ? _target_mem : &_target_mem), DEST_TYPE, dest);
-    ret = t_helper->get_as(&_target_mem, DEST_TYPE, dest);
+    ret = t_helper->get_as(_type_pun(), DEST_TYPE, dest);
   }
   return ret;
 }
+
 
 
 
@@ -213,7 +212,7 @@ int8_t C3PValue::serialize(StringBuilder* output, const TCode FORMAT) {
   int8_t ret = -1;
   C3PType* t_helper = getTypeHelper(_TCODE);
   if (nullptr != t_helper) {
-    ret = t_helper->serialize(&_target_mem, output, FORMAT);
+    ret = t_helper->serialize(_type_pun(), output, FORMAT);
   }
   return ret;
 }
@@ -223,7 +222,7 @@ int8_t C3PValue::deserialize(StringBuilder* input, const TCode FORMAT) {
   int8_t ret = -1;
   C3PType* t_helper = getTypeHelper(_TCODE);
   if (nullptr != t_helper) {
-    ret = t_helper->deserialize(&_target_mem, input, FORMAT);
+    ret = t_helper->deserialize(_type_pun(), input, FORMAT);
   }
   return ret;
 }
@@ -255,8 +254,7 @@ uint32_t C3PValue::length() {
   uint32_t ret = 0;
   C3PType* t_helper = getTypeHelper(_TCODE);
   if (nullptr != t_helper) {
-    //ret = t_helper->length(_val_by_ref ? _target_mem : &_target_mem);
-    ret = t_helper->length(&_target_mem);
+    ret = t_helper->length(_type_pun());
   }
   return ret;
 }
@@ -274,33 +272,35 @@ void C3PValue::toString(StringBuilder* out, bool include_type) {
   }
   C3PType* t_helper = getTypeHelper(_TCODE);
   if (nullptr != t_helper) {
-    //t_helper->to_string(_val_by_ref ? _target_mem : &_target_mem, out);
-    t_helper->to_string(&_target_mem, out);
+    t_helper->to_string(_type_pun(), out);
   }
+  else {
+    // TODO: Everything below this comment is headed for the entropy pool.
+    switch (_TCODE) {
+      case TCode::STR_BUILDER:
+        out->concat((StringBuilder*) _target_mem);
+        break;
+      //case TCode::VECT_4_FLOAT:
+      //  {
+      //    Vector4f* v = (Vector4f*) _target_mem;
+      //    out->concatf("(%.4f, %.4f, %.4f, %.4f)", (double)(v->w), (double)(v->x), (double)(v->y), (double)(v->z));
+      //  }
+      //  break;
+      case TCode::KVP:
+        //if (nullptr != _target_mem) ((KeyValuePair*) _target_mem)->printDebug(out);
+        break;
+      case TCode::IDENTITY:
+        if (nullptr != _target_mem) ((Identity*) _target_mem)->toString(out);
+        break;
 
-  switch (_TCODE) {
-    case TCode::STR_BUILDER:
-      out->concat((StringBuilder*) _target_mem);
-      break;
-    //case TCode::VECT_4_FLOAT:
-    //  {
-    //    Vector4f* v = (Vector4f*) _target_mem;
-    //    out->concatf("(%.4f, %.4f, %.4f, %.4f)", (double)(v->w), (double)(v->x), (double)(v->y), (double)(v->z));
-    //  }
-    //  break;
-    case TCode::KVP:
-      //if (nullptr != _target_mem) ((KeyValuePair*) _target_mem)->printDebug(out);
-      break;
-    case TCode::IDENTITY:
-      if (nullptr != _target_mem) ((Identity*) _target_mem)->toString(out);
-      break;
-    default:
-      {
-        const uint32_t L_ENDER = length();
-        for (uint32_t n = 0; n < L_ENDER; n++) {
-          out->concatf("%02x ", *((uint8_t*) _target_mem + n));
+      default:
+        {
+          const uint32_t L_ENDER = length();
+          for (uint32_t n = 0; n < L_ENDER; n++) {
+            out->concatf("%02x ", *((uint8_t*) _target_mem + n));
+          }
         }
-      }
-      break;
+        break;
+    }
   }
 }

@@ -93,10 +93,8 @@ class Identity;
 #endif
 
 /*
-*
+* An abstract typeless data container class.
 * TODO: This needs to eat all of the type polymorphism in KeyValuePair.
-* TODO: Split the type-handling apart from the container class. Maybe with a
-*   concealed template?
 */
 class C3PValue {
   public:
@@ -125,7 +123,8 @@ class C3PValue {
     C3PValue(Vector3i16*  val)  : C3PValue(TCode::VECT_3_INT16,  (void*) val) {};
     C3PValue(Vector3i8*   val)  : C3PValue(TCode::VECT_3_INT8,   (void*) val) {};
     C3PValue(Vector3f*    val)  : C3PValue(TCode::VECT_3_FLOAT,  (void*) val) {};
-    C3PValue(KeyValuePair* val) : C3PValue(TCode::KVP,           (void*) val) {};
+
+    //C3PValue(KeyValuePair* val) : C3PValue(TCode::KVP,           (void*) val) {};
     C3PValue(Identity* val)     : C3PValue(TCode::IDENTITY,      (void*) val) {};
     // Conditional types.
     #if defined(CONFIG_C3P_IMG_SUPPORT)
@@ -155,6 +154,15 @@ class C3PValue {
     inline int8_t set(const char* x) {   return set_from(TCode::STR,          (void*) &x);  };
     // TODO: Requires memory semantics...
     //inline int8_t set(char* x) {   return set_from(TCode::STR,         (void*) &x);  };
+
+    inline int8_t set(Vector3u32* x) {   return set_from(TCode::VECT_3_UINT32, (void*) x);  };
+    inline int8_t set(Vector3u16* x) {   return set_from(TCode::VECT_3_UINT16, (void*) x);  };
+    inline int8_t set(Vector3u8*  x) {   return set_from(TCode::VECT_3_UINT8,  (void*) x);  };
+    inline int8_t set(Vector3i32* x) {   return set_from(TCode::VECT_3_INT32,  (void*) x);  };
+    inline int8_t set(Vector3i16* x) {   return set_from(TCode::VECT_3_INT16,  (void*) x);  };
+    inline int8_t set(Vector3i8*  x) {   return set_from(TCode::VECT_3_INT8,   (void*) x);  };
+    inline int8_t set(Vector3f*   x) {   return set_from(TCode::VECT_3_FLOAT,  (void*) x);  };
+
 
     /*
     * Type-coercion convenience functions for getting values.
@@ -187,10 +195,9 @@ class C3PValue {
     //int compare(C3PValue*);
 
     /* Memory handling options. */
-    inline void    reapValue(bool x) {  _reap_val = x;      };
-    inline bool    reapValue() {        return _reap_val;   };
-    inline uint8_t trace() {            return _set_trace;  };
-    inline void*   memPtr() {           return (void*) &_target_mem;  };
+    inline void     reapValue(bool x) {  _reap_val = x;      };
+    inline bool     reapValue() {        return _reap_val;   };
+    inline uint16_t trace() {            return _set_trace;  };
 
     /* Parsing/Packing */
     void     toString(StringBuilder*, bool include_type = false);
@@ -201,22 +208,16 @@ class C3PValue {
 
   protected:
     const TCode _TCODE;        // The hard-declared type of this Value.
-    uint8_t     _set_trace;    // This byte is updated each time the set function is called, to allow dirty-tracing.
     bool        _val_by_ref;   // If true, _target_mem's native type is a pointer to something.
     bool        _reap_val;     // If true, _target_mem is not only a pointer, but is our responsibility to free it.
+    uint16_t    _set_trace;    // This value is updated each time the set function is called, to allow dirty-tracing.
     void*       _target_mem;   // Type-punned memory. Will be the same size as the arch's pointers.
 
     C3PValue(const TCode, void*);
 
     void _reap_existing_value();
 
-    /* Polyfill from the concealed template for type constraints. */
-    //virtual uint32_t _length() =0;
-    //virtual void     _to_string(StringBuilder*) =0;
-    //virtual int8_t   _set_from(const TCode, void* type_pointer) =0;
-    //virtual int8_t   _get_as(const TCode, void* type_pointer) =0;
-    //virtual int8_t   _serialize(StringBuilder*, TCode) =0;
-    //virtual int8_t   _deserialize(StringBuilder*, TCode) =0;
+    inline void* _type_pun() {  return (_val_by_ref ? _target_mem : &_target_mem);  };
 };
 
 #endif  // __C3P_VALUE_WRAPPER_H
