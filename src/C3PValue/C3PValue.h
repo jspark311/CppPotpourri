@@ -198,6 +198,7 @@ class C3PValue {
     inline void     reapValue(bool x) {  _reap_val = x;      };
     inline bool     reapValue() {        return _reap_val;   };
     inline uint16_t trace() {            return _set_trace;  };
+    bool     dirty(uint16_t*);
 
     /* Parsing/Packing */
     void     toString(StringBuilder*, bool include_type = false);

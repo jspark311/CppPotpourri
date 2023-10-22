@@ -139,6 +139,15 @@ int8_t C3PValue::get_as(const TCode DEST_TYPE, void* dest) {
   return ret;
 }
 
+/*
+* This optional accessor will allow the caller to discover if the value has
+*   changed since its last check, and to update the check value if so.
+*/
+bool C3PValue::dirty(uint16_t* x) {
+  bool ret = ((nullptr != x) && (*x != _set_trace));
+  if (ret) {  *x = _set_trace;  }
+  return ret;
+}
 
 
 

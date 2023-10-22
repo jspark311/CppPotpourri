@@ -3,6 +3,13 @@ File:   Image.h
 Author: J. Ian Lindsay
 Date:   2019.06.02
 
+A color-aware two-dimentional array, with support functions.
+
+TODO: Default X/Y range to uint16 instead of uint32.
+  As neat and tidy as it would be to support giga-pixel x/y coordinates, it
+  is definitely surplus to requirements. Ease the storage burden by converting
+  all the coordinates into a settable integer type. Big project...
+
 Certain drawing features of this class were lifted from Adafruit's GFX library.
   Rather than call out which specific functions, or isolate translation units
   for legal reasons, this class simply inherrits their license and attribution
@@ -53,6 +60,10 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "../EnumeratedTypeCodes.h"
 #include "../CppPotpourri.h"
 #include "../StringBuilder.h"
+
+// TODO: Reduce these to uint16_t without causing terrible consequences.
+#define MANUVR_IMG_COORD_UTYPE  uint32_t
+#define MANUVR_IMG_COORD_ITYPE  uint32_t
 
 
 #define MANUVR_IMG_FLAG_BUFFER_OURS     0x01  // We are responsible for freeing the buffer.

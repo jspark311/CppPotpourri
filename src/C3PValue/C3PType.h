@@ -50,6 +50,10 @@ class C3PType;
 #define TCODE_FLAG_RESERVED_1          0x40  // Reserved for future use.
 #define TCODE_FLAG_RESERVED_0          0x80  // Reserved for future use.
 
+// C-style strings and their aliases have a common flag set.
+#define TCODE_FLAG_MASK_STRING_TYPE ( \
+  TCODE_FLAG_VALUE_IS_PUNNED_PTR | TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_IS_NULL_DELIMITED)
+
 
 /*
 * A list of parameter types that are handled by the input parser.

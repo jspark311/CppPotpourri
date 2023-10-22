@@ -59,6 +59,7 @@ int c3p_value_test_parsing() {
 
 
 void print_types_c3p_value() {
+  printf("\tC3PType               %u\t%u\n", sizeof(C3PType),   alignof(C3PType));
   printf("\tC3PValue              %u\t%u\n", sizeof(C3PValue),  alignof(C3PValue));
 }
 
