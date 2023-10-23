@@ -191,7 +191,6 @@ class KeyValuePair {
 
     /* Statics */
     static KeyValuePair* unserialize(uint8_t*, unsigned int, const TCode);
-    static int8_t serializeTypeMap(StringBuilder*, const TCode);
 
 
   private:

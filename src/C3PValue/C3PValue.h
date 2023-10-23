@@ -152,9 +152,7 @@ class C3PValue {
     inline int8_t set(float x) {         return set_from(TCode::FLOAT,        (void*) &x);  };
     inline int8_t set(double x) {        return set_from(TCode::DOUBLE,       (void*) &x);  };
     inline int8_t set(const char* x) {   return set_from(TCode::STR,          (void*) &x);  };
-    // TODO: Requires memory semantics...
-    //inline int8_t set(char* x) {   return set_from(TCode::STR,         (void*) &x);  };
-
+    inline int8_t set(char* x) {         return set_from(TCode::STR,          (void*) &x);  };
     inline int8_t set(Vector3u32* x) {   return set_from(TCode::VECT_3_UINT32, (void*) x);  };
     inline int8_t set(Vector3u16* x) {   return set_from(TCode::VECT_3_UINT16, (void*) x);  };
     inline int8_t set(Vector3u8*  x) {   return set_from(TCode::VECT_3_UINT8,  (void*) x);  };
@@ -163,20 +161,19 @@ class C3PValue {
     inline int8_t set(Vector3i8*  x) {   return set_from(TCode::VECT_3_INT8,   (void*) x);  };
     inline int8_t set(Vector3f*   x) {   return set_from(TCode::VECT_3_FLOAT,  (void*) x);  };
 
-
     /*
     * Type-coercion convenience functions for getting values.
     * Getters return T(val) on success or T(val) on failure.
     */
     int8_t   get_as(const TCode DEST_TYPE, void* dest);
-
-    bool     get_as_bool(int8_t* success = nullptr);
+    bool         get_as_bool(int8_t* success = nullptr);
     unsigned int get_as_uint(int8_t* success = nullptr);
-    int      get_as_int(int8_t* success = nullptr);
-    uint64_t get_as_uint64(int8_t* success = nullptr);
-    int64_t  get_as_int64(int8_t* success = nullptr);
-    float    get_as_float(int8_t* success = nullptr);
-    double   get_as_double(int8_t* success = nullptr);
+    int          get_as_int(int8_t* success = nullptr);
+    uint64_t     get_as_uint64(int8_t* success = nullptr);
+    int64_t      get_as_int64(int8_t* success = nullptr);
+    float        get_as_float(int8_t* success = nullptr);
+    double       get_as_double(int8_t* success = nullptr);
+    C3PBinBinder get_as_ptr_len(int8_t* success = nullptr);
 
     /*
     * Fuzzy type discovery functions.
@@ -198,6 +195,7 @@ class C3PValue {
     inline void     reapValue(bool x) {  _reap_val = x;      };
     inline bool     reapValue() {        return _reap_val;   };
     inline uint16_t trace() {            return _set_trace;  };
+    inline void     markDirty() {        _set_trace++;       };
     bool     dirty(uint16_t*);
 
     /* Parsing/Packing */
@@ -218,6 +216,7 @@ class C3PValue {
 
     void _reap_existing_value();
 
+    //inline void* _type_pun() {  return &_target_mem;  };
     inline void* _type_pun() {  return (_val_by_ref ? _target_mem : &_target_mem);  };
 };
 

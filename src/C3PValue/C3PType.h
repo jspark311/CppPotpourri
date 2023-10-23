@@ -43,16 +43,18 @@ class C3PType;
 */
 #define TCODE_FLAG_NON_EXPORTABLE      0x01  // This type is not exportable to other systems.
 #define TCODE_FLAG_VALUE_IS_PUNNED_PTR 0x02  // This type is small enough to fit inside a void* on this platform.
-#define TCODE_FLAG_VARIABLE_LEN        0x04  // Some types do not have a fixed-length.
-#define TCODE_FLAG_IS_NULL_DELIMITED   0x08  // Various string types are variable-length, yet self-delimiting.
-#define TCODE_FLAG_RESERVED_2          0x10  //
-#define TCODE_FLAG_LEGAL_FOR_ENCODING  0x20  // This type is a legal argument to (de)serializers.
+#define TCODE_FLAG_PTR_LEN_TYPE        0x04  // Some types consist of a pointer and an element count.
+#define TCODE_FLAG_NULL_TERMIMNATED    0x08  // Various string types are variable-length, yet self-delimiting.
+#define TCODE_FLAG_LEGAL_FOR_ENCODING  0x10  // This type is a legal argument to (de)serializers.
+#define TCODE_FLAG_VALUE_IS_POINTER    0x20  // This type is always referenced by pointer.
 #define TCODE_FLAG_RESERVED_1          0x40  // Reserved for future use.
 #define TCODE_FLAG_RESERVED_0          0x80  // Reserved for future use.
 
 // C-style strings and their aliases have a common flag set.
+// We give them the PUNNED_PTR flag to ensure that they are settable without
+//   memory implications.
 #define TCODE_FLAG_MASK_STRING_TYPE ( \
-  TCODE_FLAG_VALUE_IS_PUNNED_PTR | TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_IS_NULL_DELIMITED)
+  TCODE_FLAG_VALUE_IS_PUNNED_PTR | TCODE_FLAG_NULL_TERMIMNATED)
 
 
 /*
@@ -129,16 +131,22 @@ inline TCode IntToTcode(const uint8_t code) {   return (const TCode) code;   };
 
 const char* const typecodeToStr(const TCode);
 const bool typeIsFixedLength(const TCode);
-const int typeIsPointerPunned(const TCode);
+const bool typeIsPointerPunned(const TCode);
 const int sizeOfType(const TCode);
 C3PType* getTypeHelper(const TCode);
 
 
-
-/* A binder object for consolidating parameters (should it be needed). */
+/*
+* This is a binder object for consolidating pointer-length parameters into a
+*   single object. Some binary types need this for ease of handling.
+* Objects of this type are mainly internal to C3PType and
+*   C3PValue, and will always be heap-allocated (and free'd) by those classes.
+* Buffer write-through semantics are abstracted by C3PType's API.
+*/
 typedef struct c3p_bin_binder_t {
-  uint8_t*  buf;  // TCode::BINARY implies a second parameter (length). This
-  uint32_t  len;  //   shim holds pointer and length as a single object.
+  uint8_t*  buf;    // TCode::BINARY implies a second parameter (length). This
+  uint32_t  len;    //   shim holds pointer and length as a single object.
+  //TCode     tcode;  // This allows alias support.
 } C3PBinBinder;
 
 
@@ -153,13 +161,43 @@ typedef struct c3p_bin_binder_t {
 */
 class C3PType {
   public:
-    virtual const TCode tcode()                                                    =0;
-    virtual uint32_t    length(void* obj)                                          =0;
-    virtual void        to_string(void* obj, StringBuilder*)                       =0;
-    virtual int8_t      set_from(void* dest, const TCode SRC_TYPE, void* src)      =0;
-    virtual int8_t      get_as(void* src, const TCode DEST_TYPE, void* dest)       =0;
-    virtual int8_t      serialize(void* obj, StringBuilder*, const TCode FORMAT)   =0;
-    virtual int8_t      deserialize(void* obj, StringBuilder*, const TCode FORMAT) =0;
+    const char* const NAME;
+    const uint16_t    FIXED_LEN;
+    const TCode       TCODE;
+
+    virtual uint32_t length(void* obj)                                          =0;
+    virtual void     to_string(void* obj, StringBuilder*)                       =0;
+    virtual int8_t   set_from(void* dest, const TCode SRC_TYPE, void* src)      =0;
+    virtual int8_t   get_as(void* src, const TCode DEST_TYPE, void* dest)       =0;
+    virtual int      serialize(void* obj, StringBuilder*, const TCode FORMAT)   =0;
+    virtual int8_t   deserialize(void* obj, StringBuilder*, const TCode FORMAT) =0;
+
+    const bool legal_for_encoding() {  return _all_flags_set(TCODE_FLAG_LEGAL_FOR_ENCODING);  };
+    const bool null_terminated() {     return _all_flags_set(TCODE_FLAG_NULL_TERMIMNATED);    };
+    const bool exportable() {          return _all_flags_set(TCODE_FLAG_NON_EXPORTABLE);      };
+    const bool is_punned_ptr() {       return _all_flags_set(TCODE_FLAG_VALUE_IS_PUNNED_PTR); };
+
+    static int8_t exportTypeMap(StringBuilder*, const TCode);
+
+
+  protected:
+    C3PType(const char* const type_name, const uint16_t fixed_len, const TCode tcode, const uint8_t flags) :
+      NAME(type_name), FIXED_LEN(fixed_len), TCODE(tcode), _FLAGS(flags) {};
+
+    const bool _is_ptr() {          return _all_flags_set(TCODE_FLAG_VALUE_IS_POINTER);     };
+    const bool _is_ptr_len() {      return _all_flags_set(TCODE_FLAG_PTR_LEN_TYPE);         };
+
+    int8_t _type_blind_copy(void* src, void* dest, const TCode);
+    int    _type_blind_serialize(void* obj, StringBuilder*, const TCode FORMAT);
+    void   _type_blind_to_string(void* obj, StringBuilder*);
+
+
+  private:
+    const uint8_t _FLAGS;
+    inline const bool _all_flags_set(const uint8_t MASK) {    return (MASK == (_FLAGS & MASK));  };
+    inline const bool _all_flags_clear(const uint8_t MASK) {  return (0 == (_FLAGS & MASK));     };
+    inline const bool _any_flags_set(const uint8_t MASK) {    return (0 != (_FLAGS & MASK));     };
+    inline const bool _any_flags_clear(const uint8_t MASK) {  return (MASK != (_FLAGS & MASK));  };
 };
 
 
@@ -169,23 +207,29 @@ class C3PType {
 *   type-wrapping system. Supported types should have a 1-to-1 implementation
 *   for each TCode.
 *
-* Functions implemented in this header will be isomorphic for all TCodes. So we
-*   allow the compiler to autogenerate them for each type.
+* Functions implemented in this header will be isomorphic for all TCodes, unless
+*   over-ridden. The compiler will autogenerate such functions for each type
+*   that doesn't provide its own implemention.
 */
 template <class T> class C3PTypeConstraint : public C3PType {
   public:
-    C3PTypeConstraint() {};
+    C3PTypeConstraint(const char* const type_name, const uint16_t fixed_len, const TCode tcode, const uint8_t flags) :
+      C3PType(type_name, fixed_len, tcode, flags) {};
     ~C3PTypeConstraint() {};
 
-    const TCode tcode();
-    uint32_t    length(void* obj);
-    void        to_string(void* obj, StringBuilder*);
-    int8_t      set_from(void* dest, const TCode SRC_TYPE, void* src);
-    int8_t      get_as(void* src, const TCode DEST_TYPE, void* dest);
-    int8_t      serialize(void* obj, StringBuilder*, const TCode FORMAT);
-    int8_t      deserialize(void* obj, StringBuilder*, const TCode FORMAT);
+    // These functions are optional overrides. An explicit type implementation
+    //   that does not provide these will have autogenerated implementations.
+    uint32_t    length(void* obj) {                                      return FIXED_LEN;                               };
+    void        to_string(void* obj, StringBuilder* out) {               _type_blind_to_string(obj, out);                };
+    int8_t      set_from(void* dest, const TCode SRC_TYPE, void* src) {  return _type_blind_copy(src, dest, SRC_TYPE);   };
+    int8_t      get_as(void* src, const TCode DEST_TYPE, void* dest) {   return _type_blind_copy(src, dest, DEST_TYPE);  };
+    int         serialize(void* obj, StringBuilder* out, const TCode FORMAT) {  return _type_blind_serialize(obj, out, FORMAT);  };
+    // TODO: deserialize() needs to be a static member (of the base class?).
+    int8_t      deserialize(void* obj, StringBuilder*, const TCode FORMAT) {    return -1;  };
+
 
   private:
+    // Use these functions instead of pointer dereference.
     // Values of some real types (particularly float and double) are
     //   highly-sensitive to alignment. These two functions allow the compiler
     //   to make whatever types's alignment concerns an independent matter from

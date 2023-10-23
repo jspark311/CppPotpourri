@@ -57,6 +57,7 @@ C3PValue::~C3PValue() {
     // Some types have a shim to hold an explicit length, or other data. We
     //   construe the reap member to refer to the data itself, and not the shim.
     //   We will always free the shim.
+    // TODO: allocate() and deallocate() should be added to the type template.
     if (_TCODE == TCode::BINARY) {
       if (_reap_val) {
         free(((C3PBinBinder*) _target_mem)->buf);
@@ -72,7 +73,7 @@ C3PValue::~C3PValue() {
 
 
 /*******************************************************************************
-* Typed constructors
+* Typed constructors that have nuanced handling, and can't be inlined.
 *******************************************************************************/
 
 C3PValue::C3PValue(float val) : C3PValue(TCode::FLOAT, nullptr) {
@@ -104,8 +105,9 @@ C3PValue::C3PValue(double val) : C3PValue(TCode::DOUBLE, malloc(sizeof(double)))
 
 C3PValue::C3PValue(void* val, uint32_t len) : C3PValue(TCode::BINARY, malloc(sizeof(C3PBinBinder))) {
   if (nullptr != _target_mem) {
-    ((C3PBinBinder*) _target_mem)->buf = (uint8_t*) val;
-    ((C3PBinBinder*) _target_mem)->len = len;
+    ((C3PBinBinder*) _target_mem)->buf   = (uint8_t*) val;
+    ((C3PBinBinder*) _target_mem)->len   = len;
+    //((C3PBinBinder*) _target_mem)->tcode = TCode::BINARY;
     _val_by_ref = true;
     _reap_val   = false;
   }
@@ -209,6 +211,13 @@ float C3PValue::get_as_float(int8_t* success) {
 double C3PValue::get_as_double(int8_t* success) {
   double ret = 0.0d;
   int8_t suc = get_as(TCode::DOUBLE, (void*) &ret) + 1;
+  if (success) {  *success = suc;  }
+  return ret;
+}
+
+C3PBinBinder C3PValue::get_as_ptr_len(int8_t* success) {
+  C3PBinBinder ret;
+  int8_t suc = get_as(TCode::BINARY, (void*) &ret) + 1;
   if (success) {  *success = suc;  }
   return ret;
 }

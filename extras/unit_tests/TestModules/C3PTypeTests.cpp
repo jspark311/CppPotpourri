@@ -1,7 +1,7 @@
 /*
-File:   C3PValueTests.cpp
+File:   C3PTypeTests.cpp
 Author: J. Ian Lindsay
-Date:   2023.06.17
+Date:   2023.10.22
 
 Copyright 2016 Manuvr, Inc
 
@@ -18,64 +18,65 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 
-This program tests C3PValue, which is its internal type-wrapper.
+This program tests C3PType, which is C3P's internal manifest of types and their
+  handlers.
 */
 
-#include "C3PValue/C3PValue.h"
+#include "C3PValue/C3PType.h"
 
 
 /*******************************************************************************
-* C3PValue test routines
+* C3PType test routines
 *******************************************************************************/
 
-int c3p_value_test_basics() {
+int c3p_type_wrapping_basics() {
   int ret = -1;
   return ret;
 }
 
 
-int c3p_value_test_type_conversion() {
+int c3p_type_test_type_conversion() {
   int ret = -1;
   return ret;
 }
 
 
-int c3p_value_test_packing() {
+int c3p_type_test_packing() {
   int ret = -1;
   return ret;
 }
 
 
-int c3p_value_test_parsing() {
+int c3p_type_test_parsing() {
   int ret = -1;
   return ret;
 }
 
-
-void print_types_c3p_value() {
-  printf("\tC3PValue              %u\t%u\n", sizeof(C3PValue),  alignof(C3PValue));
+void print_types_c3p_type() {
+  printf("\tC3PBinBinder          %u\t%u\n", sizeof(C3PBinBinder), alignof(C3PBinBinder));
+  printf("\tC3PType               %u\t%u\n", sizeof(C3PType),      alignof(C3PType));
 }
 
 
 /*******************************************************************************
 * The main function.
 *******************************************************************************/
-int c3p_value_test_main() {
+int c3p_type_test_main() {
   int ret = -1;   // Failure is the default result.
-  const char* const MODULE_NAME = "C3PValue";
+  const char* const MODULE_NAME = "C3PType";
   printf("===< %s >=======================================\n", MODULE_NAME);
 
-  if (0 == c3p_value_test_basics()) {
-      if (0 == c3p_value_test_type_conversion()) {
-        if (0 == c3p_value_test_packing()) {
-          if (0 == c3p_value_test_parsing()) {
-            ret = 0;
-          }
-          else printTestFailure(MODULE_NAME, "Type parsing");
+  if (0 == c3p_type_wrapping_basics()) {
+    if (0 == c3p_type_test_type_conversion()) {
+      if (0 == c3p_type_test_packing()) {
+        if (0 == c3p_type_test_parsing()) {
+          ret = 0;
         }
-        else printTestFailure(MODULE_NAME, "Type packing");
+        else printTestFailure(MODULE_NAME, "Type parsing");
       }
-      else printTestFailure(MODULE_NAME, "Type conversion");
+      else printTestFailure(MODULE_NAME, "Type packing");
+    }
+    else printTestFailure(MODULE_NAME, "Type conversion");
   }
   else printTestFailure(MODULE_NAME, "Basics");
 

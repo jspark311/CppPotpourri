@@ -23,7 +23,8 @@ This file contains the implementation of type constraints for our wrapped types.
 
 #include <stdint.h>
 #include <string.h>
-#include "../C3PValue/C3PValue.h"
+#include "C3PValue.h"
+#include "KeyValuePair.h"
 #include "../StringBuilder.h"
 #include "../Identity/Identity.h"
 #include "../StringBuilder.h"
@@ -34,103 +35,109 @@ This file contains the implementation of type constraints for our wrapped types.
 #endif
 
 
-
-/**
-* This is the private structure with which we define types. It conveys the type
-*   code, the type's size, and any special attributes it might have.
-* These type definitions are used by library components that serialize for the
-*   purposes of storage or communication with other versions of this library. So
-*   we should strive to be consistent.
-*/
-typedef struct typecode_def_t {
-  const TCode    type_code;     // This identifies the type to parsers/packers.
-  const uint8_t  type_flags;    // Fixed metadata about a type, as this build implements it.
-  const uint16_t fixed_len;     // If this type has a fixed length, it will be set here. 0 if no fixed length.
-  const char* const  t_name;    // The name of the type.
-} TypeCodeDef;
-
-
 /*******************************************************************************
 * Statics related to type support.
 *******************************************************************************/
+// Static initializers for our type map that gives us runtime type constraints.
+static const C3PTypeConstraint<int8_t>          c3p_type_helper_int8(         "INT8",         1,  TCode::INT8,           (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
+static const C3PTypeConstraint<int16_t>         c3p_type_helper_int16(        "INT16",        2,  TCode::INT16,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
+static const C3PTypeConstraint<int32_t>         c3p_type_helper_int32(        "INT32",        4,  TCode::INT32,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
+static const C3PTypeConstraint<int64_t>         c3p_type_helper_int64(        "INT64",        8,  TCode::INT64,          (0));
+static const C3PTypeConstraint<uint8_t>         c3p_type_helper_uint8(        "UINT8",        1,  TCode::UINT8,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
+static const C3PTypeConstraint<uint16_t>        c3p_type_helper_uint16(       "UINT16",       2,  TCode::UINT16,         (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
+static const C3PTypeConstraint<uint32_t>        c3p_type_helper_uint32(       "UINT32",       4,  TCode::UINT32,         (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
+static const C3PTypeConstraint<uint64_t>        c3p_type_helper_uint64(       "UINT64",       8,  TCode::UINT64,         (0));
+static const C3PTypeConstraint<float>           c3p_type_helper_float(        "FLOAT",        4,  TCode::FLOAT,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
+static const C3PTypeConstraint<double>          c3p_type_helper_double(       "DOUBLE",       8,  TCode::DOUBLE,         (0));
+static const C3PTypeConstraint<bool>            c3p_type_helper_bool(         "BOOL",         1,  TCode::BOOLEAN,        (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
+static const C3PTypeConstraint<char*>           c3p_type_helper_str(          "STR",          0,  TCode::STR,            (TCODE_FLAG_MASK_STRING_TYPE));
+static const C3PTypeConstraint<StringBuilder>   c3p_type_helper_stringbuilder("STR_BLDR",     0,  TCode::STR_BUILDER,    (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<Vector3i8>       c3p_type_helper_vect3_i8(     "VEC3_INT8",    3,  TCode::VECT_3_INT8,    (0));
+static const C3PTypeConstraint<Vector3i16>      c3p_type_helper_vect3_i16(    "VEC3_INT16",   6,  TCode::VECT_3_INT16,   (0));
+static const C3PTypeConstraint<Vector3i32>      c3p_type_helper_vect3_i32(    "VEC3_INT32",   12, TCode::VECT_3_INT32,   (0));
+static const C3PTypeConstraint<Vector3u8>       c3p_type_helper_vect3_u8(     "VEC3_UINT8",   3,  TCode::VECT_3_UINT8,   (0));
+static const C3PTypeConstraint<Vector3u16>      c3p_type_helper_vect3_u16(    "VEC3_UINT16",  6,  TCode::VECT_3_UINT16,  (0));
+static const C3PTypeConstraint<Vector3u32>      c3p_type_helper_vect3_u32(    "VEC3_UINT32",  12, TCode::VECT_3_UINT32,  (0));
+static const C3PTypeConstraint<Vector3f>        c3p_type_helper_vect3_float(  "VEC3_FLOAT",   12, TCode::VECT_3_FLOAT,   (0));
+static const C3PTypeConstraint<Vector3f64>      c3p_type_helper_vect3_double( "VEC3_DOUBLE",  24, TCode::VECT_3_DOUBLE,  (0));
+static const C3PTypeConstraint<Image>           c3p_type_helper_image(        "IMAGE",        0,  TCode::IMAGE,          (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<KeyValuePair>    c3p_type_helper_kvp(          "KVP",          0,  TCode::KVP,            (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<Identity*>       c3p_type_helper_identity(     "IDENTITY",     0,  TCode::IDENTITY,       (TCODE_FLAG_VALUE_IS_POINTER));
+
+// Type-indirected handlers (parameter binders).
+static const C3PTypeConstraint<C3PBinBinder>   c3p_type_helper_ptrlen(        "BINARY",       0,  TCode::BINARY,         (TCODE_FLAG_PTR_LEN_TYPE | TCODE_FLAG_LEGAL_FOR_ENCODING));
+
+//{TCode::SI_UNIT,        (TCODE_FLAG_MASK_STRING_TYPE),                             0,  "SI_UNIT",       (C3PType*) &c3p_type_helper_str            },
+//{TCode::UINT128,        (0),                                                       16, "UINT128",       nullptr },
+//{TCode::INT128,         (0),                                                       16, "INT128",        nullptr },
+//{TCode::COLOR8,         (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          1,  "COLOR8",        nullptr },
+//{TCode::COLOR16,        (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          2,  "COLOR16",       nullptr },
+//{TCode::COLOR24,        (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          3,  "COLOR24",       nullptr },
+//{TCode::BASE64,         (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "BASE64",        nullptr },
+//{TCode::JSON,           (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "JSON",          nullptr },
+//{TCode::CBOR,           (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "CBOR",          nullptr },
+//{TCode::GEOLOCATION,    (TCODE_FLAG_VARIABLE_LEN),                                 0,  "GEOLOCATION",   nullptr},
+//{TCode::VECT_2_FLOAT,   (0),                                                       0,  "VEC2_FLOAT"};
+//{TCode::VECT_2_DOUBLE,  (0),                                                       0,  "VEC2_DOUBLE"};
+//{TCode::VECT_2_INT8,    (0),                                                       0,  "VEC2_INT8"};
+//{TCode::VECT_2_UINT8,   (0),                                                       0,  "VEC2_UINT8"};
+//{TCode::VECT_2_INT16,   (0),                                                       0,  "VEC2_INT16"};
+//{TCode::VECT_2_UINT16,  (0),                                                       0,  "VEC2_UINT16"};
+//{TCode::VECT_2_INT32,   (0),                                                       0,  "VEC2_INT32"};
+//{TCode::VECT_2_UINT32,  (0),                                                       0,  "VEC2_UINT32"};
+//{TCode::VECT_4_FLOAT,   (0),                                                       16, "VEC4_FLOAT"},
+//{TCode::IPV4_ADDR,      (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          4,  "IPV4_ADDR"};
+//{TCode::URL,            (TCODE_FLAG_MASK_STRING_TYPE),                             1,  "URL"},
+//{TCode::AUDIO,          (TCODE_FLAG_VARIABLE_LEN),                                 0,  "AUDIO"},
+
+
 /**
-* Static initializer for our type map that gives us runtime type information.
+* Given a type code, find and return the entire C3PType.
 * If the type isn't here, we won't be able to handle it.
-*/
-static const TypeCodeDef static_type_codes[] = {
-  {TCode::NONE,           (TCODE_FLAG_NON_EXPORTABLE),                               0,  "NONE"},
-  {TCode::INT8,           (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          1,  "INT8"},
-  {TCode::UINT8,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          1,  "UINT8"},
-  {TCode::INT16,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          2,  "INT16"},
-  {TCode::UINT16,         (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          2,  "UINT16"},
-  {TCode::INT32,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          4,  "INT32"},
-  {TCode::UINT32,         (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          4,  "UINT32"},
-  {TCode::FLOAT,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          4,  "FLOAT"},
-  {TCode::BOOLEAN,        (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          1,  "BOOL"},
-  {TCode::UINT128,        (0),                                                       16, "UINT128"},
-  {TCode::INT128,         (0),                                                       16, "INT128"},
-  {TCode::UINT64,         (0),                                                       8,  "UINT64"},
-  {TCode::INT64,          (0),                                                       8,  "INT64"},
-  {TCode::DOUBLE,         (0),                                                       8,  "DOUBLE"},
-  {TCode::VECT_3_UINT16,  (0),                                                       6,  "VEC3_UINT16"},
-  {TCode::VECT_3_INT16,   (0),                                                       6,  "VEC3_INT16"},
-  {TCode::VECT_3_FLOAT,   (0),                                                       12, "VEC3_FLOAT"},
-  {TCode::VECT_3_INT8,    (0),                                                       3,  "VEC3_INT8"},
-  {TCode::VECT_3_UINT8,   (0),                                                       3,  "VEC3_UINT8"},
-  {TCode::VECT_3_INT16,   (0),                                                       6,  "VEC3_INT16"},
-  {TCode::VECT_3_UINT16,  (0),                                                       6,  "VEC3_UINT16"},
-  {TCode::VECT_3_INT32,   (0),                                                       12, "VEC3_INT32"},
-  {TCode::VECT_3_UINT32,  (0),                                                       12, "VEC3_UINT32"},
-  {TCode::IDENTITY,       (TCODE_FLAG_VARIABLE_LEN),                                 0,  "IDENTITY"},
-  {TCode::KVP,            (TCODE_FLAG_VARIABLE_LEN),                                 0,  "KVP"},
-  {TCode::STR,            (TCODE_FLAG_MASK_STRING_TYPE),                             0,  "STR"},
-  {TCode::IMAGE,          (TCODE_FLAG_VARIABLE_LEN),                                 0,  "IMAGE"},
-  {TCode::COLOR8,         (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          1,  "COLOR8"},
-  {TCode::COLOR16,        (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          2,  "COLOR16"},
-  {TCode::COLOR24,        (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          3,  "COLOR24"},
-  {TCode::SI_UNIT,        (TCODE_FLAG_MASK_STRING_TYPE),                             0,  "SI_UNIT"},
-  {TCode::BINARY,         (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "BINARY"},
-  {TCode::BASE64,         (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "BASE64"},
-  {TCode::JSON,           (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "JSON"},
-  {TCode::CBOR,           (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "CBOR"},
-
-  {TCode::STR_BUILDER,    (TCODE_FLAG_VARIABLE_LEN),                                 0,  "STR_BLDR"},
-  {TCode::GEOLOCATION,    (TCODE_FLAG_VARIABLE_LEN),                                 0,  "GEOLOCATION"},
-  {TCode::RESERVED,       (TCODE_FLAG_NON_EXPORTABLE),                               0,  "RESERVED"},
-  //{TCode::VECT_2_FLOAT,   (0),                                                       0,  "VEC2_FLOAT"};
-  //{TCode::VECT_2_DOUBLE,  (0),                                                       0,  "VEC2_DOUBLE"};
-  //{TCode::VECT_2_INT8,    (0),                                                       0,  "VEC2_INT8"};
-  //{TCode::VECT_2_UINT8,   (0),                                                       0,  "VEC2_UINT8"};
-  //{TCode::VECT_2_INT16,   (0),                                                       0,  "VEC2_INT16"};
-  //{TCode::VECT_2_UINT16,  (0),                                                       0,  "VEC2_UINT16"};
-  //{TCode::VECT_2_INT32,   (0),                                                       0,  "VEC2_INT32"};
-  //{TCode::VECT_2_UINT32,  (0),                                                       0,  "VEC2_UINT32"};
-  //{TCode::VECT_3_DOUBLE,  (0),                                                       0,  "VEC3_DOUBLE"};
-  //{TCode::VECT_4_FLOAT,   (0),                                                       16, "VEC4_FLOAT"},
-  //{TCode::IPV4_ADDR,      (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          4,  "IPV4_ADDR"};
-  //{TCode::URL,            (TCODE_FLAG_MASK_STRING_TYPE),                             1,  "URL"},
-  //{TCode::AUDIO,          (TCODE_FLAG_VARIABLE_LEN),                                 0,  "AUDIO"},
-};
-
-
-/**
-* Given a type code, find and return the entire TypeCodeDef.
 *
 * @param  TCode the type code being asked about.
-* @return The desired TypeCodeDef, or nullptr on "not supported".
+* @return The desired C3PType, or nullptr on "not supported".
 */
-static const TypeCodeDef* _get_type_def(const TCode tc) {
-  uint8_t idx = 0;
-  while (idx < (sizeof(static_type_codes) / sizeof(TypeCodeDef))) {
-    // Search for the code...
-    if (static_type_codes[idx].type_code == tc) {
-      return &static_type_codes[idx];
-    }
-    idx++;
+static const C3PType* _get_type_def(const TCode TC) {
+  switch (TC) {
+    case TCode::INT8:            return (const C3PType*) &c3p_type_helper_int8;
+    case TCode::INT16:           return (const C3PType*) &c3p_type_helper_int16;
+    case TCode::INT32:           return (const C3PType*) &c3p_type_helper_int32;
+    case TCode::INT64:           return (const C3PType*) &c3p_type_helper_int64;
+    case TCode::UINT8:           return (const C3PType*) &c3p_type_helper_uint8;
+    case TCode::UINT16:          return (const C3PType*) &c3p_type_helper_uint16;
+    case TCode::UINT32:          return (const C3PType*) &c3p_type_helper_uint32;
+    case TCode::UINT64:          return (const C3PType*) &c3p_type_helper_uint64;
+    case TCode::FLOAT:           return (const C3PType*) &c3p_type_helper_float;
+    case TCode::DOUBLE:          return (const C3PType*) &c3p_type_helper_double;
+    case TCode::BOOLEAN:         return (const C3PType*) &c3p_type_helper_bool;
+    case TCode::STR:             return (const C3PType*) &c3p_type_helper_str;
+    case TCode::STR_BUILDER:     return (const C3PType*) &c3p_type_helper_stringbuilder;
+    case TCode::VECT_3_INT8:     return (const C3PType*) &c3p_type_helper_vect3_i8;
+    case TCode::VECT_3_INT16:    return (const C3PType*) &c3p_type_helper_vect3_i16;
+    case TCode::VECT_3_INT32:    return (const C3PType*) &c3p_type_helper_vect3_i32;
+    case TCode::VECT_3_UINT8:    return (const C3PType*) &c3p_type_helper_vect3_u8;
+    case TCode::VECT_3_UINT16:   return (const C3PType*) &c3p_type_helper_vect3_u16;
+    case TCode::VECT_3_UINT32:   return (const C3PType*) &c3p_type_helper_vect3_u32;
+    case TCode::VECT_3_FLOAT:    return (const C3PType*) &c3p_type_helper_vect3_float;
+    case TCode::VECT_3_DOUBLE:   return (const C3PType*) &c3p_type_helper_vect3_double;
+    case TCode::IMAGE:           return (const C3PType*) &c3p_type_helper_image;
+    case TCode::KVP:             return (const C3PType*) &c3p_type_helper_kvp;
+    case TCode::IDENTITY:        return (const C3PType*) &c3p_type_helper_identity;
+    case TCode::BINARY:          return (const C3PType*) &c3p_type_helper_ptrlen;
+
+    case TCode::SI_UNIT:         return (const C3PType*) &c3p_type_helper_str;
+    default:  break;
   }
   return nullptr;
 }
 
+
+/* Serialize the entire type map. */
+int8_t C3PType::exportTypeMap(StringBuilder*, const TCode) {
+  // TODO
+  return -1;
+}
 
 /*******************************************************************************
 * Support functions for dealing with type codes.                               *
@@ -142,9 +149,9 @@ static const TypeCodeDef* _get_type_def(const TCode tc) {
 * @return The string representation. Never NULL.
 */
 const char* const typecodeToStr(const TCode tc) {
-  const TypeCodeDef* def = _get_type_def(tc);
+  const C3PType* def = _get_type_def(tc);
   if (nullptr != def) {
-    return def->t_name;
+    return def->NAME;
   }
   return "UNKNOWN";
 }
@@ -156,9 +163,9 @@ const char* const typecodeToStr(const TCode tc) {
 * @return true if the type is a fixed-length.
 */
 const bool typeIsFixedLength(const TCode TC) {
-  const TypeCodeDef* def = _get_type_def(TC);
+  const C3PType* def = _get_type_def(TC);
   if (nullptr != def) {
-    return !(def->type_flags & TCODE_FLAG_VARIABLE_LEN);
+    return (0 != def->FIXED_LEN);
   }
   return false;
 }
@@ -170,12 +177,9 @@ const bool typeIsFixedLength(const TCode TC) {
 * @param  TCode the type code being asked about.
 * @return The size of the type (in bytes), or -1 on failure.
 */
-const int typeIsPointerPunned(const TCode TC) {
-  const TypeCodeDef* def = _get_type_def(TC);
-  if (nullptr != def) {
-    return (def->type_flags & TCODE_FLAG_VALUE_IS_PUNNED_PTR);
-  }
-  return false;
+const bool typeIsPointerPunned(const TCode TC) {
+  C3PType* def = getTypeHelper(TC);
+  return ((nullptr != def) ? def->is_punned_ptr() : false);
 }
 
 /**
@@ -186,96 +190,72 @@ const int typeIsPointerPunned(const TCode TC) {
 * @return The size of the type (in bytes), or -1 on failure.
 */
 const int sizeOfType(const TCode TC) {
-  const TypeCodeDef* def = _get_type_def(TC);
-  if (nullptr != def) {
-    return def->fixed_len;
-  }
-  return -1;
+  const C3PType* def = _get_type_def(TC);
+  return ((nullptr != def) ? def->FIXED_LEN : -1);
 }
-
-
-
-static C3PTypeConstraint<int8_t>      c3p_type_helper_int8;
-static C3PTypeConstraint<int16_t>     c3p_type_helper_int16;
-static C3PTypeConstraint<int32_t>     c3p_type_helper_int32;
-static C3PTypeConstraint<int64_t>     c3p_type_helper_int64;
-static C3PTypeConstraint<uint8_t>     c3p_type_helper_uint8;
-static C3PTypeConstraint<uint16_t>    c3p_type_helper_uint16;
-static C3PTypeConstraint<uint32_t>    c3p_type_helper_uint32;
-static C3PTypeConstraint<uint64_t>    c3p_type_helper_uint64;
-static C3PTypeConstraint<bool>        c3p_type_helper_bool;
-static C3PTypeConstraint<float>       c3p_type_helper_float;
-static C3PTypeConstraint<double>      c3p_type_helper_double;
-static C3PTypeConstraint<char*>       c3p_type_helper_str;
-static C3PTypeConstraint<Vector3u32>     c3p_type_helper_vect3_u32;
-static C3PTypeConstraint<Vector3i32>     c3p_type_helper_vect3_i32;
-static C3PTypeConstraint<Vector3u16>     c3p_type_helper_vect3_u16;
-static C3PTypeConstraint<Vector3i16>     c3p_type_helper_vect3_i16;
-static C3PTypeConstraint<Vector3f>       c3p_type_helper_vect3_float;
-
 
 /**
 * Given type code, find the helper object.
 *
 * @param  TCode the type code being asked about.
-* @return A pointer to the abstracted helper object.
+* @return A pointer to the abstracted type handler.
 */
 C3PType* getTypeHelper(const TCode TC) {
-  //const TypeCodeDef* def = _get_type_def(TC);
-  //if (nullptr != def) {
-  //  return def->helper_obj;
-  //}
-  switch (TC) {
-    case TCode::INT8:               return (C3PType*) &c3p_type_helper_int8;
-    case TCode::INT16:              return (C3PType*) &c3p_type_helper_int16;
-    case TCode::INT32:              return (C3PType*) &c3p_type_helper_int32;
-    case TCode::UINT8:              return (C3PType*) &c3p_type_helper_uint8;
-    case TCode::UINT16:             return (C3PType*) &c3p_type_helper_uint16;
-    case TCode::UINT32:             return (C3PType*) &c3p_type_helper_uint32;
-    case TCode::INT64:              return (C3PType*) &c3p_type_helper_int64;
-    case TCode::INT128:             return nullptr;
-    case TCode::UINT64:             return (C3PType*) &c3p_type_helper_uint64;
-    case TCode::UINT128:            return nullptr;
-    case TCode::BOOLEAN:            return (C3PType*) &c3p_type_helper_bool;
-    case TCode::FLOAT:              return (C3PType*) &c3p_type_helper_float;
-    case TCode::DOUBLE:             return (C3PType*) &c3p_type_helper_double;
-    case TCode::BINARY:             return nullptr;
-    case TCode::STR:                return (C3PType*) &c3p_type_helper_str;
-    case TCode::VECT_2_FLOAT:       return nullptr;
-    case TCode::VECT_2_DOUBLE:      return nullptr;
-    case TCode::VECT_2_INT8:        return nullptr;
-    case TCode::VECT_2_UINT8:       return nullptr;
-    case TCode::VECT_2_INT16:       return nullptr;
-    case TCode::VECT_2_UINT16:      return nullptr;
-    case TCode::VECT_2_INT32:       return nullptr;
-    case TCode::VECT_2_UINT32:      return nullptr;
-    case TCode::VECT_3_FLOAT:       return (C3PType*) &c3p_type_helper_vect3_float;
-    case TCode::VECT_3_DOUBLE:      return nullptr;
-    case TCode::VECT_3_INT8:        return nullptr;
-    case TCode::VECT_3_UINT8:       return nullptr;
-    case TCode::VECT_3_INT16:       return (C3PType*) &c3p_type_helper_vect3_u16;
-    case TCode::VECT_3_UINT16:      return (C3PType*) &c3p_type_helper_vect3_i16;
-    case TCode::VECT_3_INT32:       return (C3PType*) &c3p_type_helper_vect3_i32;
-    case TCode::VECT_3_UINT32:      return (C3PType*) &c3p_type_helper_vect3_u32;
-    case TCode::VECT_4_FLOAT:       return nullptr;
-    case TCode::URL:                return nullptr;
-    case TCode::JSON:               return nullptr;
-    case TCode::CBOR:               return nullptr;
-    case TCode::LATLON:             return nullptr;
-    case TCode::COLOR8:             return nullptr;
-    case TCode::COLOR16:            return nullptr;
-    case TCode::COLOR24:            return nullptr;
-    case TCode::SI_UNIT:            return nullptr;
-    case TCode::BASE64:             return nullptr;
-    case TCode::IPV4_ADDR:          return nullptr;
-    case TCode::KVP:                return nullptr;
-    case TCode::STR_BUILDER:        return nullptr;
-    case TCode::IDENTITY:           return nullptr;
-    case TCode::AUDIO:              return nullptr;
-    case TCode::IMAGE:              return nullptr;
-    case TCode::GEOLOCATION:        return nullptr;
-    default:                        return nullptr;
+  return (C3PType*) _get_type_def(TC);
+}
+
+
+/*******************************************************************************
+* C3PTypeConstraint
+*******************************************************************************/
+
+/*
+* Base function that handles the trivial (common) case of value copy with no
+*   conversion, and no awareness.
+* For pointer types, this means a pointer (reference) copy. NOT a deep copy.
+*/
+int8_t C3PType::_type_blind_copy(void* src, void* dest, const TCode TEST_TCODE) {
+  int8_t ret = -1;
+  if ((nullptr != src) & (nullptr != dest)) {
+    ret--;
+    if (TEST_TCODE == TCODE) {
+      const uint32_t COPY_LEN = length(src);
+      memcpy(dest, src, COPY_LEN);
+      ret = 0;
+    }
   }
+  return ret;
+}
+
+
+int C3PType::_type_blind_serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  int8_t ret = -1;
+  switch (FORMAT) {
+    case TCode::BINARY:
+      //out->concat(*((const char**) obj));
+      break;
+    case TCode::CBOR:
+      {
+        cbor::output_stringbuilder output(out);
+        cbor::encoder encoder(output);
+        // NOTE: This ought to work for any types where retaining portability
+        //   isn't important.
+        // TODO: Gradually convert types out of this block. As much as possible should
+        //   be portable. VECT_3_FLOAT ought to be an array of floats, for instance.
+        encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(TCODE));
+        encoder.write_bytes((uint8_t*) obj, length(obj));
+        ret = 0;
+      }
+      break;
+    default:  break;
+  }
+  return ret;
+}
+
+
+void C3PType::_type_blind_to_string(void* obj, StringBuilder* out) {
+  const uint32_t L_ENDER = length(obj);
+  if (L_ENDER > 0) {  StringBuilder::printBuffer(out, (uint8_t*) obj, L_ENDER);  }
 }
 
 
@@ -289,8 +269,6 @@ C3PType* getTypeHelper(const TCode TC) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// int8_t
-template <> const TCode C3PTypeConstraint<int8_t>::tcode() {            return TCode::INT8;  }
-template <> uint32_t    C3PTypeConstraint<int8_t>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<int8_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%d", *((int8_t*) obj));  }
 
 template <> int8_t      C3PTypeConstraint<int8_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
@@ -384,7 +362,7 @@ template <> int8_t      C3PTypeConstraint<int8_t>::get_as(void* src, const TCode
   return -1;
 }
 
-template <> int8_t      C3PTypeConstraint<int8_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<int8_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
     case TCode::BINARY:
@@ -413,8 +391,6 @@ template <> int8_t      C3PTypeConstraint<int8_t>::deserialize(void* obj, String
 
 ////////////////////////////////////////////////////////////////////////////////
 /// int16_t
-template <> const TCode C3PTypeConstraint<int16_t>::tcode() {            return TCode::INT16;  }
-template <> uint32_t    C3PTypeConstraint<int16_t>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<int16_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%d", *((int16_t*) obj));  }
 
 template <> int8_t      C3PTypeConstraint<int16_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
@@ -503,7 +479,7 @@ template <> int8_t      C3PTypeConstraint<int16_t>::get_as(void* src, const TCod
   return -1;
 }
 
-template <> int8_t      C3PTypeConstraint<int16_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<int16_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
     case TCode::BINARY:
@@ -531,8 +507,6 @@ template <> int8_t      C3PTypeConstraint<int16_t>::deserialize(void* obj, Strin
 
 ////////////////////////////////////////////////////////////////////////////////
 /// int32_t
-template <> const TCode C3PTypeConstraint<int32_t>::tcode() {            return TCode::INT32;  }
-template <> uint32_t    C3PTypeConstraint<int32_t>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<int32_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%d", *((int32_t*) obj));  }
 
 template <> int8_t      C3PTypeConstraint<int32_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
@@ -616,7 +590,7 @@ template <> int8_t      C3PTypeConstraint<int32_t>::get_as(void* src, const TCod
   return -1;
 }
 
-template <> int8_t      C3PTypeConstraint<int32_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<int32_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
     case TCode::BINARY:
@@ -646,8 +620,6 @@ template <> int8_t      C3PTypeConstraint<int32_t>::deserialize(void* obj, Strin
 /// int64_t
 /// TODO: Large integers aren't printf()-able under newlib-nano. Add a
 ///   lib-check/conf step to help handle this case?
-template <> const TCode C3PTypeConstraint<int64_t>::tcode() {            return TCode::INT64;  }
-template <> uint32_t    C3PTypeConstraint<int64_t>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<int64_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%d", *((int64_t*) obj));  }
 
 template <> int8_t      C3PTypeConstraint<int64_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
@@ -740,7 +712,7 @@ template <> int8_t      C3PTypeConstraint<int64_t>::get_as(void* src, const TCod
   return -1;
 }
 
-template <> int8_t      C3PTypeConstraint<int64_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<int64_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
     case TCode::BINARY:
@@ -768,8 +740,6 @@ template <> int8_t      C3PTypeConstraint<int64_t>::deserialize(void* obj, Strin
 
 ////////////////////////////////////////////////////////////////////////////////
 /// uint8_t
-template <> const TCode C3PTypeConstraint<uint8_t>::tcode() {            return TCode::UINT8;  }
-template <> uint32_t    C3PTypeConstraint<uint8_t>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<uint8_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%u", *((uint8_t*) obj));  }
 
 template <> int8_t      C3PTypeConstraint<uint8_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
@@ -847,7 +817,7 @@ template <> int8_t      C3PTypeConstraint<uint8_t>::get_as(void* src, const TCod
   return -1;
 }
 
-template <> int8_t      C3PTypeConstraint<uint8_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<uint8_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
     case TCode::BINARY:
@@ -875,8 +845,6 @@ template <> int8_t      C3PTypeConstraint<uint8_t>::deserialize(void* obj, Strin
 
 ////////////////////////////////////////////////////////////////////////////////
 /// uint16_t
-template <> const TCode C3PTypeConstraint<uint16_t>::tcode() {            return TCode::UINT16;  }
-template <> uint32_t    C3PTypeConstraint<uint16_t>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<uint16_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%u", *((uint16_t*) obj));  }
 
 template <> int8_t      C3PTypeConstraint<uint16_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
@@ -960,7 +928,7 @@ template <> int8_t      C3PTypeConstraint<uint16_t>::get_as(void* src, const TCo
   return -1;
 }
 
-template <> int8_t      C3PTypeConstraint<uint16_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<uint16_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
     case TCode::BINARY:
@@ -988,8 +956,6 @@ template <> int8_t      C3PTypeConstraint<uint16_t>::deserialize(void* obj, Stri
 
 ////////////////////////////////////////////////////////////////////////////////
 /// uint32_t
-template <> const TCode C3PTypeConstraint<uint32_t>::tcode() {            return TCode::UINT32;  }
-template <> uint32_t    C3PTypeConstraint<uint32_t>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<uint32_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%u", *((uint32_t*) obj));  }
 
 template <> int8_t      C3PTypeConstraint<uint32_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
@@ -1078,7 +1044,7 @@ template <> int8_t      C3PTypeConstraint<uint32_t>::get_as(void* src, const TCo
   return -1;
 }
 
-template <> int8_t      C3PTypeConstraint<uint32_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<uint32_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
     case TCode::BINARY:
@@ -1108,8 +1074,6 @@ template <> int8_t      C3PTypeConstraint<uint32_t>::deserialize(void* obj, Stri
 /// uint64_t
 /// TODO: Large integers aren't printf()-able under newlib-nano. Add a
 ///   lib-check/conf step to help handle this case?
-template <> const TCode C3PTypeConstraint<uint64_t>::tcode() {            return TCode::UINT64;  }
-template <> uint32_t    C3PTypeConstraint<uint64_t>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<uint64_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%u", *((uint64_t*) obj));  }
 
 template <> int8_t      C3PTypeConstraint<uint64_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
@@ -1202,7 +1166,7 @@ template <> int8_t      C3PTypeConstraint<uint64_t>::get_as(void* src, const TCo
   return -1;
 }
 
-template <> int8_t      C3PTypeConstraint<uint64_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<uint64_t>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
     case TCode::BINARY:
@@ -1230,8 +1194,6 @@ template <> int8_t      C3PTypeConstraint<uint64_t>::deserialize(void* obj, Stri
 
 ////////////////////////////////////////////////////////////////////////////////
 /// bool
-template <> const TCode C3PTypeConstraint<bool>::tcode() {            return TCode::BOOLEAN;  }
-template <> uint32_t    C3PTypeConstraint<bool>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<bool>::to_string(void* obj, StringBuilder* out) {  out->concatf("%s", (*((bool*) obj) ? "true" : "false"));  }
 
 template <> int8_t      C3PTypeConstraint<bool>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
@@ -1268,7 +1230,7 @@ template <> int8_t      C3PTypeConstraint<bool>::get_as(void* src, const TCode D
   return -1;
 }
 
-template <> int8_t      C3PTypeConstraint<bool>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<bool>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
     case TCode::BINARY:
@@ -1300,8 +1262,6 @@ template <> int8_t      C3PTypeConstraint<bool>::deserialize(void* obj, StringBu
 ///   copy values byte-wise into their on-stack storage, where architectural
 ///   type-alignment boundaries can still be enforced by the compiler, despite
 ///   the type-punning.
-template <> const TCode C3PTypeConstraint<float>::tcode() {            return TCode::FLOAT;  }
-template <> uint32_t    C3PTypeConstraint<float>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<float>::to_string(void* obj, StringBuilder* out) {
   out->concatf("%.4f", (double) _load_from_mem(obj));
 }
@@ -1316,11 +1276,11 @@ template <> int8_t      C3PTypeConstraint<float>::set_from(void* dest, const TCo
     case TCode::UINT8:      d = (1.0f * *((uint8_t*) src));   ret = 0;  break;
     case TCode::UINT16:     d = (1.0f * *((uint16_t*) src));  ret = 0;  break;
     case TCode::UINT32:     d = (1.0f * *((uint32_t*) src));  ret = 0;  break;
-    case TCode::FLOAT:      memcpy(dest, src, sizeOfType(tcode()));  return 0;
+    case TCode::FLOAT:      memcpy(dest, src, FIXED_LEN);  return 0;
     default:  break;
   }
   if (0 == ret) {
-    memcpy(dest, (void*) &d, sizeOfType(tcode()));
+    _store_in_mem(dest, d);
   }
   return ret;
 }
@@ -1330,11 +1290,10 @@ template <> int8_t      C3PTypeConstraint<float>::get_as(void* src, const TCode 
   //   into our on-stack storage, where it's alignment can be controlled.
   float s = 0.0f;
   switch (DEST_TYPE) {
-    case TCode::FLOAT:      memcpy(dest, src, sizeOfType(tcode()));  return 0;
+    case TCode::FLOAT:      memcpy(dest, src, FIXED_LEN);  return 0;
     case TCode::DOUBLE:
       {
-        memcpy((void*) &s, src, sizeOfType(tcode()));
-        double s_d = (1.0d * s);
+        double s_d = (1.0d * _load_from_mem(src));
         memcpy(dest, (void*) &s_d, sizeOfType(TCode::DOUBLE));
       }
       return 0;
@@ -1343,7 +1302,7 @@ template <> int8_t      C3PTypeConstraint<float>::get_as(void* src, const TCode 
   return -1;
 }
 
-template <> int8_t      C3PTypeConstraint<float>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<float>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
     case TCode::BINARY:
@@ -1354,9 +1313,7 @@ template <> int8_t      C3PTypeConstraint<float>::serialize(void* obj, StringBui
       {
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
-        float s = 0.0f;
-        memcpy((void*) &s, obj, sizeOfType(tcode()));
-        encoder.write_float(s);
+        encoder.write_float(_load_from_mem(obj));
       }
       break;
 
@@ -1377,8 +1334,6 @@ template <> int8_t      C3PTypeConstraint<float>::deserialize(void* obj, StringB
 ///   copy values byte-wise into their on-stack storage, where architectural
 ///   type-alignment boundaries can still be enforced by the compiler, despite
 ///   the type-punning.
-template <> const TCode C3PTypeConstraint<double>::tcode() {            return TCode::DOUBLE;  }
-template <> uint32_t    C3PTypeConstraint<double>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<double>::to_string(void* obj, StringBuilder* out) {
   out->concatf("%.6f", _load_from_mem(obj));
 }
@@ -1402,7 +1357,7 @@ template <> int8_t      C3PTypeConstraint<double>::set_from(void* dest, const TC
         d = (1.0d * *((float*) src));
       }
       return 0;
-    case TCode::DOUBLE:     memcpy(dest, src, sizeOfType(tcode()));  return 0;
+    case TCode::DOUBLE:     memcpy(dest, src, FIXED_LEN);  return 0;
     default:  break;
   }
   if (0 == ret) {
@@ -1413,13 +1368,13 @@ template <> int8_t      C3PTypeConstraint<double>::set_from(void* dest, const TC
 
 template <> int8_t      C3PTypeConstraint<double>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
   switch (DEST_TYPE) {
-    case TCode::DOUBLE:     memcpy(dest, src, sizeOfType(tcode()));   return 0;
+    case TCode::DOUBLE:     memcpy(dest, src, FIXED_LEN);   return 0;
     default:  break;
   }
   return -1;
 }
 
-template <> int8_t      C3PTypeConstraint<double>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<double>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
     case TCode::BINARY:
@@ -1430,9 +1385,7 @@ template <> int8_t      C3PTypeConstraint<double>::serialize(void* obj, StringBu
       {
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
-        double s = 0.0f;
-        memcpy((void*) &s, obj, sizeOfType(tcode()));
-        encoder.write_double(s);
+        encoder.write_double(_load_from_mem(obj));
       }
       break;
 
@@ -1451,29 +1404,28 @@ template <> int8_t      C3PTypeConstraint<double>::deserialize(void* obj, String
 /// char*
 /// NOTE: length() always returns +1 for all c-style string types to account for
 ///   the storage overhead of a null-terminator.
-template <> const TCode C3PTypeConstraint<char*>::tcode() {            return TCode::STR;  }
 template <> uint32_t    C3PTypeConstraint<char*>::length(void* obj) {  return (strlen((char*) obj) + 1);  }
-template <> void        C3PTypeConstraint<char*>::to_string(void* obj, StringBuilder* out) {  out->concatf("%s", (char*) obj);  }
+template <> void        C3PTypeConstraint<char*>::to_string(void* obj, StringBuilder* out) {  out->concatf("%s", *((char**) obj));  }
 
 template <> int8_t      C3PTypeConstraint<char*>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
-  char* d = (char*) dest;
+  char** d = (char**) dest;
   switch (SRC_TYPE) {
-    //case TCode::STR:     *d = *((char**) src);    return 0;
+    case TCode::STR:     *d = *((char**) src);    return 0;
     default:  break;
   }
   return -1;
 }
 
 template <> int8_t      C3PTypeConstraint<char*>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  char* s = (char*) src;
+  char** s = (char**) src;
   switch (DEST_TYPE) {
-    //case TCode::STR:     *((char**) dest) = s;    return 0;
+    case TCode::STR:     *((char**) dest) = *s;   return 0;
     default:  break;
   }
   return -1;
 }
 
-template <> int8_t      C3PTypeConstraint<char*>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<char*>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
     case TCode::BINARY:
@@ -1500,9 +1452,161 @@ template <> int8_t      C3PTypeConstraint<char*>::deserialize(void* obj, StringB
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// StringBuilder
+template <> uint32_t    C3PTypeConstraint<StringBuilder>::length(void* obj) {  return ((StringBuilder*) obj)->length();  }
+template <> void        C3PTypeConstraint<StringBuilder>::to_string(void* obj, StringBuilder* out) {  out->concat((StringBuilder*) obj);  }
+
+template <> int8_t      C3PTypeConstraint<StringBuilder>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+  StringBuilder* d = (StringBuilder*) dest;
+  switch (SRC_TYPE) {
+    //case TCode::STR:     d = *((char**) src);    return 0;
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int8_t      C3PTypeConstraint<StringBuilder>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+  StringBuilder* s = (StringBuilder*) src;
+  switch (DEST_TYPE) {
+    //case TCode::STR:     *((char**) dest) = *s;   return 0;
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int         C3PTypeConstraint<StringBuilder>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  int8_t ret = -1;
+  switch (FORMAT) {
+    case TCode::BINARY:
+      //out->concat(*((const char**) obj));
+      break;
+
+    case TCode::CBOR:
+      {
+        cbor::output_stringbuilder output(out);
+        cbor::encoder encoder(output);
+        encoder.write_string((char*) ((StringBuilder*) obj)->string());
+      }
+      break;
+
+    default:  break;
+  }
+  return ret;
+}
+
+template <> int8_t      C3PTypeConstraint<StringBuilder>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  int8_t ret = -1;
+  return ret;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// C3PBinBinder
+/// NOTE: This handler covers any binary data that is refered to by pointer
+///   and length.
+template <> uint32_t    C3PTypeConstraint<C3PBinBinder>::length(void* obj) {  return (((C3PBinBinder*) obj)->len);  }
+template <> void        C3PTypeConstraint<C3PBinBinder>::to_string(void* obj, StringBuilder* out) {
+  _type_blind_to_string(((C3PBinBinder*) obj)->buf, out);
+}
+
+template <> int8_t      C3PTypeConstraint<C3PBinBinder>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+  if ((nullptr != src) & (nullptr != dest)) {
+    switch (SRC_TYPE) {
+      case TCode::BINARY:    memcpy(dest, src, sizeof(C3PBinBinder));  return 0;
+      default:  break;
+    }
+  }
+  return -1;
+}
+
+
+template <> int8_t      C3PTypeConstraint<C3PBinBinder>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+  if ((nullptr != src) & (nullptr != dest)) {
+    C3PBinBinder s = _load_from_mem(src);
+    switch (DEST_TYPE) {
+      case TCode::BINARY:    memcpy(dest, src, sizeof(C3PBinBinder));  return 0;
+      default:  break;
+    }
+  }
+  return -1;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// Vector3f64
+template <> void        C3PTypeConstraint<Vector3f64>::to_string(void* obj, StringBuilder* out) {
+  Vector3f64 v = _load_from_mem(obj);
+  out->concatf("(%.6f, %.6f, %.6f)", (double)(v.x), (double)(v.y), (double)(v.z));
+}
+
+template <> int8_t      C3PTypeConstraint<Vector3f64>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+  switch (SRC_TYPE) {
+    case TCode::VECT_3_DOUBLE:     _store_in_mem(dest, _load_from_mem(src));       return 0;
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int8_t      C3PTypeConstraint<Vector3f64>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+  switch (DEST_TYPE) {
+    case TCode::VECT_3_DOUBLE:     _store_in_mem(dest, _load_from_mem(src));       return 0;
+    default:  break;
+  }
+  return -1;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// Vector3u8
+template <> void        C3PTypeConstraint<Vector3u8>::to_string(void* obj, StringBuilder* out) {
+  Vector3u8 v = _load_from_mem(obj);
+  out->concatf("(%u, %u, %u)", v.x, v.y, v.z);
+}
+
+template <> int8_t      C3PTypeConstraint<Vector3u8>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+  switch (SRC_TYPE) {
+    case TCode::VECT_3_UINT8:     _store_in_mem(dest, _load_from_mem(src));       return 0;
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int8_t      C3PTypeConstraint<Vector3u8>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+  switch (DEST_TYPE) {
+    case TCode::VECT_3_UINT8:     _store_in_mem(dest, _load_from_mem(src));       return 0;
+    default:  break;
+  }
+  return -1;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// Vector3i8
+template <> void        C3PTypeConstraint<Vector3i8>::to_string(void* obj, StringBuilder* out) {
+  Vector3i8 v = _load_from_mem(obj);
+  out->concatf("(%d, %d, %d)", v.x, v.y, v.z);
+}
+
+template <> int8_t      C3PTypeConstraint<Vector3i8>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+  switch (SRC_TYPE) {
+    case TCode::VECT_3_INT8:     _store_in_mem(dest, _load_from_mem(src));       return 0;
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int8_t      C3PTypeConstraint<Vector3i8>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+  switch (DEST_TYPE) {
+    case TCode::VECT_3_INT8:     _store_in_mem(dest, _load_from_mem(src));       return 0;
+    default:  break;
+  }
+  return -1;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// Vector3f
-template <> const TCode C3PTypeConstraint<Vector3f>::tcode() {            return TCode::VECT_3_FLOAT;  }
-template <> uint32_t    C3PTypeConstraint<Vector3f>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<Vector3f>::to_string(void* obj, StringBuilder* out) {
   Vector3f v = _load_from_mem(obj);
   out->concatf("(%.4f, %.4f, %.4f)", (double)(v.x), (double)(v.y), (double)(v.z));
@@ -1524,40 +1628,9 @@ template <> int8_t      C3PTypeConstraint<Vector3f>::get_as(void* src, const TCo
   return -1;
 }
 
-template <> int8_t C3PTypeConstraint<Vector3f>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
-  int8_t ret = -1;
-  switch (FORMAT) {
-    case TCode::BINARY:
-      //out->concat(*((const char**) obj));
-      break;
-
-    case TCode::CBOR:
-      {
-        cbor::output_stringbuilder output(out);
-        cbor::encoder encoder(output);
-        // NOTE: This ought to work for any types retaining portability isn't important.
-        // TODO: Gradually convert types out of this block. As much as possible should
-        //   be portable. VECT_3_FLOAT ought to be an array of floats, for instance.
-        encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(tcode()));
-        encoder.write_bytes((uint8_t*) obj, length(obj));
-      }
-      break;
-
-    default:  break;
-  }
-  return ret;
-}
-
-template <> int8_t C3PTypeConstraint<Vector3f>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
-  int8_t ret = -1;
-  return ret;
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Vector3u32
-template <> const TCode C3PTypeConstraint<Vector3u32>::tcode() {            return TCode::VECT_3_UINT32;  }
-template <> uint32_t    C3PTypeConstraint<Vector3u32>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<Vector3u32>::to_string(void* obj, StringBuilder* out) {
   Vector3u32 v = _load_from_mem(obj);
   out->concatf("(%u, %u, %u)", v.x, v.y, v.z);
@@ -1579,40 +1652,9 @@ template <> int8_t      C3PTypeConstraint<Vector3u32>::get_as(void* src, const T
   return -1;
 }
 
-template <> int8_t C3PTypeConstraint<Vector3u32>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
-  int8_t ret = -1;
-  switch (FORMAT) {
-    case TCode::BINARY:
-      //out->concat(*((const char**) obj));
-      break;
-
-    case TCode::CBOR:
-      {
-        cbor::output_stringbuilder output(out);
-        cbor::encoder encoder(output);
-        // NOTE: This ought to work for any types retaining portability isn't important.
-        // TODO: Gradually convert types out of this block. As much as possible should
-        //   be portable. VECT_3_FLOAT ought to be an array of floats, for instance.
-        encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(tcode()));
-        encoder.write_bytes((uint8_t*) obj, length(obj));
-      }
-      break;
-
-    default:  break;
-  }
-  return ret;
-}
-
-template <> int8_t C3PTypeConstraint<Vector3u32>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
-  int8_t ret = -1;
-  return ret;
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Vector3i32
-template <> const TCode C3PTypeConstraint<Vector3i32>::tcode() {            return TCode::VECT_3_INT32;  }
-template <> uint32_t    C3PTypeConstraint<Vector3i32>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<Vector3i32>::to_string(void* obj, StringBuilder* out) {
   Vector3i32 v = _load_from_mem(obj);
   out->concatf("(%d, %d, %d)", v.x, v.y, v.z);
@@ -1634,40 +1676,9 @@ template <> int8_t      C3PTypeConstraint<Vector3i32>::get_as(void* src, const T
   return -1;
 }
 
-template <> int8_t C3PTypeConstraint<Vector3i32>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
-  int8_t ret = -1;
-  switch (FORMAT) {
-    case TCode::BINARY:
-      //out->concat(*((const char**) obj));
-      break;
-
-    case TCode::CBOR:
-      {
-        cbor::output_stringbuilder output(out);
-        cbor::encoder encoder(output);
-        // NOTE: This ought to work for any types retaining portability isn't important.
-        // TODO: Gradually convert types out of this block. As much as possible should
-        //   be portable. VECT_3_FLOAT ought to be an array of floats, for instance.
-        encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(tcode()));
-        encoder.write_bytes((uint8_t*) obj, length(obj));
-      }
-      break;
-
-    default:  break;
-  }
-  return ret;
-}
-
-template <> int8_t C3PTypeConstraint<Vector3i32>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
-  int8_t ret = -1;
-  return ret;
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Vector3u16
-template <> const TCode C3PTypeConstraint<Vector3u16>::tcode() {            return TCode::VECT_3_UINT16;  }
-template <> uint32_t    C3PTypeConstraint<Vector3u16>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<Vector3u16>::to_string(void* obj, StringBuilder* out) {
   Vector3u16 v = _load_from_mem(obj);
   out->concatf("(%u, %u, %u)", v.x, v.y, v.z);
@@ -1689,40 +1700,9 @@ template <> int8_t      C3PTypeConstraint<Vector3u16>::get_as(void* src, const T
   return -1;
 }
 
-template <> int8_t C3PTypeConstraint<Vector3u16>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
-  int8_t ret = -1;
-  switch (FORMAT) {
-    case TCode::BINARY:
-      //out->concat(*((const char**) obj));
-      break;
-
-    case TCode::CBOR:
-      {
-        cbor::output_stringbuilder output(out);
-        cbor::encoder encoder(output);
-        // NOTE: This ought to work for any types retaining portability isn't important.
-        // TODO: Gradually convert types out of this block. As much as possible should
-        //   be portable. VECT_3_FLOAT ought to be an array of floats, for instance.
-        encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(tcode()));
-        encoder.write_bytes((uint8_t*) obj, length(obj));
-      }
-      break;
-
-    default:  break;
-  }
-  return ret;
-}
-
-template <> int8_t C3PTypeConstraint<Vector3u16>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
-  int8_t ret = -1;
-  return ret;
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Vector3i16
-template <> const TCode C3PTypeConstraint<Vector3i16>::tcode() {            return TCode::VECT_3_INT16;  }
-template <> uint32_t    C3PTypeConstraint<Vector3i16>::length(void* obj) {  return sizeOfType(tcode());  }
 template <> void        C3PTypeConstraint<Vector3i16>::to_string(void* obj, StringBuilder* out) {
   Vector3i16 v = _load_from_mem(obj);
   out->concatf("(%d, %d, %d)", v.x, v.y, v.z);
@@ -1744,22 +1724,43 @@ template <> int8_t      C3PTypeConstraint<Vector3i16>::get_as(void* src, const T
   return -1;
 }
 
-template <> int8_t C3PTypeConstraint<Vector3i16>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+
+////////////////////////////////////////////////////////////////////////////////
+/// Identity*
+template <> uint32_t    C3PTypeConstraint<Identity*>::length(void* obj) {  return ((Identity*) obj)->length();  }
+template <> void        C3PTypeConstraint<Identity*>::to_string(void* obj, StringBuilder* out) {  ((Identity*) obj)->toString(out);  }
+
+template <> int8_t      C3PTypeConstraint<Identity*>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+  switch (SRC_TYPE) {
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int8_t      C3PTypeConstraint<Identity*>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+  switch (DEST_TYPE) {
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int         C3PTypeConstraint<Identity*>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
+  Identity* ident = ((Identity*) obj);
   switch (FORMAT) {
     case TCode::BINARY:
-      //out->concat(*((const char**) obj));
       break;
 
     case TCode::CBOR:
       {
-        cbor::output_stringbuilder output(out);
-        cbor::encoder encoder(output);
-        // NOTE: This ought to work for any types retaining portability isn't important.
-        // TODO: Gradually convert types out of this block. As much as possible should
-        //   be portable. VECT_3_FLOAT ought to be an array of floats, for instance.
-        encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(tcode()));
-        encoder.write_bytes((uint8_t*) obj, length(obj));
+        uint16_t i_len = ident->length();
+        uint8_t buf[i_len];
+        if (ident->toBuffer(buf)) {
+          cbor::output_stringbuilder output(out);
+          cbor::encoder encoder(output);
+          encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(TCODE));
+          encoder.write_bytes(buf, i_len);
+        }
       }
       break;
 
@@ -1768,7 +1769,99 @@ template <> int8_t C3PTypeConstraint<Vector3i16>::serialize(void* obj, StringBui
   return ret;
 }
 
-template <> int8_t C3PTypeConstraint<Vector3i16>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int8_t      C3PTypeConstraint<Identity*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// KeyValuePair
+template <> uint32_t    C3PTypeConstraint<KeyValuePair>::length(void* obj) {  return ((KeyValuePair*) obj)->memoryCost(true);  }
+template <> void        C3PTypeConstraint<KeyValuePair>::to_string(void* obj, StringBuilder* out) {  ((KeyValuePair*) obj)->valToString(out);  }
+//template <> void        C3PTypeConstraint<KeyValuePair>::to_string(void* obj, StringBuilder* out) {  ((KeyValuePair*) obj)->toString(out);  }
+
+template <> int8_t      C3PTypeConstraint<KeyValuePair>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+  switch (SRC_TYPE) {
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int8_t      C3PTypeConstraint<KeyValuePair>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+  switch (DEST_TYPE) {
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int         C3PTypeConstraint<KeyValuePair>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  KeyValuePair* subj = ((KeyValuePair*) obj);
+  // NOTE: Hidden recursion.
+  return ((0 == subj->serialize(out, FORMAT)) ? 0 : -1);
+}
+
+template <> int8_t      C3PTypeConstraint<KeyValuePair>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  int8_t ret = -1;
+  return ret;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// Image
+#if defined(CONFIG_C3P_IMG_SUPPORT)
+template <> uint32_t    C3PTypeConstraint<Image>::length(void* obj) {  return ((Image*) obj)->bytesUsed();  }
+template <> void        C3PTypeConstraint<Image>::to_string(void* obj, StringBuilder* out) {
+  Image* img = (Image*) obj;
+  out->concatf("Image (%ux%u %u bpp)", img->x(), img->y(), img->bitsPerPixel());
+}
+
+template <> int8_t      C3PTypeConstraint<Image>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+  switch (SRC_TYPE) {
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int8_t      C3PTypeConstraint<Image>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+  switch (DEST_TYPE) {
+    default:  break;
+  }
+  return -1;
+}
+
+template <> int         C3PTypeConstraint<Image>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  int8_t ret = -1;
+  Image* img = ((Image*) obj);
+
+  switch (FORMAT) {
+    case TCode::BINARY:
+      break;
+
+    case TCode::CBOR:
+      {
+        uint32_t sz_buf = img->bytesUsed();
+        if (sz_buf > 0) {
+          uint32_t nb_buf = 0;
+          uint8_t intermediary[32] = {0, };
+          if (0 == img->serializeWithoutBuffer(intermediary, &nb_buf)) {
+            cbor::output_stringbuilder output(out);
+            cbor::encoder encoder(output);
+            encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(TCODE));
+            encoder.write_bytes(intermediary, nb_buf);   // TODO: This might cause two discrete CBOR objects.
+            //encoder.write_bytes(img->buffer(), sz_buf);
+          }
+        }
+      }
+      break;
+
+    default:  break;
+  }
+  return ret;
+}
+
+template <> int8_t      C3PTypeConstraint<Image>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  int8_t ret = -1;
+  return ret;
+}
+#endif   // CONFIG_C3P_IMG_SUPPORT

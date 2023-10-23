@@ -179,6 +179,7 @@ void printTestFailure(const char* module, const char* test) {
 #include "TestModules/Vector3Tests.cpp"
 #include "TestModules/UUIDTests.cpp"
 #include "TestModules/RingBufferTests.cpp"
+#include "TestModules/C3PTypeTests.cpp"
 #include "TestModules/C3PValueTests.cpp"
 #include "TestModules/KVPTests.cpp"
 #include "TestModules/LinkedListTests.cpp"
@@ -229,6 +230,7 @@ void printTypeSizes() {
   print_types_enum_wrapper();
   print_types_scheduler();
   print_types_state_machine();
+  print_types_c3p_type();
   print_types_c3p_value();
   print_types_kvp();
   print_types_identity();
@@ -274,7 +276,7 @@ void printTypeSizes() {
 #define CHKLST_ASYNC_SEQUENCER_TESTS  0x00200000  // AsyncSequencer
 #define CHKLST_ENUM_WRAPPER_TESTS     0x00400000  // EnumWrapper
 #define CHKLST_CONF_RECORD            0x00800000  // ConfRecord
-#define CHKLST_TYPE_CONTAINER_TESTS   0x01000000  // C3PValue
+#define CHKLST_TYPE_CONTAINER_TESTS   0x01000000  // C3PType. C3PValue
 
 #define CHKLST_GPS_PARSING_TESTS      0x02000000  // TODO:
 #define CHKLST_ELEMENT_POOL_TESTS     0x04000000  // TODO: ElementPool<T>
@@ -518,7 +520,14 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .LABEL        = "C3PValue",
     .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == c3p_value_test_main()) ? 1:-1);  }
+    .POLL_FXN     = []() {
+      if ((0 == c3p_type_test_main()) ? 1:-1) {
+        if ((0 == c3p_value_test_main()) ? 1:-1) {
+          return 1;
+        }
+      }
+      return -1;
+    }
   },
 
   // KVP is responsible for implementing a map data type with full

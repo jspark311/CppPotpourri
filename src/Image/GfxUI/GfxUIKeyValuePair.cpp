@@ -13,7 +13,7 @@ Date:   2022.06.25
 *******************************************************************************/
 GfxUIC3PType::GfxUIC3PType(const TCode TC, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f) :
   GfxUIElement(lay, sty, f),
-  _type(getTypeHelper(TC)) {};
+  _type((C3PType*) getTypeHelper(TC)) {};
 
 
 int GfxUIC3PType::_render(UIGfxWrapper* ui_gfx) {
@@ -22,7 +22,7 @@ int GfxUIC3PType::_render(UIGfxWrapper* ui_gfx) {
     uint32_t i_x = internalPosX();
     uint32_t i_y = internalPosY();
     uint16_t i_w = internalWidth();
-    StringBuilder line(typecodeToStr(_type->tcode()));
+    StringBuilder line(typecodeToStr(_type->TCODE));
     ui_gfx->img()->setCursor(i_x, i_y);
     ui_gfx->img()->setTextSize(_style.text_size);
     ui_gfx->img()->setTextColor(_style.color_active, _style.color_bg);
@@ -53,7 +53,7 @@ bool GfxUIC3PType::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, Pr
 GfxUIC3PValue::GfxUIC3PValue(C3PValue* value, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f) :
   GfxUIElement(lay, sty, f),
   //_type_render(
-  //  ((nullptr != value) ? value->tcode() : TCode::NONE),
+  //  ((nullptr != value) ? value->TCODE : TCode::NONE),
   //  GfxUILayout(
   //    internalPosX() + (internalWidth() - 55), internalPosY(),
   //    55, (sty.text_size * 8),  // TODO: Better, but still arbitrary.
