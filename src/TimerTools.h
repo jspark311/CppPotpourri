@@ -42,6 +42,7 @@ limitations under the License.
       inline uint32_t executions() {   return _executions;         };
       inline void     markStart() {    _start_micros = (uint32_t) micros();   };
       bool  markStop();
+      bool  addRuntime(const uint32_t START_TIME, const uint32_t STOP_TIME);
       void  reset();
       void printDebug(const char*, StringBuilder*);
 

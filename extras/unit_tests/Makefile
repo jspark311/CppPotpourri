@@ -95,6 +95,7 @@ CXXFLAGS  = $(WARNING_BEHAVIOR) -D_GNU_SOURCE -fprofile-dir=$(COVERAGE_PATH)
 CXXFLAGS += -fsingle-precision-constant -Wdouble-promotion -fno-rtti -fno-exceptions
 CXXFLAGS += -DCONFIG_C3P_CBOR -DCONFIG_C3P_M2M_SUPPORT
 CXXFLAGS += -DCONFIG_C3P_IMG_SUPPORT
+CXXFLAGS += -DCONFIG_C3P_TRACE_ENABLED
 
 LIBS  = -L$(OUTPUT_PATH) -lstdc++ -lm
 
