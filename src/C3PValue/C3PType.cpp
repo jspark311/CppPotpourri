@@ -1506,7 +1506,9 @@ template <> int8_t      C3PTypeConstraint<StringBuilder>::deserialize(void* obj,
 ///   and length.
 template <> uint32_t    C3PTypeConstraint<C3PBinBinder>::length(void* obj) {  return (((C3PBinBinder*) obj)->len);  }
 template <> void        C3PTypeConstraint<C3PBinBinder>::to_string(void* obj, StringBuilder* out) {
-  _type_blind_to_string(((C3PBinBinder*) obj)->buf, out);
+  const uint32_t L_ENDER = ((C3PBinBinder*) obj)->len;
+  if (L_ENDER > 0) {  StringBuilder::printBuffer(out, ((C3PBinBinder*) obj)->buf, L_ENDER);  }
+  //_type_blind_to_string((C3PBinBinder*) obj, out);
 }
 
 template <> int8_t      C3PTypeConstraint<C3PBinBinder>::set_from(void* dest, const TCode SRC_TYPE, void* src) {

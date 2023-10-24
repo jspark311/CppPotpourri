@@ -201,6 +201,7 @@ class C3PType {
 };
 
 
+
 /*
 * The template below contains helper functions for each TCode.
 * This is a concealed template for containment of per-type complexity in C3P's
