@@ -71,7 +71,7 @@ C3P wants the following capabilities, which will probably implicate this file.
   #if defined(CONFIG_C3P_WITH_MBEDTLS) && defined(MBEDTLS_BASE64_C)
     #define __BUILD_HAS_BASE64_VIA_MBEDTLS
   #elif defined (CONFIG_C3P_WITH_OPENSSL)
-    //#define __BUILD_HAS_BASE64_VIA_OPENSSL
+    #define __BUILD_HAS_BASE64_VIA_OPENSSL
   #endif
 #endif  // CONFIG_C3P_BASE64
 
@@ -165,7 +165,73 @@ C3P wants the following capabilities, which will probably implicate this file.
 /*******************************************************************************
 * Feature map
 *******************************************************************************/
+/*
+* CppPotpourri is highly asynchronous. The optional C3PTrace feature makes
+*   debugging things built with it much easier.
+*/
+#if defined(CONFIG_C3P_TRACE_ENABLED)
+  // TODO: Feature control for trace can be restricted by setting any of these values to 0?
 
+  // How much heap should we allocate for the trace log?
+  #ifndef CONFIG_C3P_TRACE_MAX_POINTS
+    #define CONFIG_C3P_TRACE_MAX_POINTS      180
+  #endif
+
+  // How many lines can a file have?
+  #ifndef CONFIG_C3P_TRACE_WORD_LINE_BITS
+    #define CONFIG_C3P_TRACE_WORD_LINE_BITS   14
+  #endif
+
+  // How many files can safely contain trace calls?
+  #ifndef CONFIG_C3P_TRACE_WORD_FILE_BITS
+    #define CONFIG_C3P_TRACE_WORD_FILE_BITS    9
+  #endif
+
+  // How many pathways can we distinguish? Maximum value of 8, and a minimum of 1.
+  #ifndef CONFIG_C3P_TRACE_WORD_PATH_BITS
+    #define CONFIG_C3P_TRACE_WORD_PATH_BITS    6
+  #endif
+
+  // How many pathways can we distinguish? Maximum value of 8, and a minimum of 1.
+  #ifndef CONFIG_C3P_TRACE_WORD_ACTN_BITS
+    #define CONFIG_C3P_TRACE_WORD_ACTN_BITS    3
+  #endif
+
+  // How many bits did we define for use in the trace words?
+  #define C3P_TRACE_WORD_TOTAL_BITS ( \
+    CONFIG_C3P_TRACE_WORD_PATH_BITS + CONFIG_C3P_TRACE_WORD_FILE_BITS + \
+    CONFIG_C3P_TRACE_WORD_LINE_BITS + CONFIG_C3P_TRACE_WORD_ACTN_BITS)
+
+
+  #if ((CONFIG_C3P_TRACE_WORD_LINE_BITS > 16) | (CONFIG_C3P_TRACE_WORD_LINE_BITS < 12))
+    #error CONFIG_C3P_TRACE_WORD_LINE_BITS must be a value in the range [12, 16].
+  #endif
+
+  #if ((CONFIG_C3P_TRACE_WORD_FILE_BITS > 16) | (CONFIG_C3P_TRACE_WORD_FILE_BITS < 9))
+    #error CONFIG_C3P_TRACE_WORD_FILE_BITS must be a value in the range [9, 16].
+  #endif
+
+  #if ((CONFIG_C3P_TRACE_WORD_PATH_BITS > 8) | (CONFIG_C3P_TRACE_WORD_PATH_BITS < 1))
+    #error CONFIG_C3P_TRACE_WORD_PATH_BITS must be a value in the range [1, 8].
+  #endif
+
+  #if ((CONFIG_C3P_TRACE_WORD_ACTN_BITS > 8) | (CONFIG_C3P_TRACE_WORD_ACTN_BITS < 1))
+    #error CONFIG_C3P_TRACE_WORD_ACTN_BITS must be a value in the range [1, 8].
+  #endif
+
+  #if (32 < CONFIG_C3P_TRACE_WORD_TOTAL_BITS)
+    #error C3P_TRACE_WORD_TOTAL_BITS bit size exceeds the length of its storage type (32-bit).
+  #endif
+#endif  // CONFIG_C3P_TRACE_ENABLED
+
+
+
+/*
+* The presence of certain drivers sets preprocessor flags.
+* TODO: This should all be excised, and moved to ManuvrDrivers. Such type
+*   inclusion is no longer a concern in C3P.
+*/
+#if false
 // The presence of a PMIC implies we have a battery.
 #if defined(CONFIG_C3P_BQ24155) || \
     defined(CONFIG_C3P_LTC294X)
@@ -193,6 +259,7 @@ C3P wants the following capabilities, which will probably implicate this file.
     #define CONFIG_C3P_IMG_SUPPORT  // Framebuffers need this class.
   #endif    // CONFIG_C3P_IMG_SUPPORT
 #endif   // CONFIG_C3P_SSD1331
+#endif   // false
 
 
 #endif  // BUILD_RATIONALIZER_META_HEADER

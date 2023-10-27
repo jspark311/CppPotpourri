@@ -45,8 +45,16 @@ inline uint64_t endianSwap64(uint64_t x) {   return __builtin_bswap64(x);    };
 /*******************************************************************************
 * Sections
 *******************************************************************************/
+// Used to tag functions that should be placed in a fast, high-availability
+//   text section, if such a section is defined.
+// Ultimately, the observance (or not) of this attribute is up to the top-level
+//   linker. But even without being able to enforce the notion, it is useful for
+//   documentation of functions that the author has decided should be located in
+//   a high-availablitity text section.
+#ifndef RAMFUNC
+  #define RAMFUNC __attribute__((section(".ramfunc")))
+#endif
 
-//TODO: #define RAMFUNC
 
 //TODO: #define ISR
 

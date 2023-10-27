@@ -21,6 +21,7 @@ limitations under the License.
 #include "CppPotpourri.h"
 #include "TimerTools.h"
 #include "StringBuilder.h"
+#include "Trace.h"
 
 /**
 * Constructor
@@ -48,6 +49,7 @@ bool StopWatch::addRuntime(const uint32_t START_TIME, const uint32_t STOP_TIME) 
   _run_time_total  += _run_time_last;
   _run_time_average = _run_time_total / _executions;
   _start_micros     = 0;
+  return true;
 }
 
 
@@ -63,20 +65,8 @@ bool StopWatch::markStop() {
 
 
 void StopWatch::printDebug(const char* label, StringBuilder* output) {
-  if (_executions) {
-    output->concatf("%14s %10u %10u %10u %10u %10u %10u\n",
-      label,
-      _executions,
-      (unsigned long) _run_time_total,
-      (unsigned long) _run_time_average,
-      (unsigned long) _run_time_worst,
-      (unsigned long) _run_time_best,
-      (unsigned long) _run_time_last
-    );
-  }
-  else {
-    output->concatf("%14s <NO DATA>\n", label);
-  }
+  output->concatf("%14s ", label);
+  serialize(out, TCode::STR);
 }
 
 
@@ -86,32 +76,73 @@ void StopWatch::printDebugHeader(StringBuilder* output) {
 }
 
 
+int StopWatch::serialize(StringBuilder* out, const TCode FORMAT) {
+  int ret = -1;
+  if (0 < _start_point.ts_micros) {
+    const int ENDPOINT_COUNT = _pathways.size();
+    switch (FORMAT) {
+      case TCode::STR:
+        if (_executions) {
+          output->concatf("%10u %10u %10u %10u %10u %10u\n",
+            _executions,
+            (unsigned long) _run_time_total,
+            (unsigned long) _run_time_average,
+            (unsigned long) _run_time_worst,
+            (unsigned long) _run_time_best,
+            (unsigned long) _run_time_last
+          );
+        }
+        else {
+          output->concat("<NO DATA>\n");
+        }
+        break;
+      case TCode::CBOR:
+        {
+          cbor::output_stringbuilder output(out);
+          cbor::encoder encoder(output);
+          encoder.write_map(6);
+          encoder.write_string("exec");   encoder.write_int(_executions);
+          encoder.write_string("tot");    encoder.write_int(_run_time_total);
+          encoder.write_string("avg");    encoder.write_int(_run_time_average);
+          encoder.write_string("worst");  encoder.write_int(_run_time_worst);
+          encoder.write_string("best");   encoder.write_int(_run_time_best);
+          encoder.write_string("last");   encoder.write_int(_run_time_last);
+          ret = 0;
+        }
+        break;
+      case TCode::BINARY:
+        break;
+      default:   break;
+    }
+  }
+  return ret;
+}
+
+
 
 /*******************************************************************************
 * C3PTrace
 *******************************************************************************/
 
 #if defined(CONFIG_C3P_TRACE_ENABLED)
-// We were asked to include the profiler.
-//   manage usage as single lines that aren't hard to read.
-static C3PTrace global_profiler(CONFIG_C3P_TRACE_MAX_MEMORY);
-static C3PTrace* C3PTrace::tracerTool() {  return &global_profiler;  }
+// Trace is a singleton capability.
+static C3PTrace global_profiler(CONFIG_C3P_TRACE_MAX_POINTS);
+C3PTrace* C3PTrace::tracerTool = &global_profiler;
 
 
 C3PTrace::C3PTrace(const uint32_t MAX_POINTS) :
-  _trace_points(MAX_POINTS),
-  _recording_began(0), _recording_ended(0), _trace_count(0), _mode_oneshot(false) {}
+  _recording_began(0), _recording_ended(0), _trace_count(0), _mode_oneshot(false),
+  _trace_points(MAX_POINTS) {}
 
 C3PTrace::~C3PTrace() {
-  while (_trace_paths.count() > 0) {  delete _trace_paths.dequeue();  }
+  while (_trace_paths.size() > 0) {  delete _trace_paths.dequeue();  }
 }
 
 
 /*
 * This function is the ultimate intake for trace.
-* TODO: Compiler attributes on this function.
 */
-void C3PTrace::trace(const uint32_t TRACE_WORD) {
+RAMFUNC void C3PTrace::leave_trace(const uint32_t TRACE_WORD) {
   const unsigned int NOW = micros();
   if (recording()) {
     const uint32_t SPATIAL_WORD = (C3P_TRACE_WORD_SPATIAL_MASK & TRACE_WORD);
@@ -155,8 +186,24 @@ void C3PTrace::trace(const uint32_t TRACE_WORD) {
 void C3PTrace::generateReport(StringBuilder* out, const TCode FORMAT) {
   switch (FORMAT) {
     case TCode::STR:
+      for (unsigned int i = 0; i < _trace_points.count(); i++) {
+        TracePoint point = _trace_points.peek(i);
+        point.export_point(out, FORMAT);
+        out->concat('\n');
+      }
+      for (int i = 0; i < _trace_paths.size(); i++) {
+        TracePath* path = _trace_paths.get(i);
+        if (nullptr != path) {
+          path->export_path(out, FORMAT);
+          //out->concat('\n');
+        }
+      }
       break;
+    // TODO: One of these is required for best storage density.
     case TCode::CBOR:
+      break;
+    case TCode::BINARY:
+      break;
     default:   break;
   }
 }
@@ -165,23 +212,30 @@ void C3PTrace::generateReport(StringBuilder* out, const TCode FORMAT) {
 
 void C3PTrace::reset() {
   _trace_points.clear();
-  const int PATH_COUNT = _trace_paths.count();
+  const int PATH_COUNT = _trace_paths.size();
   for (int i = 0; i < PATH_COUNT; i++) {
     _trace_paths.get(i)->reset();
   }
 }
 
 
-bool C3PTrace::recording(bool en) {
+RAMFUNC bool C3PTrace::recording(bool en) {
   if (_trace_points.allocated()) {
     if (en) {
       _recording_began = micros();
+       if (0 == _recording_began) {
+         _recording_began++;  // Disallow zero in this field.
+       }
       _recording_ended = 0;
     }
     else {
       _recording_ended = micros();
+       if (0 == _recording_ended) {
+         _recording_ended++;  // Disallow zero in this field.
+       }
     }
   }
+  return true;
 }
 
 
@@ -189,12 +243,26 @@ bool C3PTrace::recording(bool en) {
 * TracePoint
 *******************************************************************************/
 
-void TracePoint::export(StringBuilder* out, const TCode FORMAT) {
+int TracePoint::serialize(StringBuilder* out, const TCode FORMAT) {
+  int ret = -1;
   switch (FORMAT) {
-    case TCode::STR:    out->concatf("F%u:L%u", fileID(), lineID());  break;
+    case TCode::STR:    out->concatf("F%03u-L%05u:\t%u", fileID(), lineID(), ts_micros);  break;
     case TCode::CBOR:
+      {
+        cbor::output_stringbuilder output(out);
+        cbor::encoder encoder(output);
+        encoder.write_map(3);
+        encoder.write_string("F");    encoder.write_int(fileID());
+        encoder.write_string("L");    encoder.write_int(lineID());
+        encoder.write_string("T");    encoder.write_int(ts_micros);
+        ret = 0;
+      }
+      break;
+    case TCode::BINARY:
+      break;
     default:   break;
   }
+  return ret;
 }
 
 
@@ -202,61 +270,85 @@ void TracePoint::export(StringBuilder* out, const TCode FORMAT) {
 * TracePath
 *******************************************************************************/
 
-void TracePath::export(StringBuilder* out, const TCode FORMAT) {
+int TracePath::serialize(StringBuilder* out, const TCode FORMAT) {
+  int ret = -1;
   if (0 < _start_point.ts_micros) {
+    const int ENDPOINT_COUNT = _pathways.size();
     switch (FORMAT) {
       case TCode::STR:
         {
           StringBuilder tmp("TracePath from ");
-          _start_point.export(tmp, FORMAT);
+          _start_point.serialize(&tmp, FORMAT);
           StringBuilder::styleHeader2(out, (char*) tmp.string());
-          const int ENDPOINT_COUNT = _pathways.count();
           StopWatch::printDebugHeader(out);
           for (int i = 0; i < ENDPOINT_COUNT; i++) {
-            StopWatch* path_profiler = _pathways.getByPriority((int32_t) POINT->trace_word);
+            StopWatch* path_profiler = _pathways.getByPriority((int32_t) _start_point.trace_word);
             if (nullptr != path_profiler) {
-              TracePoint tmp_point(0, path_profiler->tag());
+              TracePoint end_point(0, path_profiler->tag());
               tmp.clear();
-              tmp_point->printDebug(&tmp);
+              //tmp_point.export_point(&tmp);
+              tmp.concatf("F%03u-L%05u", end_point.fileID(), end_point.lineID());
               path_profiler->printDebug((char*) tmp.string(), out);
             }
           }
         }
         break;
       case TCode::CBOR:
+        {
+          cbor::output_stringbuilder output(out);
+          cbor::encoder encoder(output);
+          encoder.write_map(2);
+          encoder.write_string("start");   encoder.write_int(_start_point.trace_word);
+          encoder.write_string("stops");   encoder.write_array(ENDPOINT_COUNT);
+          for (int i = 0; i < ENDPOINT_COUNT; i++) {
+            StopWatch* path_stopwatch = _pathways.get(i);
+            if (nullptr != path_stopwatch) {
+              TracePoint end_point(0, path_stopwatch->tag());  // Reconstruct a point from the StopWatch tag.
+              encoder.write_map(2);
+              encoder.write_string("pnt");    encoder.write_int(end_point.trace_word);
+              encoder.write_string("prof");   path_stopwatch->serialize(&tmp, FORMAT);
+            }
+          }
+          ret = 0;
+        }
+        break;
+      case TCode::BINARY:
+        break;
       default:   break;
     }
   }
+  return ret;
 }
 
 
-bool TracePath::recordStart(const uint32_t TRACE_WORD, const TracePoint* POINT) {
-  if (0 == _start_point->ts_micros) {
-    _start_point(POINT);
+RAMFUNC bool TracePath::recordStart(const uint32_t TRACE_WORD, const TracePoint* POINT) {
+  if (0 == _start_point.ts_micros) {
+    _start_point.ts_micros = POINT->ts_micros;
+    _start_point.trace_word = POINT->trace_word;
     return true;
   }
   return false;
 }
 
 
-bool TracePath::recordStop(const uint32_t TRACE_WORD, const TracePoint* POINT) {
+RAMFUNC bool TracePath::recordStop(const uint32_t TRACE_WORD, const TracePoint* POINT) {
   bool ret = false;
   if (_start_point.ts_micros > 0) {
-    StopWatch* path_profiler = _pathways.getByPriority((int32_t) POINT->trace_word);
-    bool path_timing_created = false;
-    if (nullptr == path_profiler) {
-      path_profiler = new StopWatch(POINT->trace_word);
-      path_timing_created = (nullptr != path_profiler);
+    StopWatch* path_stopwatch = _pathways.getByPriority((int32_t) POINT->trace_word);
+    bool path_timing_created  = false;
+    if (nullptr == path_stopwatch) {
+      path_stopwatch = new StopWatch(POINT->trace_word);
+      path_timing_created = (nullptr != path_stopwatch);
     }
     if (nullptr != path_profiler) {
-      ret = path_profiler->addRuntime((uint32_t) _ts_start, (uint32_t) POINT->ts_micros);
+      ret = path_stopwatch->addRuntime((uint32_t) _start_point.ts_micros, (uint32_t) POINT->ts_micros);
       if (path_timing_created) {
-        ret &= (_pathways.insert(path_profiler, (int32_t) POINT->trace_word));
+        ret &= (_pathways.insert(path_stopwatch, (int32_t) POINT->trace_word));
       }
     }
-  }
-  if (path_timing_created & !ret) {  // Clean up any mess we might have left
-    delete path_profiler;            // hanging after an allocation failure.
+    if (path_timing_created & !ret) {  // Clean up any mess we might have left
+      delete path_stopwatch;            // hanging after an allocation failure.
+    }
   }
   _start_point.ts_micros = 0;
   return ret;

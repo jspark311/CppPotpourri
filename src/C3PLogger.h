@@ -29,12 +29,13 @@ Platforms that have built-in faculties for logging should not use this class,
   existing APIs. See associated notes in AbstractPlatform.h.
 */
 
+#include "Meta/Rationalizer.h"
 #include "StringBuilder.h"
 #include "TimerTools.h"
 #include "Pipes/BufferAccepter/BufferAccepter.h"
 
-#ifndef __CPPPOTPOURRI_LOGGER_H__
-#define __CPPPOTPOURRI_LOGGER_H__
+#ifndef __C3P_LOGGER_H
+#define __C3P_LOGGER_H
 
 // This is the maximum length of a log tag. Tags
 //   exceeding this length will be truncated.
@@ -129,60 +130,25 @@ class C3PLogger {
 // TODO: Add wrapper macros in header file so access is cheaper, and usage easier.
 
 #if defined(CONFIG_C3P_TRACE_ENABLED)
-  // TODO: Properly wrap these into the pre-processor check file (Rationalizer).
-  // TODO: Feature control for trace can be restricted by setting any of these values to 0.
 
-  // How much heap should we allocate for the trace log?
-  #ifndef CONFIG_C3P_TRACE_MAX_POINTS
-    #define CONFIG_C3P_TRACE_MAX_POINTS    1024
-  #endif
+// Define a few convenience values.
+// This is the mask of useful bits in the tags passed into trace().
+// NOTE: The defines below imply a field order and justification.
+#define C3P_TRACE_WORD_MASK  (0xFFFFFFFF >> (32 - C3P_TRACE_WORD_TOTAL_BITS))
+// Define offset values for each field in the trace word.
+#define C3P_TRACE_WORD_LINE_OFFSET  (0)
+#define C3P_TRACE_WORD_FILE_OFFSET  (CONFIG_C3P_TRACE_WORD_LINE_BITS)
+#define C3P_TRACE_WORD_PATH_OFFSET  (CONFIG_C3P_TRACE_WORD_LINE_BITS + CONFIG_C3P_TRACE_WORD_FILE_BITS)
+#define C3P_TRACE_WORD_ACTN_OFFSET  (CONFIG_C3P_TRACE_WORD_LINE_BITS + CONFIG_C3P_TRACE_WORD_FILE_BITS + C3P_TRACE_WORD_PATH_OFFSET)
 
-  // How many lines can a file have?
-  #ifndef CONFIG_C3P_TRACE_WORD_LINE_BITS
-    #define CONFIG_C3P_TRACE_WORD_LINE_BITS   14
-  #endif
+// Define mask values for each field in the trace word.
+#define C3P_TRACE_WORD_LINE_MASK    ((0xFFFFFFFF >> (32 - CONFIG_C3P_TRACE_WORD_LINE_BITS)) << C3P_TRACE_WORD_LINE_OFFSET)
+#define C3P_TRACE_WORD_FILE_MASK    ((0xFFFFFFFF >> (32 - CONFIG_C3P_TRACE_WORD_FILE_BITS)) << C3P_TRACE_WORD_FILE_OFFSET)
+#define C3P_TRACE_WORD_PATH_MASK    ((0xFFFFFFFF >> (32 - CONFIG_C3P_TRACE_WORD_PATH_BITS)) << C3P_TRACE_WORD_PATH_OFFSET)
+#define C3P_TRACE_WORD_ACTN_MASK    ((0xFFFFFFFF >> (32 - CONFIG_C3P_TRACE_WORD_ACTN_BITS)) << C3P_TRACE_WORD_ACTN_OFFSET)
 
-  // How many files can safely contain trace calls?
-  #ifndef CONFIG_C3P_TRACE_WORD_FILE_BITS
-    #define CONFIG_C3P_TRACE_WORD_FILE_BITS    9
-  #endif
-
-  // How many pathways can we distinguish? Maximum value of 8, and a minimum of 1.
-  #ifndef CONFIG_C3P_TRACE_WORD_PATH_BITS
-    #define CONFIG_C3P_TRACE_WORD_PATH_BITS    6
-  #endif
-
-  // How many pathways can we distinguish? Maximum value of 8, and a minimum of 1.
-  #ifndef CONFIG_C3P_TRACE_WORD_ACTN_BITS
-    #define CONFIG_C3P_TRACE_WORD_ACTN_BITS    3
-  #endif
-
-  // How many bits did we define for use in the trace words?
-  #define C3P_TRACE_WORD_TOTAL_BITS ( \
-    CONFIG_C3P_TRACE_WORD_PATH_BITS + CONFIG_C3P_TRACE_WORD_FILE_BITS + \
-    CONFIG_C3P_TRACE_WORD_LINE_BITS + CONFIG_C3P_TRACE_WORD_ACTN_BITS)
-
-  #if (32 < CONFIG_C3P_TRACE_WORD_TOTAL_BITS)
-    #error TRACE_WORD bit size exceeds the length of its storage type (32-bit).
-  #endif
-
-  // Define a few convenience values. This is the mask of useful bits in the
-  //   tags passed into trace().
-  #define C3P_TRACE_WORD_MASK  (0xFFFFFFFF >> (32 - C3P_TRACE_WORD_TOTAL_BITS))
-  // Define offset values for each field in the trace word.
-  #define C3P_TRACE_WORD_LINE_OFFSET  (0)
-  #define C3P_TRACE_WORD_FILE_OFFSET  (CONFIG_C3P_TRACE_WORD_LINE_BITS)
-  #define C3P_TRACE_WORD_PATH_OFFSET  (CONFIG_C3P_TRACE_WORD_LINE_BITS + CONFIG_C3P_TRACE_WORD_FILE_BITS)
-  #define C3P_TRACE_WORD_ACTN_OFFSET  (CONFIG_C3P_TRACE_WORD_LINE_BITS + CONFIG_C3P_TRACE_WORD_FILE_BITS + C3P_TRACE_WORD_PATH_OFFSET)
-
-  // Define mask values for each field in the trace word.
-  #define C3P_TRACE_WORD_LINE_MASK    ((0xFFFFFFFF >> (32 - CONFIG_C3P_TRACE_WORD_LINE_BITS)) << C3P_TRACE_WORD_LINE_OFFSET)
-  #define C3P_TRACE_WORD_FILE_MASK    ((0xFFFFFFFF >> (32 - CONFIG_C3P_TRACE_WORD_FILE_BITS)) << C3P_TRACE_WORD_FILE_OFFSET)
-  #define C3P_TRACE_WORD_PATH_MASK    ((0xFFFFFFFF >> (32 - CONFIG_C3P_TRACE_WORD_PATH_BITS)) << C3P_TRACE_WORD_PATH_OFFSET)
-  #define C3P_TRACE_WORD_ACTN_MASK    ((0xFFFFFFFF >> (32 - CONFIG_C3P_TRACE_WORD_ACTN_BITS)) << C3P_TRACE_WORD_ACTN_OFFSET)
-
-  // A mask to filter out the location-related bits in the trace word.
-  #define C3P_TRACE_WORD_SPATIAL_MASK ((0xFFFFFFFF >> (32 - CONFIG_C3P_TRACE_WORD_FILE_BITS)) << C3P_TRACE_WORD_FILE_OFFSET)
+// A mask to filter out the location-related bits in the trace word.
+#define C3P_TRACE_WORD_SPATIAL_MASK (C3P_TRACE_WORD_FILE_MASK | C3P_TRACE_WORD_LINE_MASK)
 
 
 /*
@@ -191,8 +157,8 @@ class C3PLogger {
 */
 enum class TraceAction : uint8_t {
   POI             = 0,   // No profiling. Records a point.
-  START_POINT     = 1,   // Mark the starting time for path profiling. Records a log.
-  STOP_POINT      = 2,   // Mark the ending time for path profiling. Records a log.
+  PATH_START      = 1,   // Mark the starting point for path profiling. Records a point.
+  PATH_STOP       = 2,   // Mark the ending point for path profiling. Records a point.
   //GROUP_ENGAGE    = 3,   // Enable a group's profiling.
   //GROUP_DISENGAGE = 4,   // Disable a group's profiling.
   //START_RECORDING = 5,   // Controls the responsiveness of the profiler.
@@ -202,7 +168,7 @@ enum class TraceAction : uint8_t {
 
 
 /* A container class for representing a single point in runtime. */
-TracePoint {
+class TracePoint {
   public:
     unsigned int ts_micros;    // System time when the trace arrived at our gates.
     uint32_t     trace_word;   // The trace word for this point.
@@ -211,12 +177,13 @@ TracePoint {
 
     TracePoint(unsigned int TIMESTAMP, uint32_t TRACE_WORD) : ts_micros(TIMESTAMP), trace_word(TRACE_WORD) {};
     TracePoint(TracePoint* tp) : TracePoint(tp->ts_micros, tp->trace_word) {};
+    TracePoint(int) : TracePoint(0, 0) {}; // Stub to satisfy RingBuffer.
     TracePoint() : TracePoint(0, 0) {};
 
     inline uint16_t lineID() {  return ((trace_word & C3P_TRACE_WORD_LINE_MASK) >> C3P_TRACE_WORD_LINE_OFFSET);  };
     inline uint16_t fileID() {  return ((trace_word & C3P_TRACE_WORD_FILE_MASK) >> C3P_TRACE_WORD_FILE_OFFSET);  };
 
-    void export(StringBuilder*, const TCode FORMAT = TCode::STR);
+    int serialize(StringBuilder*, const TCode FORMAT = TCode::STR);
 };
 
 
@@ -226,11 +193,7 @@ TracePoint {
 * Rules:
 *   1) The path ID defines the root of what might be several distinct pathways
 *      once their end-points are known.
-*   2) TracePath objects will be heap-allocated and instanced on first use.
-*      Because this action carries overhead costs that would differ from all
-*      subsequent calls to trace(), programs are encouraged to make explicit
-*      calls to definePath() ahead of the first trace() call using the pathID.
-*   3) TracePath does not itself retain a temporal measurement beyond the last
+*   2) TracePath does not itself retain any point measurements beyond the last
 *      unresolved report of a START point.
 */
 class TracePath {
@@ -241,17 +204,18 @@ class TracePath {
     ~TracePath() {  reset();  };
 
     void reset() {
-      _start_point.ts_micros = 0;
-      while (_pathways.count() > 0) {  delete _pathways.dequeue();  }
+      _start_point.ts_micros  = 0;
+      _start_point.trace_word = 0;
+      while (_pathways.size() > 0) {  delete _pathways.dequeue();  }
     };
 
     bool recordStart(const uint32_t TRACE_WORD, const TracePoint*);
     bool recordStop(const uint32_t TRACE_WORD, const TracePoint*);
 
-    void export(StringBuilder*, const TCode FORMAT = TCode::STR);
+    int serialize(StringBuilder*, const TCode FORMAT = TCode::STR);
 
 
-  private:
+  //private:
     TracePoint _start_point;   // The start marker. Set once.
     // The central profiling object.
     // The priority in the queue is the STOP location in the source plane.
@@ -282,24 +246,23 @@ class C3PTrace {
     * This function is the ultimate intake for trace.
     * TODO: Compiler attributes on this function.
     */
-    void trace(const uint32_t TRACE_WORD);
+    void leave_trace(const uint32_t TRACE_WORD);
 
     void reset();
-    void generateReport(StringBuilder*, const TCode FORMAT = TCode::STR);
+    void serialize(StringBuilder*, const TCode FORMAT = TCode::STR);
 
     // If trace collection enabled?
     inline bool recording() {    return ((_recording_began > 0) & (0 == _recording_ended));  };
     bool recording(bool);
 
-    static C3PTrace* tracerTool();
+    static C3PTrace* tracerTool;
 
 
   private:
     unsigned int _recording_began;
     unsigned int _recording_ended;
     uint32_t     _trace_count;
-
-    bool _mode_oneshot = false;   // Start tracing on signal and run until memory is exhausted. Clobber nothing.
+    bool _mode_oneshot;   // Start tracing on signal and run until memory is exhausted. Clobber nothing.
 
     // TODO: For best results, we should store the trace results in a data structure
     //   that is as close to constant search time as possible. That we are using a
@@ -309,4 +272,4 @@ class C3PTrace {
 };
 
 #endif  // CONFIG_C3P_TRACE_ENABLED
-#endif  // __CPPPOTPOURRI_LOGGER_H__
+#endif  // __C3P_LOGGER_H

@@ -45,6 +45,7 @@ limitations under the License.
       bool  addRuntime(const uint32_t START_TIME, const uint32_t STOP_TIME);
       void  reset();
       void printDebug(const char*, StringBuilder*);
+      int serialize(StringBuilder*, const TCode FORMAT);
 
       static void printDebugHeader(StringBuilder*);
 
