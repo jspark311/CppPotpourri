@@ -119,6 +119,7 @@ enum class TCode : uint8_t {
   AUDIO         = 0xE3,    // A pointer to an audio stream
   IMAGE         = 0xE4,    // A pointer to an image class
   GEOLOCATION   = 0xE5,    // A pointer to a location class
+  STOPWATCH     = 0xE6,    // A pointer to a StopWatch class
 
   RESERVED      = 0xFE,    // Reserved for custom extension.
   INVALID       = 0xFF     // A code denoting TCode invalidity.

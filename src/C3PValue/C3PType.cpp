@@ -28,6 +28,7 @@ This file contains the implementation of type constraints for our wrapped types.
 #include "../StringBuilder.h"
 #include "../Identity/Identity.h"
 #include "../StringBuilder.h"
+#include "../TimerTools/TimerTools.h"
 
 /* CBOR support should probably be required to parse/pack. */
 #if defined(CONFIG_C3P_CBOR)
@@ -63,6 +64,7 @@ static const C3PTypeConstraint<Vector3f64>      c3p_type_helper_vect3_double( "V
 static const C3PTypeConstraint<Image>           c3p_type_helper_image(        "IMAGE",        0,  TCode::IMAGE,          (TCODE_FLAG_VALUE_IS_POINTER));
 static const C3PTypeConstraint<KeyValuePair>    c3p_type_helper_kvp(          "KVP",          0,  TCode::KVP,            (TCODE_FLAG_VALUE_IS_POINTER));
 static const C3PTypeConstraint<Identity*>       c3p_type_helper_identity(     "IDENTITY",     0,  TCode::IDENTITY,       (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<StopWatch*>      c3p_type_helper_stopwatch(    "STOPWATCH",   sizeof(StopWatch),  TCode::STOPWATCH,      (TCODE_FLAG_VALUE_IS_POINTER));
 
 // Type-indirected handlers (parameter binders).
 static const C3PTypeConstraint<C3PBinBinder>   c3p_type_helper_ptrlen(        "BINARY",       0,  TCode::BINARY,         (TCODE_FLAG_PTR_LEN_TYPE | TCODE_FLAG_LEGAL_FOR_ENCODING));
@@ -124,6 +126,7 @@ static const C3PType* _get_type_def(const TCode TC) {
     case TCode::IMAGE:           return (const C3PType*) &c3p_type_helper_image;
     case TCode::KVP:             return (const C3PType*) &c3p_type_helper_kvp;
     case TCode::IDENTITY:        return (const C3PType*) &c3p_type_helper_identity;
+    case TCode::STOPWATCH:       return (const C3PType*) &c3p_type_helper_stopwatch;
     case TCode::BINARY:          return (const C3PType*) &c3p_type_helper_ptrlen;
 
     case TCode::SI_UNIT:         return (const C3PType*) &c3p_type_helper_str;
@@ -1772,6 +1775,24 @@ template <> int         C3PTypeConstraint<Identity*>::serialize(void* obj, Strin
 }
 
 template <> int8_t      C3PTypeConstraint<Identity*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  int8_t ret = -1;
+  return ret;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// StopWatch*
+template <> void        C3PTypeConstraint<StopWatch*>::to_string(void* obj, StringBuilder* out) {
+  ((StopWatch*) obj)->serialize(out, TCode::STR);
+}
+
+template <> int         C3PTypeConstraint<StopWatch*>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  StopWatch* stopwatch = ((StopWatch*) obj);
+  int ret = stopwatch->serialize(out, FORMAT);
+  return ret;
+}
+
+template <> int8_t      C3PTypeConstraint<StopWatch*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
