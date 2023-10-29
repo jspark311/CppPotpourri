@@ -42,9 +42,15 @@ void StopWatch::reset() {
 }
 
 
-bool StopWatch::addRuntime(const uint32_t START_TIME, const uint32_t STOP_TIME) {
+/*
+* This function allows the caller to add both a start and a stop time from
+*   outside timer measurements. This may be desirable for high-accuracy
+*   use-cases in which collection-points must be controlled for carefully (such
+*   as in C3PTrace).
+*/
+bool StopWatch::addRuntime(const unsigned long START_TIME, const unsigned long STOP_TIME) {
   _executions++;
-  _run_time_last    = delta_assume_wrap(STOP_TIME, START_TIME);
+  _run_time_last    = delta_assume_wrap((uint32_t) STOP_TIME, (uint32_t) START_TIME);
   _run_time_best    = strict_min(_run_time_last, _run_time_best);
   _run_time_worst   = strict_max(_run_time_last, _run_time_worst);
   _run_time_total  += _run_time_last;
@@ -100,6 +106,9 @@ int StopWatch::serialize(StringBuilder* out, const TCode FORMAT) {
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
         encoder.write_map(6);
+        //if (0 != _tag) {
+          encoder.write_string("tag");    encoder.write_int(_tag);
+        //}
         encoder.write_string("exec");   encoder.write_int(_executions);
         encoder.write_string("tot");    encoder.write_int(_run_time_total);
         encoder.write_string("avg");    encoder.write_int(_run_time_average);

@@ -18,105 +18,106 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+#ifndef __STOP_WATCH_H__
+#define __STOP_WATCH_H__
+
 #include <inttypes.h>
 #include <stdint.h>
 #include "../AbstractPlatform.h"
-
-#ifndef __STOP_WATCH_H__
-  #define __STOP_WATCH_H__
-
-  class StringBuilder;
-
-  /* A class to benchmark periodic events. */
-  class StopWatch {
-    public:
-      StopWatch(uint32_t tag = 0);   // Constructor. Assigns tag value. Calls reset().
-      ~StopWatch() {};           // Featureless destructor.
-
-      inline uint32_t tag() {          return _tag;                };
-      inline uint32_t bestTime() {     return _run_time_best;      };
-      inline uint32_t lastTime() {     return _run_time_last;      };
-      inline uint32_t worstTime() {    return _run_time_worst;     };
-      inline uint32_t meanTime() {     return _run_time_average;   };
-      inline uint32_t totalTime() {    return _run_time_total;     };
-      inline uint32_t executions() {   return _executions;         };
-      inline void     markStart() {    _start_micros = (uint32_t) micros();   };
-      bool  markStop();
-      bool  addRuntime(const uint32_t START_TIME, const uint32_t STOP_TIME);
-      void  reset();
-      void printDebug(const char*, StringBuilder*);
-      int serialize(StringBuilder*, const TCode FORMAT);
-
-      static void printDebugHeader(StringBuilder*);
+class StringBuilder;
 
 
-    private:
-      uint32_t _tag;      // A slot for arbitrary application data.
-      uint32_t _start_micros;
-      uint32_t _run_time_last;
-      uint32_t _run_time_best;
-      uint32_t _run_time_worst;
-      uint32_t _run_time_average;
-      uint32_t _run_time_total;
-      uint32_t _executions;
-  };
+/*******************************************************************************
+* StopWatch: A class to benchmark periodic events.
+*******************************************************************************/
+class StopWatch {
+  public:
+    StopWatch(uint32_t tag = 0);   // Constructor. Assigns tag value. Calls reset().
+    ~StopWatch() {};           // Featureless destructor.
+
+    inline uint32_t tag() {          return _tag;                };
+    inline uint32_t bestTime() {     return _run_time_best;      };
+    inline uint32_t lastTime() {     return _run_time_last;      };
+    inline uint32_t worstTime() {    return _run_time_worst;     };
+    inline uint32_t meanTime() {     return _run_time_average;   };
+    inline uint32_t totalTime() {    return _run_time_total;     };
+    inline uint32_t executions() {   return _executions;         };
+    inline void     markStart() {    _start_micros = (uint32_t) micros();   };
+    bool  markStop();
+    bool  addRuntime(const unsigned long START_TIME, const unsigned long STOP_TIME);
+    void  reset();
+    void printDebug(const char*, StringBuilder*);
+    int serialize(StringBuilder*, const TCode FORMAT);
+
+    static void printDebugHeader(StringBuilder*);
 
 
-
-  /*
-  * A class to rate-limit periodic events. It is generalized, and must be
-  *   extended by one of the two specific classes that implement the timer logic
-  *   over either millis() or micros().
-  */
-  class PeriodicTimeout {
-    public:
-      virtual ~PeriodicTimeout() {};      // Featureless destructor.
-
-      inline void reset() {                  _mark = _now();               };
-      inline void reset(unsigned long p) {   _mark = _now(); _period = p;  };
-      inline void period(unsigned long p) {  _period = p;                  };
-      inline bool enabled() {                return (0 < _period);         };
-      inline unsigned long period() {        return _period;               };
-      inline unsigned long remaining() {
-        return (expired() ? 0 : _until(_mark + _period));
-      };
-      inline bool     expired() {
-        return ((0 == _period) || (_period <= _since(_mark)));
-      };
-
-    protected:
-      unsigned long _period;
-      unsigned long _mark;
-
-      PeriodicTimeout(unsigned long p) : _period(p), _mark(0) {};
-      virtual unsigned long _now() =0;
-      virtual unsigned long _until(unsigned long) =0;
-      virtual unsigned long _since(unsigned long) =0;
-  };
+  private:
+    uint32_t _tag;      // A slot for arbitrary application data.
+    uint32_t _start_micros;
+    uint32_t _run_time_last;
+    uint32_t _run_time_best;
+    uint32_t _run_time_worst;
+    uint32_t _run_time_average;
+    uint32_t _run_time_total;
+    uint32_t _executions;
+};
 
 
-  /* A class to rate-limit periodic events at the millisecond scale. */
-  class MillisTimeout : public PeriodicTimeout {
-    public:
-      MillisTimeout(unsigned long p = 0) : PeriodicTimeout(p) {};
+/*******************************************************************************
+* PeriodicTimeout: A class to rate-limit periodic events.
+* It is generalized, and must be extended by one of the two specific classes
+*   that implement the timer logic over either millis() or micros().
+*******************************************************************************/
+class PeriodicTimeout {
+  public:
+    virtual ~PeriodicTimeout() {};      // Featureless destructor.
 
-    protected:
-      unsigned long _now() {                      return millis();            };
-      unsigned long _until(unsigned long mark) {  return millis_until(mark);  };
-      unsigned long _since(unsigned long mark) {  return millis_since(mark);  };
-  };
+    inline void reset() {                  _mark = _now();               };
+    inline void reset(unsigned long p) {   _mark = _now(); _period = p;  };
+    inline void period(unsigned long p) {  _period = p;                  };
+    inline bool enabled() {                return (0 < _period);         };
+    inline unsigned long period() {        return _period;               };
+    inline unsigned long remaining() {
+      return (expired() ? 0 : _until(_mark + _period));
+    };
+    inline bool     expired() {
+      return ((0 == _period) || (_period <= _since(_mark)));
+    };
+
+  protected:
+    unsigned long _period;
+    unsigned long _mark;
+
+    PeriodicTimeout(unsigned long p) : _period(p), _mark(0) {};
+    virtual unsigned long _now() =0;
+    virtual unsigned long _until(unsigned long) =0;
+    virtual unsigned long _since(unsigned long) =0;
+};
 
 
-  /* A class to rate-limit periodic events at the microsecond scale. */
-  class MicrosTimeout : public PeriodicTimeout {
-    public:
-      MicrosTimeout(unsigned long p = 0) : PeriodicTimeout(p) {};
+/* A class to rate-limit periodic events at the millisecond scale. */
+class MillisTimeout : public PeriodicTimeout {
+  public:
+    MillisTimeout(unsigned long p = 0) : PeriodicTimeout(p) {};
 
-    protected:
-      unsigned long _now() {                      return micros();            };
-      unsigned long _until(unsigned long mark) {  return micros_until(mark);  };
-      unsigned long _since(unsigned long mark) {  return micros_since(mark);  };
-  };
+  protected:
+    unsigned long _now() {                      return millis();            };
+    unsigned long _until(unsigned long mark) {  return millis_until(mark);  };
+    unsigned long _since(unsigned long mark) {  return millis_since(mark);  };
+};
+
+
+/* A class to rate-limit periodic events at the microsecond scale. */
+class MicrosTimeout : public PeriodicTimeout {
+  public:
+    MicrosTimeout(unsigned long p = 0) : PeriodicTimeout(p) {};
+
+  protected:
+    unsigned long _now() {                      return micros();            };
+    unsigned long _until(unsigned long mark) {  return micros_until(mark);  };
+    unsigned long _since(unsigned long mark) {  return micros_since(mark);  };
+};
 
 
 #endif // __STOP_WATCH_H__
