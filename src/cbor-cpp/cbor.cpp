@@ -27,6 +27,151 @@ using namespace cbor;
 
 
 /*******************************************************************************
+* input_stringbuilder
+*******************************************************************************/
+
+input_stringbuilder::~input_stringbuilder() {
+  if (_consume_container & (nullptr != _str_bldr)) {
+    delete _str_bldr;
+  }
+  _str_bldr = nullptr;
+}
+
+bool input_stringbuilder::has_bytes(int count) {
+  if (nullptr != _str_bldr) {
+    return ((_str_bldr->length() - (_consume_input ? 0 : _offset)) >= count);
+  }
+  return false;
+}
+
+
+uint8_t input_stringbuilder::get_byte() {
+  uint8_t value = 0;
+  if (nullptr != _str_bldr) {
+    uint8_t buf[1] = {0};
+    const int THIS_SIZE = _str_bldr->copyToBuffer(buf, 1, _offset);
+    value = buf[0];
+    _update_local_vars(THIS_SIZE);
+  }
+  return value;
+}
+
+
+uint16_t input_stringbuilder::get_short() {
+  uint16_t value = 0;
+  if (nullptr != _str_bldr) {
+    uint8_t buf[2] = {0, };
+    const int THIS_SIZE = _str_bldr->copyToBuffer(buf, 2, _offset);
+    value |= ((uint16_t) buf[1] << 8);
+    value |= ((uint16_t) buf[0]);
+    _update_local_vars(THIS_SIZE);
+  }
+  return value;
+}
+
+
+uint32_t input_stringbuilder::get_int() {
+  uint32_t value = 0;
+  if (nullptr != _str_bldr) {
+    uint8_t buf[4] = {0, };
+    const int THIS_SIZE = _str_bldr->copyToBuffer(buf, 4, _offset);
+    value |= ((uint32_t) buf[0] << 24);
+    value |= ((uint32_t) buf[1] << 16);
+    value |= ((uint32_t) buf[2] << 8);
+    value |= ((uint32_t) buf[3]);
+    _update_local_vars(THIS_SIZE);
+  }
+  return value;
+}
+
+
+float input_stringbuilder::get_float() {
+  float value = 0.0f;
+  if (nullptr != _str_bldr) {
+    uint8_t buf[4] = {0, };
+    uint8_t* ptr = (uint8_t*)(void*) &value;
+    const int THIS_SIZE = _str_bldr->copyToBuffer(buf, 4, _offset);
+    *(ptr + 3) = buf[0];
+    *(ptr + 2) = buf[1];
+    *(ptr + 1) = buf[2];
+    *(ptr + 0) = buf[3];
+    _update_local_vars(THIS_SIZE);
+  }
+  return value;
+}
+
+
+double input_stringbuilder::get_double() {
+  double value = 0.0d;
+  if (nullptr != _str_bldr) {
+    uint8_t buf[8] = {0, };
+    uint8_t* ptr = (uint8_t*)(void*) &value;
+    const int THIS_SIZE = _str_bldr->copyToBuffer(buf, 8, _offset);
+    *(ptr + 7) = buf[0];
+    *(ptr + 6) = buf[1];
+    *(ptr + 5) = buf[2];
+    *(ptr + 4) = buf[3];
+    *(ptr + 3) = buf[4];
+    *(ptr + 2) = buf[5];
+    *(ptr + 1) = buf[6];
+    *(ptr + 0) = buf[7];
+    _update_local_vars(THIS_SIZE);
+  }
+  return value;
+}
+
+
+uint64_t input_stringbuilder::get_long() {
+  uint64_t value = 0;
+  if (nullptr != _str_bldr) {
+    uint8_t buf[8] = {0, };
+    const int THIS_SIZE = _str_bldr->copyToBuffer(buf, 8, _offset);
+    value |= ((uint64_t) buf[0] << 56);
+    value |= ((uint64_t) buf[1] << 48);
+    value |= ((uint64_t) buf[2] << 40);
+    value |= ((uint64_t) buf[3] << 32);
+    value |= ((uint64_t) buf[4] << 24);
+    value |= ((uint64_t) buf[5] << 16);
+    value |= ((uint64_t) buf[6] << 8);
+    value |= ((uint64_t) buf[7]);
+    _update_local_vars(THIS_SIZE);
+  }
+  return value;
+}
+
+
+void input_stringbuilder::get_bytes(void* buf, int count) {
+  if (nullptr != _str_bldr) {
+    const int THIS_SIZE = _str_bldr->copyToBuffer((uint8_t*) buf, (unsigned int) count, _offset);
+    _update_local_vars(THIS_SIZE);
+  }
+}
+
+
+/*
+* Given a number of bytes taken for the last draw on the input, adjust the
+*   local variables of this class to reflect it.
+* If class policy is to consume the input, this function will ultimately call
+*   free().
+*/
+void input_stringbuilder::_update_local_vars(const int BYTES_USED) {
+  if (nullptr != _str_bldr) {
+    if (_consume_input) {
+      _str_bldr->cull(BYTES_USED);
+      if (_consume_container && (_str_bldr->length() == 0)) {
+        delete _str_bldr;
+        _str_bldr = nullptr;
+      }
+    }
+    else {
+      _offset += BYTES_USED;
+    }
+  }
+}
+
+
+
+/*******************************************************************************
 * output_stringbuilder
 *******************************************************************************/
 
@@ -66,7 +211,7 @@ int8_t output_static::put_byte(uint8_t value) {
     return 0;
   }
   else {
-    logger("buffer overflow error");
+    //logger("buffer overflow error");
     return -1;
   }
 }
@@ -78,7 +223,7 @@ int8_t output_static::put_bytes(const uint8_t* data, int size) {
     return 0;
   }
   else {
-    logger("buffer overflow error");
+    //logger("buffer overflow error");
     return -1;
   }
 }
@@ -89,28 +234,25 @@ uint32_t output_static::size() {  return _offset;  }  // Cannot inline due to be
 
 
 /*******************************************************************************
-* input
+* input_static
 *******************************************************************************/
 
-input::input(void *data, int size) {
+input_static::input_static(void *data, int size) {
   _data = (uint8_t*)data;
   _size = size;
   _offset = 0;
 }
 
-input::~input() {}
+bool    input_static::has_bytes(int count) {   return (_size - _offset) >= count;  }
+uint8_t input_static::get_byte() {             return _data[_offset++];            }
 
-
-bool    input::has_bytes(int count) {   return (_size - _offset) >= count;  }
-uint8_t input::get_byte() {             return _data[_offset++];            }
-
-uint16_t input::get_short() {
+uint16_t input_static::get_short() {
   uint16_t value = ((uint16_t) _data[_offset] << 8) | ((uint16_t) _data[_offset + 1]);
   _offset += 2;
   return value;
 }
 
-uint32_t input::get_int() {
+uint32_t input_static::get_int() {
   uint32_t value = \
   ((uint32_t) _data[_offset    ] << 24) | ((uint32_t) _data[_offset + 1] << 16) |
   ((uint32_t) _data[_offset + 2] << 8 ) | ((uint32_t) _data[_offset + 3]);
@@ -118,7 +260,7 @@ uint32_t input::get_int() {
   return value;
 }
 
-float input::get_float() {
+float input_static::get_float() {
   uint8_t value[4] = {
     _data[_offset + 3],
     _data[_offset + 2],
@@ -129,7 +271,7 @@ float input::get_float() {
   return *((float*) (&value[0]));
 }
 
-double input::get_double() {
+double input_static::get_double() {
   double ret;
   uint8_t* ptr = (uint8_t*)(void*) &ret;
   *(ptr + 0) = _data[_offset + 7];
@@ -144,7 +286,7 @@ double input::get_double() {
   return ret;
 }
 
-uint64_t input::get_long() {
+uint64_t input_static::get_long() {
   uint64_t value = ((uint64_t) _data[_offset] << 56) |
   ((uint64_t) _data[_offset +1] << 48) | ((uint64_t) _data[_offset +2] << 40) |
   ((uint64_t) _data[_offset +3] << 32) | ((uint64_t) _data[_offset +4] << 24) |
@@ -154,7 +296,7 @@ uint64_t input::get_long() {
   return value;
 }
 
-void input::get_bytes(void *to, int count) {
+void input_static::get_bytes(void *to, int count) {
   memcpy(to, _data + _offset, count);
   _offset += count;
 }
@@ -163,13 +305,6 @@ void input::get_bytes(void *to, int count) {
 /*******************************************************************************
 * encoder
 *******************************************************************************/
-
-encoder::encoder(output &out) {
-  _out = &out;
-}
-
-encoder::~encoder() {}
-
 
 void encoder::write_type_value(int major_type, uint32_t value) {
   major_type <<= 5;
@@ -288,18 +423,10 @@ void encoder::write_string(const char* str) {
 /*******************************************************************************
 * decoder
 *******************************************************************************/
-decoder::decoder(input &in) {
-  _in = &in;
-  _state = STATE_TYPE;
-}
 
-decoder::decoder(input &in, listener &listener) {
-  _in = &in;
+decoder::decoder(input &in, listener &listener) : decoder(in) {
   _listener = &listener;
-  _state = STATE_TYPE;
 }
-
-decoder::~decoder() {}
 
 
 void decoder::set_listener(listener &listener_instance) {
@@ -697,7 +824,429 @@ void decoder::run() {
     } else if(_state == STATE_ERROR) {
       break;
     } else {
-      logger("UNKNOWN STATE");
+      //logger("UNKNOWN STATE");
     }
   }
 }
+
+
+/*******************************************************************************
+* decoder_c3pvalue
+*******************************************************************************/
+#if 0
+C3PValue* decoder_c3pvalue::next() {
+  C3PValue* value = nullptr;
+
+  switch (_state) {
+    case STATE_TYPE:
+      if (_in->has_bytes(1)) {
+        uint8_t type = _in->get_byte();
+        uint8_t majorType = type >> 5;
+        uint8_t minorType = (uint8_t) (type & 31);
+        switch (majorType) {
+          case 0: // positive integer
+            if (minorType < 24) {
+              _listener->on_integer((uint8_t) minorType);
+            } else if(minorType == 24) { // 1 byte
+              _currentLength = 1;
+              _state = STATE_PINT;
+            } else if(minorType == 25) { // 2 byte
+              _currentLength = 2;
+              _state = STATE_PINT;
+            } else if(minorType == 26) { // 4 byte
+              _currentLength = 4;
+              _state = STATE_PINT;
+            } else if(minorType == 27) { // 8 byte
+              _currentLength = 8;
+              _state = STATE_PINT;
+            } else {
+              _state = STATE_ERROR;
+              _listener->on_error("invalid integer type");
+            }
+            break;
+          case 1: // negative integer
+            if (minorType < 24) {
+              _listener->on_integer((int8_t) (0xFF - minorType));
+            } else if(minorType == 24) { // 1 byte
+              _currentLength = 1;
+              _state = STATE_NINT;
+            } else if(minorType == 25) { // 2 byte
+              _currentLength = 2;
+              _state = STATE_NINT;
+            } else if(minorType == 26) { // 4 byte
+              _currentLength = 4;
+              _state = STATE_NINT;
+            } else if(minorType == 27) { // 8 byte
+              _currentLength = 8;
+              _state = STATE_NINT;
+            } else {
+              _state = STATE_ERROR;
+              _listener->on_error("invalid integer type");
+            }
+            break;
+          case 2: // bytes
+            if(minorType < 24) {
+              _state = STATE_BYTES_DATA;
+              _currentLength = minorType;
+            } else if(minorType == 24) {
+              _state = STATE_BYTES_SIZE;
+              _currentLength = 1;
+            } else if(minorType == 25) { // 2 byte
+              _currentLength = 2;
+              _state = STATE_BYTES_SIZE;
+            } else if(minorType == 26) { // 4 byte
+              _currentLength = 4;
+              _state = STATE_BYTES_SIZE;
+            } else if(minorType == 27) { // 8 byte
+              _currentLength = 8;
+              _state = STATE_BYTES_SIZE;
+            } else {
+              _state = STATE_ERROR;
+              _listener->on_error("invalid bytes type");
+            }
+            break;
+          case 3: // string
+            if(minorType < 24) {
+              _state = STATE_STRING_DATA;
+              _currentLength = minorType;
+            } else if(minorType == 24) {
+              _state = STATE_STRING_SIZE;
+              _currentLength = 1;
+            } else if(minorType == 25) { // 2 byte
+              _currentLength = 2;
+              _state = STATE_STRING_SIZE;
+            } else if(minorType == 26) { // 4 byte
+              _currentLength = 4;
+              _state = STATE_STRING_SIZE;
+            } else if(minorType == 27) { // 8 byte
+              _currentLength = 8;
+              _state = STATE_STRING_SIZE;
+            } else {
+              _state = STATE_ERROR;
+              _listener->on_error("invalid string type");
+            }
+            break;
+          case 4: // array
+            if(minorType < 24) {
+              _listener->on_array(minorType);
+            } else if(minorType == 24) {
+              _state = STATE_ARRAY;
+              _currentLength = 1;
+            } else if(minorType == 25) { // 2 byte
+              _currentLength = 2;
+              _state = STATE_ARRAY;
+            } else if(minorType == 26) { // 4 byte
+              _currentLength = 4;
+              _state = STATE_ARRAY;
+            } else if(minorType == 27) { // 8 byte
+              _currentLength = 8;
+              _state = STATE_ARRAY;
+            } else {
+              _state = STATE_ERROR;
+              _listener->on_error("invalid array type");
+            }
+            break;
+          case 5: // map
+            if(minorType < 24) {
+              _listener->on_map(minorType);
+            } else if(minorType == 24) {
+              _state = STATE_MAP;
+              _currentLength = 1;
+            } else if(minorType == 25) { // 2 byte
+              _currentLength = 2;
+              _state = STATE_MAP;
+            } else if(minorType == 26) { // 4 byte
+              _currentLength = 4;
+              _state = STATE_MAP;
+            } else if(minorType == 27) { // 8 byte
+              _currentLength = 8;
+              _state = STATE_MAP;
+            } else {
+              _state = STATE_ERROR;
+              _listener->on_error("invalid array type");
+            }
+            break;
+          case 6: // tag
+            if(minorType < 24) {
+              _listener->on_tag(minorType);
+            } else if(minorType == 24) {
+              _state = STATE_TAG;
+              _currentLength = 1;
+            } else if(minorType == 25) { // 2 byte
+              _currentLength = 2;
+              _state = STATE_TAG;
+            } else if(minorType == 26) { // 4 byte
+              _currentLength = 4;
+              _state = STATE_TAG;
+            } else if(minorType == 27) { // 8 byte
+              _currentLength = 8;
+              _state = STATE_TAG;
+            } else {
+              _state = STATE_ERROR;
+              _listener->on_error("invalid tag type");
+            }
+            break;
+          case 7: // special
+            switch (minorType) {
+              case 20:  _listener->on_bool(false);         break;
+              case 21:  _listener->on_bool(true);          break;
+              case 22:  _listener->on_null();              break;
+              case 23:  _listener->on_undefined();         break;
+              case 24:  _state = STATE_SPECIAL;  _currentLength = 1;  break;
+              case 25:  _state = STATE_SPECIAL;  _currentLength = 2;  break;
+              case 26:  _state = STATE_SPECIAL;  _currentLength = 4;  break;
+              case 27:  _state = STATE_SPECIAL;  _currentLength = 8;  break;
+              default:
+                if (minorType < 20) {
+                  _listener->on_special(minorType);
+                }
+                else {
+                  _state = STATE_ERROR;
+                  _listener->on_error("invalid special type");
+                }
+                break;
+            }
+            break;
+        }
+      }
+      break;
+
+    case STATE_PINT:
+      if (_in->has_bytes(_currentLength)) {
+        switch(_currentLength) {
+          case 1:
+            _listener->on_integer((uint8_t) _in->get_byte());
+            _state = STATE_TYPE;
+            break;
+          case 2:
+            _listener->on_integer((uint16_t)_in->get_short());
+            _state = STATE_TYPE;
+            break;
+          case 4:
+            temp = _in->get_int();
+            if (temp <= ((uint32_t) INT32_MAX << 1) + 1) {  // Unsigned int can take the extra bit.
+              _listener->on_integer((uint32_t) temp);
+            }
+            else {  // Signed integers need to grow one byte.
+              _listener->on_extra_integer(temp, 1);
+            }
+            _state = STATE_TYPE;
+            break;
+          case 8:
+            _listener->on_extra_integer(_in->get_long(), 1);
+            _state = STATE_TYPE;
+            break;
+        }
+      }
+      break;
+
+    case STATE_NINT:
+      if (_in->has_bytes(_currentLength)) {
+        switch(_currentLength) {
+          case 1:
+            {
+              uint8_t diff = _in->get_byte()+1;
+              if (diff < 128u) {
+                _listener->on_integer((int8_t) -(diff));
+              }
+              else {
+                _listener->on_integer((int16_t) -(diff));
+              }
+            }
+            _state = STATE_TYPE;
+            break;
+          case 2:
+            {
+              uint16_t diff = _in->get_short()+1;
+              if (diff < 32768u) {
+                _listener->on_integer((int16_t) -(diff));
+              }
+              else {
+                _listener->on_integer((int32_t) -(diff));
+              }
+            }
+            _state = STATE_TYPE;
+            break;
+          case 4:
+            temp = _in->get_int();
+            if(temp <= INT32_MAX) {
+              _listener->on_integer(((int32_t) -(temp+1)));
+            } else if(temp == 2147483648u) {
+              _listener->on_integer((int32_t) INT32_MIN);
+            } else {
+              _listener->on_extra_integer(temp, -1);
+            }
+            _state = STATE_TYPE;
+            break;
+          case 8:
+            _listener->on_extra_integer(_in->get_long(), -1);
+            break;
+        }
+      }
+      break;
+
+    case STATE_BYTES_SIZE:
+      if (_in->has_bytes(_currentLength)) {
+        switch(_currentLength) {
+          case 1:
+            _currentLength = _in->get_byte();
+            _state = STATE_BYTES_DATA;
+            break;
+          case 2:
+            _currentLength = _in->get_short();
+            _state = STATE_BYTES_DATA;
+            break;
+          case 4:
+            _currentLength = _in->get_int();
+            _state = STATE_BYTES_DATA;
+            break;
+          case 8:
+            _state = STATE_ERROR;
+            _listener->on_error("extra long bytes");
+            break;
+        }
+      }
+      break;
+
+    case STATE_BYTES_DATA:
+      if (_in->has_bytes(_currentLength)) {
+        uint8_t data[_currentLength] = {0, };
+        _in->get_bytes(data, _currentLength);
+        _state = STATE_TYPE;
+        _listener->on_bytes(data, _currentLength);
+      }
+      break;
+
+    case STATE_STRING_SIZE:
+      if (_in->has_bytes(_currentLength)) {
+        switch(_currentLength) {
+          case 1:
+            _currentLength = _in->get_byte();
+            _state = STATE_STRING_DATA;
+            break;
+          case 2:
+            _currentLength = _in->get_short();
+            _state = STATE_STRING_DATA;
+            break;
+          case 4:
+            _currentLength = _in->get_int();
+            _state = STATE_STRING_DATA;
+            break;
+          case 8:
+            _state = STATE_ERROR;
+            _listener->on_error("extra long array");
+            break;
+        }
+      }
+      break;
+
+    case STATE_STRING_DATA:
+      if (_in->has_bytes(_currentLength)) {
+        uint8_t data[_currentLength + 1];
+        _in->get_bytes(data, _currentLength);
+        data[_currentLength] = '\0';
+        _state = STATE_TYPE;
+        _listener->on_string((char*) data);
+      }
+      break;
+
+    case STATE_ARRAY:
+      if (_in->has_bytes(_currentLength)) {
+        switch(_currentLength) {
+          case 1:
+            _listener->on_array(_in->get_byte());
+            _state = STATE_TYPE;
+            break;
+          case 2:
+            _listener->on_array(_currentLength = _in->get_short());
+            _state = STATE_TYPE;
+            break;
+          case 4:
+            _listener->on_array(_in->get_int());
+            _state = STATE_TYPE;
+            break;
+          case 8:
+            _state = STATE_ERROR;
+            _listener->on_error("extra long array");
+            break;
+        }
+      }
+      break;
+
+    case STATE_MAP:
+      if (_in->has_bytes(_currentLength)) {
+        switch(_currentLength) {
+          case 1:
+            _listener->on_map(_in->get_byte());
+            _state = STATE_TYPE;
+            break;
+          case 2:
+            _listener->on_map(_currentLength = _in->get_short());
+            _state = STATE_TYPE;
+            break;
+          case 4:
+            _listener->on_map(_in->get_int());
+            _state = STATE_TYPE;
+            break;
+          case 8:
+            _state = STATE_ERROR;
+            _listener->on_error("extra long map");
+            break;
+        }
+      }
+      break;
+
+    case STATE_TAG:
+      if (_in->has_bytes(_currentLength)) {
+        switch(_currentLength) {
+          case 1:
+            _listener->on_tag(_in->get_byte());
+            _state = STATE_TYPE;
+            break;
+          case 2:
+            _listener->on_tag(_in->get_short());
+            _state = STATE_TYPE;
+            break;
+          case 4:
+            _listener->on_tag(_in->get_int());
+            _state = STATE_TYPE;
+            break;
+          case 8:
+            _listener->on_extra_tag(_in->get_long());
+            _state = STATE_TYPE;
+            break;
+        }
+      }
+      break;
+
+    case STATE_SPECIAL:
+      if (_in->has_bytes(_currentLength)) {
+        switch (_currentLength) {
+          case 1:
+            _listener->on_special(_in->get_byte());
+            _state = STATE_TYPE;
+            break;
+          case 2:
+            _listener->on_special(_in->get_short());
+            _state = STATE_TYPE;
+            break;
+          case 4:   // A float32
+            _listener->on_float32(_in->get_float());
+            _state = STATE_TYPE;
+            break;
+          case 8:
+            _listener->on_double(_in->get_double());
+            _state = STATE_TYPE;
+            break;
+        }
+      }
+      break;
+
+    case END_OF_BYTES:
+    case STATE_ERROR:
+    default:
+      break;
+  }
+  return value;
+}
+#endif

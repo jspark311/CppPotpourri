@@ -170,7 +170,7 @@ int8_t SensorFilterBase::deserialize(StringBuilder* raw, TCode format) {
         //KeyValuePair* kvp = KeyValuePair::unserialize(raw->string(), raw->length(), TCode::CBOR);
         KeyValuePair* kvp = nullptr;
         CBORArgListener cl(&kvp);
-        cbor::input input(raw->string(), raw->length());
+        cbor::input_static input(raw->string(), raw->length());
         cbor::decoder decoder(input, cl);
         //decoder.run();
         if (nullptr != kvp) {

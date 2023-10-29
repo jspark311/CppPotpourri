@@ -674,7 +674,7 @@ KeyValuePair* KeyValuePair::unserialize(uint8_t* src, unsigned int len, const TC
     case TCode::CBOR:
       {
         CBORArgListener listener(&ret);
-        cbor::input input(src, len);
+        cbor::input_static input(src, len);
         cbor::decoder decoder(input, listener);
         decoder.run();
       }

@@ -38,7 +38,7 @@ Just a simple SAX-like Concise Binary Object Representation (CBOR).
     }
 
     { // decoding
-        cbor::input input(output.data(), output.size());
+        cbor::input_static input(output.data(), output.size());
         cbor::listener_debug listener;
         cbor::decoder decoder(input, listener);
         decoder.run();

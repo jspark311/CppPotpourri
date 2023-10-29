@@ -872,6 +872,34 @@ void StringBuilder::concat(String s) {
 #endif   // ARDUINO
 
 
+/**
+* Writes the len_limit number of bytes to the indicated pointer, starting
+*   from the optionally-defined offset.
+*
+* @param buf The pointer into which string data should be written.
+* @param len_limit The number of bytes to write.
+* @param start_offset How far into the input the copy should start.
+* @return The number of bytes copied.
+*/
+int StringBuilder::copyToBuffer(uint8_t* buf, int len_limit, int start_offset) {
+  int ret = 0;
+  const int SUBJECT_LENGTH = (length() - start_offset);
+  if (0 < SUBJECT_LENGTH) {
+    const int COPY_LENGTH = strict_min(len_limit, SUBJECT_LENGTH);
+    int strll_offset   = start_offset;
+    StrLL* src_ll      = _get_ll_containing_offset(_root, &strll_offset);
+    StrLL* starting_ll = src_ll;
+    while ((nullptr != src_ll) & (ret < COPY_LENGTH)) {
+      const int INNER_LENGTH = strict_min((src_ll->len - strll_offset), (COPY_LENGTH - ret));
+      memcpy((buf + ret), (uint8_t*)(src_ll->str + strll_offset), INNER_LENGTH);
+      ret += INNER_LENGTH;
+      strll_offset = 0;
+      src_ll = src_ll->next;
+    }
+  }
+  return ret;
+}
+
 
 /**
 * Given an offset and a length, will throw away any part of the string that

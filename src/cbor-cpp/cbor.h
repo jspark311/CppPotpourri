@@ -36,14 +36,11 @@ class C3PValue;
 // NOTE: For some typecodes, we benefit from the context of having the type
 //   spelled out with a TCode, rather than using the built-in CBOR types.
 // We will be using a tag from the IANA 'unassigned' space to avoid confusion.
-//   The first byte after the tag is the native Manuvr TCode.
+//   The first byte after the tag is the native C3P TCode.
 #define C3P_CBOR_VENDOR_CODE 0x00E97800
 
 
 #include <stdio.h>
-#define logger(line) fprintf(stderr, "%s:%d [%s]: %s\n", __FILE__, __LINE__, __PRETTY_FUNCTION__, line)
-#define loggerf(format, ...) fprintf(stderr, "%s:%d [%s]: " format "\n", __FILE__, __LINE__, __PRETTY_FUNCTION__, __VA_ARGS__)
-// TODO: End of garbage block.
 
 namespace cbor {
   typedef enum {
@@ -58,11 +55,18 @@ namespace cbor {
     STATE_MAP,
     STATE_TAG,
     STATE_SPECIAL,
+    END_OF_BYTES,
     STATE_ERROR
   } decoder_state;
 
 
-
+  /*****************************************************************************
+  * Interfaces
+  *****************************************************************************/
+  /*
+  * Original use of cbor-cpp decoder would involve extending this object to
+  *   catch CBOR native types that fell out of the input stream.
+  */
   class listener {
     public:
       virtual void on_integer(int8_t   value)        =0;
@@ -83,23 +87,53 @@ namespace cbor {
       virtual void on_null()                         =0;
       virtual void on_undefined()                    =0;
       virtual void on_error(const char *error)       =0;
-
       virtual void on_extra_integer(uint64_t value, int sign) {}
       virtual void on_extra_tag(uint64_t tag) {}
       virtual void on_extra_special(uint64_t tag) {}
   };
 
 
+  /*
+  * This is an input interface for the decoder.
+  */
+  class input {
+    public:
+      virtual bool     has_bytes(int count)           =0;
+      virtual uint8_t  get_byte()                     =0;
+      virtual uint16_t get_short()                    =0;
+      virtual uint32_t get_int()                      =0;
+      virtual float    get_float()                    =0;
+      virtual double   get_double()                   =0;
+      virtual uint64_t get_long()                     =0;
+      virtual void     get_bytes(void* to, int count) =0;
+  };
+
+
+  /*
+  * This is an output interface for the encoder.
+  */
+  class output {
+    public:
+      virtual uint8_t* data()                         =0;
+      virtual uint32_t size()                         =0;
+      virtual int8_t   put_byte(uint8_t value)        =0;
+      virtual int8_t   put_bytes(const uint8_t*, int) =0;
+  };
+
+
+
+  /*****************************************************************************
+  * Implementations of the interfaces above.
+  *****************************************************************************/
 
   /*
   * This is the byte stream ingestion class that came with cbor-cpp. It takes
   *   ptr-len semantics, is portable, and easy to use.
-  * TODO: Make this an interface pattern, as was done with decoder.
   */
-  class input {
+  class input_static : public input {
     public:
-      input(void* data, int size);
-      ~input();
+      input_static(void* data, int size);
+      ~input_static() {};
 
       bool     has_bytes(int count);
       uint8_t  get_byte();
@@ -110,11 +144,32 @@ namespace cbor {
       uint64_t get_long();
       void     get_bytes(void* to, int count);
 
-
     private:
       uint8_t* _data;
       int      _size;
       int      _offset;
+  };
+
+
+  /* For output to an already-allocated buffer with a given length. */
+  class output_static : public output {
+    public:
+      output_static(uint32_t capacity, uint8_t* buf = nullptr);
+      ~output_static();
+
+      uint8_t* data();
+      uint32_t size();
+      int8_t put_byte(uint8_t value);
+      int8_t put_bytes(const uint8_t* data, int size);
+
+      inline bool shouldFree() {         return _should_free;  };
+      inline void shouldFree(bool x) {   _should_free = x;     };
+
+    private:
+      uint8_t* _buffer;
+      uint32_t _capacity;
+      uint32_t _offset;
+      bool     _should_free;
   };
 
 
@@ -124,9 +179,10 @@ namespace cbor {
   *   progresses. This helps keep heap usage flat in use-cases where the
   *   decoder's products are also heap-allocated.
   */
-  class input_stringbuilder {
+  class input_stringbuilder : public input {
     public:
-      input_stringbuilder(StringBuilder*);
+      input_stringbuilder(StringBuilder* sb, bool c_input = false, bool c_container = false) :
+        _str_bldr(sb), _offset(0), _consume_input(c_input), _consume_container(c_container) {};
       ~input_stringbuilder();
 
       bool     has_bytes(int count);
@@ -138,107 +194,17 @@ namespace cbor {
       uint64_t get_long();
       void     get_bytes(void* to, int count);
 
-
     private:
-      StringBuilder* _data;
+      StringBuilder* _str_bldr;
       int            _offset;
       bool           _consume_input;
       bool           _consume_container;
+
+      void _update_local_vars(const int BYTES_USED);
   };
 
 
-
-
-  class output {
-    public:
-      virtual uint8_t* data()                         =0;
-      virtual uint32_t size()                         =0;
-      virtual int8_t   put_byte(uint8_t value)        =0;
-      virtual int8_t   put_bytes(const uint8_t*, int) =0;
-  };
-
-
-
-  /*
-  * This is a decoder class that prefers to rely on object inheritance to
-  *   implement type restoration and content interpretation.
-  * This is the pattern that initially came with cbor-cpp, and is probably the
-  *   best choice for tight integration with specific objects that are known at
-  *   build-time.
-  */
-  class decoder {
-    public:
-      decoder(input &in);
-      decoder(input &in, listener &listener);
-      ~decoder();
-
-      void run();
-      void set_listener(listener &listener_instance);
-      inline bool failed() {  return (_state == STATE_ERROR);  };
-
-
-    private:
-      listener*     _listener;
-      input*        _in;
-      decoder_state _state;
-      int           _currentLength;
-  };
-
-
-  /*
-  * This is a decoder class that prefers to rely on heap allocation of a
-  *   complicated type-wrapper object to support usage that doesn't rely on
-  *   object definition.
-  * This pattern was added by CppPotpourri, and is probably the best choice for
-  *   types covered by CppPotpourri's type-wrapping.
-  */
-  class decoder_sequential {
-    public:
-      decoder_sequential(input &in);
-      ~decoder_sequential();
-
-      C3PValue* next();
-
-
-    private:
-      input*        _in;
-      C3PValue*     _working_value;
-      int           _currentLength;
-  };
-
-
-
-  class encoder {
-    public:
-      encoder(output &out);
-      ~encoder();
-
-      void write_int(int value);
-      void write_int(int64_t value);
-      inline void write_int(unsigned int v) {      write_type_value(0, v);     }; // TODO: This might be a use-case for type auto.
-      inline void write_int(uint64_t v) {          write_type_value64(0, v);   }; // TODO: This might be a use-case for type auto.
-      inline void write_tag(const uint32_t tag) {  write_type_value(6, tag);   };
-      inline void write_array(uint32_t size) {     write_type_value(4, size);  };
-      inline void write_map(uint32_t size) {       write_type_value(5, size);  };
-      inline void write_special(uint32_t v) {      write_type_value(7, v);     };
-      inline void write_bool(bool v) {             write_type_value(7, (v?21:20));   };
-
-      void write_float(float value);
-      void write_double(double value);
-      void write_bytes(const uint8_t* data, uint32_t size);
-      void write_string(const char* data, uint32_t size);
-      void write_string(const char* str);
-
-
-    private:
-      output* _out;
-
-      void write_type_value(int major_type, uint32_t value);
-      void write_type_value64(int major_type, uint64_t value);
-  };
-
-
-
+  /* For output to a length-undetermined StringBuilder. */
   class output_stringbuilder : public output {
     public:
       output_stringbuilder(StringBuilder* sb) : _str_bldr(sb) {};
@@ -254,27 +220,89 @@ namespace cbor {
   };
 
 
+  /*****************************************************************************
+  * Fundamental operational classes
+  *****************************************************************************/
 
-  class output_static : public output {
+  /*
+  * This is a decoder class that prefers to rely on object inheritance to
+  *   implement type restoration and content interpretation.
+  * This is the pattern that initially came with cbor-cpp, and is probably the
+  *   best choice for tight integration with specific objects that are known at
+  *   build-time.
+  */
+  class decoder {
     public:
-      output_static(uint32_t capacity, uint8_t* buf = nullptr);
-      ~output_static();
+      decoder(input &in) : _in(&in), _state(STATE_TYPE), _currentLength(0), _listener(nullptr) {};
+      decoder(input &in, listener &listener);
+      ~decoder() {};
 
-      uint8_t* data();
-      uint32_t size();
-      int8_t put_byte(uint8_t value);
-      int8_t put_bytes(const uint8_t* data, int size);
-
-      inline bool shouldFree() {         return _should_free;  };
-      inline void shouldFree(bool x) {   _should_free = x;     };
-
+      void run();
+      bool next();
+      void set_listener(listener &listener_instance);
+      inline bool failed() {  return (_state == STATE_ERROR);  };
 
     private:
-      uint8_t* _buffer;
-      uint32_t _capacity;
-      uint32_t _offset;
-      bool     _should_free;
+      input*        _in;
+      decoder_state _state;
+      int           _currentLength;
+      listener*     _listener;
   };
+
+
+  /*
+  * This is the encoder class that initially came with cbor-cpp.
+  */
+  class encoder {
+    public:
+      encoder(output &out) : _out(&out) {};
+      ~encoder() {};
+
+      void write_int(int value);
+      void write_int(int64_t value);
+      void write_float(float value);
+      void write_double(double value);
+      void write_bytes(const uint8_t* data, uint32_t size);
+      void write_string(const char* data, uint32_t size);
+      void write_string(const char* str);
+      inline void write_int(unsigned int v) {      write_type_value(0, v);     }; // TODO: This might be a use-case for type auto.
+      inline void write_int(uint64_t v) {          write_type_value64(0, v);   }; // TODO: This might be a use-case for type auto.
+      inline void write_tag(const uint32_t tag) {  write_type_value(6, tag);   };
+      inline void write_array(uint32_t size) {     write_type_value(4, size);  };
+      inline void write_map(uint32_t size) {       write_type_value(5, size);  };
+      inline void write_special(uint32_t v) {      write_type_value(7, v);     };
+      inline void write_bool(bool v) {             write_type_value(7, (v?21:20));   };
+
+    private:
+      output* _out;
+
+      void write_type_value(int major_type, uint32_t value);
+      void write_type_value64(int major_type, uint64_t value);
+  };
+
+
+  /*
+  * This is a decoder class that prefers to rely on heap allocation of a
+  *   complicated type-wrapper object to support usage that doesn't rely on
+  *   object definition.
+  * This pattern was added by CppPotpourri, and is probably the best choice for
+  *   types covered by CppPotpourri's type-wrapping.
+  */
+  class decoder_c3pvalue {
+    public:
+      decoder_c3pvalue(input &in) : _in(&in), _working_value(nullptr), _currentLength(0), _state(STATE_TYPE) {};
+      ~decoder_c3pvalue();
+
+      C3PValue* next();
+      inline bool finished() {  return ((STATE_ERROR == _state) | (END_OF_BYTES == _state));  };
+
+    private:
+      input*     _in;
+      C3PValue*  _working_value;
+      int           _currentLength;
+      decoder_state _state;
+  };
+
 }
 
 #endif // CBOR_CPP_CBOR_H

@@ -174,6 +174,13 @@ class StringBuilder {
        of responsibility for managing it. */
     void concatHandoff(uint8_t* buf, int len);
 
+    /* Writes the len_limit number of bytes to the indicated pointer, starting
+       from the optionally-defined offset. */
+    int  copyToBuffer(uint8_t* buf, int len_limit, int start_offset = 0);
+
+    /* Same idea as above, but also consumes the given range. */
+    //int  moveToBuffer(uint8_t* buf, unsigned int len_limit, unsigned int start_offset = 0);
+
     void cull(int offset, int length);  // Use to throw away all but the specified range of this string.
     void cull(int length);              // Use to discard the first X characters from the string.
     void trim();                        // Trim whitespace off the ends of the string.

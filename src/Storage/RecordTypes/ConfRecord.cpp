@@ -268,7 +268,7 @@ int8_t ConfRecord::deserialize(StringBuilder* raw, TCode format) {
     case TCode::CBOR:
       {
         CBORArgListener cl(&_kvp);
-        cbor::input input(raw->string(), raw->length());
+        cbor::input_static input(raw->string(), raw->length());
         cbor::decoder decoder(input, cl);
         decoder.run();
         ret = (decoder.failed() ? -2 : 0);
