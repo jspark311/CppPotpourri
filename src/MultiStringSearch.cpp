@@ -1,5 +1,5 @@
 /*
-File:   MultiStringSearch.cpp
+File:   MultiStringSearch.h
 Author: J. Ian Lindsay
 Date:   2023.09.12
 
@@ -30,7 +30,8 @@ TODO: Check that we aren't doing replacement at the trailing edge if there is
 */
 
 #include <new>
-#include "LineCoDec.h"
+#include "MultiStringSearch.h"
+#include "CppPotpourri.h"
 
 
 /*******************************************************************************

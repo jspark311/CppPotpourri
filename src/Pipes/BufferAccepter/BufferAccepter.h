@@ -21,12 +21,12 @@ limitations under the License.
 An abstract interface for buffers.
 */
 
+#ifndef __C3P_BUFFERACCEPTER_H__
+#define __C3P_BUFFERACCEPTER_H__
+
 #include "../../StringBuilder.h"
 #include "../../EnumeratedTypeCodes.h"
 #include "../../CppPotpourri.h"
-
-#ifndef __C3P_BUFFERACCEPTER_H__
-#define __C3P_BUFFERACCEPTER_H__
 
 
 /*******************************************************************************

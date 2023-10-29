@@ -58,14 +58,8 @@ INCLUDES    = -I$(BUILD_ROOT)/../../src
 #SOURCES_TESTS_CPP  = StringBuilderTest.cpp TestDataStructures.cpp ParsingConsoleTest.cpp IdentityTest.cpp
 SOURCES_TESTS_CPP  = AllTests.cpp
 
-SOURCES_CPP  = ../../src/AsyncSequencer.cpp
-SOURCES_CPP += ../../src/AbstractPlatform.cpp
-SOURCES_CPP += ../../src/SensorFilter.cpp
-SOURCES_CPP += ../../src/StringBuilder.cpp
-SOURCES_CPP += ../../src/EnumeratedTypeCodes.cpp
-SOURCES_CPP += ../../src/uuid.cpp
+SOURCES_CPP  = ../../src/*.cpp
 SOURCES_CPP += ../../src/BusQueue/BusQueue.cpp
-SOURCES_CPP += ../../src/Quaternion.cpp
 SOURCES_CPP += ../../src/Storage/SimpleDataRecord.cpp
 SOURCES_CPP += ../../src/Storage/RecordTypes/*.cpp
 SOURCES_CPP += ../../src/Pipes/BufferAccepter/GPSWrapper/GPSWrapper.cpp
