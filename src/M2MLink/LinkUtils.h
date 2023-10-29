@@ -8,7 +8,7 @@ This header contains classes which sit on top of a link, and add some high-level
 */
 
 #include "M2MLink.h"
-#include "../ParsingConsole.h"
+#include "../Console/C3PConsole.h"
 #include "../SensorFilter.h"
 
 

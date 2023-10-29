@@ -20,7 +20,7 @@ TODO: This should turn into a templated class to handle complex types that are
 #include "CppPotpourri.h"
 #include "AbstractPlatform.h"
 #include "StringBuilder.h"
-#include "ParsingConsole.h"
+#include "C3PConsole.h"
 #include "GPSWrapper.h"
 #include "UARTAdapter.h"
 #include "C3PValue/KeyValuePair.h"

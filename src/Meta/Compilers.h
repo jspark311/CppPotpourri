@@ -24,7 +24,7 @@ This file is intended to host build logic that pertains to specific compilers.
   vagaries.
 
 The library was originally written under GCC, but others have reported broad
-  success (with minor adjustments) under both IAR and MSVSC.
+  success (with minor adjustments) under both IAR and MSVC.
 */
 
 #if !defined(C3P_COMPILERS_META_HEADER)
@@ -32,34 +32,94 @@ The library was originally written under GCC, but others have reported broad
 
 #include "Meta/Rationalizer.h"     // Include build options checking.
 
-/*******************************************************************************
-* Compiler-specific glue
-*******************************************************************************/
-
-/* Endian conversion wrappers */
-inline uint16_t endianSwap16(uint16_t x) {   return __builtin_bswap16(x);    };
-inline uint32_t endianSwap32(uint32_t x) {   return __builtin_bswap32(x);    };
-inline uint64_t endianSwap64(uint64_t x) {   return __builtin_bswap64(x);    };
-
 
 /*******************************************************************************
-* Sections
+* GCC
 *******************************************************************************/
-// Used to tag functions that should be placed in a fast, high-availability
-//   text section, if such a section is defined.
-// Ultimately, the observance (or not) of this attribute is up to the top-level
-//   linker. But even without being able to enforce the notion, it is useful for
-//   documentation of functions that the author has decided should be located in
-//   a high-availablitity text section.
-#ifndef RAMFUNC
-  #define RAMFUNC __attribute__((section(".ramfunc")))
-#endif
+
+// TODO: #define underpinnings for hardware-assisted semaphores.
+// TODO: __COUNTER__
+// TODO: __INCLUDE_LEVEL__
+#if defined(_C3P_COMPILER_IS_GCC)
+  // The name of the compiler, as far as C3P is concerned.
+  #define C3P_COMPILER_NAME ("gcc v" __GNUC__ "." __GNUC_MINOR__ "." __GNUC_PATCHLEVEL__)
+
+  /*
+  * Diagnostics, versioning, and errata handling.
+  * NOTE: Intentionally left empty, for clarity of usage intent.
+  */
+
+  /*
+  * Function Sections
+  * Used to tag functions that should be placed in text sections that are fast,
+  *   high-availability, secure, etc (if such sections are defined).
+  * Ultimately, the observance (or not) of these attributes is up to the
+  *   top-level linker. But even without being able to enforce the notion, it
+  *   is useful for documentation of functions that the author has decided
+  *   should be preferentially located in a specificly-constrained section.
+  */
+  #ifndef FAST_FUNC
+    // Some functions are timing-critical, and should be preferentially located
+    //   in a section with low execution latency.
+    // NOTE: Speed is a concern orthogonal to that of ISR_FUNC.
+    // NOTE: Section placement is a distinct attribute from optimizer level.
+    #define FAST_FUNC __attribute__((section(".fastfunc")))
+  #endif
+  #ifndef ISR_FUNC
+    // Functions intended to be run as interrupt service routines might need to
+    //   be located in a section that isn't paged (is always avaialbe).
+    // NOTE: Availability is a concern orthogonal to that of FASTFUNC.
+    #define ISR_FUNC __attribute__((section(".isrfunc")))
+  #endif
+  #ifndef SECURE_FUNC
+    // Some code might prefer to be run inside of memory that has some
+    //   security assurances.
+    #define SECURE_FUNC __attribute__((section(".secfunc")))
+  #endif
+
+  /*
+  * Optimizer attributes
+  * https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html
+  */
+  #ifndef OPTIMIZE_DEBUG
+    #define OPTIMIZE_DEBUG  __attribute__(( optimize ("Og") ))
+  #endif
+  #ifndef OPTIMIZE_SIZE
+    #define OPTIMIZE_SIZE   __attribute__(( optimize ("Os") ))
+  #endif
+  #ifndef OPTIMIZE_SPEED
+    #define OPTIMIZE_SPEED  __attribute__(( optimize ("O2") ))
+  #endif
+  #ifndef OPTIMIZE_FAST
+    #define OPTIMIZE_FAST   __attribute__(( optimize ("O3") ))
+  #endif
+  #ifndef OPTIMIZE_HOT
+    #define OPTIMIZE_HOT    __attribute__(( hot ))
+  #endif
+  #ifndef OPTIMIZE_COLD
+    #define OPTIMIZE_COLD   __attribute__(( cold ))
+  #endif
+
+  /* Endian conversion wrappers */
+  inline uint16_t endianSwap16(uint16_t x) {   return __builtin_bswap16(x);   };
+  inline uint32_t endianSwap32(uint32_t x) {   return __builtin_bswap32(x);   };
+  inline uint64_t endianSwap64(uint64_t x) {   return __builtin_bswap64(x);   };
 
 
-//TODO: #define ISR
 
-//TODO: #define underpinnings for hardware-assisted semaphores.
+/*******************************************************************************
+* IAR
+*******************************************************************************/
+#elif defined(_C3P_COMPILER_IS_IAR)
 
 
 
+/*******************************************************************************
+* MSVC
+*******************************************************************************/
+#elif defined(_C3P_COMPILER_IS_MSVC)
+
+
+
+#endif  // C3P_COMPILERS
 #endif  // C3P_COMPILERS_META_HEADER

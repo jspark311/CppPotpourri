@@ -31,6 +31,7 @@
 #include <string.h>
 
 #include "../StringBuilder.h"
+class C3PValue;
 
 // NOTE: For some typecodes, we benefit from the context of having the type
 //   spelled out with a TCode, rather than using the built-in CBOR types.
@@ -90,6 +91,11 @@ namespace cbor {
 
 
 
+  /*
+  * This is the byte stream ingestion class that came with cbor-cpp. It takes
+  *   ptr-len semantics, is portable, and easy to use.
+  * TODO: Make this an interface pattern, as was done with decoder.
+  */
   class input {
     public:
       input(void* data, int size);
@@ -112,6 +118,36 @@ namespace cbor {
   };
 
 
+  /*
+  * This is a byte stream ingestion class added in CppPotpourri. It takes a
+  *   StringBuilder* as an input, which it will optionally consume as decoding
+  *   progresses. This helps keep heap usage flat in use-cases where the
+  *   decoder's products are also heap-allocated.
+  */
+  class input_stringbuilder {
+    public:
+      input_stringbuilder(StringBuilder*);
+      ~input_stringbuilder();
+
+      bool     has_bytes(int count);
+      uint8_t  get_byte();
+      uint16_t get_short();
+      uint32_t get_int();
+      float    get_float();
+      double   get_double();
+      uint64_t get_long();
+      void     get_bytes(void* to, int count);
+
+
+    private:
+      StringBuilder* _data;
+      int            _offset;
+      bool           _consume_input;
+      bool           _consume_container;
+  };
+
+
+
 
   class output {
     public:
@@ -123,6 +159,13 @@ namespace cbor {
 
 
 
+  /*
+  * This is a decoder class that prefers to rely on object inheritance to
+  *   implement type restoration and content interpretation.
+  * This is the pattern that initially came with cbor-cpp, and is probably the
+  *   best choice for tight integration with specific objects that are known at
+  *   build-time.
+  */
   class decoder {
     public:
       decoder(input &in);
@@ -138,6 +181,28 @@ namespace cbor {
       listener*     _listener;
       input*        _in;
       decoder_state _state;
+      int           _currentLength;
+  };
+
+
+  /*
+  * This is a decoder class that prefers to rely on heap allocation of a
+  *   complicated type-wrapper object to support usage that doesn't rely on
+  *   object definition.
+  * This pattern was added by CppPotpourri, and is probably the best choice for
+  *   types covered by CppPotpourri's type-wrapping.
+  */
+  class decoder_sequential {
+    public:
+      decoder_sequential(input &in);
+      ~decoder_sequential();
+
+      C3PValue* next();
+
+
+    private:
+      input*        _in;
+      C3PValue*     _working_value;
       int           _currentLength;
   };
 
@@ -186,26 +251,6 @@ namespace cbor {
 
     private:
       StringBuilder* _str_bldr;
-  };
-
-
-  class output_dynamic : public output {
-    public:
-      output_dynamic();
-      output_dynamic(uint32_t inital_capacity);
-      ~output_dynamic();
-
-      uint8_t* data();
-      uint32_t size();
-      int8_t put_byte(uint8_t value);
-      int8_t put_bytes(const uint8_t* data, int size);
-
-    private:
-      uint8_t* _buffer;
-      uint32_t _capacity;
-      uint32_t _offset;
-
-      void init(uint32_t initalCapacity);
   };
 
 

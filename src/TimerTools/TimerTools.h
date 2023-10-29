@@ -20,7 +20,7 @@ limitations under the License.
 
 #include <inttypes.h>
 #include <stdint.h>
-#include "AbstractPlatform.h"
+#include "../AbstractPlatform.h"
 
 #ifndef __STOP_WATCH_H__
   #define __STOP_WATCH_H__

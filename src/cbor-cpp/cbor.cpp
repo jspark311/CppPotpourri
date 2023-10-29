@@ -36,67 +36,6 @@ int8_t output_stringbuilder::put_byte(uint8_t x) {  _str_bldr->concat(&x, 1);  r
 int8_t output_stringbuilder::put_bytes(const uint8_t* buf, int len) {  _str_bldr->concat((uint8_t*) buf, len);  return 0;  }  // TODO: StringBuilder return codes.
 
 
-/*******************************************************************************
-* output_dynamic
-*******************************************************************************/
-
-void output_dynamic::init(uint32_t initalCapacity) {
-  this->_capacity = initalCapacity;
-  this->_buffer = new uint8_t[initalCapacity];
-  this->_offset = 0;
-}
-
-output_dynamic::output_dynamic() {
-  init(256);
-}
-
-output_dynamic::output_dynamic(uint32_t inital_capacity) {
-  init(inital_capacity);
-}
-
-output_dynamic::~output_dynamic() {
-  delete _buffer;
-}
-
-uint8_t* output_dynamic::data() {   return _buffer;   }  // Cannot inline due to being virtual.
-uint32_t output_dynamic::size() {   return _offset;   }  // Cannot inline due to being virtual.
-
-int8_t output_dynamic::put_byte(uint8_t value) {
-  int8_t ret = 0;
-  if (_offset < _capacity) {
-    _buffer[_offset++] = value;
-  }
-  else {
-    _capacity *= 2;
-    uint8_t* new_ptr = (uint8_t*) realloc(_buffer, _capacity);
-    if (nullptr != new_ptr) {
-      _buffer = new_ptr;
-    }
-    else {
-      ret = -1;
-    }
-    _buffer[_offset++] = value;
-  }
-  return ret;
-}
-
-int8_t output_dynamic::put_bytes(const uint8_t* data, int size) {
-  int8_t ret = 0;
-  while((_offset + size) > _capacity) {
-    _capacity *= 2;
-    uint8_t* new_ptr = (uint8_t*) realloc(_buffer, _capacity);
-    if (nullptr != new_ptr) {
-      _buffer = new_ptr;
-    }
-    else {
-      ret = -1;
-    }
-  }
-  memcpy(_buffer + _offset, data, size);
-  _offset += size;
-  return ret;
-}
-
 
 /*******************************************************************************
 * output_static

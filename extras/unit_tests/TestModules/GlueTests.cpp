@@ -26,7 +26,7 @@ NOTE: RNG is tested elsewhere, but it needs to be promoted to a top-level test
   doesn't allow a test to pass on false grounds.
 */
 
-#include "TimerTools.h"
+#include "TimerTools/TimerTools.h"
 
 
 /*******************************************************************************

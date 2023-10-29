@@ -1,5 +1,5 @@
 /*
-File:   ParsingConsole.h
+File:   C3PConsole.h
 Author: J. Ian Lindsay
 Date:   2020.01.05
 
@@ -18,6 +18,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+#ifndef __PARSING_CONSOLE_H__
+#define __PARSING_CONSOLE_H__
+
 #include <inttypes.h>
 #include <stdint.h>
 #include "StringBuilder.h"
@@ -25,9 +28,6 @@ limitations under the License.
 #include "Pipes/BufferAccepter/BufferAccepter.h"
 #include "LightLinkedList.h"
 #include "EnumeratedTypeCodes.h"
-
-#ifndef __PARSING_CONSOLE_H__
-#define __PARSING_CONSOLE_H__
 
 /* Class flags. */
 #define CONSOLE_FLAG_LOCAL_ECHO         0x01  // Should the console echo back?

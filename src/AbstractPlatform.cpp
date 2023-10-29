@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include "AbstractPlatform.h"
 #include "C3PLogger.h"
-#include "ParsingConsole.h"
+#include "Console/C3PConsole.h"
 #include "CryptoBurrito/CryptoBurrito.h"
 
 /**

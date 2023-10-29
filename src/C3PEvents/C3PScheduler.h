@@ -28,7 +28,7 @@ limitations under the License.
 #include "../StringBuilder.h"
 #include "../CppPotpourri.h"
 #include "../FlagContainer.h"
-#include "../TimerTools.h"
+#include "../TimerTools/TimerTools.h"
 #include "../PriorityQueue.h"
 #include "../ElementPool.h"
 #include "../AbstractPlatform.h"

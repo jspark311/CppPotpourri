@@ -40,6 +40,17 @@ C3P wants the following capabilities, which will probably implicate this file.
   #include C3P_CONF_FILE
 #endif
 
+
+/*******************************************************************************
+* What compiler is handling us?
+* If not provided, GCC is assumed. C3P has also been built under IAR and MSVC
+*   with minimal effort. See Compilers.h
+*******************************************************************************/
+#ifndef CONFIG_C3P_COMPILER
+  #define _C3P_COMPILER_IS_GCC
+#endif
+
+
 /*******************************************************************************
 * Cryptographic options and concerns are handled in their own file.
 *******************************************************************************/

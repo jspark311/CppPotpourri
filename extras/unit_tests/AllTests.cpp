@@ -37,7 +37,7 @@ TODO: About that... This program is presumably being run under linux, and so we
 
 #include "CppPotpourri.h"
 #include "StringBuilder.h"
-#include "ParsingConsole.h"
+#include "Console/C3PConsole.h"
 #include "ElementPool.h"
 #include "RingBuffer.h"
 #include "PriorityQueue.h"
@@ -46,7 +46,7 @@ TODO: About that... This program is presumably being run under linux, and so we
 #include "SensorFilter.h"
 #include "AsyncSequencer.h"
 #include "Vector3.h"
-#include "TimerTools.h"
+#include "TimerTools/TimerTools.h"
 #include "uuid.h"
 #include "cbor-cpp/cbor.h"
 #include "Image/Image.h"
