@@ -885,6 +885,79 @@ int test_stringbuilder_concat_handoff_raw() {
 }
 
 
+
+/*
+  The structure-preserving deep-copy-to-buffer functions.
+
+  int copyToBuffer(uint8* dest, const uint32 len_limit, const uint32 start_offset);
+*/
+int sb_test_vivisection() {
+  int ret = -1;
+  printf("Testing copyToBuffer(uint8* dest, const uint32 len_limit, const uint32 start_offset)...\n");
+  StringBuilder* dump_string = nullptr;
+  StringBuilder dest_dump;
+  StringBuilder random_src;
+  //StringBuilder kat_src;
+
+  // TODO: KATs for mis-use and absurdities.
+  ret = 0;
+
+  dump_string = &random_src;
+  const uint32_t FUZZ_CYCLES = 100;
+  uint32_t i = 0;
+  while ((i < FUZZ_CYCLES) & (0 == ret)) {
+    ret = -1;
+    // NOTE: Care must be taken to ensure that these parameter ranges always
+    //   combine into an action that can (in principle) succeed. Absurdities are
+    //   handled by the KAT.
+    const uint32_t TEST_SRC_LEN      = (400 + (randomUInt32() % 80));
+    const uint32_t TEST_FRAG_LEN     = (10 + (randomUInt32() % 65));
+    const uint32_t TEST_DEST_LEN     = (61 + (randomUInt32() % 17));
+    const uint32_t TEST_START_OFFSET = (randomUInt32() % (TEST_SRC_LEN - TEST_DEST_LEN));
+    generate_random_text_buffer(&random_src, TEST_SRC_LEN);   //
+    const int TEST_CHUNKS            = random_src.chunk(TEST_FRAG_LEN);
+    const int TEST_ORIGINAL_COST     = random_src.memoryCost(true);   // TODO: Poor proxy for a proper mutation test.
+    uint8_t dest_buf[TEST_DEST_LEN];
+    memset(dest_buf, 0, TEST_DEST_LEN);
+    printf("\tcopyToBuffer(uint8*, %u, %u)\t length: %d\t chunks: %d (size %u)...\n", TEST_DEST_LEN, TEST_START_OFFSET, TEST_SRC_LEN, TEST_CHUNKS, TEST_FRAG_LEN);
+    printf("\t\tcopyToBuffer() returns the destination length (%d)... ", TEST_DEST_LEN);
+    if (((int) TEST_DEST_LEN) == random_src.copyToBuffer(dest_buf, TEST_DEST_LEN, TEST_START_OFFSET)) {
+      printf("Pass.\n\t\tSource is unchanged... ");
+      if ((TEST_SRC_LEN == (uint32_t) random_src.length()) & (TEST_ORIGINAL_COST == random_src.memoryCost(true))) {
+        printf("Pass.\n\t\tDestination matches content... ");
+        if (TEST_START_OFFSET == random_src.locate(dest_buf, TEST_DEST_LEN, TEST_START_OFFSET)) {
+          printf("Pass.\n");
+          ret = 0;
+        }
+        else {
+          dest_dump.concat(dest_buf, TEST_DEST_LEN);
+        }
+      }
+    }
+    if (0 == ret) {
+      random_src.clear();  // Wipe for re-use.
+      i++;
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+    StringBuilder log;
+    log.concatf("\ndest: (%d bytes)\n", dest_dump.length());
+    dest_dump.printDebug(&log);
+    log.concat("\n");
+    if (nullptr != dump_string) {
+      log.concatf("\nsrc:  (%d bytes) (%u frags)\n", dump_string->length(), dump_string->count());
+      dump_string->printDebug(&log);
+      log.concat("\n");
+    }
+    printf("\n%s\n\n", (const char*) log.string());
+  }
+  return ret;
+}
+
+
+
 /*
 * The structure-preserving ownership transfer functions.
 */
@@ -1015,7 +1088,6 @@ int test_stringbuilder_concat_handoff_limit() {
 }
 
 
-
 /*
 * StringBuilder is a big API. It's easy to make mistakes or under-estimate
 *   memory impact.
@@ -1099,8 +1171,9 @@ int test_misuse_cases() {
 #define CHKLST_SB_TEST_PRINTDEBUG     0x00400000  // printDebug(StringBuilder*)
 #define CHKLST_SB_TEST_PRINTBUFFER    0x00800000  // printBuffer(StringBuilder* output, uint8_t* buf, uint32_t len, const char* indent)
 #define CHKLST_SB_TEST_MEM_MUTATION   0x01000000  // Memory layout non-mutation assurances.
-#define CHKLST_SB_TEST_MISUSE         0x02000000  // Foreseeable misuse tests.
-#define CHKLST_SB_TEST_MISCELLANEOUS  0x04000000  // Scattered small tests.
+#define CHKLST_SB_TEST_VIVISECTION    0x02000000  // Sectional copy with layout non-mutation assurances.
+#define CHKLST_SB_TEST_MISUSE         0x40000000  // Foreseeable misuse tests.
+#define CHKLST_SB_TEST_MISCELLANEOUS  0x80000000  // Scattered small tests.
 
 #define CHKLST_SB_TESTS_ALL ( \
   CHKLST_SB_TEST_STRCASESTR | CHKLST_SB_TEST_STRCASECMP | CHKLST_SB_TEST_BASICS | \
@@ -1112,7 +1185,8 @@ int test_misuse_cases() {
   CHKLST_SB_TEST_HANDOFFS_3 | \
   CHKLST_SB_TEST_COUNT | CHKLST_SB_TEST_POSITION | CHKLST_SB_TEST_CONCATF | \
   CHKLST_SB_TEST_PRINTDEBUG | CHKLST_SB_TEST_PRINTBUFFER | \
-  CHKLST_SB_TEST_MEM_MUTATION | CHKLST_SB_TEST_MISUSE | CHKLST_SB_TEST_MISCELLANEOUS)
+  CHKLST_SB_TEST_MEM_MUTATION | CHKLST_SB_TEST_VIVISECTION | \
+  CHKLST_SB_TEST_MISUSE | CHKLST_SB_TEST_MISCELLANEOUS)
 
 const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
   { .FLAG         = CHKLST_SB_TEST_STRCASESTR,
@@ -1254,7 +1328,7 @@ const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
     .POLL_FXN     = []() { return 1;  }    // TODO: Separate
   },
   { .FLAG         = CHKLST_SB_TEST_PRINTBUFFER,
-    .LABEL        = "printBuffer(StringBuilder*, uint8_t*, uint32_t, const char*)",
+    .LABEL        = "printBuffer(StringBuilder*, uint8*, uint32, const char*)",
     .DEP_MASK     = (0),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_stringbuilder_print_buffer()) ? 1:-1);  }
@@ -1265,6 +1339,16 @@ const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return 1;  }    // TODO: Separate
   },
+
+
+  { .FLAG         = CHKLST_SB_TEST_VIVISECTION,
+    .LABEL        = "Section copy with non-mutation assurances",
+    .DEP_MASK     = (CHKLST_SB_TEST_COUNT),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == sb_test_vivisection()) ? 1:-1);  }
+  },
+
+
   { .FLAG         = CHKLST_SB_TEST_MISUSE,
     .LABEL        = "Guardrails against misuse",
     .DEP_MASK     = (0),

@@ -881,16 +881,16 @@ void StringBuilder::concat(String s) {
 * @param start_offset How far into the input the copy should start.
 * @return The number of bytes copied.
 */
-int StringBuilder::copyToBuffer(uint8_t* buf, int len_limit, int start_offset) {
+int StringBuilder::copyToBuffer(uint8_t* buf, const uint32_t LIMIT_LEN, const uint32_t START_OFFSET) {
   int ret = 0;
-  const int SUBJECT_LENGTH = (length() - start_offset);
+  const int SUBJECT_LENGTH = (length() - START_OFFSET);
   if (0 < SUBJECT_LENGTH) {
-    const int COPY_LENGTH = strict_min(len_limit, SUBJECT_LENGTH);
-    int strll_offset   = start_offset;
+    const uint32_t COPY_LENGTH = strict_min(LIMIT_LEN, (uint32_t) SUBJECT_LENGTH);
+    int strll_offset   = START_OFFSET;
     StrLL* src_ll      = _get_ll_containing_offset(_root, &strll_offset);
     StrLL* starting_ll = src_ll;
-    while ((nullptr != src_ll) & (ret < COPY_LENGTH)) {
-      const int INNER_LENGTH = strict_min((src_ll->len - strll_offset), (COPY_LENGTH - ret));
+    while ((nullptr != src_ll) & (ret < (int) COPY_LENGTH)) {
+      const int32_t INNER_LENGTH = strict_min((int32_t) (src_ll->len - strll_offset), (int32_t) (COPY_LENGTH - ret));
       memcpy((buf + ret), (uint8_t*)(src_ll->str + strll_offset), INNER_LENGTH);
       ret += INNER_LENGTH;
       strll_offset = 0;
