@@ -1275,13 +1275,13 @@ const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_SB_TEST_CHUNK,
     .LABEL        = "chunk(const int)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_COUNT),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_stringbuilder_chunk()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_SB_TEST_REPLACE,
     .LABEL        = "replace(const char*, const char*)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_LOCATE),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_stringbuilder_replace()) ? 1:-1);  }
   },
@@ -1305,7 +1305,7 @@ const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_SB_TEST_COUNT,
     .LABEL        = "count()",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_BASICS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return 1;  }    // TODO: Separate
   },
@@ -1339,16 +1339,12 @@ const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return 1;  }    // TODO: Separate
   },
-
-
   { .FLAG         = CHKLST_SB_TEST_VIVISECTION,
     .LABEL        = "Section copy with non-mutation assurances",
-    .DEP_MASK     = (CHKLST_SB_TEST_COUNT),
+    .DEP_MASK     = (CHKLST_SB_TEST_LOCATE | CHKLST_SB_TEST_CHUNK | CHKLST_SB_TEST_BASICS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == sb_test_vivisection()) ? 1:-1);  }
   },
-
-
   { .FLAG         = CHKLST_SB_TEST_MISUSE,
     .LABEL        = "Guardrails against misuse",
     .DEP_MASK     = (0),

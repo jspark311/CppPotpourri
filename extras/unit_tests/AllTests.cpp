@@ -316,7 +316,8 @@ void printTypeSizes() {
 #define CHKLST_ALL_TIER_2_TESTS ( \
   CHKLST_FSM_TESTS | CHKLST_SCHEDULER_TESTS | CHKLST_IDENTITY_TESTS | \
   CHKLST_BUFFER_ACCEPTER_TESTS | CHKLST_MULT_STR_SEARCH_TESTS | \
-  CHKLST_CODEC_LINE_TERM_TESTS | CHKLST_CODEC_B64_TESTS | CHKLST_KEY_VALUE_PAIR_TESTS)
+  CHKLST_CODEC_LINE_TERM_TESTS | CHKLST_CODEC_B64_TESTS | \
+  CHKLST_TYPE_CONTAINER_TESTS | CHKLST_KEY_VALUE_PAIR_TESTS)
 
 #define CHKLST_ALL_TIER_3_TESTS ( \
   CHKLST_PARSINGCONSOLE_TESTS | CHKLST_SENSORFILTER_TESTS | \
@@ -494,7 +495,8 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .LABEL        = "MultiStringSearch",
     .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == c3p_multisearch_test_main()) ? 1:-1);  }
+    .POLL_FXN     = []() { return -1;  }   // TODO
+    //.POLL_FXN     = []() { return ((0 == c3p_multisearch_test_main()) ? 1:-1);  }
   },
 
   // Identity tests in this block are the trivial types, and base-class
@@ -517,17 +519,10 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   //   break these tests. In such a case, check the type's parse/pack functions.
   // NOTE: This test block also covers CBOR implementation.
   { .FLAG         = CHKLST_TYPE_CONTAINER_TESTS,
-    .LABEL        = "C3PValue",
+    .LABEL        = "C3PType and C3PValue",
     .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() {
-      if ((0 == c3p_type_test_main()) ? 1:-1) {
-        if ((0 == c3p_value_test_main()) ? 1:-1) {
-          return 1;
-        }
-      }
-      return -1;
-    }
+    .DISPATCH_FXN = []() { return ((0 == c3p_type_test_main()) ? 1:-1);   },
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_main()) ? 1:-1);  }
   },
 
   // KVP is responsible for implementing a map data type with full

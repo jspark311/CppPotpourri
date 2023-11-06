@@ -109,20 +109,22 @@ class C3PValue {
     C3PValue(int16_t  val) : C3PValue(TCode::INT16,    (void*)(uintptr_t) val) {};
     C3PValue(int32_t  val) : C3PValue(TCode::INT32,    (void*)(uintptr_t) val) {};
     C3PValue(bool     val) : C3PValue(TCode::BOOLEAN,  (void*)(uintptr_t) val) {};
+    C3PValue(uint64_t val) : C3PValue(TCode::UINT64,   (void*) &val) {};
+    C3PValue(int64_t  val) : C3PValue(TCode::INT64,    (void*) &val) {};
+    C3PValue(double   val) : C3PValue(TCode::DOUBLE,   (void*) &val) {};
     C3PValue(float    val);
-    C3PValue(double   val);
-    C3PValue(void* v, uint32_t l);
-    C3PValue(const char* val)   : C3PValue(TCode::STR,           (void*) val) {};
-    C3PValue(char* val)         : C3PValue(TCode::STR,           (void*) val) {};
-    C3PValue(StringBuilder* v)  : C3PValue(TCode::STR_BUILDER,   (void*) v) {};
+    C3PValue(const char* val)  : C3PValue(TCode::STR,           (void*) val) {};
+    C3PValue(char* val)        : C3PValue(TCode::STR,           (void*) val) {};
+    C3PValue(StringBuilder* v) : C3PValue(TCode::STR_BUILDER,   (void*) v) {};
+    C3PValue(uint8_t*, uint32_t len);
 
-    C3PValue(Vector3u32* val)   : C3PValue(TCode::VECT_3_UINT32, (void*) val) {};
-    C3PValue(Vector3u16* val)   : C3PValue(TCode::VECT_3_UINT16, (void*) val) {};
-    C3PValue(Vector3u8*  val)   : C3PValue(TCode::VECT_3_UINT8,  (void*) val) {};
-    C3PValue(Vector3i32*  val)  : C3PValue(TCode::VECT_3_INT32,  (void*) val) {};
-    C3PValue(Vector3i16*  val)  : C3PValue(TCode::VECT_3_INT16,  (void*) val) {};
-    C3PValue(Vector3i8*   val)  : C3PValue(TCode::VECT_3_INT8,   (void*) val) {};
-    C3PValue(Vector3f*    val)  : C3PValue(TCode::VECT_3_FLOAT,  (void*) val) {};
+    C3PValue(Vector3u32* val)  : C3PValue(TCode::VECT_3_UINT32, (void*) val) {};
+    C3PValue(Vector3u16* val)  : C3PValue(TCode::VECT_3_UINT16, (void*) val) {};
+    C3PValue(Vector3u8*  val)  : C3PValue(TCode::VECT_3_UINT8,  (void*) val) {};
+    C3PValue(Vector3i32* val)  : C3PValue(TCode::VECT_3_INT32,  (void*) val) {};
+    C3PValue(Vector3i16* val)  : C3PValue(TCode::VECT_3_INT16,  (void*) val) {};
+    C3PValue(Vector3i8*  val)  : C3PValue(TCode::VECT_3_INT8,   (void*) val) {};
+    C3PValue(Vector3f*   val)  : C3PValue(TCode::VECT_3_FLOAT,  (void*) val) {};
 
     //C3PValue(KeyValuePair* val) : C3PValue(TCode::KVP,           (void*) val) {};
     C3PValue(Identity* val)     : C3PValue(TCode::IDENTITY,      (void*) val) {};
@@ -140,6 +142,7 @@ class C3PValue {
     * Setters return 0 on success or -1 on failure.
     */
     int8_t set_from(const TCode SRC_TYPE, void* src);
+    int8_t set(C3PValue*);
     inline int8_t set(uint8_t x) {       return set_from(TCode::UINT8,        (void*) &x);  };
     inline int8_t set(uint16_t x) {      return set_from(TCode::UINT16,       (void*) &x);  };
     inline int8_t set(uint32_t x) {      return set_from(TCode::UINT32,       (void*) &x);  };
@@ -208,16 +211,17 @@ class C3PValue {
   protected:
     const TCode _TCODE;        // The hard-declared type of this Value.
     bool        _val_by_ref;   // If true, _target_mem's native type is a pointer to something.
+    bool        _punned_ptr;   // If true, _target_mem contains the value itself.
     bool        _reap_val;     // If true, _target_mem is not only a pointer, but is our responsibility to free it.
     uint16_t    _set_trace;    // This value is updated each time the set function is called, to allow dirty-tracing.
-    void*       _target_mem;   // Type-punned memory. Will be the same size as the arch's pointers.
+    void*       _target_mem;   // Alignment invariant type-punned memory. Will be the same size as the arch's pointers.
 
     C3PValue(const TCode, void*);
 
     void _reap_existing_value();
 
     //inline void* _type_pun() {  return &_target_mem;  };
-    inline void* _type_pun() {  return (_val_by_ref ? _target_mem : &_target_mem);  };
+    inline void* _type_pun() {  return (_punned_ptr ? &_target_mem : _target_mem);  };
 };
 
 #endif  // __C3P_VALUE_WRAPPER_H

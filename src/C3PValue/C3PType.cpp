@@ -38,18 +38,27 @@ This file contains the implementation of type constraints for our wrapped types.
 
 /*******************************************************************************
 * Statics related to type support.
+*
+* NOTE: C3P requires at least a 32-bit ALU, but should run on 64-bit with no
+*   changes to the application layer. This is one of the basal choke-points to
+*   achieve working support under 32/64 bit.
+* Numeric types on all platforms are treated as pass-by-value for the purposes
+*   of this abstraction. Mostly because doing it that way will match the
+*   abstractions provided by the compiler (or the hardware itself) for handling
+*   native numeric types.
+* Consequence: For any given target platform, if the storage requirement for a
+*   numeric type exceeds that of a (void*), a flag will be set for the type to
+*   indicate if that storage of the type should be heap-allocated as well as
+*   owned (freed'd) by C3PValue.
 *******************************************************************************/
 // Static initializers for our type map that gives us runtime type constraints.
 static const C3PTypeConstraint<int8_t>          c3p_type_helper_int8(         "INT8",         1,  TCode::INT8,           (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
 static const C3PTypeConstraint<int16_t>         c3p_type_helper_int16(        "INT16",        2,  TCode::INT16,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
 static const C3PTypeConstraint<int32_t>         c3p_type_helper_int32(        "INT32",        4,  TCode::INT32,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
-static const C3PTypeConstraint<int64_t>         c3p_type_helper_int64(        "INT64",        8,  TCode::INT64,          (0));
 static const C3PTypeConstraint<uint8_t>         c3p_type_helper_uint8(        "UINT8",        1,  TCode::UINT8,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
 static const C3PTypeConstraint<uint16_t>        c3p_type_helper_uint16(       "UINT16",       2,  TCode::UINT16,         (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
 static const C3PTypeConstraint<uint32_t>        c3p_type_helper_uint32(       "UINT32",       4,  TCode::UINT32,         (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
-static const C3PTypeConstraint<uint64_t>        c3p_type_helper_uint64(       "UINT64",       8,  TCode::UINT64,         (0));
 static const C3PTypeConstraint<float>           c3p_type_helper_float(        "FLOAT",        4,  TCode::FLOAT,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
-static const C3PTypeConstraint<double>          c3p_type_helper_double(       "DOUBLE",       8,  TCode::DOUBLE,         (0));
 static const C3PTypeConstraint<bool>            c3p_type_helper_bool(         "BOOL",         1,  TCode::BOOLEAN,        (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
 static const C3PTypeConstraint<char*>           c3p_type_helper_str(          "STR",          0,  TCode::STR,            (TCODE_FLAG_MASK_STRING_TYPE));
 static const C3PTypeConstraint<StringBuilder>   c3p_type_helper_stringbuilder("STR_BLDR",     0,  TCode::STR_BUILDER,    (TCODE_FLAG_VALUE_IS_POINTER));
@@ -66,8 +75,15 @@ static const C3PTypeConstraint<KeyValuePair>    c3p_type_helper_kvp(          "K
 static const C3PTypeConstraint<Identity*>       c3p_type_helper_identity(     "IDENTITY",     0,  TCode::IDENTITY,       (TCODE_FLAG_VALUE_IS_POINTER));
 static const C3PTypeConstraint<StopWatch*>      c3p_type_helper_stopwatch(    "STOPWATCH",   sizeof(StopWatch),  TCode::STOPWATCH,      (TCODE_FLAG_VALUE_IS_POINTER));
 
+// TODO: These numeric types might be handled as pointer-puns on 64-bit ALUs,
+//   but must be heap-allocated on 32-bit builds for the sake of maintaining
+//   uniform assurances about their values.
+static const C3PTypeConstraint<int64_t>         c3p_type_helper_int64(        "INT64",        8,  TCode::INT64,          (0));
+static const C3PTypeConstraint<uint64_t>        c3p_type_helper_uint64(       "UINT64",       8,  TCode::UINT64,         (0));
+static const C3PTypeConstraint<double>          c3p_type_helper_double(       "DOUBLE",       8,  TCode::DOUBLE,         (0));
+
 // Type-indirected handlers (parameter binders).
-static const C3PTypeConstraint<C3PBinBinder>   c3p_type_helper_ptrlen(        "BINARY",       0,  TCode::BINARY,         (TCODE_FLAG_PTR_LEN_TYPE | TCODE_FLAG_LEGAL_FOR_ENCODING));
+static const C3PTypeConstraint<C3PBinBinder>    c3p_type_helper_ptrlen(       "BINARY",       0,  TCode::BINARY,         (TCODE_FLAG_PTR_LEN_TYPE | TCODE_FLAG_LEGAL_FOR_ENCODING));
 
 //{TCode::SI_UNIT,        (TCODE_FLAG_MASK_STRING_TYPE),                             0,  "SI_UNIT",       (C3PType*) &c3p_type_helper_str            },
 //{TCode::UINT128,        (0),                                                       16, "UINT128",       nullptr },
@@ -141,6 +157,168 @@ int8_t C3PType::exportTypeMap(StringBuilder*, const TCode) {
   // TODO
   return -1;
 }
+
+
+/*
+* TODO: This feels like it ought to be a member of the type constraint template.
+*
+* @return 0 if the type conversion will always succeed
+*        -1 if the type conversion is impossible to do safely
+*         1 if the type conversion is might work contingent on width
+*         2 if the type conversion is might work contingent on sign
+*         3 if the type conversion is might work contingent on width and sign
+*/
+int8_t C3PType::conversionRisk(const TCode INPUT_TC, const TCode OUTPUT_TC) {
+  int8_t ret = -1;
+  switch (INPUT_TC) {
+    case TCode::INT8:
+      switch (OUTPUT_TC) {
+        case TCode::FLOAT:  case TCode::DOUBLE:
+        case TCode::INT8:   case TCode::INT16:   case TCode::INT32:   case TCode::INT64:
+          ret = 0;
+          break;
+        case TCode::UINT8:  case TCode::UINT16:  case TCode::UINT32:  case TCode::UINT64:
+          ret = 2;
+          break;
+        default:  break;
+      }
+      break;
+    case TCode::INT16:
+      switch (OUTPUT_TC) {
+        case TCode::INT8:
+          ret = 1;
+          break;
+        case TCode::FLOAT:  case TCode::DOUBLE:
+        case TCode::INT16:  case TCode::INT32:   case TCode::INT64:
+          ret = 0;
+          break;
+        case TCode::UINT8:
+          ret = 3;
+          break;
+        case TCode::UINT16:  case TCode::UINT32:  case TCode::UINT64:
+          ret = 2;
+          break;
+        default:  break;
+      }
+      break;
+    case TCode::INT32:
+      switch (OUTPUT_TC) {
+        case TCode::INT8:  case TCode::INT16:
+          ret = 1;
+          break;
+        case TCode::FLOAT:  // TODO: Probably shouldn't...
+        case TCode::DOUBLE:
+        case TCode::INT32:  case TCode::INT64:
+          ret = 0;
+          break;
+        case TCode::UINT8:  case TCode::UINT16:
+          ret = 3;
+          break;
+        case TCode::UINT32:  case TCode::UINT64:
+          ret = 2;
+          break;
+        default:  break;
+      }
+      break;
+    case TCode::INT64:
+      switch (OUTPUT_TC) {
+        case TCode::INT8:    case TCode::INT16:
+          ret = 1;
+          break;
+        case TCode::DOUBLE:  // TODO: Probably shouldn't...
+        case TCode::INT32:   case TCode::INT64:
+          ret = 0;
+          break;
+        case TCode::UINT8:   case TCode::UINT16:   case TCode::UINT32:
+          ret = 3;
+          break;
+        case TCode::UINT64:
+          ret = 2;
+          break;
+        default:  break;
+      }
+      break;
+    case TCode::UINT8:
+      switch (OUTPUT_TC) {
+        case TCode::INT8:
+          ret = 1;
+          break;
+        case TCode::FLOAT:  case TCode::DOUBLE:
+        case TCode::INT16:  case TCode::INT32:   case TCode::INT64:
+        case TCode::UINT8:  case TCode::UINT16:  case TCode::UINT32:  case TCode::UINT64:
+          ret = 0;
+          break;
+        default:  break;
+      }
+      break;
+    case TCode::UINT16:
+      switch (OUTPUT_TC) {
+        case TCode::UINT8:
+        case TCode::INT8:   case TCode::INT16:
+          ret = 1;
+          break;
+        case TCode::FLOAT:  case TCode::DOUBLE:
+        case TCode::INT32:  case TCode::INT64:
+        case TCode::UINT16:  case TCode::UINT32:  case TCode::UINT64:
+          ret = 0;
+          break;
+        default:  break;
+      }
+      break;
+    case TCode::UINT32:
+      switch (OUTPUT_TC) {
+        case TCode::UINT8:  case TCode::UINT16:
+        case TCode::INT8:   case TCode::INT16:  case TCode::INT32:
+        case TCode::FLOAT:
+          ret = 1;
+          break;
+        case TCode::DOUBLE:
+        case TCode::INT64:
+        case TCode::UINT32:  case TCode::UINT64:
+          ret = 0;
+          break;
+        default:  break;
+      }
+      break;
+    case TCode::UINT64:
+      switch (OUTPUT_TC) {
+        case TCode::UINT8:  case TCode::UINT16: case TCode::UINT32:
+        case TCode::INT8:   case TCode::INT16:  case TCode::INT32:  case TCode::INT64:
+        case TCode::FLOAT:  case TCode::DOUBLE:
+          ret = 1;
+          break;
+        case TCode::UINT64:
+          ret = 0;
+          break;
+        default:  break;
+      }
+      break;
+    case TCode::FLOAT:
+      switch (OUTPUT_TC) {
+        case TCode::FLOAT:
+        case TCode::DOUBLE:
+          ret = 0;
+          break;
+        default:  break;
+      }
+      break;
+    case TCode::DOUBLE:
+      switch (OUTPUT_TC) {
+        case TCode::DOUBLE:
+          ret = 0;
+          break;
+        default:  break;
+      }
+      break;
+    case TCode::BOOLEAN:
+      ret = 0;  // BOOLEAN can be represented by any numeric.
+      break;
+    default:  break;
+  }
+  return ret;
+}
+
+
 
 /*******************************************************************************
 * Support functions for dealing with type codes.                               *
@@ -1266,7 +1444,12 @@ template <> int8_t      C3PTypeConstraint<bool>::deserialize(void* obj, StringBu
 ///   type-alignment boundaries can still be enforced by the compiler, despite
 ///   the type-punning.
 template <> void        C3PTypeConstraint<float>::to_string(void* obj, StringBuilder* out) {
-  out->concatf("%.4f", (double) _load_from_mem(obj));
+  //out->concatf("%.4f", (double) _load_from_mem(obj));
+  // NOTE: _load_from_mem() will not work when used as above
+  // TODO: Because the value is created on-stack and goes out of scope before it
+  //   can be used as a function paramter? Alignment?
+  float yuck = _load_from_mem(obj);
+  out->concatf("%.4f", (double) yuck);
 }
 
 template <> int8_t      C3PTypeConstraint<float>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
@@ -1338,21 +1521,27 @@ template <> int8_t      C3PTypeConstraint<float>::deserialize(void* obj, StringB
 ///   type-alignment boundaries can still be enforced by the compiler, despite
 ///   the type-punning.
 template <> void        C3PTypeConstraint<double>::to_string(void* obj, StringBuilder* out) {
-  out->concatf("%.6f", _load_from_mem(obj));
+  //out->concatf("%.6f", _load_from_mem(obj));
+  // NOTE: _load_from_mem() will not work when used as above
+  // TODO: Because the value is created on-stack and goes out of scope before it
+  //   can be used as a function paramter? Alignment?
+  double yuck = _load_from_mem(obj);
+  out->concatf("%.6f", yuck);
 }
 
 template <> int8_t      C3PTypeConstraint<double>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
   int8_t ret = -1;
   double d = 0.0d;
   switch (SRC_TYPE) {
-    case TCode::INT8:       d = (1.0d * *((int8_t*) src));      ret = 0;   break;
-    case TCode::INT16:      d = (1.0d * *((int16_t*) src));     ret = 0;   break;
-    case TCode::INT32:      d = (1.0d * *((int32_t*) src));     ret = 0;   break;
-    case TCode::INT64:      d = (1.0d * *((int64_t*) src));     ret = 0;   break;
-    case TCode::UINT8:      d = (1.0d * *((uint8_t*) src));     ret = 0;   break;
-    case TCode::UINT16:     d = (1.0d * *((uint16_t*) src));    ret = 0;   break;
-    case TCode::UINT32:     d = (1.0d * *((uint32_t*) src));    ret = 0;   break;
-    case TCode::UINT64:     d = (1.0d * *((uint64_t*) src));    ret = 0;   break;
+    case TCode::INT8:     d = (1.0d * *((int8_t*) src));        ret = 0;   break;
+    case TCode::INT16:    d = (1.0d * *((int16_t*) src));       ret = 0;   break;
+    case TCode::INT32:    d = (1.0d * *((int32_t*) src));       ret = 0;   break;
+    case TCode::INT64:    d = (1.0d * *((int64_t*) src));       ret = 0;   break;
+    case TCode::UINT8:    d = (1.0d * *((uint8_t*) src));       ret = 0;   break;
+    case TCode::UINT16:   d = (1.0d * *((uint16_t*) src));      ret = 0;   break;
+    case TCode::UINT32:   d = (1.0d * *((uint32_t*) src));      ret = 0;   break;
+    case TCode::UINT64:   d = (1.0d * *((uint64_t*) src));      ret = 0;   break;
+    case TCode::BOOLEAN:  d = (*((bool*) src) ? 1.0d : 0.0d);   ret = 0;   break;
     case TCode::FLOAT:
       {
         float s = 0.0f;
@@ -1360,7 +1549,7 @@ template <> int8_t      C3PTypeConstraint<double>::set_from(void* dest, const TC
         d = (1.0d * *((float*) src));
       }
       return 0;
-    case TCode::DOUBLE:     memcpy(dest, src, FIXED_LEN);  return 0;
+    case TCode::DOUBLE:      memcpy(dest, src, FIXED_LEN);    return 0;
     default:  break;
   }
   if (0 == ret) {

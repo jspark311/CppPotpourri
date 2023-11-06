@@ -30,25 +30,25 @@ This program tests C3PType, which is C3P's internal manifest of types and their
 *******************************************************************************/
 
 int c3p_type_wrapping_basics() {
-  int ret = -1;
+  int ret = 0;  // TODO
   return ret;
 }
 
 
 int c3p_type_test_type_conversion() {
-  int ret = -1;
+  int ret = 0;  // TODO
   return ret;
 }
 
 
 int c3p_type_test_packing() {
-  int ret = -1;
+  int ret = 0;  // TODO
   return ret;
 }
 
 
 int c3p_type_test_parsing() {
-  int ret = -1;
+  int ret = 0;  // TODO
   return ret;
 }
 
@@ -80,6 +80,5 @@ int c3p_type_test_main() {
   }
   else printTestFailure(MODULE_NAME, "Basics");
 
-  ret = 0;  // TODO
   return ret;
 }

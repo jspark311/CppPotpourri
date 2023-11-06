@@ -78,6 +78,8 @@ enum class TCode : uint8_t {
   BOOLEAN       = 0x0B,    // A boolean
   FLOAT         = 0x0C,    // A float
   DOUBLE        = 0x0D,    // A double
+
+  // Our basic notions of variable-length data.
   BINARY        = 0x0E,    // A collection of bytes
   STR           = 0x0F,    // A null-terminated string
 
@@ -177,7 +179,10 @@ class C3PType {
     const bool null_terminated() {     return _all_flags_set(TCODE_FLAG_NULL_TERMIMNATED);    };
     const bool exportable() {          return _all_flags_set(TCODE_FLAG_NON_EXPORTABLE);      };
     const bool is_punned_ptr() {       return _all_flags_set(TCODE_FLAG_VALUE_IS_PUNNED_PTR); };
+    const bool is_ptr() {              return _all_flags_set(TCODE_FLAG_VALUE_IS_POINTER);    };
+    const bool is_ptr_len() {          return _all_flags_set(TCODE_FLAG_PTR_LEN_TYPE);        };
 
+    static int8_t conversionRisk(const TCode, const TCode);
     static int8_t exportTypeMap(StringBuilder*, const TCode);
 
 
@@ -185,8 +190,6 @@ class C3PType {
     C3PType(const char* const type_name, const uint16_t fixed_len, const TCode tcode, const uint8_t flags) :
       NAME(type_name), FIXED_LEN(fixed_len), TCODE(tcode), _FLAGS(flags) {};
 
-    const bool _is_ptr() {          return _all_flags_set(TCODE_FLAG_VALUE_IS_POINTER);     };
-    const bool _is_ptr_len() {      return _all_flags_set(TCODE_FLAG_PTR_LEN_TYPE);         };
 
     int8_t _type_blind_copy(void* src, void* dest, const TCode);
     int    _type_blind_serialize(void* obj, StringBuilder*, const TCode FORMAT);
@@ -212,6 +215,9 @@ class C3PType {
 * Functions implemented in this header will be isomorphic for all TCodes, unless
 *   over-ridden. The compiler will autogenerate such functions for each type
 *   that doesn't provide its own implemention.
+*
+* TODO: Just admit to yourself that you are going to add an allocate() function,
+*   if not also a detroy(T*) function.
 */
 template <class T> class C3PTypeConstraint : public C3PType {
   public:

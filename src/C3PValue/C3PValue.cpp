@@ -47,7 +47,53 @@ limitations under the License.
 *   type is declared.
 */
 C3PValue::C3PValue(const TCode TC, void* ptr) : _TCODE(TC), _set_trace(1), _target_mem(ptr) {
-  _val_by_ref = !typeIsPointerPunned(_TCODE);
+  _punned_ptr = typeIsPointerPunned(_TCODE);
+  _val_by_ref = !_punned_ptr;
+  C3PType* t_helper = getTypeHelper(_TCODE);
+  if (nullptr != t_helper) {
+    if (is_numeric()) {
+      // Every numeric type that does not fit inside a void* on the target
+      //   platform will be heap-allocated and zeroed on construction. C3PType
+      //   is responsible for having homogenized this handling, and all we need
+      //   to do is allocate the memory if the numeric type could not be
+      //   type-punned.
+      // This will cover such cases as DOUBLE and INT64 on 32-bit builds, and
+      //   VECT_3_DOUBLE on all builds.
+      if (!_punned_ptr) {
+        // TODO: This is a constructor, and we thus have no clean way of
+        //   handling heap-allocation failures. So we'll need a lazy-allocate
+        //   arrangement eventually, in which case, this block will be redundant.
+        const uint32_t TYPE_STORAGE_SIZE = t_helper->length(nullptr);
+        _target_mem = malloc(TYPE_STORAGE_SIZE);   // Default value will be nonsense. Clobber it.
+        if (nullptr != _target_mem) {
+          _reap_val = true;
+          if (nullptr == ptr) {
+            memset(_target_mem, 0, TYPE_STORAGE_SIZE);
+          }
+          else {
+            // TODO: Should never fail, because no type conversion is being done,
+            //   but there is no return assurance for the situation TODO'd above.
+            t_helper->set_from(_type_pun(), _TCODE, ptr);
+          }
+        }
+      }
+    }
+    else if (t_helper->is_ptr_len()) {
+      // The compound pointer-length types (BINARY, CBOR, etc) will have an
+      //   indirected shim object to consolidate their parameter space into a
+      //   single reference. That shim will be heap allocated.
+      _target_mem = malloc(sizeof(C3PBinBinder));
+      if (nullptr != _target_mem) {
+        //((C3PBinBinder*) _target_mem)->tcode = TC;
+        _val_by_ref = true;
+        // TODO: Is this the correct choice? We know that we are responsible for
+        //   freeing the C3PBinBinder we just created, and I don't want to mix
+        //   semantic layers, nor do I want to entend flags into the shim (thus
+        //   indirecting them).
+        _reap_val   = false;
+      }
+    }
+  }
   _reap_val   = false;
 }
 
@@ -85,31 +131,10 @@ C3PValue::C3PValue(float val) : C3PValue(TCode::FLOAT, nullptr) {
 }
 
 
-// TODO: We might be able to treat this as a direct value on a 64-bit system.
-C3PValue::C3PValue(double val) : C3PValue(TCode::DOUBLE, malloc(sizeof(double))) {
-  if (nullptr != _target_mem) {
-    _val_by_ref = true;
-    _reap_val   = true;
-    uint8_t* src = (uint8_t*) &val;                  // To avoid inducing bugs
-    *(((uint8_t*) _target_mem) + 0) = *(src + 0);    //   related to alignment,
-    *(((uint8_t*) _target_mem) + 1) = *(src + 1);    //   we copy the value
-    *(((uint8_t*) _target_mem) + 2) = *(src + 2);    //   byte-wise into our own
-    *(((uint8_t*) _target_mem) + 3) = *(src + 3);    //   storage.
-    *(((uint8_t*) _target_mem) + 4) = *(src + 4);
-    *(((uint8_t*) _target_mem) + 5) = *(src + 5);
-    *(((uint8_t*) _target_mem) + 6) = *(src + 6);
-    *(((uint8_t*) _target_mem) + 7) = *(src + 7);
-  }
-}
-
-
-C3PValue::C3PValue(void* val, uint32_t len) : C3PValue(TCode::BINARY, malloc(sizeof(C3PBinBinder))) {
+C3PValue::C3PValue(uint8_t* val, uint32_t len) : C3PValue(TCode::BINARY, nullptr) {
   if (nullptr != _target_mem) {
     ((C3PBinBinder*) _target_mem)->buf   = (uint8_t*) val;
     ((C3PBinBinder*) _target_mem)->len   = len;
-    //((C3PBinBinder*) _target_mem)->tcode = TCode::BINARY;
-    _val_by_ref = true;
-    _reap_val   = false;
   }
 }
 
@@ -124,6 +149,20 @@ int8_t C3PValue::set_from(const TCode SRC_TYPE, void* src) {
   C3PType* t_helper = getTypeHelper(_TCODE);
   if (nullptr != t_helper) {
     ret = t_helper->set_from(_type_pun(), SRC_TYPE, src);
+  }
+  if (0 == ret) {
+    _set_trace++;
+  }
+  return ret;
+}
+
+
+int8_t C3PValue::set(C3PValue* src) {
+  int8_t ret = -1;
+  C3PType* t_helper = getTypeHelper(_TCODE);
+  if (nullptr != t_helper) {
+    // NOTE: Private member accessed laterally...
+    ret = t_helper->set_from(_type_pun(), src->tcode(), src->_type_pun());
   }
   if (0 == ret) {
     _set_trace++;
