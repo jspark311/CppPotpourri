@@ -1618,7 +1618,8 @@ template <> int         C3PTypeConstraint<float>::serialize(void* obj, StringBui
       {
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
-        encoder.write_float(_load_from_mem(obj));
+        float temp = _load_from_mem(obj);
+        encoder.write_float(temp);
       }
       break;
 
@@ -1709,7 +1710,8 @@ template <> int         C3PTypeConstraint<double>::serialize(void* obj, StringBu
       {
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
-        encoder.write_double(_load_from_mem(obj));
+        double temp = _load_from_mem(obj);
+        encoder.write_double(temp);
       }
       break;
 

@@ -70,9 +70,9 @@ const EnumDef<ExampleConf> EX_CONF_KEY_LIST[] = {
   //{ ExampleConf::PROG_KEY_8,  "PROG_KEY_8",     0, (uint8_t) TCode::VECT_3_FLOAT     },
   //{ ExampleConf::PROG_KEY_9,  "PROG_KEY_9",     0, (uint8_t) TCode::VECT_3_UINT32    },
   //{ ExampleConf::PROG_KEY_A,  "PROG_KEY_A",     0, (uint8_t) TCode::VECT_3_INT8      },
-  //{ ExampleConf::PROG_KEY_B,  "PROG_KEY_B",     0, (uint8_t) TCode::DOUBLE     },
-  //{ ExampleConf::PROG_KEY_C,  "PROG_KEY_C",     0, (uint8_t) TCode::UINT64     },
-  //{ ExampleConf::PROG_KEY_D,  "PROG_KEY_D",     0, (uint8_t) TCode::INT64      },
+  { ExampleConf::PROG_KEY_B,  "PROG_KEY_B",     0, (uint8_t) TCode::DOUBLE     },
+  { ExampleConf::PROG_KEY_C,  "PROG_KEY_C",     0, (uint8_t) TCode::UINT64     },
+  { ExampleConf::PROG_KEY_D,  "PROG_KEY_D",     0, (uint8_t) TCode::INT64      },
   //{ ExampleConf::PROG_KEY_E,  "PROG_KEY_E",     0, (uint8_t) TCode::BINARY     },
   //{ ExampleConf::PROG_KEY_F,  "PROG_KEY_F",     0, (uint8_t) TCode::STR        },
   { ExampleConf::INVALID, "INVALID", (ENUM_FLAG_MASK_INVALID_CATCHALL), (uint8_t) TCode::NONE}
