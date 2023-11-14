@@ -286,26 +286,6 @@ int8_t C3PValue::deserialize(StringBuilder* input, const TCode FORMAT) {
 
 
 /*
-* @return true if the type is a simple single-value numeric.
-*/
-bool C3PValue::is_numeric() {
-  switch (_TCODE) {
-    case TCode::INT8:     case TCode::INT16:   case TCode::INT32:
-    case TCode::INT64:    case TCode::INT128:
-    case TCode::UINT8:    case TCode::UINT16:  case TCode::UINT32:
-    case TCode::UINT64:   case TCode::UINT128:
-    case TCode::BOOLEAN:  case TCode::FLOAT:   case TCode::DOUBLE:
-    // Semantic wrappers for numeric types.
-    case TCode::COLOR8:   case TCode::COLOR16: case TCode::COLOR24:
-    case TCode::IPV4_ADDR:
-      return true;
-    default:  break;
-  }
-  return false;
-}
-
-
-/*
 */
 uint32_t C3PValue::length() {
   uint32_t ret = 0;

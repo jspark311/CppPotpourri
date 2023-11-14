@@ -160,7 +160,9 @@ int8_t C3PType::exportTypeMap(StringBuilder*, const TCode) {
 
 
 /*
-* TODO: This feels like it ought to be a member of the type constraint template.
+* NOTE: BOOLEAN is properly a numeric type with values of "zero" and "not zero".
+*   We want to allow other types to be uniformly coerced into BOOLEAN,
+*   regardless of loss-of-information.
 *
 * @return 0 if the type conversion will always succeed
 *        -1 if the type conversion is impossible to do safely
@@ -170,154 +172,69 @@ int8_t C3PType::exportTypeMap(StringBuilder*, const TCode) {
 */
 int8_t C3PType::conversionRisk(const TCode INPUT_TC, const TCode OUTPUT_TC) {
   int8_t ret = -1;
-  switch (INPUT_TC) {
-    case TCode::INT8:
-      switch (OUTPUT_TC) {
-        case TCode::FLOAT:  case TCode::DOUBLE:
-        case TCode::INT8:   case TCode::INT16:   case TCode::INT32:   case TCode::INT64:
-          ret = 0;
-          break;
-        case TCode::UINT8:  case TCode::UINT16:  case TCode::UINT32:  case TCode::UINT64:
-          ret = 2;
-          break;
-        default:  break;
-      }
-      break;
-    case TCode::INT16:
-      switch (OUTPUT_TC) {
-        case TCode::INT8:
-          ret = 1;
-          break;
-        case TCode::FLOAT:  case TCode::DOUBLE:
-        case TCode::INT16:  case TCode::INT32:   case TCode::INT64:
-          ret = 0;
-          break;
-        case TCode::UINT8:
-          ret = 3;
-          break;
-        case TCode::UINT16:  case TCode::UINT32:  case TCode::UINT64:
-          ret = 2;
-          break;
-        default:  break;
-      }
-      break;
-    case TCode::INT32:
-      switch (OUTPUT_TC) {
-        case TCode::INT8:  case TCode::INT16:
-          ret = 1;
-          break;
-        case TCode::FLOAT:  // TODO: Probably shouldn't...
-        case TCode::DOUBLE:
-        case TCode::INT32:  case TCode::INT64:
-          ret = 0;
-          break;
-        case TCode::UINT8:  case TCode::UINT16:
-          ret = 3;
-          break;
-        case TCode::UINT32:  case TCode::UINT64:
-          ret = 2;
-          break;
-        default:  break;
-      }
-      break;
-    case TCode::INT64:
-      switch (OUTPUT_TC) {
-        case TCode::INT8:    case TCode::INT16:
-          ret = 1;
-          break;
-        case TCode::DOUBLE:  // TODO: Probably shouldn't...
-        case TCode::INT32:   case TCode::INT64:
-          ret = 0;
-          break;
-        case TCode::UINT8:   case TCode::UINT16:   case TCode::UINT32:
-          ret = 3;
-          break;
-        case TCode::UINT64:
-          ret = 2;
-          break;
-        default:  break;
-      }
-      break;
-    case TCode::UINT8:
-      switch (OUTPUT_TC) {
-        case TCode::INT8:
-          ret = 1;
-          break;
-        case TCode::FLOAT:  case TCode::DOUBLE:
-        case TCode::INT16:  case TCode::INT32:   case TCode::INT64:
-        case TCode::UINT8:  case TCode::UINT16:  case TCode::UINT32:  case TCode::UINT64:
-          ret = 0;
-          break;
-        default:  break;
-      }
-      break;
-    case TCode::UINT16:
-      switch (OUTPUT_TC) {
-        case TCode::UINT8:
-        case TCode::INT8:   case TCode::INT16:
-          ret = 1;
-          break;
-        case TCode::FLOAT:  case TCode::DOUBLE:
-        case TCode::INT32:  case TCode::INT64:
-        case TCode::UINT16:  case TCode::UINT32:  case TCode::UINT64:
-          ret = 0;
-          break;
-        default:  break;
-      }
-      break;
-    case TCode::UINT32:
-      switch (OUTPUT_TC) {
-        case TCode::UINT8:  case TCode::UINT16:
-        case TCode::INT8:   case TCode::INT16:  case TCode::INT32:
-        case TCode::FLOAT:
-          ret = 1;
-          break;
-        case TCode::DOUBLE:
-        case TCode::INT64:
-        case TCode::UINT32:  case TCode::UINT64:
-          ret = 0;
-          break;
-        default:  break;
-      }
-      break;
-    case TCode::UINT64:
-      switch (OUTPUT_TC) {
-        case TCode::UINT8:  case TCode::UINT16: case TCode::UINT32:
-        case TCode::INT8:   case TCode::INT16:  case TCode::INT32:  case TCode::INT64:
-        case TCode::FLOAT:  case TCode::DOUBLE:
-          ret = 1;
-          break;
-        case TCode::UINT64:
-          ret = 0;
-          break;
-        default:  break;
-      }
-      break;
-    case TCode::FLOAT:
-      switch (OUTPUT_TC) {
-        case TCode::FLOAT:
-        case TCode::DOUBLE:
-          ret = 0;
-          break;
-        default:  break;
-      }
-      break;
-    case TCode::DOUBLE:
-      switch (OUTPUT_TC) {
-        case TCode::DOUBLE:
-          ret = 0;
-          break;
-        default:  break;
-      }
-      break;
-    case TCode::BOOLEAN:
-      ret = 0;  // BOOLEAN can be represented by any numeric.
-      break;
-    default:  break;
+  C3PType* t_helper = (C3PType*) _get_type_def(INPUT_TC);
+  if (nullptr != t_helper) {
+    ret = t_helper->representable_by(OUTPUT_TC);
   }
   return ret;
 }
 
+
+/*
+* @return true if the type is a simple single-value numeric.
+*/
+const bool C3PType::is_numeric(const TCode TC) {
+  switch (TC) {
+    case TCode::INT8:     case TCode::INT16:   case TCode::INT32:
+    case TCode::INT64:    case TCode::INT128:
+    case TCode::UINT8:    case TCode::UINT16:  case TCode::UINT32:
+    case TCode::UINT64:   case TCode::UINT128:
+    case TCode::BOOLEAN:  case TCode::FLOAT:   case TCode::DOUBLE:
+    // Semantic wrappers for numeric types.
+    case TCode::COLOR8:   case TCode::COLOR16: case TCode::COLOR24:
+    case TCode::IPV4_ADDR:
+      return true;
+    default:  break;
+  }
+  return false;
+}
+
+
+/*
+* @return true if the type is a signed numeric.
+*/
+const bool C3PType::is_signed(const TCode TC) {
+  switch (TC) {
+    case TCode::INT8:    case TCode::INT16:    case TCode::INT32:
+    case TCode::INT64:   case TCode::INT128:
+    case TCode::FLOAT:   case TCode::DOUBLE:
+      return true;
+    default:  break;
+  }
+  return false;
+}
+
+
+/*
+* NOTE: BOOLEAN is regarded as a single-bit integer.
+*
+* @return true if the type is an integer.
+*/
+const bool C3PType::is_integral(const TCode TC) {
+  switch (TC) {
+    case TCode::INT8:     case TCode::INT16:   case TCode::INT32:
+    case TCode::INT64:    case TCode::INT128:
+    case TCode::UINT8:    case TCode::UINT16:  case TCode::UINT32:
+    case TCode::UINT64:   case TCode::UINT128:
+    case TCode::BOOLEAN:
+    // Semantic wrappers for numeric types.
+    case TCode::COLOR8:   case TCode::COLOR16: case TCode::COLOR24:
+    case TCode::IPV4_ADDR:
+      return true;
+    default:  break;
+  }
+  return false;
+}
 
 
 /*******************************************************************************
@@ -452,6 +369,22 @@ void C3PType::_type_blind_to_string(void* obj, StringBuilder* out) {
 /// int8_t
 template <> void        C3PTypeConstraint<int8_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%d", *((int8_t*) obj));  }
 
+template <> int8_t C3PTypeConstraint<int8_t>::representable_by(const TCode DEST_TYPE) {
+  int8_t ret = -1;
+  switch (DEST_TYPE) {
+    case TCode::BOOLEAN:
+    case TCode::FLOAT:  case TCode::DOUBLE:
+    case TCode::INT8:   case TCode::INT16:   case TCode::INT32:   case TCode::INT64:
+      ret = 0;
+      break;
+    case TCode::UINT8:  case TCode::UINT16:  case TCode::UINT32:  case TCode::UINT64:
+      ret = 2;
+      break;
+    default:  break;
+  }
+  return ret;
+}
+
 template <> int8_t      C3PTypeConstraint<int8_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
   int8_t* d = (int8_t*) dest;
   switch (SRC_TYPE) {
@@ -574,6 +507,28 @@ template <> int8_t      C3PTypeConstraint<int8_t>::deserialize(void* obj, String
 /// int16_t
 template <> void        C3PTypeConstraint<int16_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%d", *((int16_t*) obj));  }
 
+template <> int8_t C3PTypeConstraint<int16_t>::representable_by(const TCode DEST_TYPE) {
+  int8_t ret = -1;
+  switch (DEST_TYPE) {
+    case TCode::INT8:
+      ret = 1;
+      break;
+    case TCode::BOOLEAN:
+    case TCode::FLOAT:  case TCode::DOUBLE:
+    case TCode::INT16:  case TCode::INT32:   case TCode::INT64:
+      ret = 0;
+      break;
+    case TCode::UINT8:
+      ret = 3;
+      break;
+    case TCode::UINT16:  case TCode::UINT32:  case TCode::UINT64:
+      ret = 2;
+      break;
+    default:  break;
+  }
+  return ret;
+}
+
 template <> int8_t      C3PTypeConstraint<int16_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
   int16_t* d = (int16_t*) dest;
   switch (SRC_TYPE) {
@@ -690,6 +645,30 @@ template <> int8_t      C3PTypeConstraint<int16_t>::deserialize(void* obj, Strin
 /// int32_t
 template <> void        C3PTypeConstraint<int32_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%d", *((int32_t*) obj));  }
 
+template <> int8_t C3PTypeConstraint<int32_t>::representable_by(const TCode DEST_TYPE) {
+  int8_t ret = -1;
+  switch (DEST_TYPE) {
+    case TCode::INT8:  case TCode::INT16:
+      ret = 1;
+      break;
+    case TCode::BOOLEAN:
+    case TCode::FLOAT:  // TODO: Probably shouldn't...
+    case TCode::DOUBLE:
+    case TCode::INT32:  case TCode::INT64:
+      ret = 0;
+      break;
+    case TCode::UINT8:  case TCode::UINT16:
+      ret = 3;
+      break;
+    case TCode::UINT32:  case TCode::UINT64:
+      ret = 2;
+      break;
+    default:  break;
+  }
+  return ret;
+}
+
+
 template <> int8_t      C3PTypeConstraint<int32_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
   int32_t* d = (int32_t*) dest;
   switch (SRC_TYPE) {
@@ -801,47 +780,61 @@ template <> int8_t      C3PTypeConstraint<int32_t>::deserialize(void* obj, Strin
 /// int64_t
 /// TODO: Large integers aren't printf()-able under newlib-nano. Add a
 ///   lib-check/conf step to help handle this case?
-template <> void        C3PTypeConstraint<int64_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%d", *((int64_t*) obj));  }
+template <> void        C3PTypeConstraint<int64_t>::to_string(void* obj, StringBuilder* out) {
+  int64_t yuck = _load_from_mem(obj);
+  out->concatf("%d", yuck);
+}
 
-template <> int8_t      C3PTypeConstraint<int64_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
-  int64_t* d = (int64_t*) dest;
-  switch (SRC_TYPE) {
-    case TCode::INT8:
-      if (*((int8_t*) src) >= 0) {
-        *d = (uint64_t) *((int8_t*) src);
-        return 0;
-      }
+template <> int8_t C3PTypeConstraint<int64_t>::representable_by(const TCode DEST_TYPE) {
+  int8_t ret = -1;
+  switch (DEST_TYPE) {
+    case TCode::INT8:    case TCode::INT16:    case TCode::INT32:
+      ret = 1;
       break;
-    case TCode::INT16:
-      if (*((int16_t*) src) >= 0) {
-        *d = (uint64_t) *((int16_t*) src);
-        return 0;
-      }
+    case TCode::BOOLEAN:
+    case TCode::DOUBLE:  // TODO: Probably shouldn't...
+    case TCode::INT64:
+      ret = 0;
       break;
-    case TCode::INT32:
-      if (*((int32_t*) src) >= 0) {
-        *d = (uint64_t) *((int32_t*) src);
-        return 0;
-      }
+    case TCode::UINT8:   case TCode::UINT16:   case TCode::UINT32:
+      ret = 3;
       break;
-    case TCode::INT64:      *d = (int64_t) *((int64_t*) src);    return 0;
-    case TCode::UINT8:      *d = (int64_t) *((uint8_t*) src);    return 0;
-    case TCode::UINT16:     *d = (int64_t) *((uint16_t*) src);   return 0;
-    case TCode::UINT32:     *d = (int64_t) *((uint32_t*) src);   return 0;
     case TCode::UINT64:
-      if (*((uint64_t*) src) <= INT64_MAX) {
-        *d = (int64_t) *((uint64_t*) src);
-        return 0;
-      }
+      ret = 2;
       break;
-    case TCode::BOOLEAN:    *d = (*((bool*) src) ? 1 : 0);        return 0;
     default:  break;
   }
-  return -1;
+  return ret;
+}
+
+template <> int8_t      C3PTypeConstraint<int64_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+  int8_t ret = -1;
+  int64_t d = 0;
+  switch (SRC_TYPE) {
+    case TCode::INT8:       d = (int64_t) *((int8_t*) src);     ret = 0;  break;
+    case TCode::INT16:      d = (int64_t) *((int16_t*) src);    ret = 0;  break;
+    case TCode::INT32:      d = (int64_t) *((int32_t*) src);    ret = 0;  break;
+    case TCode::INT64:      d = (int64_t) *((int64_t*) src);    ret = 0;  break;
+    case TCode::UINT8:      d = (int64_t) *((uint8_t*) src);    ret = 0;  break;
+    case TCode::UINT16:     d = (int64_t) *((uint16_t*) src);   ret = 0;  break;
+    case TCode::UINT32:     d = (int64_t) *((uint32_t*) src);   ret = 0;  break;
+    case TCode::UINT64:
+      if (*((uint64_t*) src) <= INT64_MAX) {
+        d = (int64_t) *((uint64_t*) src);
+        ret = 0;
+      }
+      break;
+    case TCode::BOOLEAN:    d = (*((bool*) src) ? 1 : 0);       ret = 0;  break;
+    default:  break;
+  }
+  if (0 == ret) {
+    _store_in_mem(dest, d);
+  }
+  return ret;
 }
 
 template <> int8_t      C3PTypeConstraint<int64_t>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  int64_t s = *((int64_t*) src);
+  int64_t s = _load_from_mem(src);
   switch (DEST_TYPE) {
     case TCode::INT8:
       if ((s <= INT8_MAX) & (s >= INT8_MIN)) {
@@ -922,6 +915,23 @@ template <> int8_t      C3PTypeConstraint<int64_t>::deserialize(void* obj, Strin
 ////////////////////////////////////////////////////////////////////////////////
 /// uint8_t
 template <> void        C3PTypeConstraint<uint8_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%u", *((uint8_t*) obj));  }
+
+template <> int8_t C3PTypeConstraint<uint8_t>::representable_by(const TCode DEST_TYPE) {
+  int8_t ret = -1;
+  switch (DEST_TYPE) {
+    case TCode::INT8:
+      ret = 1;
+      break;
+    case TCode::BOOLEAN:
+    case TCode::FLOAT:  case TCode::DOUBLE:
+    case TCode::INT16:  case TCode::INT32:   case TCode::INT64:
+    case TCode::UINT8:  case TCode::UINT16:  case TCode::UINT32:  case TCode::UINT64:
+      ret = 0;
+      break;
+    default:  break;
+  }
+  return ret;
+}
 
 template <> int8_t      C3PTypeConstraint<uint8_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
   uint8_t* d = (uint8_t*) dest;
@@ -1027,6 +1037,24 @@ template <> int8_t      C3PTypeConstraint<uint8_t>::deserialize(void* obj, Strin
 ////////////////////////////////////////////////////////////////////////////////
 /// uint16_t
 template <> void        C3PTypeConstraint<uint16_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%u", *((uint16_t*) obj));  }
+
+template <> int8_t C3PTypeConstraint<uint16_t>::representable_by(const TCode DEST_TYPE) {
+  int8_t ret = -1;
+  switch (DEST_TYPE) {
+    case TCode::UINT8:
+    case TCode::INT8:   case TCode::INT16:
+      ret = 1;
+      break;
+    case TCode::BOOLEAN:
+    case TCode::FLOAT:  case TCode::DOUBLE:
+    case TCode::INT32:  case TCode::INT64:
+    case TCode::UINT16:  case TCode::UINT32:  case TCode::UINT64:
+      ret = 0;
+      break;
+    default:  break;
+  }
+  return ret;
+}
 
 template <> int8_t      C3PTypeConstraint<uint16_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
   uint16_t* d = (uint16_t*) dest;
@@ -1138,6 +1166,25 @@ template <> int8_t      C3PTypeConstraint<uint16_t>::deserialize(void* obj, Stri
 ////////////////////////////////////////////////////////////////////////////////
 /// uint32_t
 template <> void        C3PTypeConstraint<uint32_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%u", *((uint32_t*) obj));  }
+
+template <> int8_t C3PTypeConstraint<uint32_t>::representable_by(const TCode DEST_TYPE) {
+  int8_t ret = -1;
+  switch (DEST_TYPE) {
+    case TCode::UINT8:  case TCode::UINT16:
+    case TCode::INT8:   case TCode::INT16:  case TCode::INT32:
+    case TCode::FLOAT:
+      ret = 1;
+      break;
+    case TCode::BOOLEAN:
+    case TCode::DOUBLE:
+    case TCode::INT64:
+    case TCode::UINT32:  case TCode::UINT64:
+      ret = 0;
+      break;
+    default:  break;
+  }
+  return ret;
+}
 
 template <> int8_t      C3PTypeConstraint<uint32_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
   uint32_t* d = (uint32_t*) dest;
@@ -1255,43 +1302,67 @@ template <> int8_t      C3PTypeConstraint<uint32_t>::deserialize(void* obj, Stri
 /// uint64_t
 /// TODO: Large integers aren't printf()-able under newlib-nano. Add a
 ///   lib-check/conf step to help handle this case?
-template <> void        C3PTypeConstraint<uint64_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%u", *((uint64_t*) obj));  }
+template <> void        C3PTypeConstraint<uint64_t>::to_string(void* obj, StringBuilder* out) {
+  uint64_t yuck = _load_from_mem(obj);
+  out->concatf("%u", yuck);
+}
+
+template <> int8_t C3PTypeConstraint<uint64_t>::representable_by(const TCode DEST_TYPE) {
+  int8_t ret = -1;
+  switch (DEST_TYPE) {
+    case TCode::UINT8:  case TCode::UINT16: case TCode::UINT32:
+    case TCode::INT8:   case TCode::INT16:  case TCode::INT32:  case TCode::INT64:
+    case TCode::FLOAT:  case TCode::DOUBLE:
+      ret = 1;
+      break;
+    case TCode::BOOLEAN:
+    case TCode::UINT64:
+      ret = 0;
+      break;
+    default:  break;
+  }
+  return ret;
+}
 
 template <> int8_t      C3PTypeConstraint<uint64_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
-  uint64_t* d = (uint64_t*) dest;
+  int8_t ret = -1;
+  uint64_t d = 0;
   switch (SRC_TYPE) {
     case TCode::INT8:
       if (*((int8_t*) src) >= 0) {
-        *d = (uint64_t) *((int8_t*) src);
-        return 0;
+        d = (uint64_t) *((int8_t*) src);
+        ret =  0;
       }
       break;
     case TCode::INT16:
       if (*((int16_t*) src) >= 0) {
-        *d = (uint64_t) *((int16_t*) src);
-        return 0;
+        d = (uint64_t) *((int16_t*) src);
+        ret =  0;
       }
       break;
     case TCode::INT32:
       if (*((int32_t*) src) >= 0) {
-        *d = (uint64_t) *((int32_t*) src);
-        return 0;
+        d = (uint64_t) *((int32_t*) src);
+        ret =  0;
       }
       break;
     case TCode::INT64:
       if (*((int64_t*) src) >= 0) {
-        *d = (uint64_t) *((int64_t*) src);
-        return 0;
+        d = (uint64_t) *((int64_t*) src);
+        ret =  0;
       }
       break;
-    case TCode::UINT8:      *d = (uint64_t) *((uint8_t*) src);    return 0;
-    case TCode::UINT16:     *d = (uint64_t) *((uint16_t*) src);   return 0;
-    case TCode::UINT32:     *d = (uint64_t) *((uint32_t*) src);   return 0;
-    case TCode::UINT64:     *d = (uint64_t) *((uint64_t*) src);   return 0;
-    case TCode::BOOLEAN:    *d = (*((bool*) src) ? 1 : 0);        return 0;
+    case TCode::UINT8:      d = (uint64_t) *((uint8_t*) src);    ret = 0;   break;
+    case TCode::UINT16:     d = (uint64_t) *((uint16_t*) src);   ret = 0;   break;
+    case TCode::UINT32:     d = (uint64_t) *((uint32_t*) src);   ret = 0;   break;
+    case TCode::UINT64:     d = (uint64_t) *((uint64_t*) src);   ret = 0;   break;
+    case TCode::BOOLEAN:    d = (*((bool*) src) ? 1 : 0);        ret = 0;   break;
     default:  break;
   }
-  return -1;
+  if (0 == ret) {
+    _store_in_mem(dest, d);
+  }
+  return ret;
 }
 
 template <> int8_t      C3PTypeConstraint<uint64_t>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
@@ -1377,6 +1448,13 @@ template <> int8_t      C3PTypeConstraint<uint64_t>::deserialize(void* obj, Stri
 /// bool
 template <> void        C3PTypeConstraint<bool>::to_string(void* obj, StringBuilder* out) {  out->concatf("%s", (*((bool*) obj) ? "true" : "false"));  }
 
+template <> int8_t C3PTypeConstraint<bool>::representable_by(const TCode DEST_TYPE) {
+  int8_t ret = -1;
+  // BOOLEAN can be represented by any numeric.
+  ret = (C3PType::is_numeric(DEST_TYPE) ? 0 : -1);
+  return ret;
+}
+
 template <> int8_t      C3PTypeConstraint<bool>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
   bool* d = (bool*) dest;
   switch (SRC_TYPE) {
@@ -1389,6 +1467,20 @@ template <> int8_t      C3PTypeConstraint<bool>::set_from(void* dest, const TCod
     case TCode::UINT32:     *d = (0 != *((uint32_t*) src));       return 0;
     case TCode::UINT64:     *d = (0 != *((uint64_t*) src));       return 0;
     case TCode::BOOLEAN:    *d = *((bool*) src);                  return 0;
+    case TCode::FLOAT:
+      {
+        float s_f = 0.0f;
+        memcpy((void*) &s_f, src, sizeOfType(SRC_TYPE));
+        *d = (0 != s_f);
+      }
+      return 0;
+    case TCode::DOUBLE:
+      {
+        double s_d = 0.0d;
+        memcpy((void*) &s_d, src, sizeOfType(SRC_TYPE));
+        *d = (0 != s_d);
+      }
+      return 0;
     default:  break;
   }
   return -1;
@@ -1406,6 +1498,19 @@ template <> int8_t      C3PTypeConstraint<bool>::get_as(void* src, const TCode D
     case TCode::UINT32:     *((uint32_t*) dest) = (s ? 1:0);     return 0;
     case TCode::UINT64:     *((uint64_t*) dest) = (s ? 1:0);     return 0;
     case TCode::BOOLEAN:    *((bool*)     dest) = s;             return 0;
+    case TCode::FLOAT:
+      {
+        float s_f = (s ? 1.0f : 0.0f);
+        memcpy(dest, (void*) &s_f, sizeOfType(DEST_TYPE));
+      }
+      return 0;
+    case TCode::DOUBLE:
+      {
+        double s_d = (s ? 1.0d : 0.0d);
+        memcpy(dest, (void*) &s_d, sizeOfType(DEST_TYPE));
+      }
+      return 0;
+
     default:  break;
   }
   return -1;
@@ -1452,17 +1557,31 @@ template <> void        C3PTypeConstraint<float>::to_string(void* obj, StringBui
   out->concatf("%.4f", (double) yuck);
 }
 
+template <> int8_t C3PTypeConstraint<float>::representable_by(const TCode DEST_TYPE) {
+  int8_t ret = -1;
+  switch (DEST_TYPE) {
+    case TCode::BOOLEAN:
+    case TCode::FLOAT:
+    case TCode::DOUBLE:
+      ret = 0;
+      break;
+    default:  break;
+  }
+  return ret;
+}
+
 template <> int8_t      C3PTypeConstraint<float>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
   int8_t ret = -1;
   float d = 0.0f;
   switch (SRC_TYPE) {
-    case TCode::INT8:       d = (1.0f * *((int8_t*) src));    ret = 0;  break;
-    case TCode::INT16:      d = (1.0f * *((int16_t*) src));   ret = 0;  break;
-    case TCode::INT32:      d = (1.0f * *((int32_t*) src));   ret = 0;  break;
-    case TCode::UINT8:      d = (1.0f * *((uint8_t*) src));   ret = 0;  break;
-    case TCode::UINT16:     d = (1.0f * *((uint16_t*) src));  ret = 0;  break;
-    case TCode::UINT32:     d = (1.0f * *((uint32_t*) src));  ret = 0;  break;
-    case TCode::FLOAT:      memcpy(dest, src, FIXED_LEN);  return 0;
+    case TCode::INT8:      d = (1.0f * *((int8_t*) src));       ret = 0;  break;
+    case TCode::INT16:     d = (1.0f * *((int16_t*) src));      ret = 0;  break;
+    case TCode::INT32:     d = (1.0f * *((int32_t*) src));      ret = 0;  break;
+    case TCode::UINT8:     d = (1.0f * *((uint8_t*) src));      ret = 0;  break;
+    case TCode::UINT16:    d = (1.0f * *((uint16_t*) src));     ret = 0;  break;
+    case TCode::UINT32:    d = (1.0f * *((uint32_t*) src));     ret = 0;  break;
+    case TCode::BOOLEAN:   d = (*((bool*) src) ? 1.0f : 0.0f);  ret = 0;  break;
+    case TCode::FLOAT:     memcpy(dest, src, FIXED_LEN);  return 0;
     default:  break;
   }
   if (0 == ret) {
@@ -1529,6 +1648,18 @@ template <> void        C3PTypeConstraint<double>::to_string(void* obj, StringBu
   out->concatf("%.6f", yuck);
 }
 
+template <> int8_t C3PTypeConstraint<double>::representable_by(const TCode DEST_TYPE) {
+  int8_t ret = -1;
+  switch (DEST_TYPE) {
+    case TCode::BOOLEAN:
+    case TCode::DOUBLE:
+      ret = 0;
+      break;
+    default:  break;
+  }
+  return ret;
+}
+
 template <> int8_t      C3PTypeConstraint<double>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
   int8_t ret = -1;
   double d = 0.0d;
@@ -1547,8 +1678,9 @@ template <> int8_t      C3PTypeConstraint<double>::set_from(void* dest, const TC
         float s = 0.0f;
         memcpy((void*) &s, src, sizeOfType(TCode::FLOAT));
         d = (1.0d * *((float*) src));
+        ret = 0;
       }
-      return 0;
+      break;
     case TCode::DOUBLE:      memcpy(dest, src, FIXED_LEN);    return 0;
     default:  break;
   }

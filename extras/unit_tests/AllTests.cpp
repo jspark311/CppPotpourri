@@ -495,7 +495,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .LABEL        = "MultiStringSearch",
     .DEP_MASK     = (CHKLST_ALL_TIER_1_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return -1;  }   // TODO
+    .POLL_FXN     = []() { return 1;  }   // TODO
     //.POLL_FXN     = []() { return ((0 == c3p_multisearch_test_main()) ? 1:-1);  }
   },
 

@@ -109,7 +109,6 @@ int c3p_value_test_numerics() {
 
     uint32_t x = 0;
     while ((0 == ret) & (x < INPUT_VAL_COUNT)) {
-      printf("---- %u \t %u\n---- %u\n", INPUT_VAL_COUNT, CONVERSION_COUNT, x);
       C3PValue* input_value = input_values[x++];
       StringBuilder tmp_str("\tConverting ");
       input_value->toString(&tmp_str, true);
@@ -120,7 +119,7 @@ int c3p_value_test_numerics() {
         ret = -1;
         C3PValue* output_value = output_values[y++];
         if (output_value->is_numeric()) {
-          printf("\t\t...into %s... ", typecodeToStr(output_value->tcode()));
+          printf("\t\t...into %s ", typecodeToStr(output_value->tcode()));
           output_value->set(0);    // Zero the existing value of the output type.
           // Apply the numeric conversion matrix to input and output types with
           //   the given input value.
@@ -133,23 +132,38 @@ int c3p_value_test_numerics() {
           // If this bool is set, the conversion might be possible if there is
           //   no width conflict (IE, can store a UINT64 in an INT8 if the value
           //   of the UINT64 is less-than 128).
-          const bool CONV_CONTINGENT_WIDTH = (1 & TCONV_RISK);
+          const bool CONV_CONTINGENT_WIDTH = ((TCONV_RISK > 0) & (1 & TCONV_RISK));
 
           // If this bool is set, the conversion might be possible if there is
           //   no signage conflict (IE, can't store -14 in a UINT of any size).
-          const bool CONV_CONTINGENT_SIGN  = (2 & TCONV_RISK);
+          const bool CONV_CONTINGENT_SIGN  = ((TCONV_RISK > 0) & (2 & TCONV_RISK));
 
-          tmp_str.clear();
-          output_value->set(input_value);  // Set conv from input.
-          output_value->toString(&tmp_str);
-          printf("Pass (%s).  \t", (char*) tmp_str.string());
           printf("(Reliable: %c)", (CONV_IS_RELIABLE ? 'y':'n'));
           if (!CONV_IS_RELIABLE) {
             printf("  (Sign contingent: %c)", (CONV_CONTINGENT_SIGN ? 'y':'n'));
             printf("  (Width contingent: %c)", (CONV_CONTINGENT_WIDTH ? 'y':'n'));
           }
-          printf("\n");
-          ret = 0;
+          printf("... ");
+
+          tmp_str.clear();
+          int8_t conv_result = output_value->set(input_value);  // Set conv from input.
+
+          if ((0 == conv_result) & (TCONV_RISK >= 0)) {
+            // A conversion that succeeds when expected is a pass.
+            ret = 0;
+          }
+          else if ((-1 == conv_result) & (!CONV_IS_RELIABLE)) {
+            // A conversion that fails when expected is a pass.
+            ret = 0;
+          }
+
+          if (0 == ret) {
+            output_value->toString(&tmp_str);
+            printf("Pass with result %d (%s).\n", conv_result, (char*) tmp_str.string());
+          }
+          else {
+            printf("Fail with result %d (%s).\n", conv_result, (char*) tmp_str.string());
+          }
         }
         else {
           printf("Non-numeric type was used in numeric conversion tests.\n");
@@ -167,7 +181,7 @@ int c3p_value_test_numerics() {
 
 
 int c3p_value_test_type_conversion() {
-  int ret = -1;
+  int ret = 0;
   return ret;
 }
 

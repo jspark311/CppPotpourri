@@ -181,10 +181,9 @@ class C3PValue {
     /*
     * Fuzzy type discovery functions.
     */
-    inline const TCode tcode() {            return _TCODE;                    };
-    inline bool        is_fixed_length() {  return (0 != sizeOfType(_TCODE)); };
-    bool               is_numeric();
-
+    inline const TCode tcode() {            return _TCODE;                       };
+    inline bool        is_fixed_length() {  return (0 != sizeOfType(_TCODE));    };
+    inline bool        is_numeric() {       return C3PType::is_numeric(_TCODE);  };
 
     // TODO: Very easy to become mired in your own bad definitions. Be careful.
     //   You need not define algebra across operands of Image and string, but
