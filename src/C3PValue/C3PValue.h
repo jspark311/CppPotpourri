@@ -178,6 +178,26 @@ class C3PValue {
     double       get_as_double(int8_t* success = nullptr);
     C3PBinBinder get_as_ptr_len(int8_t* success = nullptr);
 
+    inline int8_t get_as(uint8_t* x) {      return get_as(TCode::UINT8,         (void*) x);  };
+    inline int8_t get_as(uint16_t* x) {     return get_as(TCode::UINT16,        (void*) x);  };
+    inline int8_t get_as(uint32_t* x) {     return get_as(TCode::UINT32,        (void*) x);  };
+    inline int8_t get_as(uint64_t* x) {     return get_as(TCode::UINT64,        (void*) x);  };
+    inline int8_t get_as(int8_t* x) {       return get_as(TCode::INT8,          (void*) x);  };
+    inline int8_t get_as(int16_t* x) {      return get_as(TCode::INT16,         (void*) x);  };
+    inline int8_t get_as(int32_t* x) {      return get_as(TCode::INT32,         (void*) x);  };
+    inline int8_t get_as(int64_t* x) {      return get_as(TCode::INT64,         (void*) x);  };
+    inline int8_t get_as(bool* x) {         return get_as(TCode::BOOLEAN,       (void*) x);  };
+    inline int8_t get_as(float* x) {        return get_as(TCode::FLOAT,         (void*) x);  };
+    inline int8_t get_as(double* x) {       return get_as(TCode::DOUBLE,        (void*) x);  };
+    inline int8_t get_as(char** x) {        return get_as(TCode::STR,           (void*) x);  };
+    inline int8_t get_as(Vector3u32* x) {   return get_as(TCode::VECT_3_UINT32, (void*) x);  };
+    inline int8_t get_as(Vector3u16* x) {   return get_as(TCode::VECT_3_UINT16, (void*) x);  };
+    inline int8_t get_as(Vector3u8*  x) {   return get_as(TCode::VECT_3_UINT8,  (void*) x);  };
+    inline int8_t get_as(Vector3i32* x) {   return get_as(TCode::VECT_3_INT32,  (void*) x);  };
+    inline int8_t get_as(Vector3i16* x) {   return get_as(TCode::VECT_3_INT16,  (void*) x);  };
+    inline int8_t get_as(Vector3i8*  x) {   return get_as(TCode::VECT_3_INT8,   (void*) x);  };
+    inline int8_t get_as(Vector3f*   x) {   return get_as(TCode::VECT_3_FLOAT,  (void*) x);  };
+
     /*
     * Fuzzy type discovery functions.
     */
@@ -208,6 +228,21 @@ class C3PValue {
 
 
   protected:
+    /*
+    * Hackery surrounding _target_mem:
+    * There is no point to storing a pointer to a heap ref to hold data that is not
+    *   bigger than the pointer itself. So rather than malloc()/free() and populate
+    *   this slot with things like int32, we will instead cast the value itself to a
+    *   void* and store it in the pointer slot. When we do this, we need to be sure
+    *   not to mark the pointer for reap.
+    *
+    * Glorious, glorious hackery. Keeping it.
+    *        ---J. Ian Lindsay   Mon Oct 05 22:55:41 MST 2015
+    *
+    * Still keeping it.
+    *        ---J. Ian Lindsay   Sat Sep 25 01:05:52 MST 2021
+    *        ---J. Ian Lindsay   Tue Nov 14 23:55:39 MST 2021
+    */
     const TCode _TCODE;        // The hard-declared type of this Value.
     bool        _val_by_ref;   // If true, _target_mem's native type is a pointer to something.
     bool        _punned_ptr;   // If true, _target_mem contains the value itself.

@@ -42,22 +42,11 @@ TODO: Since this class renders large chains of function calls opaque to the
 #ifndef __C3P_KVP_H
 #define __C3P_KVP_H
 
-#include <string.h>
-
-#include "../EnumeratedTypeCodes.h"
-#include "../Vector3.h"
-#include "../StringBuilder.h"
+#include "C3PValue.h"
 
 #if defined(CONFIG_C3P_CBOR)
   #include "../cbor-cpp/cbor.h"
 #endif
-
-/* Forward declarations of classes that this type will handle. */
-#if defined(CONFIG_C3P_IMG_SUPPORT)
-  #include "../Image/Image.h"
-#endif
-
-class Identity;
 
 
 /*
@@ -138,9 +127,9 @@ class KeyValuePair {
     inline int8_t setValue(char* val) {            return setValue((void*) val, strlen(val),                      TCode::STR);            };
     inline int8_t setValue(void* val, int len) {   return setValue((void*) val, len,                              TCode::BINARY);         };
     inline int8_t setValue(StringBuilder* val) {   return setValue((void*) val, val->length(),                    TCode::STR_BUILDER);    };
-    inline int8_t setValue(Vector3u32* val) {     return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT32), TCode::VECT_3_UINT32);  };
-    inline int8_t setValue(Vector3u16* val) {     return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT16), TCode::VECT_3_UINT16);  };
-    inline int8_t setValue(Vector3u8* val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT8),  TCode::VECT_3_UINT8);   };
+    inline int8_t setValue(Vector3u32* val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT32), TCode::VECT_3_UINT32);  };
+    inline int8_t setValue(Vector3u16* val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT16), TCode::VECT_3_UINT16);  };
+    inline int8_t setValue(Vector3u8* val) {       return setValue((void*) val, sizeOfType(TCode::VECT_3_UINT8),  TCode::VECT_3_UINT8);   };
     inline int8_t setValue(Vector3i32* val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_INT32),  TCode::VECT_3_INT32);   };
     inline int8_t setValue(Vector3i16* val) {      return setValue((void*) val, sizeOfType(TCode::VECT_3_INT16),  TCode::VECT_3_INT16);   };
     inline int8_t setValue(Vector3i8* val) {       return setValue((void*) val, sizeOfType(TCode::VECT_3_INT8),   TCode::VECT_3_INT8);    };
@@ -194,20 +183,6 @@ class KeyValuePair {
 
 
   private:
-    /*
-    * Hackery surrounding _target_mem:
-    * There is no point to storing a pointer to a heap ref to hold data that is not
-    *   bigger than the pointer itself. So rather than malloc()/free() and populate
-    *   this slot with things like int32, we will instead cast the value itself to a
-    *   void* and store it in the pointer slot. When we do this, we need to be sure
-    *   not to mark the pointer for reap.
-    *
-    * Glorious, glorious hackery. Keeping it.
-    *        ---J. Ian Lindsay   Mon Oct 05 22:55:41 MST 2015
-    *
-    * Still keeping it.
-    *        ---J. Ian Lindsay   Sat Sep 25 01:05:52 MST 2021
-    */
     KeyValuePair* _next       = nullptr;
     char*         _key        = nullptr;       // Optional
     void*         _target_mem = nullptr;       // Type-punned pointer.
