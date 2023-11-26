@@ -156,28 +156,29 @@ int feed_console_bytewise(const char* str) {
 * Configures the console and adds commands.
 */
 int setup_console(StringBuilder* output) {
+  printf("\tParsingConsole: Setup and command definition...\n");
   int8_t ret = -1;
   console.errorCallback(console_error_callback);
   console.setRXTerminator(LineTerm::LF);
   console.setTXTerminator(LineTerm::CRLF);
   console.localEcho(false);  // We do not want local echo for testing.
 
+  printf("\t\tdefineCommands(*, length) accepts a block of many command definitions... ");
   if (0 == console.defineCommands(commands_that_should_be_added, 4)) {
     ret--;
+    printf("Pass.\n\t\tdefineCommands(*) accepts a single command definition... ");
     if (0 == console.defineCommand(&cmd5)) {
       ret--;
+      printf("Pass.\n\t\tdefineCommands() accepts an inline command definition... ");
       if (0 == console.defineCommand("test6", '6', "Test callback #6", "Detailed help for test6", 0, callback_test6)) {
+        printf("\t\tinit() returns success... ");
         if (0 == console.init()) {
-          output->concat("setup_console() passed.\n");
+          printf("Pass.\n\tsetup_console() passed.\n");
           ret = 0;
         }
-        else output->concat("Failed to console.init().\n");
       }
-      else output->concat("Failed to console.defineCommand() explicitly.\n");
     }
-    else output->concat("Failed to console.defineCommand() by reference.\n");
   }
-  else output->concat("Failed to console.defineCommands().\n");
 
   console.fetchLog(output);
   return ret;

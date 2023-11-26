@@ -29,7 +29,7 @@ This program tests StateMachine<T>, which underpins many drivers and application
 * We'll need an enum to represent the states used for the test.
 *******************************************************************************/
 enum class StateTest : uint8_t {
-  UNINIT =  0, 
+  UNINIT =  0,
   STATE_0,
   STATE_1,
   IDLE,
@@ -356,9 +356,7 @@ int fsm_test_main() {
   if (0 == test_enumlist_catchall()) {
     if (0 == test_fsm_init()) {
       if (0 == test_fsm_evolution()) {
-        printf("**********************************\n");
-        printf("*  StateMachine tests all pass   *\n");
-        printf("**********************************\n");
+        printf("StateMachine tests all pass\n");
         ret = 0;
       }
       else printTestFailure(MODULE_NAME, "State evolution");
