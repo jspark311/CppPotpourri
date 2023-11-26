@@ -60,13 +60,13 @@ class C3PType;
 
 
 /*
-* A list of parameter types that are handled by the input parser.
+* A list of parameter types that are handled by C3P's interchange layer.
 * These should be supported in the type system, regardless of support in the
 *   actual binary.
 */
 enum class TCode : uint8_t {
   /* Primitives */
-  NONE          = 0x00,    // Reserved. Denotes end-of-list.
+  NONE          = 0x00,    // Reserved. Denotes end-of-list in type strings.
   INT8          = 0x01,    // 8-bit integer
   INT16         = 0x02,    // 16-bit integer
   INT32         = 0x03,    // 32-bit integer
@@ -125,6 +125,7 @@ enum class TCode : uint8_t {
   IMAGE         = 0xE4,    // A pointer to an image class
   GEOLOCATION   = 0xE5,    // A pointer to a location class
   STOPWATCH     = 0xE6,    // A pointer to a StopWatch class
+  TRACE         = 0xE7,    // A pointer to a C3PTrace.
 
   RESERVED      = 0xFE,    // Reserved for custom extension.
   INVALID       = 0xFF     // A code denoting TCode invalidity.

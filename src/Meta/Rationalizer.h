@@ -42,6 +42,20 @@ C3P wants the following capabilities, which will probably implicate this file.
 
 
 /*******************************************************************************
+* Build-time cross-checking.
+*******************************************************************************/
+// Get our ALU-width, as far as the compiler is concerned.
+#include <limits.h>
+#if (INTPTR_MAX == INT64_MAX)
+  #define __BUILD_ALU_WIDTH   64
+#elif (INTPTR_MAX == INT32_MAX)
+  #define __BUILD_ALU_WIDTH   32
+#else
+  #error Failed to determine ALU width. C3P requires at least a 32-bit target.
+#endif
+
+
+/*******************************************************************************
 * What compiler is handling us?
 * If not provided, GCC is assumed. C3P has also been built under IAR and MSVC
 *   with minimal effort. See Compilers.h
