@@ -44,9 +44,27 @@ int8_t ConfRecord::_discard_allocations() {
 * Value accessors
 *******************************************************************************/
 
-int8_t ConfRecord::_get_conf(const char* key, const TCode TC_ARG, void* val) {
+/**
+* Sets a value for the given ConfKey.
+*
+* @param KEY is the enum-controlled conf key to set.
+* @param TC_ARG is the type code for the value pointer.
+* @param dest is a pointer for the value.
+* @return 0 on success, -1 for incomplete allocation, -2 key not found, -3 for type conversion failure.
+*/
+int8_t ConfRecord::_get_conf(const char* KEY, const TCode TC_ARG, void* dest) {
   int8_t ret = -1;
-  const TCode TC_KEY = _key_tcode(key);
+  if (allocated(true)) {
+    ret--;
+    const TCode TC_KEY = _key_tcode(KEY);
+    C3PValue* container_of_interest = _kvp->valueWithKey(KEY);
+    if (nullptr != container_of_interest) {
+      ret--;
+      if (0 == container_of_interest->get_as(TC_ARG, dest)) {
+        ret = 0;
+      }
+    }
+  }
   return ret;
 }
 
@@ -54,78 +72,23 @@ int8_t ConfRecord::_get_conf(const char* key, const TCode TC_ARG, void* val) {
 /**
 * Sets a value for the given ConfKey.
 *
-* @param key is the enum-controlled conf key to set.
-* @param val is a pointer to the string containing the data to be parsed.
-* @return 0 on success, -1 for invalid key, -2 for type mismatch, -3 for unhandled type.
+* @param KEY is the enum-controlled conf key to set.
+* @param TC_ARG is the type code for the value pointer.
+* @param src is a pointer for the value.
+* @return 0 on success, -1 for incomplete allocation, -2 key not found, -3 for type conversion failure.
 */
-int8_t ConfRecord::_set_conf(const char* key, const TCode TC_ARG, void* val) {
+int8_t ConfRecord::_set_conf(const char* KEY, const TCode TC_ARG, void* src) {
   int8_t ret = -1;
-  const TCode TC_KEY = _key_tcode(key);
-  switch ((TCode) TC_KEY) {
-      case TCode::BOOLEAN:
-        {
-          //bool tmp_val = (0 != val_obj.position_as_int(0));
-        }
-        break;
-
-      case TCode::INT8:
-        {
-          //int8_t tmp_val = (int8_t) val_obj.position_as_int(0);
-        }
-        break;
-
-      case TCode::UINT64:
-        {
-          //uint64_t tmp_val = val_obj.position_as_uint64(0);
-        }
-        break;
-
-      case TCode::INT32:
-        {
-          //int tmp_val = val_obj.position_as_int(0);
-        }
-        break;
-
-      case TCode::UINT8:
-        {
-          //uint8_t tmp_val = (uint8_t) val_obj.position_as_int(0);
-        }
-        break;
-
-      case TCode::UINT16:
-        {
-          //uint16_t tmp_val = (uint16_t) val_obj.position_as_int(0);
-        }
-        break;
-
-      case TCode::UINT32:
-        {
-          //uint32_t tmp_val = val_obj.position_as_int(0);
-        }
-        break;
-
-      case TCode::FLOAT:
-        {
-          //float tmp_val = val_obj.position_as_double(0);
-        }
-        break;
-
-      case TCode::STR:
-        {
-          //char* tmp_val = val_obj.position_trimmed(0);
-        }
-        break;
-
-      case TCode::VECT_3_FLOAT:
-        //if (3 == val_obj.split(",")) {
-        //  float x = val_obj.position_as_double(0);
-        //  float y = val_obj.position_as_double(1);
-        //  float z = val_obj.position_as_double(2);
-        //}
-        break;
-    default:   // Unhandled type.
-      ret = -3;
-      break;
+  if (allocated(true)) {
+    ret--;
+    const TCode TC_KEY = _key_tcode(KEY);
+    C3PValue* container_of_interest = _kvp->valueWithKey(KEY);
+    if (nullptr != container_of_interest) {
+      ret--;
+      if (0 == container_of_interest->set_from(TC_ARG, src)) {
+        ret = 0;
+      }
+    }
   }
   return ret;
 }
@@ -136,17 +99,19 @@ int8_t ConfRecord::_set_conf(const char* key, const TCode TC_ARG, void* val) {
 * Print the named conf key to the given buffer.
 */
 void ConfRecord::printConfRecord(StringBuilder* output, const char* spec_key) {
-  if (0 == _allocated()) {
+  if (allocated()) {
     if (nullptr != spec_key) {
       int8_t ret = 0;
       KeyValuePair* obj = _kvp->retrieveByKey(spec_key);
       if (nullptr != obj) {
-        StringBuilder tmp;
-        tmp.concatf("%24s (%s)\t= ", obj->getKey(), typecodeToStr(obj->typeCode()));
-        obj->valToString(&tmp);
-        tmp.concat("\n");
-        tmp.string();
-        output->concatHandoff(&tmp);
+        char* current_key = obj->getKey();
+        if (nullptr != current_key) {
+          StringBuilder tmp;
+          tmp.concatf("%24s (%s)\t= ", current_key, typecodeToStr(obj->tcode()));
+          obj->valToString(&tmp);
+          tmp.concat("\n");
+          output->concatHandoff(&tmp);
+        }
       }
     }
     else {   // Dump all records.
@@ -159,7 +124,10 @@ void ConfRecord::printConfRecord(StringBuilder* output, const char* spec_key) {
       output->concatf("\tStorage requirement:  %u bytes (%u for keys) (%u for values)\n", tot_sizes, key_sizes, dat_sizes);
       output->concatf("\tKey count:            %u\n", key_export.count());
       while (0 < key_export.count()) {
-        printConfRecord(output, key_export.position(0));  // Single-depth recursion.
+        char* current_key = key_export.position(0);
+        if (nullptr != current_key) {
+          printConfRecord(output, current_key);  // Single-depth recursion.
+        }
         key_export.drop_position(0);
       }
     }
@@ -170,14 +138,34 @@ void ConfRecord::printConfRecord(StringBuilder* output, const char* spec_key) {
 }
 
 
+/**
+* This is a fast check of the enum plan against the KVP memory conditions. If
+*   the force parameter is true, the check will also attempt allocation of any
+*   missing keys, and the type-coercion of any values under existing keys named
+*   in the plan.
+*
+* TODO: Might-should break coercion of existing keys into its own function, and
+*   run it regardless of existing allocation condition.
+*
+* @param force_allocate will attempt allocation if it isn't already satisfied.
+* @return 0 on success, or the differential in items that need allocation on failure.
+*/
+bool ConfRecord::allocated(bool force_allocate) {
+  bool ret = ((nullptr != _kvp) && (_key_count() == _kvp->count()));
+  if (!ret & force_allocate) {
+    ret = (0 == _allocate_kvp());
+  }
+  return ret;
+}
 
-/*
+
+/**
 * This checks the object's local KVP against what the enum implies, and sets it
 *   according to plan. If the local memory is unallocated, try to do so.
 *
 * @return 0 on success, or the differential in items that need allocation on failure.
 */
-int32_t ConfRecord::_allocated() {
+int32_t ConfRecord::_allocate_kvp() {
   uint32_t alloc_count = 0;
   StringBuilder key_export;
   _key_list(&key_export);
@@ -186,34 +174,36 @@ int32_t ConfRecord::_allocated() {
     // NOTE: Do not use a const char* here, considering that the values are
     //   mutable. KeyValuePair actually cares.
     char* key_str = key_export.position(0);
+    const TCode CONSTRAINED_TCODE = _key_tcode(key_str);
     if (nullptr == _kvp) {
-      _kvp = new KeyValuePair((uint8_t) 0);
-      if (nullptr != _kvp) {
-        alloc_count++;
-        _kvp->setKey(key_str);
+      // First key, and the KVP doesn't exist. Create it...
+      C3PValue* tmp_container = new C3PValue(CONSTRAINED_TCODE);
+      if (nullptr != tmp_container) {
+        _kvp = new KeyValuePair("", tmp_container, (C3P_KVP_FLAG_REAP_KVP | C3P_KVP_FLAG_REAP_CNTNR));
+        if (nullptr != _kvp) {
+          _kvp->setKey(key_str);
+          alloc_count++;
+        }
+        else {
+          delete tmp_container;
+        }
       }
     }
     else {
-      KeyValuePair* _tmp = _kvp->retrieveByKey(key_str);
-      if (nullptr == _tmp) {
-        _tmp = _kvp->append((uint8_t) 0);
-        if (nullptr != _tmp) {
+      KeyValuePair* tmp = _kvp->retrieveByKey(key_str);
+      if (nullptr == tmp) {
+        tmp = new KeyValuePair(key_str, CONSTRAINED_TCODE, (C3P_KVP_FLAG_REAP_KVP));
+        if (nullptr != tmp) {
+          tmp = _kvp->link(tmp);
           alloc_count++;
-          _tmp->setKey(key_str);
         }
       }
       else {
         // The key was already found in the data. Make sure that it is properly
-        //   type-constrained.
-        alloc_count++;
-        // TODO: This is probably better done by the KVP API, but it doesn't
-        //   presently have a flexible-enough parser/packer to cope with this
-        //   task. It needs to store TCodes in its map to make the code below
-        //   unnecessary.
-        const TCode CONSTRAINED_TCODE = _key_tcode(key_str);
-        if (_tmp->typeCode() != CONSTRAINED_TCODE) {
-          // Convert the existing data to the constrained limits.
-          _tmp->convertToType(CONSTRAINED_TCODE);
+        //   type-constrained. If the types match, this call will do nothing and
+        //   return success.
+        if (0 == tmp->convertToType(CONSTRAINED_TCODE)) {
+          alloc_count++;
         }
       }
     }
@@ -232,7 +222,7 @@ int32_t ConfRecord::_allocated() {
 
 int8_t ConfRecord::serialize(StringBuilder* out, TCode format) {
   int8_t ret = -1;
-  if (0 != _allocated()) {
+  if (!allocated()) {
     return ret;  // TODO: Return contract spec'd where?
   }
   switch (format) {
@@ -261,7 +251,7 @@ int8_t ConfRecord::serialize(StringBuilder* out, TCode format) {
 
 int8_t ConfRecord::deserialize(StringBuilder* raw, TCode format) {
   int8_t ret = -1;
-  if (0 != _allocated()) {
+  if (!allocated()) {
     return ret;  // TODO: Return contract spec'd where?
   }
   switch (format) {

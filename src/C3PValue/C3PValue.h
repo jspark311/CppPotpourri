@@ -113,8 +113,8 @@ class C3PValue {
     C3PValue(int64_t  val) : C3PValue(TCode::INT64,    (void*) &val) {};
     C3PValue(double   val) : C3PValue(TCode::DOUBLE,   (void*) &val) {};
     C3PValue(float    val);
+    C3PValue(char* val);
     C3PValue(const char* val)  : C3PValue(TCode::STR,           (void*) val) {};
-    C3PValue(char* val)        : C3PValue(TCode::STR,           (void*) val) {};
     C3PValue(StringBuilder* v) : C3PValue(TCode::STR_BUILDER,   (void*) v) {};
     C3PValue(uint8_t*, uint32_t len);
 
@@ -125,12 +125,15 @@ class C3PValue {
     C3PValue(Vector3i16* val)  : C3PValue(TCode::VECT_3_INT16,  (void*) val) {};
     C3PValue(Vector3i8*  val)  : C3PValue(TCode::VECT_3_INT8,   (void*) val) {};
     C3PValue(Vector3f*   val)  : C3PValue(TCode::VECT_3_FLOAT,  (void*) val) {};
+    C3PValue(Vector3f64* val)  : C3PValue(TCode::VECT_3_DOUBLE, (void*) val) {};
+    C3PValue(Identity* val)    : C3PValue(TCode::IDENTITY,      (void*) val) {};
+    C3PValue(KeyValuePair* val) : C3PValue(TCode::KVP,          (void*) val) {};
 
-    //C3PValue(KeyValuePair* val) : C3PValue(TCode::KVP,           (void*) val) {};
-    C3PValue(Identity* val)     : C3PValue(TCode::IDENTITY,      (void*) val) {};
     // Conditional types.
     #if defined(CONFIG_C3P_IMG_SUPPORT)
-    C3PValue(Image* val) : C3PValue(TCode::IMAGE,  (void*) val) {};
+      C3PValue(Image* val) : C3PValue(TCode::IMAGE,  (void*) val) {};
+      inline int8_t set(Image*   x) {    return set_from(TCode::IMAGE,  (void*) x);  };
+      inline int8_t get_as(Image** x) {  return get_as(TCode::IMAGE,    (void*) x);  };
     #endif   // CONFIG_C3P_IMG_SUPPORT
     ~C3PValue();
 
@@ -143,6 +146,7 @@ class C3PValue {
     */
     int8_t set_from(const TCode SRC_TYPE, void* src);
     int8_t set(C3PValue*);
+    int8_t set(uint8_t* src, uint32_t l, const TCode SRC_TYPE = TCode::BINARY);
     inline int8_t set(uint8_t x) {       return set_from(TCode::UINT8,        (void*) &x);  };
     inline int8_t set(uint16_t x) {      return set_from(TCode::UINT16,       (void*) &x);  };
     inline int8_t set(uint32_t x) {      return set_from(TCode::UINT32,       (void*) &x);  };
@@ -163,6 +167,10 @@ class C3PValue {
     inline int8_t set(Vector3i16* x) {   return set_from(TCode::VECT_3_INT16,  (void*) x);  };
     inline int8_t set(Vector3i8*  x) {   return set_from(TCode::VECT_3_INT8,   (void*) x);  };
     inline int8_t set(Vector3f*   x) {   return set_from(TCode::VECT_3_FLOAT,  (void*) x);  };
+    inline int8_t set(Vector3f64* x) {   return set_from(TCode::VECT_3_DOUBLE, (void*) x);  };
+    inline int8_t set(StringBuilder* x) {   return set_from(TCode::STR_BUILDER,   (void*) x);  };
+    inline int8_t set(Identity* x) {        return set_from(TCode::IDENTITY,      (void*) x);  };
+    inline int8_t set(KeyValuePair* x) {    return set_from(TCode::KVP,           (void*) x);  };
 
     /*
     * Type-coercion convenience functions for getting values.
@@ -189,6 +197,7 @@ class C3PValue {
     inline int8_t get_as(bool* x) {         return get_as(TCode::BOOLEAN,       (void*) x);  };
     inline int8_t get_as(float* x) {        return get_as(TCode::FLOAT,         (void*) x);  };
     inline int8_t get_as(double* x) {       return get_as(TCode::DOUBLE,        (void*) x);  };
+    inline int8_t get_as(const char** x) {  return get_as(TCode::STR,           (void*) x);  };
     inline int8_t get_as(char** x) {        return get_as(TCode::STR,           (void*) x);  };
     inline int8_t get_as(Vector3u32* x) {   return get_as(TCode::VECT_3_UINT32, (void*) x);  };
     inline int8_t get_as(Vector3u16* x) {   return get_as(TCode::VECT_3_UINT16, (void*) x);  };
@@ -197,6 +206,12 @@ class C3PValue {
     inline int8_t get_as(Vector3i16* x) {   return get_as(TCode::VECT_3_INT16,  (void*) x);  };
     inline int8_t get_as(Vector3i8*  x) {   return get_as(TCode::VECT_3_INT8,   (void*) x);  };
     inline int8_t get_as(Vector3f*   x) {   return get_as(TCode::VECT_3_FLOAT,  (void*) x);  };
+    inline int8_t get_as(Vector3f64* x) {   return get_as(TCode::VECT_3_DOUBLE, (void*) x);  };
+    inline int8_t get_as(Identity** x) {         return get_as(TCode::IDENTITY,       (void*) x);  };
+    inline int8_t get_as(StringBuilder** x) {    return get_as(TCode::STR_BUILDER,    (void*) x);  };
+    inline int8_t get_as(KeyValuePair** x) {     return get_as(TCode::KVP,            (void*) x);  };
+    int8_t get_as(uint8_t** v, uint32_t* l);
+
 
     /*
     * Fuzzy type discovery functions.

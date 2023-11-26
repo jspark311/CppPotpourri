@@ -265,7 +265,7 @@ int link_tests_message_battery_1() {
     double   val_dbl = (double) randomUInt32() / (double) randomUInt32();
     Vector3<float> vect(randomUInt32()/1000000.0f, randomUInt32()/1000000.0f, randomUInt32()/1000000.0f);
 
-    KeyValuePair a(now, "time_ms");
+    KeyValuePair a("time_ms", now);
     a.append(rand, "rand");
     a.append(val_str, "my_key");
     a.append(val_flt, "val_flt");
@@ -381,13 +381,13 @@ int link_tests_simple_messages(M2MLink* vlad, M2MLink* carl) {
   int ret = -1;
   int ret_local = -1;
   if ((nullptr != vlad) & (nullptr != carl) && vlad->linkIdle() && carl->linkIdle()) {
-    KeyValuePair a((uint32_t) millis(), "time_ms");
+    KeyValuePair a("time_ms", (uint32_t) millis());
     a.append((uint32_t) randomUInt32(), "rand");
     ret_local = vlad->send(&a);
     if (0 <= ret_local) {
       args_sent_vlad = &a;
       if (poll_until_finished(vlad, carl)) {
-        KeyValuePair b((uint32_t) millis(), "time_ms");
+        KeyValuePair b("time_ms", (uint32_t) millis());
         b.append((uint32_t) randomUInt32(), "reply_test");
         ret_local = vlad->send(&b, true);
         if (0 <= ret_local) {

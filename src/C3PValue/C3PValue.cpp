@@ -49,6 +49,7 @@ limitations under the License.
 C3PValue::C3PValue(const TCode TC, void* ptr) : _TCODE(TC), _set_trace(1), _target_mem(ptr) {
   _punned_ptr = typeIsPointerPunned(_TCODE);
   _val_by_ref = !_punned_ptr;
+  _reap_val   = false;
   C3PType* t_helper = getTypeHelper(_TCODE);
   if (nullptr != t_helper) {
     if (is_numeric()) {
@@ -57,8 +58,7 @@ C3PValue::C3PValue(const TCode TC, void* ptr) : _TCODE(TC), _set_trace(1), _targ
       //   is responsible for having homogenized this handling, and all we need
       //   to do is allocate the memory if the numeric type could not be
       //   type-punned.
-      // This will cover such cases as DOUBLE and INT64 on 32-bit builds, and
-      //   VECT_3_DOUBLE on all builds.
+      // This will cover such cases as DOUBLE and INT64 on 32-bit builds.
       if (!_punned_ptr) {
         // TODO: This is a constructor, and we thus have no clean way of
         //   handling heap-allocation failures. So we'll need a lazy-allocate
@@ -88,13 +88,12 @@ C3PValue::C3PValue(const TCode TC, void* ptr) : _TCODE(TC), _set_trace(1), _targ
         _val_by_ref = true;
         // TODO: Is this the correct choice? We know that we are responsible for
         //   freeing the C3PBinBinder we just created, and I don't want to mix
-        //   semantic layers, nor do I want to entend flags into the shim (thus
+        //   semantic layers, nor do I want to extend flags into the shim (thus
         //   indirecting them).
         _reap_val   = false;
       }
     }
   }
-  _reap_val   = false;
 }
 
 
@@ -110,7 +109,8 @@ C3PValue::~C3PValue() {
       }
       free(_target_mem);
     }
-    else if (_val_by_ref & _reap_val) {
+    //else if (_val_by_ref & _reap_val) {
+    else if (_reap_val) {
       free(_target_mem);
     }
   }
@@ -128,6 +128,28 @@ C3PValue::C3PValue(float val) : C3PValue(TCode::FLOAT, nullptr) {
   *(((uint8_t*) &_target_mem) + 1) = *(src + 1);   //   we copy the value
   *(((uint8_t*) &_target_mem) + 2) = *(src + 2);   //   byte-wise into our own
   *(((uint8_t*) &_target_mem) + 3) = *(src + 3);   //   storage.
+}
+
+/*
+* Construction from char* has semantics that imply the source buffer is
+*   ephemeral, and ought to be copied into a memory region allocated and
+*   owned by this class.
+*/
+C3PValue::C3PValue(char* val) : C3PValue(TCode::STR, nullptr) {
+  bool failure = true;
+  if (nullptr != val) {
+    const uint32_t VAL_LENGTH = strlen(val);
+    _target_mem = malloc(VAL_LENGTH + 1);
+    if (nullptr != _target_mem) {
+      memcpy(_target_mem, val, VAL_LENGTH);
+      *((char*)_target_mem + VAL_LENGTH) = 0;
+      reapValue(true);
+      failure = false;
+    }
+  }
+  if (failure) {
+    // TODO: Log? Set error bit? Same issue as in the base constructor...
+  }
 }
 
 
@@ -170,7 +192,6 @@ int8_t C3PValue::set(C3PValue* src) {
   return ret;
 }
 
-
 int8_t C3PValue::get_as(const TCode DEST_TYPE, void* dest) {
   int8_t ret = -1;
   C3PType* t_helper = getTypeHelper(_TCODE);
@@ -179,6 +200,34 @@ int8_t C3PValue::get_as(const TCode DEST_TYPE, void* dest) {
   }
   return ret;
 }
+
+
+// TODO: Audit. Might be wrong-headed.
+int8_t C3PValue::get_as(uint8_t** v, uint32_t* l) {
+  int8_t ret = -1;
+  if ((nullptr != v) & (nullptr != l)) {
+    ret--;
+    if (nullptr != _target_mem) {
+      *v = ((C3PBinBinder*) _target_mem)->buf;
+      *l = ((C3PBinBinder*) _target_mem)->len;
+      ret = 0;
+    }
+  }
+  return ret;
+}
+
+// TODO: Audit. Might be wrong-headed.
+int8_t C3PValue::set(uint8_t* src, uint32_t l, const TCode SRC_TYPE) {
+  int8_t ret = -1;
+  if (nullptr != _target_mem) {
+    ((C3PBinBinder*) _target_mem)->buf = src;
+    ((C3PBinBinder*) _target_mem)->len = l;
+    ret = 0;
+  }
+  return ret;
+}
+
+
 
 /*
 * This optional accessor will allow the caller to discover if the value has
@@ -226,7 +275,7 @@ uint64_t C3PValue::get_as_uint64(int8_t* success) {
 }
 
 int64_t C3PValue::get_as_int64(int8_t* success) {
-  int32_t ret = 0;
+  int64_t ret = 0;
   int8_t suc = get_as(TCode::INT64, (void*) &ret) + 1;
   if (success) {  *success = suc;  }
   return ret;
@@ -310,34 +359,12 @@ void C3PValue::toString(StringBuilder* out, bool include_type) {
   C3PType* t_helper = getTypeHelper(_TCODE);
   if (nullptr != t_helper) {
     t_helper->to_string(_type_pun(), out);
+    //out->concatf("%08x", _type_pun());
   }
   else {
-    // TODO: Everything below this comment is headed for the entropy pool.
-    switch (_TCODE) {
-      case TCode::STR_BUILDER:
-        out->concat((StringBuilder*) _target_mem);
-        break;
-      //case TCode::VECT_4_FLOAT:
-      //  {
-      //    Vector4f* v = (Vector4f*) _target_mem;
-      //    out->concatf("(%.4f, %.4f, %.4f, %.4f)", (double)(v->w), (double)(v->x), (double)(v->y), (double)(v->z));
-      //  }
-      //  break;
-      case TCode::KVP:
-        //if (nullptr != _target_mem) ((KeyValuePair*) _target_mem)->printDebug(out);
-        break;
-      case TCode::IDENTITY:
-        if (nullptr != _target_mem) ((Identity*) _target_mem)->toString(out);
-        break;
-
-      default:
-        {
-          const uint32_t L_ENDER = length();
-          for (uint32_t n = 0; n < L_ENDER; n++) {
-            out->concatf("%02x ", *((uint8_t*) _target_mem + n));
-          }
-        }
-        break;
+    const uint32_t L_ENDER = length();
+    for (uint32_t n = 0; n < L_ENDER; n++) {
+      out->concatf("%02x ", *((uint8_t*) _target_mem + n));
     }
   }
 }

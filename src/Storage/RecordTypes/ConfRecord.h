@@ -54,23 +54,26 @@ class ConfRecord : public SimpleDataRecord {
     * @param val is the pointer to the variable to receive the result.
     * @return 0 on success, -1 for invalid key, -2 for data deprecation if converted, -3 for no values.
     */
-    inline int8_t setConf(const char* key, const char* val) {   return _set_conf(key, TCode::STR, (void*) val);  };
+    inline int8_t setConf(const char* KEY, const char* val) {   return _set_conf(KEY, TCode::STR, (void*) val);  };
 
-    inline int8_t getConf(const char* key, uint8_t* val) {      return _get_conf(key, TCode::UINT8, (void*) val);  };
-    inline int8_t getConf(const char* key, int* val) {          return _get_conf(key, TCode::INT32, (void*) val);  };
-    inline int8_t getConf(const char* key, int64_t* val) {      return _get_conf(key, TCode::INT64, (void*) val);  };
-    inline int8_t getConf(const char* key, uint32_t* val) {     return _get_conf(key, TCode::UINT32, (void*) val);  };
-    inline int8_t getConf(const char* key, uint64_t* val) {     return _get_conf(key, TCode::UINT64, (void*) val);  };
-    inline int8_t getConf(const char* key, Vector3f* val) {     return _get_conf(key, TCode::VECT_3_FLOAT, (void*) val);  };
-    inline int8_t getConf(const char* key, bool* val) {         return _get_conf(key, TCode::BOOLEAN, (void*) val);  };
-    inline int8_t getConf(const char* key, float* val) {        return _get_conf(key, TCode::FLOAT, (void*) val);  };
-    inline int8_t getConf(const char* key, double* val) {       return _get_conf(key, TCode::DOUBLE, (void*) val);  };
+    inline int8_t getConf(const char* KEY, uint8_t* val) {      return _get_conf(KEY, TCode::UINT8, (void*) val);  };
+    inline int8_t getConf(const char* KEY, int* val) {          return _get_conf(KEY, TCode::INT32, (void*) val);  };
+    inline int8_t getConf(const char* KEY, int64_t* val) {      return _get_conf(KEY, TCode::INT64, (void*) val);  };
+    inline int8_t getConf(const char* KEY, uint32_t* val) {     return _get_conf(KEY, TCode::UINT32, (void*) val);  };
+    inline int8_t getConf(const char* KEY, uint64_t* val) {     return _get_conf(KEY, TCode::UINT64, (void*) val);  };
+    inline int8_t getConf(const char* KEY, Vector3f* val) {     return _get_conf(KEY, TCode::VECT_3_FLOAT, (void*) val);  };
+    inline int8_t getConf(const char* KEY, bool* val) {         return _get_conf(KEY, TCode::BOOLEAN, (void*) val);  };
+    inline int8_t getConf(const char* KEY, float* val) {        return _get_conf(KEY, TCode::FLOAT, (void*) val);  };
+    inline int8_t getConf(const char* KEY, double* val) {       return _get_conf(KEY, TCode::DOUBLE, (void*) val);  };
 
     /* Obligate overrides from DataRecord. */
     int8_t serialize(StringBuilder*, TCode);
     int8_t deserialize(StringBuilder*, TCode);
 
-    void printConfRecord(StringBuilder*, const char* key = nullptr);
+    inline const uint32_t keyCount() {   return _key_count();   };
+    inline void           keyList(StringBuilder* out) {   _key_list(out);   };
+    bool allocated(bool force_allocate = false);
+    void printConfRecord(StringBuilder*, const char* KEY = nullptr);
 
 
   protected:
@@ -85,10 +88,10 @@ class ConfRecord : public SimpleDataRecord {
       _kvp(nullptr), _config_is_complete(false) {};
 
     int8_t  _discard_allocations();
-    int32_t _allocated();
+    int32_t _allocate_kvp();
 
-    int8_t _set_conf(const char* key, const TCode, void* val);
-    int8_t _get_conf(const char* key, const TCode, void* val);
+    int8_t _set_conf(const char* KEY, const TCode, void* val);
+    int8_t _get_conf(const char* KEY, const TCode, void* val);
 
     /* Slots to be occupied by the validation template. */
     virtual const char* const _list_name() =0;

@@ -53,8 +53,14 @@ int c3p_type_test_parsing() {
 }
 
 void print_types_c3p_type() {
-  printf("\tC3PBinBinder          %u\t%u\n", sizeof(C3PBinBinder), alignof(C3PBinBinder));
-  printf("\tC3PType               %u\t%u\n", sizeof(C3PType),      alignof(C3PType));
+  printf("\tvoid*                    %u\t%u\n", sizeof(void*),  alignof(void*));
+  printf("\tunsigned int             %u\t%u\t%016x\n", sizeof(unsigned int),  alignof(unsigned int), UINT_MAX);
+  printf("\tunsigned long            %u\t%u\t%lu\n", sizeof(unsigned long),  alignof(unsigned long), ULONG_MAX);
+  printf("\tbool                     %u\t%u\n", sizeof(bool),   alignof(bool));
+  printf("\tfloat                    %u\t%u\n", sizeof(float),  alignof(float));
+  printf("\tdouble                   %u\t%u\n", sizeof(double), alignof(double));
+  printf("\tC3PBinBinder             %u\t%u\n", sizeof(C3PBinBinder), alignof(C3PBinBinder));
+  printf("\tC3PType                  %u\t%u\n", sizeof(C3PType),      alignof(C3PType));
 }
 
 

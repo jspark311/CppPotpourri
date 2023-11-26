@@ -171,7 +171,7 @@ int setup_console(StringBuilder* output) {
       ret--;
       printf("Pass.\n\t\tdefineCommands() accepts an inline command definition... ");
       if (0 == console.defineCommand("test6", '6', "Test callback #6", "Detailed help for test6", 0, callback_test6)) {
-        printf("\t\tinit() returns success... ");
+        printf("Pass.\n\t\tinit() returns success... ");
         if (0 == console.init()) {
           printf("Pass.\n\tsetup_console() passed.\n");
           ret = 0;

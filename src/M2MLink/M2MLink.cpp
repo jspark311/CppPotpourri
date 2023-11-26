@@ -375,7 +375,7 @@ int8_t M2MLink::writeRemoteLog(StringBuilder* outbound_log, bool need_reply) {
       if (nullptr != msg) {
         bool gc_message = true;  // Trash the message if sending doesn't work.
         ret--;
-        KeyValuePair kvp(outbound_log, "b");
+        KeyValuePair kvp("b", outbound_log);
         if (0 == msg->setPayload(&kvp)) {
           ret--;
           // At this point, we are discharged of the responsibility of keeping our
@@ -781,11 +781,11 @@ int8_t M2MLink::_churn_inbound() {
           //   our counterparty. If we don't already know who we're talking to,
           //   look for an Identity, and copy it.
           if (nullptr == _id_remote) {
-            KeyValuePair* ident_kvp = kvps_rxd->retrieveByKey("ident");
-            if (ident_kvp) {
+            C3PValue* ident_container = kvps_rxd->valueWithKey("ident");
+            if (ident_container) {
               if (_verbosity >= LOG_LEV_NOTICE) c3p_log(LOG_LEV_NOTICE, __PRETTY_FUNCTION__, "Link 0x%08x found a remote identity.\n", _session_tag);
-              if (0 == ident_kvp->getValueAs((void*) &_id_remote)) {
-                ident_kvp->reapValue(false);   // We now own this object.
+              if (0 == ident_container->get_as(&_id_remote)) {
+                ident_container->reapValue(false);   // We now own this object.
               }
             }
           }
@@ -803,7 +803,7 @@ int8_t M2MLink::_churn_inbound() {
           // We are being queried about our Identity.
           if (_id_loc) {
             // If we have one assigned, serialize and relay it as a reply.
-            KeyValuePair* a = new KeyValuePair(_id_loc, "ident");
+            KeyValuePair* a = new KeyValuePair("ident", _id_loc);
             int8_t ret_local = temp->reply(a, true);
             const uint8_t VERB_LEV = (0 > ret_local) ? LOG_LEV_ERROR : LOG_LEV_INFO;
             if (_verbosity >= VERB_LEV) {
@@ -1427,7 +1427,7 @@ int8_t M2MLink::_send_who_message() {
   if (nullptr != msg) {
     ret--;
     if (_id_loc) {
-      KeyValuePair* a = new KeyValuePair(_id_loc, "ident");
+      KeyValuePair* a = new KeyValuePair("ident", _id_loc);
       msg->setPayload(a);
     }
     if (0 == _send_msg(msg)) {

@@ -59,22 +59,23 @@ enum class ExampleConf : uint8_t {
 // We set the flags of the INVALID marker such that we can fail safely, and also
 //   to not have it show as a configuration key.
 const EnumDef<ExampleConf> EX_CONF_KEY_LIST[] = {
-  { ExampleConf::PROG_KEY_0,  "PROG_KEY_0",     0, (uint8_t) TCode::BOOLEAN    },
-  { ExampleConf::PROG_KEY_1,  "PROG_KEY_1",     0, (uint8_t) TCode::BOOLEAN    },
-  { ExampleConf::PROG_KEY_2,  "PROG_KEY_2",     0, (uint8_t) TCode::BOOLEAN    },
-  //{ ExampleConf::PROG_KEY_3,  "PROG_KEY_3",     0, (uint8_t) TCode::STR        },
-  { ExampleConf::PROG_KEY_4,  "PROG_KEY_4",     0, (uint8_t) TCode::UINT32     },
-  { ExampleConf::PROG_KEY_5,  "PROG_KEY_5",     0, (uint8_t) TCode::UINT16     },
-  { ExampleConf::PROG_KEY_6,  "PROG_KEY_6",     0, (uint8_t) TCode::UINT8      },
-  { ExampleConf::PROG_KEY_7,  "PROG_KEY_7",     0, (uint8_t) TCode::FLOAT      },
-  //{ ExampleConf::PROG_KEY_8,  "PROG_KEY_8",     0, (uint8_t) TCode::VECT_3_FLOAT     },
-  //{ ExampleConf::PROG_KEY_9,  "PROG_KEY_9",     0, (uint8_t) TCode::VECT_3_UINT32    },
-  //{ ExampleConf::PROG_KEY_A,  "PROG_KEY_A",     0, (uint8_t) TCode::VECT_3_INT8      },
+  { ExampleConf::PROG_KEY_4,  "PROG_KEY_0",     0, (uint8_t) TCode::UINT32     },
+  { ExampleConf::PROG_KEY_5,  "PROG_KEY_1",     0, (uint8_t) TCode::UINT16     },
+  { ExampleConf::PROG_KEY_6,  "PROG_KEY_2",     0, (uint8_t) TCode::UINT8      },
+  { ExampleConf::PROG_KEY_3,  "PROG_KEY_3",     0, (uint8_t) TCode::STR        },
+  { ExampleConf::PROG_KEY_9,  "PROG_KEY_4",     0, (uint8_t) TCode::VECT_3_UINT32    },
+  { ExampleConf::PROG_KEY_A,  "PROG_KEY_5",     0, (uint8_t) TCode::VECT_3_INT8      },
+  { ExampleConf::PROG_KEY_7,  "PROG_KEY_6",     0, (uint8_t) TCode::FLOAT      },
+  { ExampleConf::PROG_KEY_0,  "PROG_KEY_7",     0, (uint8_t) TCode::BOOLEAN    },
+  { ExampleConf::PROG_KEY_1,  "PROG_KEY_9",     0, (uint8_t) TCode::BOOLEAN    },
+  { ExampleConf::PROG_KEY_2,  "PROG_KEY_A",     0, (uint8_t) TCode::BOOLEAN    },
+  { ExampleConf::PROG_KEY_8,  "PROG_KEY_8",     0, (uint8_t) TCode::VECT_3_FLOAT     },
   { ExampleConf::PROG_KEY_B,  "PROG_KEY_B",     0, (uint8_t) TCode::DOUBLE     },
   { ExampleConf::PROG_KEY_C,  "PROG_KEY_C",     0, (uint8_t) TCode::UINT64     },
   { ExampleConf::PROG_KEY_D,  "PROG_KEY_D",     0, (uint8_t) TCode::INT64      },
+  // TODO: Works if populated. But crashes when left uninitialized.
   //{ ExampleConf::PROG_KEY_E,  "PROG_KEY_E",     0, (uint8_t) TCode::BINARY     },
-  //{ ExampleConf::PROG_KEY_F,  "PROG_KEY_F",     0, (uint8_t) TCode::STR        },
+  { ExampleConf::PROG_KEY_F,  "PROG_KEY_F",     0, (uint8_t) TCode::STR        },
   { ExampleConf::INVALID, "INVALID", (ENUM_FLAG_MASK_INVALID_CATCHALL), (uint8_t) TCode::NONE}
 };
 
@@ -96,12 +97,17 @@ ConfRecordValidation<ExampleConf> example_conf(0, &EX_CONF_LIST);
 *******************************************************************************/
 
 void print_conf_record_to_stdout(ConfRecord* record) {
-  StringBuilder tmp_str;
-  StringBuilder serialized;
-  record->printConfRecord(&tmp_str);
-  printf("Serializing conf returns %d.\n", record->serialize(&serialized, TCode::CBOR));
-  serialized.printDebug(&tmp_str);
-  printf("%s\n", (char*) tmp_str.string());
+  if (nullptr != record) {
+    StringBuilder tmp_str;
+    StringBuilder serialized;
+    record->printConfRecord(&tmp_str);
+    printf("Serializing conf returns %d.\n", record->serialize(&serialized, TCode::CBOR));
+    serialized.printDebug(&tmp_str);
+    printf("%s\n", (char*) tmp_str.string());
+  }
+  else {
+    printf("(null record)\n");
+  }
 }
 
 
@@ -120,11 +126,27 @@ void print_types_conf_record() {
 int naked_conf_record_basic_tests() {
   int ret = -1;
   printf("Running basic tests on a naked ConfRecord...\n");
-  printf("\tThe list contains the expected number of definitions...\n");
-  ret = 0;   // TDOO
+  const uint32_t CREC_KEY_COUNT = example_conf.keyCount();
+  printf("\tThe ConfRecord contains the expected number of definitions (%u)... ", CREC_KEY_COUNT);
+  if (EX_CONF_LIST.exportCount() == CREC_KEY_COUNT) {
+    printf("Pass.\n\tKey list should contain the same number of entries... ");
+    StringBuilder key_listing;
+    example_conf.keyList(&key_listing);
+    if (key_listing.count() == CREC_KEY_COUNT) {
+      printf("Pass.\n\tA value retrieval by valid key should not fail... ");
+      uint32_t val0 = 0;
+      if (0 == example_conf.getConf("PROG_KEY_0", &val0)) {
+        printf("Pass.\n\tThat value should be the type default for an unset value... ");
+        if (0 == val0) {
+          printf("Pass.\n\tConfRecord passes basic tests.\n");
+          ret = 0;
+        }
+      }
+    }
+  }
 
   if (0 != ret) {
-    printf(" Fail.\n");
+    printf("Fail.\n");
   }
   print_conf_record_to_stdout(&example_conf);
   return ret;

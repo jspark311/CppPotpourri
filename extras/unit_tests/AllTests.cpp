@@ -120,8 +120,9 @@ void sleep_us(uint32_t us) {
 int generate_random_text_buffer(StringBuilder* buf, const int RANDOM_BUF_LEN) {
   int ret = 0;
   if ((RANDOM_BUF_LEN > 0) && (nullptr != buf)) {
-    uint8_t tmp_buf[RANDOM_BUF_LEN+1] = {0, };
+    uint8_t tmp_buf[RANDOM_BUF_LEN+1];
     random_fill(tmp_buf, (uint32_t) RANDOM_BUF_LEN);
+    tmp_buf[RANDOM_BUF_LEN] = 0;
     for (int i = 0; i < RANDOM_BUF_LEN; i++) {
       tmp_buf[i] = (0x30 + (tmp_buf[i] % 0x4E));
     }
@@ -210,13 +211,8 @@ void printTestFailure(const char* module, const char* test) {
 * Prints the sizes of various types. Informational only. No test.
 */
 void printTypeSizes() {
-  printf("===< Type sizes >=======================================\n-- Primitives:\n");
-  printf("\tvoid*                    %u\t%u\n", sizeof(void*),  alignof(void*));
-  printf("\tunsigned int             %u\t%u\t%016x\n", sizeof(unsigned int),  alignof(unsigned int), UINT_MAX);
-  printf("\tunsigned long            %u\t%u\t%lu\n", sizeof(unsigned long),  alignof(unsigned long), ULONG_MAX);
-  printf("\tFloat                    %u\t%u\n", sizeof(float),  alignof(float));
-  printf("\tDouble                   %u\t%u\n", sizeof(double), alignof(double));
-  printf("-- C3P types:\n");
+  printf("===< Type sizes >=======================================\n");
+  print_types_c3p_type();
   print_types_platform();
   print_types_vector3();
   print_types_stringbuilder();
@@ -230,7 +226,6 @@ void printTypeSizes() {
   print_types_enum_wrapper();
   print_types_scheduler();
   print_types_state_machine();
-  print_types_c3p_type();
   print_types_c3p_value();
   print_types_kvp();
   print_types_identity();
@@ -327,7 +322,6 @@ void printTypeSizes() {
   CHKLST_ALL_TIER_0_TESTS | CHKLST_ALL_TIER_1_TESTS | \
   CHKLST_ALL_TIER_2_TESTS | CHKLST_ALL_TIER_3_TESTS)
 
-
 /*
 * Top level test definitions.
 * Each of these blocks defines a top-level series of tests on the named module
@@ -342,6 +336,8 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   // The tests of the test program's implementation of AbstractPlatform. Nothing
   //   else will make any sense if this fails. It is ultimately a dependency for
   //   everything being tested, in one way or another.
+  // NOTE: This test will probably fail if the program is running under a
+  //   debugging harness (valgrind, gbd, JLink, etc).
   // TODO: Verification of correct operation of any dependency injection
   //   features should fall into this block as well.
   { .FLAG         = CHKLST_CI_PLATFORM_TESTS,
@@ -369,6 +365,8 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
 
   // Most programs need to implement simple delays and one-shots, and profile
   //   execution. Fundamental needs based on timers are covered by these tests.
+  // NOTE: This test will probably fail if the program is running under a
+  //   debugging harness (valgrind, gbd, JLink, etc).
   { .FLAG         = CHKLST_TIMER_UTILS_TESTS,
     .LABEL        = "Timer tools",
     .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS),
@@ -551,6 +549,8 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   //   which sometime conflict, and have to do so without threads, and at the
   //   scale of microseconds.
   // For this final class of firmware designs, we have C3PScheduler.
+  // NOTE: This test will probably fail if the program is running under a
+  //   debugging harness (valgrind, gbd, JLink, etc).
   // CHKLST_CI_PLATFORM_TESTS:   Test needs the system time
   { .FLAG         = CHKLST_SCHEDULER_TESTS,
     .LABEL        = "C3PScheduler",
@@ -587,6 +587,8 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .LABEL        = "LineEndingCoDec",
     .DEP_MASK     = (CHKLST_BUFFER_ACCEPTER_TESTS | CHKLST_MULT_STR_SEARCH_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
+    // TODO: For some reason, this test becomes stuck on 64-bit builds.
+    //   Infinite loop, or sloppy fuzzing logic?
     .POLL_FXN     = []() { return ((0 == c3p_line_codec_test_main()) ? 1:-1);  }
   },
 

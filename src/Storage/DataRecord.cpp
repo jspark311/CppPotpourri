@@ -95,7 +95,8 @@ int8_t DataRecord::save(char* name) {
         // If our request for space was granted, we will now have a block list
         //   that we are expected to write to. Get the first block.
         ret--;
-        uint8_t rec_desc[DESCRIPTOR_SIZE] = {0, };
+        uint8_t rec_desc[DESCRIPTOR_SIZE];
+        memset(rec_desc, 0, DESCRIPTOR_SIZE);
 
         if (nullptr != rec_desc) {
           ret--;

@@ -27,7 +27,6 @@ This file contains the implementation of type constraints for our wrapped types.
 #include "KeyValuePair.h"
 #include "../StringBuilder.h"
 #include "../Identity/Identity.h"
-#include "../StringBuilder.h"
 #include "../TimerTools/TimerTools.h"
 
 /* CBOR support should probably be required to parse/pack. */
@@ -61,19 +60,19 @@ static const C3PTypeConstraint<uint32_t>        c3p_type_helper_uint32(       "U
 static const C3PTypeConstraint<float>           c3p_type_helper_float(        "FLOAT",        4,  TCode::FLOAT,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
 static const C3PTypeConstraint<bool>            c3p_type_helper_bool(         "BOOL",         1,  TCode::BOOLEAN,        (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
 static const C3PTypeConstraint<char*>           c3p_type_helper_str(          "STR",          0,  TCode::STR,            (TCODE_FLAG_MASK_STRING_TYPE));
-static const C3PTypeConstraint<StringBuilder>   c3p_type_helper_stringbuilder("STR_BLDR",     0,  TCode::STR_BUILDER,    (TCODE_FLAG_VALUE_IS_POINTER));
-static const C3PTypeConstraint<Vector3i8>       c3p_type_helper_vect3_i8(     "VEC3_INT8",    3,  TCode::VECT_3_INT8,    (0));
-static const C3PTypeConstraint<Vector3i16>      c3p_type_helper_vect3_i16(    "VEC3_INT16",   6,  TCode::VECT_3_INT16,   (0));
-static const C3PTypeConstraint<Vector3i32>      c3p_type_helper_vect3_i32(    "VEC3_INT32",   12, TCode::VECT_3_INT32,   (0));
-static const C3PTypeConstraint<Vector3u8>       c3p_type_helper_vect3_u8(     "VEC3_UINT8",   3,  TCode::VECT_3_UINT8,   (0));
-static const C3PTypeConstraint<Vector3u16>      c3p_type_helper_vect3_u16(    "VEC3_UINT16",  6,  TCode::VECT_3_UINT16,  (0));
-static const C3PTypeConstraint<Vector3u32>      c3p_type_helper_vect3_u32(    "VEC3_UINT32",  12, TCode::VECT_3_UINT32,  (0));
-static const C3PTypeConstraint<Vector3f>        c3p_type_helper_vect3_float(  "VEC3_FLOAT",   12, TCode::VECT_3_FLOAT,   (0));
-static const C3PTypeConstraint<Vector3f64>      c3p_type_helper_vect3_double( "VEC3_DOUBLE",  24, TCode::VECT_3_DOUBLE,  (0));
-static const C3PTypeConstraint<Image>           c3p_type_helper_image(        "IMAGE",        0,  TCode::IMAGE,          (TCODE_FLAG_VALUE_IS_POINTER));
-static const C3PTypeConstraint<KeyValuePair>    c3p_type_helper_kvp(          "KVP",          0,  TCode::KVP,            (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<StringBuilder*>  c3p_type_helper_stringbuilder("STR_BLDR",     0,  TCode::STR_BUILDER,    (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<Vector3i8>       c3p_type_helper_vect3_i8(     "VEC3_INT8",    3,  TCode::VECT_3_INT8,    (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<Vector3i16>      c3p_type_helper_vect3_i16(    "VEC3_INT16",   6,  TCode::VECT_3_INT16,   (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<Vector3i32>      c3p_type_helper_vect3_i32(    "VEC3_INT32",   12, TCode::VECT_3_INT32,   (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<Vector3u8>       c3p_type_helper_vect3_u8(     "VEC3_UINT8",   3,  TCode::VECT_3_UINT8,   (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<Vector3u16>      c3p_type_helper_vect3_u16(    "VEC3_UINT16",  6,  TCode::VECT_3_UINT16,  (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<Vector3u32>      c3p_type_helper_vect3_u32(    "VEC3_UINT32",  12, TCode::VECT_3_UINT32,  (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<Vector3f>        c3p_type_helper_vect3_float(  "VEC3_FLOAT",   12, TCode::VECT_3_FLOAT,   (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<Vector3f64>      c3p_type_helper_vect3_double( "VEC3_DOUBLE",  24, TCode::VECT_3_DOUBLE,  (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<Image*>          c3p_type_helper_image(        "IMAGE",        0,  TCode::IMAGE,          (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<KeyValuePair*>   c3p_type_helper_kvp(          "KVP",          0,  TCode::KVP,            (TCODE_FLAG_VALUE_IS_POINTER));
 static const C3PTypeConstraint<Identity*>       c3p_type_helper_identity(     "IDENTITY",     0,  TCode::IDENTITY,       (TCODE_FLAG_VALUE_IS_POINTER));
-static const C3PTypeConstraint<StopWatch*>      c3p_type_helper_stopwatch(    "STOPWATCH",   sizeof(StopWatch),  TCode::STOPWATCH,      (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<StopWatch*>      c3p_type_helper_stopwatch(    "STOPWATCH",    sizeof(StopWatch),  TCode::STOPWATCH,      (TCODE_FLAG_VALUE_IS_POINTER));
 
 // TODO: These numeric types might be handled as pointer-puns on 64-bit ALUs,
 //   but must be heap-allocated on 32-bit builds for the sake of maintaining
@@ -317,7 +316,7 @@ int8_t C3PType::_type_blind_copy(void* src, void* dest, const TCode TEST_TCODE) 
   if ((nullptr != src) & (nullptr != dest)) {
     ret--;
     if (TEST_TCODE == TCODE) {
-      const uint32_t COPY_LEN = length(src);
+      const uint32_t COPY_LEN = (is_ptr() ? sizeof(void*) : length(src));
       memcpy(dest, src, COPY_LEN);
       ret = 0;
     }
@@ -328,24 +327,26 @@ int8_t C3PType::_type_blind_copy(void* src, void* dest, const TCode TEST_TCODE) 
 
 int C3PType::_type_blind_serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
-  switch (FORMAT) {
-    case TCode::BINARY:
-      //out->concat(*((const char**) obj));
-      break;
-    case TCode::CBOR:
-      {
-        cbor::output_stringbuilder output(out);
-        cbor::encoder encoder(output);
-        // NOTE: This ought to work for any types where retaining portability
-        //   isn't important.
-        // TODO: Gradually convert types out of this block. As much as possible should
-        //   be portable. VECT_3_FLOAT ought to be an array of floats, for instance.
-        encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(TCODE));
-        encoder.write_bytes((uint8_t*) obj, length(obj));
-        ret = 0;
-      }
-      break;
-    default:  break;
+  if (_pointer_safety_check(obj)) {
+    switch (FORMAT) {
+      case TCode::BINARY:
+        //out->concat(*((const char**) obj));
+        break;
+      case TCode::CBOR:
+        {
+          cbor::output_stringbuilder output(out);
+          cbor::encoder encoder(output);
+          // NOTE: This ought to work for any types where retaining portability
+          //   isn't important.
+          // TODO: Gradually convert types out of this block. As much as possible should
+          //   be portable. VECT_3_FLOAT ought to be an array of floats, for instance.
+          encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(TCODE));
+          encoder.write_bytes((uint8_t*) obj, length(obj));
+          ret = 0;
+        }
+        break;
+      default:  break;
+    }
   }
   return ret;
 }
@@ -354,6 +355,19 @@ int C3PType::_type_blind_serialize(void* obj, StringBuilder* out, const TCode FO
 void C3PType::_type_blind_to_string(void* obj, StringBuilder* out) {
   const uint32_t L_ENDER = length(obj);
   if (L_ENDER > 0) {  StringBuilder::printBuffer(out, (uint8_t*) obj, L_ENDER);  }
+}
+
+/*
+* Helper function to fail a pointer-based operation where the pointer would be
+*   invalid.
+* This function will always return true for punned and direct-copy values. Those
+*   values are not construed as pointers.
+*
+* @param The pointer in question.
+* @return false if a continued pointer operation would be unsafe. True if it might be.
+*/
+bool C3PType::_pointer_safety_check(void* obj) {
+  return (_all_flags_clear(TCODE_FLAG_VALUE_IS_POINTER | TCODE_FLAG_PTR_LEN_TYPE) | (nullptr != obj));
 }
 
 
@@ -367,7 +381,10 @@ void C3PType::_type_blind_to_string(void* obj, StringBuilder* out) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// int8_t
-template <> void        C3PTypeConstraint<int8_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%d", *((int8_t*) obj));  }
+template <> void        C3PTypeConstraint<int8_t>::to_string(void* obj, StringBuilder* out) {
+  int8_t o = _load_from_mem(obj);
+  out->concat((int16_t) o);
+}
 
 template <> int8_t C3PTypeConstraint<int8_t>::representable_by(const TCode DEST_TYPE) {
   int8_t ret = -1;
@@ -505,7 +522,10 @@ template <> int8_t      C3PTypeConstraint<int8_t>::deserialize(void* obj, String
 
 ////////////////////////////////////////////////////////////////////////////////
 /// int16_t
-template <> void        C3PTypeConstraint<int16_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%d", *((int16_t*) obj));  }
+template <> void        C3PTypeConstraint<int16_t>::to_string(void* obj, StringBuilder* out) {
+  int16_t o = _load_from_mem(obj);
+  out->concat(o);
+}
 
 template <> int8_t C3PTypeConstraint<int16_t>::representable_by(const TCode DEST_TYPE) {
   int8_t ret = -1;
@@ -572,7 +592,7 @@ template <> int8_t      C3PTypeConstraint<int16_t>::set_from(void* dest, const T
 }
 
 template <> int8_t      C3PTypeConstraint<int16_t>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  int16_t s = *((int16_t*) src);
+  int16_t s = _load_from_mem(src);
   switch (DEST_TYPE) {
     case TCode::INT8:
       if ((s <= INT8_MAX) & (s >= INT8_MIN)) {
@@ -643,7 +663,10 @@ template <> int8_t      C3PTypeConstraint<int16_t>::deserialize(void* obj, Strin
 
 ////////////////////////////////////////////////////////////////////////////////
 /// int32_t
-template <> void        C3PTypeConstraint<int32_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%d", *((int32_t*) obj));  }
+template <> void        C3PTypeConstraint<int32_t>::to_string(void* obj, StringBuilder* out) {
+  int32_t o = _load_from_mem(obj);
+  out->concat(o);
+}
 
 template <> int8_t C3PTypeConstraint<int32_t>::representable_by(const TCode DEST_TYPE) {
   int8_t ret = -1;
@@ -670,39 +693,44 @@ template <> int8_t C3PTypeConstraint<int32_t>::representable_by(const TCode DEST
 
 
 template <> int8_t      C3PTypeConstraint<int32_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
-  int32_t* d = (int32_t*) dest;
+  int32_t d = 0;
+  int8_t ret = -1;
   switch (SRC_TYPE) {
-    case TCode::INT8:       *d = (int32_t) *((int8_t*) src);     return 0;
-    case TCode::INT16:      *d = (int32_t) *((int16_t*) src);    return 0;
-    case TCode::INT32:      *d = (int32_t) *((int32_t*) src);    return 0;
+    case TCode::INT8:       d = (int32_t) *((int8_t*) src);     ret = 0;  break;
+    case TCode::INT16:      d = (int32_t) *((int16_t*) src);    ret = 0;  break;
+    case TCode::INT32:      d = (int32_t) *((int32_t*) src);    ret = 0;  break;
     case TCode::INT64:
       if ((*((int64_t*) src) <= INT32_MAX) & (*((int64_t*) src) >= INT32_MIN)) {
-        *d = (int32_t) *((uint64_t*) src);
-        return 0;
+        d = (int32_t) *((uint64_t*) src);
+        ret = 0;
       }
       break;
-    case TCode::UINT8:      *d = (int32_t) *((uint8_t*) src);    return 0;
-    case TCode::UINT16:     *d = (int32_t) *((uint16_t*) src);   return 0;
+    case TCode::UINT8:      d = (int32_t) *((uint8_t*) src);    ret = 0;  break;
+    case TCode::UINT16:     d = (int32_t) *((uint16_t*) src);   ret = 0;  break;
     case TCode::UINT32:
       if (*((uint32_t*) src) <= INT32_MAX) {
-        *d = (int32_t) *((uint32_t*) src);
-        return 0;
+        d = (int32_t) *((uint32_t*) src);
+        ret = 0;
       }
       break;
     case TCode::UINT64:
       if (*((uint64_t*) src) <= INT32_MAX) {
-        *d = (int32_t) *((uint64_t*) src);
-        return 0;
+        d = (int32_t) *((uint64_t*) src);
+        ret = 0;
       }
       break;
-    case TCode::BOOLEAN:      *d = (*((bool*) src) ? 1 : 0);     return 0;
+    case TCode::BOOLEAN:      d = (*((bool*) src) ? 1 : 0);     ret = 0;  break;
     default:  break;
   }
-  return -1;
+
+  if (0 == ret) {
+    _store_in_mem(dest, d);
+  }
+  return ret;
 }
 
 template <> int8_t      C3PTypeConstraint<int32_t>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  int32_t s = *((int32_t*) src);
+  int32_t s = _load_from_mem(src);
   switch (DEST_TYPE) {
     case TCode::INT8:
       if ((s <= INT8_MAX) & (s >= INT8_MIN)) {
@@ -761,7 +789,8 @@ template <> int         C3PTypeConstraint<int32_t>::serialize(void* obj, StringB
       {
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
-        encoder.write_int(*((int32_t*) obj));
+        int32_t o = _load_from_mem(obj);
+        encoder.write_int(o);
       }
       break;
 
@@ -810,18 +839,22 @@ template <> int8_t C3PTypeConstraint<int64_t>::representable_by(const TCode DEST
 template <> int8_t      C3PTypeConstraint<int64_t>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
   int8_t ret = -1;
   int64_t d = 0;
+
   switch (SRC_TYPE) {
     case TCode::INT8:       d = (int64_t) *((int8_t*) src);     ret = 0;  break;
     case TCode::INT16:      d = (int64_t) *((int16_t*) src);    ret = 0;  break;
     case TCode::INT32:      d = (int64_t) *((int32_t*) src);    ret = 0;  break;
-    case TCode::INT64:      d = (int64_t) *((int64_t*) src);    ret = 0;  break;
+    case TCode::INT64:      d = _load_from_mem(src);            ret = 0;  break;
     case TCode::UINT8:      d = (int64_t) *((uint8_t*) src);    ret = 0;  break;
     case TCode::UINT16:     d = (int64_t) *((uint16_t*) src);   ret = 0;  break;
     case TCode::UINT32:     d = (int64_t) *((uint32_t*) src);   ret = 0;  break;
     case TCode::UINT64:
-      if (*((uint64_t*) src) <= INT64_MAX) {
-        d = (int64_t) *((uint64_t*) src);
-        ret = 0;
+      {
+        int64_t s = _load_from_mem(src);
+        if (s <= INT64_MAX) {
+          d = s;
+          ret = 0;
+        }
       }
       break;
     case TCode::BOOLEAN:    d = (*((bool*) src) ? 1 : 0);       ret = 0;  break;
@@ -854,7 +887,7 @@ template <> int8_t      C3PTypeConstraint<int64_t>::get_as(void* src, const TCod
         return 0;
       }
       break;
-    case TCode::INT64:      *((int64_t*) dest) = (int64_t) s;    return 0;
+    case TCode::INT64:      _store_in_mem(dest, s);     return 0;
     case TCode::UINT8:
       if ((s <= UINT8_MAX) & (s >= 0)) {
         *((uint8_t*) dest) = (uint8_t) s;
@@ -875,7 +908,7 @@ template <> int8_t      C3PTypeConstraint<int64_t>::get_as(void* src, const TCod
       break;
     case TCode::UINT64:
       if (s >= 0) {
-        *((uint64_t*) dest) = (uint64_t) s;
+        _store_in_mem(dest, s);
         return 0;
       }
       break;
@@ -897,7 +930,8 @@ template <> int         C3PTypeConstraint<int64_t>::serialize(void* obj, StringB
       {
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
-        encoder.write_int(*((int64_t*) obj));
+        int64_t o = _load_from_mem(obj);
+        encoder.write_int(o);
       }
       break;
 
@@ -914,7 +948,10 @@ template <> int8_t      C3PTypeConstraint<int64_t>::deserialize(void* obj, Strin
 
 ////////////////////////////////////////////////////////////////////////////////
 /// uint8_t
-template <> void        C3PTypeConstraint<uint8_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%u", *((uint8_t*) obj));  }
+template <> void        C3PTypeConstraint<uint8_t>::to_string(void* obj, StringBuilder* out) {
+  uint8_t o = _load_from_mem(obj);
+  out->concat((uint16_t) o);
+}
 
 template <> int8_t C3PTypeConstraint<uint8_t>::representable_by(const TCode DEST_TYPE) {
   int8_t ret = -1;
@@ -1036,7 +1073,10 @@ template <> int8_t      C3PTypeConstraint<uint8_t>::deserialize(void* obj, Strin
 
 ////////////////////////////////////////////////////////////////////////////////
 /// uint16_t
-template <> void        C3PTypeConstraint<uint16_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%u", *((uint16_t*) obj));  }
+template <> void        C3PTypeConstraint<uint16_t>::to_string(void* obj, StringBuilder* out) {
+  uint16_t o = _load_from_mem(obj);
+  out->concat(o);
+}
 
 template <> int8_t C3PTypeConstraint<uint16_t>::representable_by(const TCode DEST_TYPE) {
   int8_t ret = -1;
@@ -1104,7 +1144,7 @@ template <> int8_t      C3PTypeConstraint<uint16_t>::set_from(void* dest, const 
 }
 
 template <> int8_t      C3PTypeConstraint<uint16_t>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  uint16_t s = *((uint16_t*) src);
+  uint16_t s = _load_from_mem(src);
   switch (DEST_TYPE) {
     case TCode::INT8:
       if (s <= INT8_MAX) {
@@ -1165,7 +1205,10 @@ template <> int8_t      C3PTypeConstraint<uint16_t>::deserialize(void* obj, Stri
 
 ////////////////////////////////////////////////////////////////////////////////
 /// uint32_t
-template <> void        C3PTypeConstraint<uint32_t>::to_string(void* obj, StringBuilder* out) {  out->concatf("%u", *((uint32_t*) obj));  }
+template <> void        C3PTypeConstraint<uint32_t>::to_string(void* obj, StringBuilder* out) {
+  uint32_t o = _load_from_mem(obj);
+  out->concat(o);
+}
 
 template <> int8_t C3PTypeConstraint<uint32_t>::representable_by(const TCode DEST_TYPE) {
   int8_t ret = -1;
@@ -1229,7 +1272,7 @@ template <> int8_t      C3PTypeConstraint<uint32_t>::set_from(void* dest, const 
 }
 
 template <> int8_t      C3PTypeConstraint<uint32_t>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  uint32_t s = *((uint32_t*) src);
+  uint32_t s = _load_from_mem(src);
   switch (DEST_TYPE) {
     case TCode::INT8:
       if (s <= INT8_MAX) {
@@ -1347,15 +1390,18 @@ template <> int8_t      C3PTypeConstraint<uint64_t>::set_from(void* dest, const 
       }
       break;
     case TCode::INT64:
-      if (*((int64_t*) src) >= 0) {
-        d = (uint64_t) *((int64_t*) src);
-        ret =  0;
+      {
+        int64_t s = (int64_t) _load_from_mem(src);
+        if (s >= 0) {
+          d = (uint64_t) s;
+          ret = 0;
+        }
       }
       break;
     case TCode::UINT8:      d = (uint64_t) *((uint8_t*) src);    ret = 0;   break;
     case TCode::UINT16:     d = (uint64_t) *((uint16_t*) src);   ret = 0;   break;
     case TCode::UINT32:     d = (uint64_t) *((uint32_t*) src);   ret = 0;   break;
-    case TCode::UINT64:     d = (uint64_t) *((uint64_t*) src);   ret = 0;   break;
+    case TCode::UINT64:     d = _load_from_mem(src);             ret = 0;   break;
     case TCode::BOOLEAN:    d = (*((bool*) src) ? 1 : 0);        ret = 0;   break;
     default:  break;
   }
@@ -1366,7 +1412,7 @@ template <> int8_t      C3PTypeConstraint<uint64_t>::set_from(void* dest, const 
 }
 
 template <> int8_t      C3PTypeConstraint<uint64_t>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  uint64_t s = *((uint64_t*) src);
+  uint64_t s = _load_from_mem(src);
   switch (DEST_TYPE) {
     case TCode::INT8:
       if (s <= INT8_MAX) {
@@ -1429,7 +1475,8 @@ template <> int         C3PTypeConstraint<uint64_t>::serialize(void* obj, String
       {
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
-        encoder.write_int(*((uint64_t*) obj));
+        uint64_t o = _load_from_mem(obj);
+        encoder.write_int(o);
       }
       break;
 
@@ -1730,43 +1777,85 @@ template <> int8_t      C3PTypeConstraint<double>::deserialize(void* obj, String
 /// char*
 /// NOTE: length() always returns +1 for all c-style string types to account for
 ///   the storage overhead of a null-terminator.
-template <> uint32_t    C3PTypeConstraint<char*>::length(void* obj) {  return (strlen((char*) obj) + 1);  }
-template <> void        C3PTypeConstraint<char*>::to_string(void* obj, StringBuilder* out) {  out->concatf("%s", *((char**) obj));  }
+template <> uint32_t    C3PTypeConstraint<char*>::length(void* obj) {
+  if (nullptr != obj) {
+    char* o = *((char**) obj);
+    if (nullptr != o) {
+      return (1 + strlen(o));
+    }
+  }
+  return 0;
+}
+
+template <> void        C3PTypeConstraint<char*>::to_string(void* obj, StringBuilder* out) {
+  if (nullptr != obj) {
+    char* o = *((char**) obj);
+    if (nullptr != o) {
+      out->concat(o);
+    }
+  }
+}
 
 template <> int8_t      C3PTypeConstraint<char*>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
-  char** d = (char**) dest;
-  switch (SRC_TYPE) {
-    case TCode::STR:     *d = *((char**) src);    return 0;
-    default:  break;
+  if (nullptr != dest) {
+    char** d = (char**) dest;
+    switch (SRC_TYPE) {
+      case TCode::STR:     *d = ((char*) src);    return 0;
+      default:  break;
+    }
   }
   return -1;
 }
 
 template <> int8_t      C3PTypeConstraint<char*>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  char** s = (char**) src;
-  switch (DEST_TYPE) {
-    case TCode::STR:     *((char**) dest) = *s;   return 0;
-    default:  break;
+  int8_t ret = -1;
+  if ((nullptr != dest) & (nullptr != src)) {
+    char* s = *((char**) src);
+    if (nullptr != s) {
+      switch (DEST_TYPE) {
+        case TCode::STR:          *((char**) dest) = s;   ret = 0;    break;
+        case TCode::STR_BUILDER:
+          {
+            StringBuilder* dest_sb = *((StringBuilder**) dest);
+            if (nullptr != dest_sb) {
+              // If a non-null StringBuilder object was passed in, we can append a
+              //   deep-copy of the string content.
+              dest_sb->concat(s);
+              ret = 0;
+              // TODO: After SB API safety...
+              //ret = (0 == dest_sb->concat(*s)) ? 0 : -1;
+            }
+            else {}  // NOTE: We will not try to heap-allocate a destination object.
+          }
+          break;
+        default:  break;
+      }
+    }
   }
-  return -1;
+  return ret;
 }
 
 template <> int         C3PTypeConstraint<char*>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
-  switch (FORMAT) {
-    case TCode::BINARY:
-      //out->concat(*((const char**) obj));
-      break;
+  if (nullptr != obj) {
+    char* o = *((char**) obj);
+    if (nullptr != o) {
+      switch (FORMAT) {
+        case TCode::BINARY:
+          //out->concat(o);
+          break;
 
-    case TCode::CBOR:
-      {
-        cbor::output_stringbuilder output(out);
-        cbor::encoder encoder(output);
-        encoder.write_string((const char*) obj);
+        case TCode::CBOR:
+          {
+            cbor::output_stringbuilder output(out);
+            cbor::encoder encoder(output);
+            encoder.write_string(o);
+          }
+          break;
+
+        default:  break;
       }
-      break;
-
-    default:  break;
+    }
   }
   return ret;
 }
@@ -1778,29 +1867,74 @@ template <> int8_t      C3PTypeConstraint<char*>::deserialize(void* obj, StringB
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// StringBuilder
-template <> uint32_t    C3PTypeConstraint<StringBuilder>::length(void* obj) {  return ((StringBuilder*) obj)->length();  }
-template <> void        C3PTypeConstraint<StringBuilder>::to_string(void* obj, StringBuilder* out) {  out->concat((StringBuilder*) obj);  }
+/// StringBuilder*
+template <> uint32_t    C3PTypeConstraint<StringBuilder*>::length(void* obj) {
+  if (nullptr != obj) {
+    StringBuilder* o = (StringBuilder*) obj;
+    return o->length();
+  }
+  return 0;
+}
 
-template <> int8_t      C3PTypeConstraint<StringBuilder>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+template <> void        C3PTypeConstraint<StringBuilder*>::to_string(void* obj, StringBuilder* out) {
+  if (nullptr != obj) {
+    StringBuilder* o = nullptr;
+    memcpy((void*) &o, obj, sizeof(StringBuilder*));
+    if (nullptr != o) {
+      out->concat(o);
+    }
+  }
+}
+
+template <> int8_t      C3PTypeConstraint<StringBuilder*>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
   StringBuilder* d = (StringBuilder*) dest;
-  switch (SRC_TYPE) {
-    //case TCode::STR:     d = *((char**) src);    return 0;
-    default:  break;
+  int8_t ret = -1;
+  if ((nullptr != d) && (nullptr != src)) {
+    switch (SRC_TYPE) {
+      //case TCode::STR:     d = *((char**) src);    return 0;
+      case TCode::STR_BUILDER:
+        if (nullptr != dest) {
+          memcpy(dest, src, sizeof(StringBuilder*));
+          ret = 0;
+        }
+        break;
+      default:  break;
+    }
   }
-  return -1;
+  return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<StringBuilder>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  StringBuilder* s = (StringBuilder*) src;
-  switch (DEST_TYPE) {
-    //case TCode::STR:     *((char**) dest) = *s;   return 0;
-    default:  break;
+template <> int8_t      C3PTypeConstraint<StringBuilder*>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+  int8_t ret = -1;
+  if (nullptr != src) {
+    switch (DEST_TYPE) {
+      // NOTE: Before enabling this, get your memory semantics absolutely straight
+      //   and doc'd. We don't want to mutate the StringBuilder by asking for a
+      //   conversion. And we certainly don't want to return the pointer from
+      //   StringBuilder::string() directly. To do so would invite all manner of
+      //   indirect segfaults.
+      //case TCode::STR:     *((char**) dest) = src->string();   return 0;
+      case TCode::STR_BUILDER:
+        if (nullptr != dest) {
+          StringBuilder* d = *((StringBuilder**) dest);
+          if (nullptr != d) {
+            // If the pointer passed in was not null, copy the content.
+            d->concat((StringBuilder*) src);
+          }
+          else {
+            // If the pointer passed in was null, copy the pointer.
+            *((StringBuilder**) dest) = (StringBuilder*) src;
+          }
+          ret = 0;
+        }
+        break;
+      default:  break;
+    }
   }
-  return -1;
+  return ret;
 }
 
-template <> int         C3PTypeConstraint<StringBuilder>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<StringBuilder*>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
     case TCode::BINARY:
@@ -1811,7 +1945,9 @@ template <> int         C3PTypeConstraint<StringBuilder>::serialize(void* obj, S
       {
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
-        encoder.write_string((char*) ((StringBuilder*) obj)->string());
+        StringBuilder* o = nullptr;
+        memcpy((void*) &o, obj, sizeof(StringBuilder*));
+        encoder.write_string((char*) o->string());
       }
       break;
 
@@ -1820,7 +1956,7 @@ template <> int         C3PTypeConstraint<StringBuilder>::serialize(void* obj, S
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<StringBuilder>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int8_t      C3PTypeConstraint<StringBuilder*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -1830,11 +1966,27 @@ template <> int8_t      C3PTypeConstraint<StringBuilder>::deserialize(void* obj,
 /// C3PBinBinder
 /// NOTE: This handler covers any binary data that is refered to by pointer
 ///   and length.
-template <> uint32_t    C3PTypeConstraint<C3PBinBinder>::length(void* obj) {  return (((C3PBinBinder*) obj)->len);  }
+template <> uint32_t    C3PTypeConstraint<C3PBinBinder>::length(void* obj) {
+  uint32_t ret = 0;
+  if (_pointer_safety_check(obj)) {
+    ret = ((C3PBinBinder*) obj)->len;
+  }
+  return ret;
+}
+
 template <> void        C3PTypeConstraint<C3PBinBinder>::to_string(void* obj, StringBuilder* out) {
-  const uint32_t L_ENDER = ((C3PBinBinder*) obj)->len;
-  if (L_ENDER > 0) {  StringBuilder::printBuffer(out, ((C3PBinBinder*) obj)->buf, L_ENDER);  }
-  //_type_blind_to_string((C3PBinBinder*) obj, out);
+  if (_pointer_safety_check(obj)) {
+    const uint32_t L_ENDER = ((C3PBinBinder*) obj)->len;
+    if (nullptr != ((C3PBinBinder*) obj)->buf) {
+      if (L_ENDER > 0) {
+        StringBuilder tmp_sb(((C3PBinBinder*) obj)->buf, L_ENDER);
+        tmp_sb.printDebug(out);
+      }
+    }
+  }
+  else {
+    out->concat("(null)");
+  }
 }
 
 template <> int8_t      C3PTypeConstraint<C3PBinBinder>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
@@ -1850,7 +2002,7 @@ template <> int8_t      C3PTypeConstraint<C3PBinBinder>::set_from(void* dest, co
 
 template <> int8_t      C3PTypeConstraint<C3PBinBinder>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
   if ((nullptr != src) & (nullptr != dest)) {
-    C3PBinBinder s = _load_from_mem(src);
+    //C3PBinBinder s = _load_from_mem(src);
     switch (DEST_TYPE) {
       case TCode::BINARY:    memcpy(dest, src, sizeof(C3PBinBinder));  return 0;
       default:  break;
@@ -1864,22 +2016,28 @@ template <> int8_t      C3PTypeConstraint<C3PBinBinder>::get_as(void* src, const
 ////////////////////////////////////////////////////////////////////////////////
 /// Vector3f64
 template <> void        C3PTypeConstraint<Vector3f64>::to_string(void* obj, StringBuilder* out) {
-  Vector3f64 v = _load_from_mem(obj);
-  out->concatf("(%.6f, %.6f, %.6f)", (double)(v.x), (double)(v.y), (double)(v.z));
+  if (_pointer_safety_check(obj)) {
+    Vector3f64 v = _load_from_mem(obj);
+    out->concatf("(%.6f, %.6f, %.6f)", (double)(v.x), (double)(v.y), (double)(v.z));
+  }
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3f64>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
-  switch (SRC_TYPE) {
-    case TCode::VECT_3_DOUBLE:     _store_in_mem(dest, _load_from_mem(src));       return 0;
-    default:  break;
+  if (_pointer_safety_check(dest)) {
+    switch (SRC_TYPE) {
+      case TCode::VECT_3_DOUBLE:     _store_in_mem(dest, _load_from_mem(src));       return 0;
+      default:  break;
+    }
   }
   return -1;
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3f64>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  switch (DEST_TYPE) {
-    case TCode::VECT_3_DOUBLE:     _store_in_mem(dest, _load_from_mem(src));       return 0;
-    default:  break;
+  if (_pointer_safety_check(src)) {
+    switch (DEST_TYPE) {
+      case TCode::VECT_3_DOUBLE:     _store_in_mem(dest, _load_from_mem(src));       return 0;
+      default:  break;
+    }
   }
   return -1;
 }
@@ -1888,22 +2046,28 @@ template <> int8_t      C3PTypeConstraint<Vector3f64>::get_as(void* src, const T
 ////////////////////////////////////////////////////////////////////////////////
 /// Vector3u8
 template <> void        C3PTypeConstraint<Vector3u8>::to_string(void* obj, StringBuilder* out) {
-  Vector3u8 v = _load_from_mem(obj);
-  out->concatf("(%u, %u, %u)", v.x, v.y, v.z);
+  if (_pointer_safety_check(obj)) {
+    Vector3u8 v = _load_from_mem(obj);
+    out->concatf("(%u, %u, %u)", v.x, v.y, v.z);
+  }
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3u8>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
-  switch (SRC_TYPE) {
-    case TCode::VECT_3_UINT8:     _store_in_mem(dest, _load_from_mem(src));       return 0;
-    default:  break;
+  if (_pointer_safety_check(dest)) {
+    switch (SRC_TYPE) {
+      case TCode::VECT_3_UINT8:     _store_in_mem(dest, _load_from_mem(src));       return 0;
+      default:  break;
+    }
   }
   return -1;
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3u8>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  switch (DEST_TYPE) {
-    case TCode::VECT_3_UINT8:     _store_in_mem(dest, _load_from_mem(src));       return 0;
-    default:  break;
+  if (_pointer_safety_check(src)) {
+    switch (DEST_TYPE) {
+      case TCode::VECT_3_UINT8:     _store_in_mem(dest, _load_from_mem(src));       return 0;
+      default:  break;
+    }
   }
   return -1;
 }
@@ -1912,22 +2076,28 @@ template <> int8_t      C3PTypeConstraint<Vector3u8>::get_as(void* src, const TC
 ////////////////////////////////////////////////////////////////////////////////
 /// Vector3i8
 template <> void        C3PTypeConstraint<Vector3i8>::to_string(void* obj, StringBuilder* out) {
-  Vector3i8 v = _load_from_mem(obj);
-  out->concatf("(%d, %d, %d)", v.x, v.y, v.z);
+  if (_pointer_safety_check(obj)) {
+    Vector3i8 v = _load_from_mem(obj);
+    out->concatf("(%d, %d, %d)", v.x, v.y, v.z);
+  }
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3i8>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
-  switch (SRC_TYPE) {
-    case TCode::VECT_3_INT8:     _store_in_mem(dest, _load_from_mem(src));       return 0;
-    default:  break;
+  if (_pointer_safety_check(dest)) {
+    switch (SRC_TYPE) {
+      case TCode::VECT_3_INT8:     _store_in_mem(dest, _load_from_mem(src));       return 0;
+      default:  break;
+    }
   }
   return -1;
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3i8>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  switch (DEST_TYPE) {
-    case TCode::VECT_3_INT8:     _store_in_mem(dest, _load_from_mem(src));       return 0;
-    default:  break;
+  if (_pointer_safety_check(src)) {
+    switch (DEST_TYPE) {
+      case TCode::VECT_3_INT8:     _store_in_mem(dest, _load_from_mem(src));       return 0;
+      default:  break;
+    }
   }
   return -1;
 }
@@ -1936,22 +2106,28 @@ template <> int8_t      C3PTypeConstraint<Vector3i8>::get_as(void* src, const TC
 ////////////////////////////////////////////////////////////////////////////////
 /// Vector3f
 template <> void        C3PTypeConstraint<Vector3f>::to_string(void* obj, StringBuilder* out) {
-  Vector3f v = _load_from_mem(obj);
-  out->concatf("(%.4f, %.4f, %.4f)", (double)(v.x), (double)(v.y), (double)(v.z));
+  if (_pointer_safety_check(obj)) {
+    Vector3f v = _load_from_mem(obj);
+    out->concatf("(%.4f, %.4f, %.4f)", (double)(v.x), (double)(v.y), (double)(v.z));
+  }
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3f>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
-  switch (SRC_TYPE) {
-    case TCode::VECT_3_FLOAT:     _store_in_mem(dest, _load_from_mem(src));       return 0;
-    default:  break;
+  if (_pointer_safety_check(dest)) {
+    switch (SRC_TYPE) {
+      case TCode::VECT_3_FLOAT:     _store_in_mem(dest, _load_from_mem(src));       return 0;
+      default:  break;
+    }
   }
   return -1;
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3f>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  switch (DEST_TYPE) {
-    case TCode::VECT_3_FLOAT:     _store_in_mem(dest, _load_from_mem(src));       return 0;
-    default:  break;
+  if (_pointer_safety_check(src)) {
+    switch (DEST_TYPE) {
+      case TCode::VECT_3_FLOAT:     _store_in_mem(dest, _load_from_mem(src));       return 0;
+      default:  break;
+    }
   }
   return -1;
 }
@@ -1960,22 +2136,28 @@ template <> int8_t      C3PTypeConstraint<Vector3f>::get_as(void* src, const TCo
 ////////////////////////////////////////////////////////////////////////////////
 /// Vector3u32
 template <> void        C3PTypeConstraint<Vector3u32>::to_string(void* obj, StringBuilder* out) {
-  Vector3u32 v = _load_from_mem(obj);
-  out->concatf("(%u, %u, %u)", v.x, v.y, v.z);
+  if (_pointer_safety_check(obj)) {
+    Vector3u32 v = _load_from_mem(obj);
+    out->concatf("(%u, %u, %u)", v.x, v.y, v.z);
+  }
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3u32>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
-  switch (SRC_TYPE) {
-    case TCode::VECT_3_UINT32:     _store_in_mem(dest, _load_from_mem(src));      return 0;
-    default:  break;
+  if (_pointer_safety_check(dest)) {
+    switch (SRC_TYPE) {
+      case TCode::VECT_3_UINT32:     _store_in_mem(dest, _load_from_mem(src));      return 0;
+      default:  break;
+    }
   }
   return -1;
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3u32>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  switch (DEST_TYPE) {
-    case TCode::VECT_3_UINT32:     _store_in_mem(dest, _load_from_mem(src));      return 0;
-    default:  break;
+  if (_pointer_safety_check(src)) {
+    switch (DEST_TYPE) {
+      case TCode::VECT_3_UINT32:     _store_in_mem(dest, _load_from_mem(src));      return 0;
+      default:  break;
+    }
   }
   return -1;
 }
@@ -1984,22 +2166,28 @@ template <> int8_t      C3PTypeConstraint<Vector3u32>::get_as(void* src, const T
 ////////////////////////////////////////////////////////////////////////////////
 /// Vector3i32
 template <> void        C3PTypeConstraint<Vector3i32>::to_string(void* obj, StringBuilder* out) {
-  Vector3i32 v = _load_from_mem(obj);
-  out->concatf("(%d, %d, %d)", v.x, v.y, v.z);
+  if (_pointer_safety_check(obj)) {
+    Vector3i32 v = _load_from_mem(obj);
+    out->concatf("(%d, %d, %d)", v.x, v.y, v.z);
+  }
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3i32>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
-  switch (SRC_TYPE) {
-    case TCode::VECT_3_INT32:     _store_in_mem(dest, _load_from_mem(src));      return 0;
-    default:  break;
+  if (_pointer_safety_check(dest)) {
+    switch (SRC_TYPE) {
+      case TCode::VECT_3_INT32:     _store_in_mem(dest, _load_from_mem(src));      return 0;
+      default:  break;
+    }
   }
   return -1;
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3i32>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  switch (DEST_TYPE) {
-    case TCode::VECT_3_INT32:     _store_in_mem(dest, _load_from_mem(src));      return 0;
-    default:  break;
+  if (_pointer_safety_check(src)) {
+    switch (DEST_TYPE) {
+      case TCode::VECT_3_INT32:     _store_in_mem(dest, _load_from_mem(src));      return 0;
+      default:  break;
+    }
   }
   return -1;
 }
@@ -2008,22 +2196,28 @@ template <> int8_t      C3PTypeConstraint<Vector3i32>::get_as(void* src, const T
 ////////////////////////////////////////////////////////////////////////////////
 /// Vector3u16
 template <> void        C3PTypeConstraint<Vector3u16>::to_string(void* obj, StringBuilder* out) {
-  Vector3u16 v = _load_from_mem(obj);
-  out->concatf("(%u, %u, %u)", v.x, v.y, v.z);
+  if (_pointer_safety_check(obj)) {
+    Vector3u16 v = _load_from_mem(obj);
+    out->concatf("(%u, %u, %u)", v.x, v.y, v.z);
+  }
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3u16>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
-  switch (SRC_TYPE) {
-    case TCode::VECT_3_UINT16:     _store_in_mem(dest, _load_from_mem(src));      return 0;
-    default:  break;
+  if (_pointer_safety_check(dest)) {
+    switch (SRC_TYPE) {
+      case TCode::VECT_3_UINT16:     _store_in_mem(dest, _load_from_mem(src));      return 0;
+      default:  break;
+    }
   }
   return -1;
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3u16>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  switch (DEST_TYPE) {
-    case TCode::VECT_3_UINT16:     _store_in_mem(dest, _load_from_mem(src));      return 0;
-    default:  break;
+  if (_pointer_safety_check(src)) {
+    switch (DEST_TYPE) {
+      case TCode::VECT_3_UINT16:     _store_in_mem(dest, _load_from_mem(src));      return 0;
+      default:  break;
+    }
   }
   return -1;
 }
@@ -2032,22 +2226,28 @@ template <> int8_t      C3PTypeConstraint<Vector3u16>::get_as(void* src, const T
 ////////////////////////////////////////////////////////////////////////////////
 /// Vector3i16
 template <> void        C3PTypeConstraint<Vector3i16>::to_string(void* obj, StringBuilder* out) {
-  Vector3i16 v = _load_from_mem(obj);
-  out->concatf("(%d, %d, %d)", v.x, v.y, v.z);
+  if (_pointer_safety_check(obj)) {
+    Vector3i16 v = _load_from_mem(obj);
+    out->concatf("(%d, %d, %d)", v.x, v.y, v.z);
+  }
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3i16>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
-  switch (SRC_TYPE) {
-    case TCode::VECT_3_INT16:     _store_in_mem(dest, _load_from_mem(src));      return 0;
-    default:  break;
+  if (_pointer_safety_check(dest)) {
+    switch (SRC_TYPE) {
+      case TCode::VECT_3_INT16:     _store_in_mem(dest, _load_from_mem(src));      return 0;
+      default:  break;
+    }
   }
   return -1;
 }
 
 template <> int8_t      C3PTypeConstraint<Vector3i16>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  switch (DEST_TYPE) {
-    case TCode::VECT_3_INT16:     _store_in_mem(dest, _load_from_mem(src));      return 0;
-    default:  break;
+  if (_pointer_safety_check(src)) {
+    switch (DEST_TYPE) {
+      case TCode::VECT_3_INT16:     _store_in_mem(dest, _load_from_mem(src));      return 0;
+      default:  break;
+    }
   }
   return -1;
 }
@@ -2122,61 +2322,62 @@ template <> int8_t      C3PTypeConstraint<StopWatch*>::deserialize(void* obj, St
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// KeyValuePair
-template <> uint32_t    C3PTypeConstraint<KeyValuePair>::length(void* obj) {  return ((KeyValuePair*) obj)->memoryCost(true);  }
-template <> void        C3PTypeConstraint<KeyValuePair>::to_string(void* obj, StringBuilder* out) {  ((KeyValuePair*) obj)->valToString(out);  }
-//template <> void        C3PTypeConstraint<KeyValuePair>::to_string(void* obj, StringBuilder* out) {  ((KeyValuePair*) obj)->toString(out);  }
+/// KeyValuePair*
+template <> uint32_t    C3PTypeConstraint<KeyValuePair*>::length(void* obj) {  return ((KeyValuePair*) obj)->memoryCost(true);  }
+template <> void        C3PTypeConstraint<KeyValuePair*>::to_string(void* obj, StringBuilder* out) {  ((KeyValuePair*) obj)->valToString(out);  }
+//template <> void        C3PTypeConstraint<KeyValuePair*>::to_string(void* obj, StringBuilder* out) {  ((KeyValuePair*) obj)->toString(out);  }
 
-template <> int8_t      C3PTypeConstraint<KeyValuePair>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+template <> int8_t      C3PTypeConstraint<KeyValuePair*>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
   switch (SRC_TYPE) {
     default:  break;
   }
   return -1;
 }
 
-template <> int8_t      C3PTypeConstraint<KeyValuePair>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+template <> int8_t      C3PTypeConstraint<KeyValuePair*>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
   switch (DEST_TYPE) {
     default:  break;
   }
   return -1;
 }
 
-template <> int         C3PTypeConstraint<KeyValuePair>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<KeyValuePair*>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   KeyValuePair* subj = ((KeyValuePair*) obj);
-  // NOTE: Hidden recursion.
+  // NOTE: Hidden recursion. This function is almost certainly being called by
+  //   some_other_subj->serialize(out, FORMAT). Keep your bearings...
   return ((0 == subj->serialize(out, FORMAT)) ? 0 : -1);
 }
 
-template <> int8_t      C3PTypeConstraint<KeyValuePair>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int8_t      C3PTypeConstraint<KeyValuePair*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Image
+/// Image*
 #if defined(CONFIG_C3P_IMG_SUPPORT)
-template <> uint32_t    C3PTypeConstraint<Image>::length(void* obj) {  return ((Image*) obj)->bytesUsed();  }
-template <> void        C3PTypeConstraint<Image>::to_string(void* obj, StringBuilder* out) {
+template <> uint32_t    C3PTypeConstraint<Image*>::length(void* obj) {  return ((Image*) obj)->bytesUsed();  }
+template <> void        C3PTypeConstraint<Image*>::to_string(void* obj, StringBuilder* out) {
   Image* img = (Image*) obj;
   out->concatf("Image (%ux%u %u bpp)", img->x(), img->y(), img->bitsPerPixel());
 }
 
-template <> int8_t      C3PTypeConstraint<Image>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+template <> int8_t      C3PTypeConstraint<Image*>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
   switch (SRC_TYPE) {
     default:  break;
   }
   return -1;
 }
 
-template <> int8_t      C3PTypeConstraint<Image>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+template <> int8_t      C3PTypeConstraint<Image*>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
   switch (DEST_TYPE) {
     default:  break;
   }
   return -1;
 }
 
-template <> int         C3PTypeConstraint<Image>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<Image*>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   Image* img = ((Image*) obj);
 
@@ -2189,13 +2390,14 @@ template <> int         C3PTypeConstraint<Image>::serialize(void* obj, StringBui
         uint32_t sz_buf = img->bytesUsed();
         if (sz_buf > 0) {
           uint32_t nb_buf = 0;
-          uint8_t intermediary[32] = {0, };
+          uint8_t intermediary[32];
+          memset(intermediary, 0, 32);
           if (0 == img->serializeWithoutBuffer(intermediary, &nb_buf)) {
             cbor::output_stringbuilder output(out);
             cbor::encoder encoder(output);
             encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(TCODE));
             encoder.write_bytes(intermediary, nb_buf);   // TODO: This might cause two discrete CBOR objects.
-            //encoder.write_bytes(img->buffer(), sz_buf);
+            encoder.write_bytes(img->buffer(), sz_buf);
           }
         }
       }
@@ -2206,7 +2408,8 @@ template <> int         C3PTypeConstraint<Image>::serialize(void* obj, StringBui
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<Image>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+
+template <> int8_t      C3PTypeConstraint<Image*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }

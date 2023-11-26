@@ -3,7 +3,7 @@
 # Author: J. Ian Lindsay
 # Date:   2020.06.26
 ###########################################################################
-OPTIMIZATION       = -O0 -g -fprofile-arcs -ftest-coverage --coverage
+OPTIMIZATION       = -O0 -g -fprofile-arcs -ftest-coverage --coverage -fno-omit-frame-pointer
 C_STANDARD         = gnu99
 CPP_STANDARD       = c++17
 

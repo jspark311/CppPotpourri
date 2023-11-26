@@ -22,7 +22,6 @@ limitations under the License.
 
 #include "KeyValuePair.h"
 
-#include <PriorityQueue.h>
 #if defined(CONFIG_C3P_IMG_SUPPORT)
   #include <Image/Image.h>
 #endif   // CONFIG_C3P_IMG_SUPPORT
@@ -49,31 +48,17 @@ limitations under the License.
 * Constructors/destructors, class initialization functions and so-forth...
 *******************************************************************************/
 
-/**
-* Protected delegate constructor.
-*/
-KeyValuePair::KeyValuePair(void* ptr, int l, const TCode TC, uint8_t f) : _target_mem(ptr), _len(l), _flags(f), _t_code(TC) {
-  _alter_flags(typeIsPointerPunned(TC), MANUVR_KVP_FLAG_DIRECT_VALUE);
-  // If we can know the length with certainty, record it.
-  if (typeIsFixedLength(TC)) {
-    _len = sizeOfType(TC);
-  }
+
+KeyValuePair::KeyValuePair(const char* key, C3PValue* v, uint8_t flags) {
+  setKey(key);
+  _set_new_value(v);
+  _alter_flags(true, flags);
 }
 
 
-/**
-* Protected delegate constructor.
-*/
-KeyValuePair::KeyValuePair(void* ptr, int l, const TCode TC, const char* k, uint8_t f) : KeyValuePair(ptr, l, TC, f) {
-  setKey(k);
-}
-
-
-/**
-* Protected delegate constructor.
-*/
-KeyValuePair::KeyValuePair(void* ptr, int l, const TCode TC, char* k, uint8_t f) : KeyValuePair(ptr, l, TC, f) {
-  setKey(k);
+KeyValuePair::KeyValuePair(char* key, C3PValue* v, uint8_t flags) {
+  setKey(key);
+  _set_new_value(v);
 }
 
 
@@ -83,40 +68,16 @@ KeyValuePair::KeyValuePair(void* ptr, int l, const TCode TC, char* k, uint8_t f)
 */
 KeyValuePair::~KeyValuePair() {
   if (nullptr != _next) {
+    // Wipe out any chain of siblings.
     KeyValuePair* a = _next;
     _next       = nullptr;
-    delete a;
+    if (a->reapKVP()) {
+      delete a;
+    }
   }
   _set_new_key(nullptr);
   _set_new_value(nullptr);
-  _t_code    = TCode::NONE;
-  _len       = 0;
   _flags     = 0;
-}
-
-
-/*******************************************************************************
-* Typed constructors and value accessor functions.
-*******************************************************************************/
-
-KeyValuePair::KeyValuePair(float val, const char* key) : KeyValuePair(nullptr, sizeof(float), TCode::FLOAT, key) {
-  uint8_t* src = (uint8_t*) &val;
-  *(((uint8_t*) &_target_mem) + 0) = *(src + 0);
-  *(((uint8_t*) &_target_mem) + 1) = *(src + 1);
-  *(((uint8_t*) &_target_mem) + 2) = *(src + 2);
-  *(((uint8_t*) &_target_mem) + 3) = *(src + 3);
-}
-
-
-// TODO: We might be able to treat this as a direct value on a 64-bit system.
-KeyValuePair::KeyValuePair(double val, const char* key) : KeyValuePair(malloc(sizeof(double)), sizeof(double), TCode::DOUBLE, key, (MANUVR_KVP_FLAG_REAP_VALUE)) {
-  if (nullptr != _target_mem) {
-    *((double*) _target_mem) = val;
-  }
-  else {
-    _alter_flags(false, MANUVR_KVP_FLAG_REAP_VALUE);
-    _alter_flags(true,  MANUVR_KVP_FLAG_ERR_MEM);
-  }
 }
 
 
@@ -128,30 +89,38 @@ KeyValuePair::KeyValuePair(double val, const char* key) : KeyValuePair(malloc(si
 /*
 * Take a key allocated elsewhere, and decline responsibility for it.
 */
-void KeyValuePair::setKey(const char* k) {
+int8_t KeyValuePair::setKey(const char* k) {
   _set_new_key((char*) k);
   _reap_key(false);
+  return 0;
 }
 
 /*
-* Take a key allocated elsewhere, and takes responsibility for it.
+* Take a key allocated elsewhere, and deep-copy it, taking responsibility for
+*   the copy.
 */
-void KeyValuePair::setKey(char* k) {
+int8_t KeyValuePair::setKey(char* k) {
+  int8_t ret = 0;
   if (nullptr != k) {
-    const int K_LEN = strlen(k)+1;
-    char* nk = (char*) malloc(K_LEN);
+    ret--;
+    int K_LEN = strlen(k);
+    char* nk = (char*) malloc(K_LEN + 1);
     if (nullptr != nk) {
       memcpy(nk, k, K_LEN);
+      *(nk + K_LEN) = 0;
       _set_new_key(nk);
       _reap_key(true);
+      ret = 0;
     }
     else {
-      _alter_flags(true, MANUVR_KVP_FLAG_ERR_MEM);
+      _alter_flags(true, C3P_KVP_FLAG_ERR_MEM);
     }
   }
   else {
     _set_new_key(k);
+    _reap_key(false);
   }
+  return ret;
 }
 
 
@@ -177,42 +146,13 @@ void KeyValuePair::_set_new_key(char* k) {
 *
 * @param  v A replacement value.
 */
-void KeyValuePair::_set_new_value(void* v) {
-  if ((nullptr != _target_mem) && reapValue()) {
-    switch (_t_code) {
-      // Types with destructors.
-      case TCode::KVP:          delete (KeyValuePair*) _target_mem;   break;
-      case TCode::STR_BUILDER:  delete (StringBuilder*) _target_mem;  break;
-      case TCode::IDENTITY:     delete (Identity*) _target_mem;       break;
-
-      #if defined(CONFIG_C3P_IMG_SUPPORT)
-      case TCode::IMAGE:        delete (Image*) _target_mem;          break;
-      #endif   // CONFIG_C3P_IMG_SUPPORT
-
-      // Types that are malloc()'d.
-      case TCode::INT64:
-      case TCode::INT128:
-      case TCode::UINT64:
-      case TCode::UINT128:
-      case TCode::DOUBLE:
-      case TCode::BINARY:
-      case TCode::STR:
-      case TCode::VECT_3_FLOAT:
-      case TCode::VECT_3_DOUBLE:
-      case TCode::VECT_3_INT8:
-      case TCode::VECT_3_UINT8:
-      case TCode::VECT_3_INT16:
-      case TCode::VECT_3_UINT16:
-      case TCode::VECT_3_INT32:
-      case TCode::VECT_3_UINT32:
-        free((void*)_target_mem);
-        break;
-
-      default: break;   // Anything else is left alone.
-    }
-    reapValue(false);   // Reset the reap flag in all cases.
+void KeyValuePair::_set_new_value(C3PValue* v) {
+  if ((nullptr != _value) && reapValue()) {
+    C3PValue* tmp_value = _value;
+    _value = nullptr;
+    delete tmp_value;
   }
-  _target_mem = v;
+  _value = v;
 }
 
 
@@ -267,10 +207,7 @@ KeyValuePair* KeyValuePair::retrieveByIdx(unsigned int idx) {
 KeyValuePair* KeyValuePair::retrieveByKey(const char* k) {
   if (nullptr != k) {
     if (nullptr != _key) {
-      //if (_key == k) {
-      // TODO: Awful. Hash map? pointer-comparisons?
       if (0 == strcmp(_key, k)) {
-        // If pointer comparison worked, we win.
         return this;
       }
     }
@@ -306,12 +243,15 @@ int8_t KeyValuePair::drop(KeyValuePair** root, KeyValuePair* drop) {
 /**
 * @param kvp is the KVP to link.
 */
-KeyValuePair* KeyValuePair::link(KeyValuePair* kvp) {
+KeyValuePair* KeyValuePair::link(KeyValuePair* kvp, bool reap_kvp) {
   if (nullptr == _next) {
+    if (nullptr != kvp) {
+      kvp->reapKVP(reap_kvp);
+    }
     _next = kvp;
   }
   else {
-    _next->link(kvp);
+    _next->link(kvp, reap_kvp);
   }
   return kvp;
 }
@@ -319,7 +259,7 @@ KeyValuePair* KeyValuePair::link(KeyValuePair* kvp) {
 /**
 * @return The number of KVPs in this list.
 */
-int KeyValuePair::count() {
+uint32_t KeyValuePair::count() {
   return (1 + ((nullptr == _next) ? 0 : _next->count()));
 }
 
@@ -329,64 +269,44 @@ int KeyValuePair::count() {
 *******************************************************************************/
 
 /**
-* @return [description]
+* Get a value container by its index.
+*
+* @param  idx      The sibling position
+* @return The value container for the KVP at the given index.
 */
-int8_t KeyValuePair::setValue(void* trg_buf, int len, TCode tc) {
-  int8_t return_value = -1;
-  if (typeCode() != tc) {
-    return -2;
+C3PValue* KeyValuePair::valueWithIdx(uint32_t idx) {
+  C3PValue* ret = nullptr;
+  if (0 < idx) {
+    if (nullptr != _next) {
+      ret = _next->valueWithIdx(--idx);
+    }
   }
-  switch (tc) {
-    case TCode::INT8:    // This frightens the compiler. Its fears are unfounded.
-    case TCode::UINT8:   // This frightens the compiler. Its fears are unfounded.
-    case TCode::BOOLEAN:
-      return_value = 0;
-      *((uint8_t*)&_target_mem) = *((uint8_t*) trg_buf);
-      break;
-    case TCode::INT16:    // This frightens the compiler. Its fears are unfounded.
-    case TCode::UINT16:   // This frightens the compiler. Its fears are unfounded.
-      return_value = 0;
-      *((uint16_t*)&_target_mem) = *((uint16_t*) trg_buf);
-      break;
-    case TCode::INT32:    // This frightens the compiler. Its fears are unfounded.
-    case TCode::UINT32:   // This frightens the compiler. Its fears are unfounded.
-      return_value = 0;
-      *((uint32_t*)&_target_mem) = *((uint32_t*) trg_buf);
-      break;
-    case TCode::FLOAT:    // This frightens the compiler. Its fears are unfounded.
-      return_value = 0;
-      *(((uint8_t*) &_target_mem) + 0) = *((uint8_t*) trg_buf + 0);
-      *(((uint8_t*) &_target_mem) + 1) = *((uint8_t*) trg_buf + 1);
-      *(((uint8_t*) &_target_mem) + 2) = *((uint8_t*) trg_buf + 2);
-      *(((uint8_t*) &_target_mem) + 3) = *((uint8_t*) trg_buf + 3);
-      break;
+  else {
+    ret = _value;
+  }
+  return ret;
+}
 
-    case TCode::DOUBLE:
-    case TCode::VECT_4_FLOAT:
-    case TCode::VECT_3_FLOAT:
-    case TCode::VECT_3_UINT32:
-    case TCode::VECT_3_UINT16:
-    case TCode::VECT_3_UINT8:
-    case TCode::VECT_3_INT32:
-    case TCode::VECT_3_INT16:
-    case TCode::VECT_3_INT8:
-      // TODO: This is probably wrong.
-      return_value = 0;
-      for (int i = 0; i < _len; i++) {
-        *((uint8_t*) _target_mem + i) = *((uint8_t*) trg_buf + i);
+/**
+* Get a value container by its key.
+*
+* @param  k        The desired key
+* @return The value container for the KVP with the given key.
+*/
+C3PValue* KeyValuePair::valueWithKey(const char* k) {
+  C3PValue* ret = nullptr;
+  if (nullptr != k) {
+    if (nullptr != _key) {
+      if (0 == strcmp(_key, k)) {
+        ret = _value;
       }
-      break;
-    case TCode::STR_BUILDER:     // A pointer to some StringBuilder.
-    case TCode::STR:             // A pointer to a string constant.
-    case TCode::IMAGE:           // A pointer to an Image.
-    case TCode::KVP:             // A pointer to another KVP.
-    case TCode::IDENTITY:        // A pointer to an Identity.
-    default:
-      return_value = 0;
-      _target_mem = trg_buf;  // TODO: Need to do an allocation check and possible cleanup.
-      break;
+    }
+
+    if ((nullptr == ret) & (nullptr != _next)) {
+      return _next->valueWithKey(k);
+    }
   }
-  return return_value;
+  return ret;
 }
 
 
@@ -396,17 +316,13 @@ int8_t KeyValuePair::setValue(void* trg_buf, int len, TCode tc) {
 * @param  trg_buf  A pointer to the place where we should write the result.
 * @return 0 on success or appropriate failure code.
 */
-int8_t KeyValuePair::valueWithIdx(uint8_t idx, void* trg_buf) {
-  int8_t return_value = -1;
-  if (0 < idx) {
-    if (nullptr != _next) {
-      return_value = _next->valueWithIdx(--idx, trg_buf);
-    }
+int8_t KeyValuePair::valueWithIdx(uint32_t idx, void* trg_buf) {
+  int8_t ret = -1;
+  C3PValue* val_container = valueWithIdx(idx);
+  if (nullptr != val_container) {
+    ret = val_container->get_as(val_container->tcode(), trg_buf);
   }
-  else {
-    return_value = getValueAs(trg_buf);
-  }
-  return return_value;
+  return ret;
 }
 
 /**
@@ -417,118 +333,65 @@ int8_t KeyValuePair::valueWithIdx(uint8_t idx, void* trg_buf) {
 * @return 0 on success or appropriate failure code.
 */
 int8_t KeyValuePair::valueWithKey(const char* k, void* trg_buf) {
-  if (nullptr != k) {
-    if (nullptr != _key) {
-      //if (_key == k) {
-      // TODO: Awful. Hash map? pointer-comparisons?
-      if (0 == strcmp(_key, k)) {
-        // If pointer comparison worked, return the value.
-        return getValueAs(trg_buf);
-      }
-    }
-
-    if (nullptr != _next) {
-      return _next->valueWithKey(k, trg_buf);
-    }
-  }
-  return -1;
-}
-
-
-// TODO: Memory implications... Type conversion matrix... But this is the
-//   outward-facing API.
-int8_t KeyValuePair::convertToType(const TCode TCODE_POST) {
   int8_t ret = -1;
-  switch (_t_code) {
-    case TCode::NONE:
-    case TCode::INVALID:
-      // In such (common) cases, blindly set the TCode, and don't attempt any
-      //   conversion.
-      ret = 0;
-      break;
-    default:
-      switch (TCODE_POST) {
-        case TCode::NONE:
-        case TCode::INVALID:
-          break;
-        default:
-          // The existing TCode is amneable to coercion into the new TCode.
-          ret = 0;
-          break;
-      }
-      break;
-  }
-
-  if (0 <= ret) {
-    _t_code = TCODE_POST;
+  C3PValue* val_container = valueWithKey(k);
+  if (nullptr != val_container) {
+    ret = val_container->get_as(val_container->tcode(), trg_buf);
   }
   return ret;
 }
 
 
-/**
-* All of the type-specialized getValueAs() fxns boil down to this. Which is private.
-*
-* @param  trg_buf  A pointer to the place where we should write the result.
-* @return 0 on success or appropriate failure code.
-*/
-int8_t KeyValuePair::getValueAs(void* trg_buf) {
-  int8_t return_value = -1;
-  switch (typeCode()) {
-    case TCode::INT8:    // This frightens the compiler. Its fears are unfounded.
-    case TCode::UINT8:   // This frightens the compiler. Its fears are unfounded.
-      return_value = 0;
-      *((uint8_t*) trg_buf) = *((uint8_t*)&_target_mem);
-      break;
-    case TCode::INT16:    // This frightens the compiler. Its fears are unfounded.
-    case TCode::UINT16:   // This frightens the compiler. Its fears are unfounded.
-      return_value = 0;
-      *((uint16_t*) trg_buf) = *((uint16_t*)&_target_mem);
-      break;
-    case TCode::INT32:    // This frightens the compiler. Its fears are unfounded.
-    case TCode::UINT32:   // This frightens the compiler. Its fears are unfounded.
-      return_value = 0;
-      *((uint32_t*) trg_buf) = *((uint32_t*)&_target_mem);
-      break;
-    case TCode::FLOAT:    // This frightens the compiler. Its fears are unfounded.
-      return_value = 0;
-      *((uint8_t*) trg_buf + 0) = *(((uint8_t*) &_target_mem) + 0);
-      *((uint8_t*) trg_buf + 1) = *(((uint8_t*) &_target_mem) + 1);
-      *((uint8_t*) trg_buf + 2) = *(((uint8_t*) &_target_mem) + 2);
-      *((uint8_t*) trg_buf + 3) = *(((uint8_t*) &_target_mem) + 3);
-      break;
-
-    case TCode::DOUBLE:
-      // TODO: This is probably wrong.
-      return_value = 0;
-      *((double*) trg_buf) = *((double*) _target_mem);
-      break;
-    case TCode::VECT_4_FLOAT:
-    case TCode::VECT_3_FLOAT:
-    case TCode::VECT_3_UINT32:
-    case TCode::VECT_3_UINT16:
-    case TCode::VECT_3_UINT8:
-    case TCode::VECT_3_INT32:
-    case TCode::VECT_3_INT16:
-    case TCode::VECT_3_INT8:
-      // TODO: This is probably wrong.
-      return_value = 0;
-      for (int i = 0; i < _len; i++) {
-        *((uint8_t*) trg_buf + i) = *((uint8_t*) _target_mem + i);
+int8_t KeyValuePair::convertToType(const TCode TC) {
+  int8_t ret = -1;
+  if (nullptr != _value) {
+    // We are experiencing a request to convert an existing value into a new
+    //   type. Sometimes this is done to upscale numeric types, or impart a
+    //   semantic alias to a more-basal type. In any case, the TCode in a
+    //   C3PValue, and is const. Thus, this will probably imply memory shuffle.
+    if (TC == _value->tcode()) {
+      ret = 0;
+    }
+    else {
+      if (reapContainer()) {
+        // TODO: Safe conversion.
+        C3PValue* replacement = new C3PValue(TC);
+        if (nullptr != replacement) {
+          if (0 == replacement->set(_value)) {
+            if (_value->reapValue()) {
+              // TODO: If this container was the owner of the data it held, and
+              //   it wasn't a deep-copy, we might need to take ownership of it?
+              //   Other assurances might make this check useless.
+            }
+            delete _value;
+            _value = replacement;
+            replacement = nullptr;
+            ret = 0;
+          }
+          else {
+            // Somehow we failed to set the value from our existing container.
+            // Don't leak memory...
+            delete replacement;
+          }
+        }
       }
-      break;
-
-    case TCode::STR_BUILDER:     // A pointer to some StringBuilder.
-    case TCode::STR:             // A pointer to a string constant.
-    case TCode::IMAGE:           // A pointer to an Image.
-    case TCode::KVP:             // A pointer to another KVP.
-    case TCode::IDENTITY:        // A pointer to an Identity.
-    default:
-      return_value = 0;
-      *((uintptr_t*) trg_buf) = ((uintptr_t) _target_mem);
-      break;
+      else {
+        // If the existing container needs to be replaced, but is not ours to
+        //   reap, we can't do anything about it. Not for leak reasons, but
+        //   because we have no means to update the pointers held by whatever
+        //   DOES has ownership.
+      }
+    }
   }
-  return return_value;
+  else {
+    // This is a request to allocate a container for an (until now) unspecififed
+    //   type. Note that no value is imparted. So the container will initialize
+    //   to T(0) until set.
+    _set_new_value(new C3PValue(TC));
+    reapContainer(true);
+    ret = (nullptr != _value) ? 0 : -1;
+  }
+  return ret;
 }
 
 
@@ -537,87 +400,9 @@ int8_t KeyValuePair::getValueAs(void* trg_buf) {
 * String processing and debug.
 *******************************************************************************/
 
-/**
-* This function prints the KVP's value to the provided buffer.
-*
-* @param out is the buffer to receive the printed value.
-*/
 void KeyValuePair::valToString(StringBuilder* out) {
-  uint8_t* buf = (uint8_t*) pointer();
-  switch (_t_code) {
-    case TCode::INT8:
-    case TCode::INT16:
-    case TCode::INT32:
-    case TCode::INT64:
-    case TCode::INT128:
-      out->concatf("%d", (uintptr_t) pointer());
-      break;
-    case TCode::UINT8:
-    case TCode::UINT16:
-    case TCode::UINT32:
-    case TCode::UINT64:
-    case TCode::UINT128:
-      out->concatf("%u", (uintptr_t) pointer());
-      // TODO: Newlib-nano will not have support for 64-bit ints.
-      //output->concatf("0x%08x%08x\n", ((uint32_t) (val >> 32)), ((uint32_t) (val & 0xFFFFFFFFULL)));
-      break;
-    case TCode::FLOAT:
-      {
-        float tmp;
-        memcpy((void*) &tmp, &buf, 4);
-        out->concatf("%.4f", (double) tmp);
-      }
-      break;
-    case TCode::DOUBLE:
-      {
-        double tmp;
-        getValueAs((void*) &tmp);
-        out->concatf("%.6f", tmp);
-      }
-      break;
-
-    case TCode::BOOLEAN:
-      out->concatf("%s", ((uintptr_t) pointer() ? "true" : "false"));
-      break;
-    case TCode::STR_BUILDER:
-      out->concat((StringBuilder*) pointer());
-      break;
-    case TCode::STR:
-      out->concatf("%s", (const char*) pointer());
-      break;
-    case TCode::VECT_3_FLOAT:
-      {
-        Vector3<float>* v = (Vector3<float>*) pointer();
-        out->concatf("(%.4f, %.4f, %.4f)", (double)(v->x), (double)(v->y), (double)(v->z));
-      }
-      break;
-    case TCode::VECT_3_UINT32:
-      {
-        Vector3<uint32_t>* v = (Vector3<uint32_t>*) pointer();
-        out->concatf("(%u, %u, %u)", v->x, v->y, v->z);
-      }
-      break;
-    //case TCode::VECT_4_FLOAT:
-    //  {
-    //    Vector4f* v = (Vector4f*) pointer();
-    //    out->concatf("(%.4f, %.4f, %.4f, %.4f)", (double)(v->w), (double)(v->x), (double)(v->y), (double)(v->z));
-    //  }
-    //  break;
-    case TCode::KVP:
-      if (nullptr != _target_mem) ((KeyValuePair*) _target_mem)->printDebug(out);
-      break;
-    case TCode::IDENTITY:
-      if (nullptr != _target_mem) ((Identity*) _target_mem)->toString(out);
-      break;
-    default:
-      {
-        int l_ender = (_len < 16) ? _len : 16;
-        for (int n = 0; n < l_ender; n++) {
-          out->concatf("%02x ", *((uint8_t*) buf + n));
-        }
-      }
-      break;
-  }
+  if (nullptr != _value) {  _value->toString(out);   }
+  else {                    out->concat("(nullptr)"); }
 }
 
 
@@ -625,16 +410,47 @@ void KeyValuePair::valToString(StringBuilder* out) {
 * Warning: call is propagated across entire list.
 */
 void KeyValuePair::printDebug(StringBuilder* out) {
-  out->concatf("\t%s\t%s\t%6s %6s ",
+  StringBuilder tmp;
+  tmp.concatf("\t%10s %5s %5s %5s %5s\t",
     (nullptr == _key ? "" : _key),
-    typecodeToStr(_t_code),
-    (_reap_key() ? "(rkey)" : ""),
-    (reapValue() ? "(rval)" : "")
+    (_reap_key()     ? "(key)" : ""),
+    (reapKVP()       ? "(kvp)" : ""),
+    (reapContainer() ? "(con)" : ""),
+    (reapValue()     ? "(val)" : "")
   );
-  valToString(out);
-  out->concat("\n");
+  if (nullptr != _value) {
+    _value->toString(&tmp, true);
+  }
+  tmp.concat('\n');
+  tmp.string();
+  out->concatHandoff(&tmp);
 
   if (nullptr != _next) _next->printDebug(out);
+}
+
+
+/**
+* Return the RAM use of this KVP.
+* By passing true to deep, the return value will also factor in concealed heap
+*   overhead of the containers themselves.
+* Return value accounts for padding due to alignment constraints.
+*
+* @param deep will also factor in heap overhead of the containers.
+* @return 0 on success, or negative on failure.
+*/
+int KeyValuePair::memoryCost(bool deep) {
+  // TODO: sizeof(intptr_t) for OVERHEAD_PER_MALLOC is an assumption based on a
+  //   specific build of newlib. Find a way to discover it from the build.
+  const uint32_t OVERHEAD_PER_CLASS  = (deep ? sizeof(KeyValuePair) : 0);
+  const uint32_t OVERHEAD_PER_MALLOC = (deep ? sizeof(intptr_t) : 0);
+
+  int32_t ret = OVERHEAD_PER_CLASS;
+  ret += OVERHEAD_PER_MALLOC;
+  ret += length();
+  if (nullptr != _next) {
+    ret += _next->memoryCost(deep);
+  }
+  return ret;
 }
 
 
@@ -702,92 +518,27 @@ KeyValuePair* KeyValuePair::unserialize(uint8_t* src, unsigned int len, const TC
 * @return 0 on success. Non-zero otherwise.
 */
 int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
+  KeyValuePair* src = this;
   int8_t ret = 0;
-
-  switch (_t_code) {
-    case TCode::INT8:
-    case TCode::UINT8:
-    case TCode::INT16:
-    case TCode::UINT16:
-    case TCode::INT32:
-    case TCode::UINT32:
-    case TCode::FLOAT:
-    case TCode::STR:
-    case TCode::DOUBLE:
-    case TCode::VECT_4_FLOAT:
-    case TCode::VECT_3_FLOAT:
-    case TCode::VECT_3_UINT32:
-    case TCode::VECT_3_UINT16:
-    case TCode::VECT_3_UINT8:
-    case TCode::VECT_3_INT32:
-    case TCode::VECT_3_INT16:
-    case TCode::VECT_3_INT8:
-    case TCode::BINARY:     // This is a pointer to a big binary blob.
-      if (typeIsPointerPunned(_t_code)) {
-        out->concat((unsigned char*) &_target_mem, _len);
+  while (nullptr != src) {
+    C3PValue* val_container = src->getValue();
+    if (nullptr != val_container) {
+      if (nullptr != src->getKey()) {
+        // This is a map.
+        // TODO: Write TCode::KVP, followed by an optional string.
       }
-      else {
-        out->concat((unsigned char*) _target_mem, _len);
-      }
-      break;
-
-    case TCode::IDENTITY:
-      {
-        Identity* ident = (Identity*) _target_mem;
-        uint16_t i_len = ident->length();
-        uint8_t buf[i_len];
-        if (ident->toBuffer(buf)) {
-          out->concat(&buf[0], i_len);
-        }
-        //StringBuilder id_serial;
-        //if (ident->toBuffer(&id_serial)) {
-        //  StringBuilder tmp_log("Serialized an Identity: \n");
-        //  id_serial.printDebug(&tmp_log);
-        //  printf("%s\n", tmp_log.string());
-        //  out->concatHandoff(&id_serial);
-        //}
-      }
-      break;
-
-    case TCode::KVP:
-      {
-        KeyValuePair* subj = (KeyValuePair*) _target_mem;
-        StringBuilder intermediary;
-        // NOTE: Recursion.
-        if (0 == subj->_encode_to_bin(&intermediary)) {
-          intermediary.string();  // Cause the buffer to be made contiguous.
-          out->concatHandoff(&intermediary);
-        }
-      }
-      break;
-
-    /* These are pointer types that require conversion. */
-    case TCode::STR_BUILDER:     // This is a pointer to some StringBuilder.
-      out->concat((StringBuilder*) _target_mem);
-      break;
-
-    #if defined(CONFIG_C3P_IMG_SUPPORT)
-    case TCode::IMAGE:      // This is a pointer to an Image.
-      {
-        Image* img = (Image*) _target_mem;
-        uint32_t sz_buf = img->bytesUsed();
-        if (sz_buf > 0) {
-          if (0 != img->serialize(out)) {
-            // Failure
-          }
-        }
-      }
-      break;
-    #endif   // CONFIG_C3P_IMG_SUPPORT
-
-    /* Anything else should be dropped. */
-    default:
-      break;
+      val_container->serialize(out, TCode::CBOR);
+    }
+    else {
+      // Peacefully ignore KVPs without value containers.
+    }
+    src = src->_next;
   }
 
-  if (_next) {
-    ret = _next->_encode_to_bin(out);
-  }
+  // TODO: I very much prefer recursion... Dig...
+  //if (_next) {
+  //  ret = _next->_encode_to_bin(out);
+  //}
   return ret;
 }
 
@@ -800,214 +551,31 @@ int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
 #if defined(CONFIG_C3P_CBOR)
 
 int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
+  // NOTE: This function exhibits concurrent use of two seperate CBOR encoder
+  //   objects on the same StringBuilder memory pool. This ought to be safe, as
+  //   long as all downstream CBOR encoder arrangements also are children of
+  //   output_stringbuilder (they ought to be).
   cbor::output_stringbuilder output(out);
   cbor::encoder encoder(output);
   KeyValuePair* src = this;
   int8_t ret = 0;
   while (nullptr != src) {
-    if (nullptr != src->getKey()) {
-      // This is a map.
-      encoder.write_map(1);
-      encoder.write_string(src->getKey());
+    C3PValue* val_container = src->getValue();
+    if (nullptr != val_container) {
+      if (nullptr != src->getKey()) {
+        // This is a map.
+        encoder.write_map(1);
+        encoder.write_string(src->getKey());
+      }
+      val_container->serialize(out, TCode::CBOR);
     }
-    switch(src->typeCode()) {
-      case TCode::INT8:
-        {
-          int8_t x = 0;
-          if (0 == src->getValueAs(&x)) {
-            encoder.write_int((int) x);
-          }
-        }
-        break;
-      case TCode::INT16:
-        {
-          int16_t x = 0;
-          if (0 == src->getValueAs(&x)) {
-            encoder.write_int((int) x);
-          }
-        }
-        break;
-      case TCode::INT32:
-        {
-          int32_t x = 0;
-          if (0 == src->getValueAs(&x)) {
-            encoder.write_int((int) x);
-          }
-        }
-        break;
-      case TCode::INT64:
-        {
-          int64_t x = 0;
-          if (0 == src->getValueAs(&x)) {
-            encoder.write_int(x);
-          }
-        }
-        break;
-      case TCode::UINT8:
-        {
-          uint8_t x = 0;
-          if (0 == src->getValueAs(&x)) {
-            encoder.write_int((unsigned int) x);
-          }
-        }
-        break;
-      case TCode::UINT16:
-        {
-          uint16_t x = 0;
-          if (0 == src->getValueAs(&x)) {
-            encoder.write_int((unsigned int) x);
-          }
-        }
-        break;
-      case TCode::UINT32:
-        {
-          uint32_t x = 0;
-          if (0 == src->getValueAs(&x)) {
-            encoder.write_int((unsigned int) x);
-          }
-        }
-        break;
-      case TCode::UINT64:
-        {
-          uint64_t x = 0;
-          if (0 == src->getValueAs(&x)) {
-            encoder.write_int(x);
-          }
-        }
-        break;
-      case TCode::FLOAT:
-        {
-          float x = 0;
-          if (0 == src->getValueAs(&x)) {
-            encoder.write_float(x);
-          }
-        }
-        break;
-
-      case TCode::DOUBLE:
-        {
-          double x = 0;
-          if (0 == src->getValueAs(&x)) {
-            encoder.write_double(x);
-          }
-        }
-        break;
-
-      case TCode::STR:
-        {
-          char* buf;
-          if (0 == src->getValueAs(&buf)) {
-            encoder.write_string(buf);
-          }
-        }
-        break;
-      case TCode::STR_BUILDER:
-        {
-          StringBuilder* buf;
-          if (0 == src->getValueAs(&buf)) {
-            encoder.write_string((char*) buf->string());
-          }
-        }
-        break;
-
-      case TCode::BINARY:
-      case TCode::VECT_3_FLOAT:
-      case TCode::VECT_4_FLOAT:
-      case TCode::VECT_3_UINT32:
-      case TCode::VECT_3_UINT16:
-      case TCode::VECT_3_UINT8:
-      case TCode::VECT_3_INT32:
-      case TCode::VECT_3_INT16:
-      case TCode::VECT_3_INT8:
-        // NOTE: This ought to work for any types retaining portability isn't important.
-        // TODO: Gradually convert types out of this block. As much as possible should
-        //   be portable. VECT_3_FLOAT ought to be an array of floats, for instance.
-        encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(src->typeCode()));
-        encoder.write_bytes((uint8_t*) src->pointer(), src->length());
-        break;
-
-      case TCode::IDENTITY:
-        {
-          Identity* ident;
-          if (0 == src->getValueAs(&ident)) {
-            uint16_t i_len = ident->length();
-            uint8_t buf[i_len];
-            if (ident->toBuffer(buf)) {
-              encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(src->typeCode()));
-              encoder.write_bytes(buf, i_len);
-            }
-          }
-        }
-        break;
-      case TCode::KVP:
-        {
-          StringBuilder intermediary;
-          KeyValuePair* subj;
-          if (0 == src->getValueAs(&subj)) {
-            // NOTE: Recursion.
-            if (0 == subj->_encode_to_cbor(&intermediary)) {
-              encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(src->typeCode()));
-              encoder.write_bytes(intermediary.string(), intermediary.length());
-            }
-          }
-        }
-        break;
-      case TCode::IMAGE:
-        #if defined(CONFIG_C3P_IMG_SUPPORT)
-          {
-            Image* img;
-            if (0 == src->getValueAs(&img)) {
-              uint32_t sz_buf = img->bytesUsed();
-              if (sz_buf > 0) {
-                uint32_t nb_buf = 0;
-                uint8_t intermediary[32] = {0, };
-                if (0 == img->serializeWithoutBuffer(intermediary, &nb_buf)) {
-                  encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(src->typeCode()));
-                  encoder.write_bytes(intermediary, nb_buf);   // TODO: This might cause two discrete CBOR objects.
-                  //encoder.write_bytes(img->buffer(), sz_buf);
-                }
-              }
-            }
-          }
-        #endif   // CONFIG_C3P_IMG_SUPPORT
-        break;
-      case TCode::RESERVED:
-        // Peacefully ignore the types we can't export.
-        break;
-      default:
-        // TODO: Handle pointer types, bool
-        break;
+    else {
+      // Peacefully ignore KVPs without value containers.
     }
     src = src->_next;
   }
   return ret;
 }
-
-
-/**
-* Return the RAM use of this string.
-* By passing true to deep, the return value will also factor in concealed heap
-*   overhead and the StringBuilder itself.
-* Return value accounts for padding due to alignment constraints.
-*
-* @param deep will also factor in heap overhead, and the StringBuilder itself.
-* @return 0 on success, or negative on failure.
-*/
-int KeyValuePair::memoryCost(bool deep) {
-  // TODO: sizeof(intptr_t) for OVERHEAD_PER_MALLOC is an assumption based on a
-  //   specific build of newlib. Find a way to discover it from the build.
-  const uint32_t OVERHEAD_PER_CLASS  = (deep ? sizeof(KeyValuePair) : 0);
-  const uint32_t OVERHEAD_PER_MALLOC = (deep ? sizeof(intptr_t) : 0);
-
-  int32_t ret = OVERHEAD_PER_CLASS;
-  ret += (_direct_value() ? 0 : OVERHEAD_PER_MALLOC);
-  ret += length();
-  if (nullptr != _next) {
-    ret += _next->memoryCost(deep);
-  }
-  return ret;
-}
-
 
 
 /*******************************************************************************
@@ -1081,15 +649,15 @@ void CBORArgListener::on_string(char* val) {
 };
 
 void CBORArgListener::on_bytes(uint8_t* data, int size) {
-  if (TCode::NONE != _pending_manuvr_tag) {
-    // If we've seen our vendor code in a tag, we interpret the first byte as a Manuvr
-    //   Typecode, and build an KeyValuePair the hard way.
-    const TCode TC = (const TCode) _pending_manuvr_tag;
-    KeyValuePair* temp_kvp = _inflate_manuvr_type(data, size, TC);
+  if (TCode::NONE != _pending_c3p_tag) {
+    // If we've seen our vendor code in a tag, we interpret the first byte as a
+    //   C3P Typecode, and build an KeyValuePair the hard way.
+    const TCode TC = (const TCode) _pending_c3p_tag;
+    KeyValuePair* temp_kvp = _inflate_c3p_type(data, size, TC);
     if (nullptr != temp_kvp) {
       _caaa(temp_kvp);
     }
-    _pending_manuvr_tag = TCode::NONE;
+    _pending_c3p_tag = TCode::NONE;
   }
   else {
     _caaa(new KeyValuePair(data, size));
@@ -1099,9 +667,11 @@ void CBORArgListener::on_bytes(uint8_t* data, int size) {
 void CBORArgListener::on_integer(int8_t v) {           _caaa(new KeyValuePair(v));               };
 void CBORArgListener::on_integer(int16_t v) {          _caaa(new KeyValuePair(v));               };
 void CBORArgListener::on_integer(int32_t v) {          _caaa(new KeyValuePair(v));               };
+void CBORArgListener::on_integer(int64_t v) {          _caaa(new KeyValuePair(v));               };
 void CBORArgListener::on_integer(uint8_t v) {          _caaa(new KeyValuePair(v));               };
 void CBORArgListener::on_integer(uint16_t v) {         _caaa(new KeyValuePair(v));               };
 void CBORArgListener::on_integer(uint32_t v) {         _caaa(new KeyValuePair(v));               };
+void CBORArgListener::on_integer(uint64_t v) {         _caaa(new KeyValuePair(v));               };
 void CBORArgListener::on_float32(float f) {            _caaa(new KeyValuePair(f));               };
 void CBORArgListener::on_double(double f) {            _caaa(new KeyValuePair(f));               };
 void CBORArgListener::on_special(unsigned int code) {  _caaa(new KeyValuePair((uint32_t) code)); };
@@ -1116,7 +686,7 @@ void CBORArgListener::on_bool(bool x) {  _caaa(new KeyValuePair(x));           }
 void CBORArgListener::on_tag(unsigned int tag) {
   switch (tag & 0xFFFFFF00) {
     case C3P_CBOR_VENDOR_CODE:
-      _pending_manuvr_tag = IntToTcode(tag & 0x000000FF);
+      _pending_c3p_tag = IntToTcode(tag & 0x000000FF);
       break;
     default:
       break;
@@ -1142,17 +712,12 @@ void CBORArgListener::on_extra_tag(unsigned long long tag) {}
 void CBORArgListener::on_extra_special(unsigned long long tag) {}
 
 
-KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, const TCode TC) {
+KeyValuePair* CBORArgListener::_inflate_c3p_type(uint8_t* data, int size, const TCode TC) {
   KeyValuePair* ret = nullptr;
   if (typeIsFixedLength(TC)) {
     if (size != sizeOfType(TC)) {
       return ret;
     }
-  }
-
-  if (nullptr != ret) {
-    // If we can't fit the value into the KVP class, it means we new'd it.
-    ret->reapValue(!typeIsPointerPunned(TC));
   }
 
   switch (TC) {
@@ -1163,9 +728,9 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
     case TCode::UINT8:           ret = new KeyValuePair(*((uint8_t*)data));   break;
     case TCode::UINT16:          ret = new KeyValuePair(*((uint16_t*)data));  break;
     case TCode::UINT32:          ret = new KeyValuePair(*((uint32_t*)data));  break;
-    case TCode::INT64:           break;
+    case TCode::INT64:           ret = new KeyValuePair(*((int64_t*)data));   break;
     case TCode::INT128:          break;
-    case TCode::UINT64:          break;
+    case TCode::UINT64:          ret = new KeyValuePair(*((uint64_t*)data));  break;
     case TCode::UINT128:         break;
     case TCode::BOOLEAN:         ret = new KeyValuePair((0 != *data));  break;
     case TCode::FLOAT:           ret = new KeyValuePair(*((float*)data));   break;
@@ -1180,32 +745,27 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
     //case TCode::VECT_2_UINT32:
     case TCode::VECT_3_FLOAT:
       ret = new KeyValuePair(new Vector3<float>(*((float*)(data+0)), *((float*)(data+4)), *((float*)(data+8))));
-      if (nullptr != ret) ret->reapValue(true);
       break;
-    //case TCode::VECT_3_DOUBLE:
+    case TCode::VECT_3_DOUBLE:
+      ret = new KeyValuePair(new Vector3<double>(*((double*)(data+0)), *((double*)(data+8)), *((double*)(data+16))));
+      break;
     case TCode::VECT_3_INT8:
       ret = new KeyValuePair(new Vector3<int8_t>(*((int8_t*)(data+0)), *((int8_t*)(data+1)), *((int8_t*)(data+2))));
-      if (nullptr != ret) ret->reapValue(true);
       break;
     case TCode::VECT_3_UINT8:
       ret = new KeyValuePair(new Vector3<uint8_t>(*((uint8_t*)(data+0)), *((uint8_t*)(data+1)), *((uint8_t*)(data+2))));
-      if (nullptr != ret) ret->reapValue(true);
       break;
     case TCode::VECT_3_INT16:
       ret = new KeyValuePair(new Vector3<int16_t>(*((int16_t*)(data+0)), *((int16_t*)(data+2)), *((int16_t*)(data+4))));
-      if (nullptr != ret) ret->reapValue(true);
       break;
     case TCode::VECT_3_UINT16:
       ret = new KeyValuePair(new Vector3<uint16_t>(*((uint16_t*)(data+0)), *((uint16_t*)(data+2)), *((uint16_t*)(data+4))));
-      if (nullptr != ret) ret->reapValue(true);
       break;
     case TCode::VECT_3_INT32:
       ret = new KeyValuePair(new Vector3<int32_t>(*((int32_t*)(data+0)), *((int32_t*)(data+4)), *((int32_t*)(data+8))));
-      if (nullptr != ret) ret->reapValue(true);
       break;
     case TCode::VECT_3_UINT32:
       ret = new KeyValuePair(new Vector3<uint32_t>(*((uint32_t*)(data+0)), *((uint32_t*)(data+4)), *((uint32_t*)(data+8))));
-      if (nullptr != ret) ret->reapValue(true);
       break;
     //case TCode::VECT_4_FLOAT:
     //case TCode::URL:
@@ -1226,7 +786,6 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
         KeyValuePair* tmp = KeyValuePair::unserialize(data, size, TCode::CBOR);
         if (tmp) {
           ret = new KeyValuePair(tmp);
-          if (nullptr != ret) ret->reapValue(true);
         }
       }
       break;
@@ -1237,7 +796,6 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
         Identity* tmp = Identity::fromBuffer(data, size);
         if (tmp) {
           ret = new KeyValuePair(tmp);
-          if (nullptr != ret) ret->reapValue(true);
         }
       }
       break;
@@ -1252,7 +810,6 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
             if (tmp->allocated()) {
             }
             ret = new KeyValuePair(tmp);
-            if (nullptr != ret) ret->reapValue(true);
           }
         }
         break;
@@ -1262,6 +819,12 @@ KeyValuePair* CBORArgListener::_inflate_manuvr_type(uint8_t* data, int size, con
     //   never have been serialized in the first place.
     default:
       break;
+  }
+
+  // If we can't fit the value into the KVP class, it means we new'd it.
+  if (nullptr != ret) {
+    ret->reapKVP(true);
+    ret->reapValue(!typeIsPointerPunned(TC));
   }
   return ret;
 }

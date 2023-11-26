@@ -1386,7 +1386,9 @@ int StringBuilder::split(const char* delims) {
 
 
 /**
-* This method prints ASCII representations of the bytes this instance contains.
+* This method prints a minimal ASCII representations of the bytes this instance
+*   contains.
+* TODO: Unfortunately, it also mutates its structure...
 *
 * @param output The StringBuilder object into which output is written.
 */
@@ -1395,10 +1397,12 @@ void StringBuilder::printDebug(StringBuilder* output) {
   int temp_len  = length();
 
   if ((temp != nullptr) && (temp_len > 0)) {
+    StringBuilder tmp;
     for (int i = 0; i < temp_len; i++) {
-      output->concatf("%02x ", *(temp + i));
+      tmp.concatf("%02x ", *(temp + i));
     }
-    output->concat("\n");
+    tmp.string();
+    output->concatHandoff(&tmp);
   }
 }
 
