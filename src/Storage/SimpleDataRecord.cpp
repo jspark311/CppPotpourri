@@ -23,6 +23,14 @@ uint32_t static_hash_wrapper_fxn(const uint8_t* BUF, const uint32_t LEN) {
 /*******************************************************************************
 * SimpleDataRecord base-class functions
 *******************************************************************************/
+SimpleDataRecord::SimpleDataRecord(uint32_t storage_tag, StorageRecordType rtype) :
+  _storage_tag(storage_tag), _version(0), _flags(0), _record_type(rtype),
+  _format(TCode::CBOR), _data_length(0), _timestamp(0), _hash(0)
+{
+  memset(_key, 0, sizeof(_key));
+}
+
+
 void SimpleDataRecord::printDebug(StringBuilder* output) {
   output->concatf("\t Tag:\t 0x%08x\n", _storage_tag);
   output->concatf("\t Key:\t %s\n", _key);
@@ -40,7 +48,8 @@ void SimpleDataRecord::printDebug(StringBuilder* output) {
 */
 int8_t SimpleDataRecord::_descriptor_serialize(StringBuilder* outbound_buf) {
   int8_t ret = 0;
-  uint8_t rec_desc[DATARECORD_BASE_SIZE] = {0, };
+  uint8_t rec_desc[DATARECORD_BASE_SIZE];
+  memset(rec_desc, 0, DATARECORD_BASE_SIZE);
   uint32_t idx = 0;
   // Storsge tag field.
   *(rec_desc + idx++) = (uint8_t) (_storage_tag >> 0);

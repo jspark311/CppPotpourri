@@ -250,7 +250,7 @@ template <class T> int PriorityQueue<T>::insertIfAbsent(T d) {
 */
 template <class T> int PriorityQueue<T>::insert(T d, int nu_pri) {
   int return_value = -1;
-  PriorityNode<T> *nu = (PriorityNode<T>*) malloc(sizeof(PriorityNode<T>));
+  PriorityNode<T>* nu = (PriorityNode<T>*) malloc(sizeof(PriorityNode<T>));
   if (nu == nullptr) {
     return return_value;      // Failed to allocate memory.
   }

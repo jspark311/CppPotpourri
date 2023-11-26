@@ -72,9 +72,11 @@ namespace cbor {
       virtual void on_integer(int8_t   value)        =0;
       virtual void on_integer(int16_t  value)        =0;
       virtual void on_integer(int32_t  value)        =0;
+      virtual void on_integer(int64_t  value)        =0;
       virtual void on_integer(uint8_t  value)        =0;
       virtual void on_integer(uint16_t value)        =0;
       virtual void on_integer(uint32_t value)        =0;
+      virtual void on_integer(uint64_t value)        =0;
       virtual void on_float32(float value)           =0;
       virtual void on_double(double value)           =0;
       virtual void on_bytes(uint8_t* data, int size) =0;

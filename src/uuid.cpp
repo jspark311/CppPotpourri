@@ -113,9 +113,10 @@ void uuid_to_str(const UUID* uuid, char* buffer, int buflen) {
 
 
 void uuid_to_sb(const UUID* uuid, StringBuilder* output) {
-  char buf[38];
-  memset(&buf[0], 0, 38);
-  uuid_to_str(uuid, &buf[0], 38);
+  const int STACK_BUF_LEN = 40;
+  char buf[STACK_BUF_LEN];
+  memset(&buf[0], 0, STACK_BUF_LEN);
+  uuid_to_str(uuid, &buf[0], STACK_BUF_LEN);
   output->concat(&buf[0]);
 }
 

@@ -784,17 +784,20 @@ void StringBuilder::concat(char nu) {
   concat(temp);
 }
 void StringBuilder::concat(int nu) {
-  char temp[12] = {0, };
+  char temp[12];
+  memset(temp, 0, sizeof(temp));
   sprintf(temp, "%d", nu);
   concat(temp);
 }
 void StringBuilder::concat(unsigned int nu) {
-  char temp[12] = {0, };
+  char temp[12];
+  memset(temp, 0, sizeof(temp));
   sprintf(temp, "%u", nu);
   concat(temp);
 }
 void StringBuilder::concat(double nu) {
-  char temp[16] = {0, };
+  char temp[24];
+  memset(temp, 0, sizeof(temp));
   sprintf(temp, "%f", nu);
   concat(temp);
 }
@@ -849,7 +852,8 @@ int StringBuilder::concatf(const char* format, va_list args) {
   for (unsigned short i = 0; i < len; i++) {  if (*(format+i) == '%') f_codes++; }
   // Allocate (hopefully) more space than we will need....
   const int est_len = len + 512 + (f_codes * 15);   // TODO: Iterate on failure of vsprintf().
-  char temp[est_len] = {0, };
+  char temp[est_len];
+  memset(temp, 0, est_len);
   int ret = 0;
   ret = vsprintf(temp, format, args);
   if (ret > 0) concat((char *) temp);
@@ -865,7 +869,8 @@ int StringBuilder::concatf(const char* format, va_list args) {
 */
 void StringBuilder::concat(String s) {
   const int INPUT_LEN  = s.length()+1;
-  char  out[INPUT_LEN] = {0, };
+  char  out[INPUT_LEN];
+  memset(out, 0, INPUT_LEN);
   s.toCharArray(out, len);
   concat((uint8_t*) out, strlen(out));
 }
@@ -1547,11 +1552,11 @@ StrLL* StringBuilder::_create_str_ll(int content_len, uint8_t* content_buf, StrL
       ret->str  = (((uint8_t*) ret) + sizeof(StrLL));   // Derive content ptr.
       if (nullptr != content_buf) {
         memcpy(ret->str, content_buf, content_len);     // Copy content, if provided.
+        *(ret->str + content_len) = 0;                  // Assign guard-rail.
       }
       else {
-        memset(ret->str, 0, content_len);               // Zero content, if not.
+        memset(ret->str, 0, content_len + 1);           // Zero content, if not.
       }
-      *(ret->str + content_len) = 0;                    // Assign guard-rail.
     }
   }
   return ret;

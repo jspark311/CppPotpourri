@@ -60,7 +60,7 @@ uint8_t input_stringbuilder::get_byte() {
 uint16_t input_stringbuilder::get_short() {
   uint16_t value = 0;
   if (nullptr != _str_bldr) {
-    uint8_t buf[2] = {0, };
+    uint8_t buf[2] = {0, 0};
     const int THIS_SIZE = _str_bldr->copyToBuffer(buf, 2, _offset);
     value |= ((uint16_t) buf[1] << 8);
     value |= ((uint16_t) buf[0]);
@@ -73,7 +73,7 @@ uint16_t input_stringbuilder::get_short() {
 uint32_t input_stringbuilder::get_int() {
   uint32_t value = 0;
   if (nullptr != _str_bldr) {
-    uint8_t buf[4] = {0, };
+    uint8_t buf[4] = {0, 0, 0, 0};
     const int THIS_SIZE = _str_bldr->copyToBuffer(buf, 4, _offset);
     value |= ((uint32_t) buf[0] << 24);
     value |= ((uint32_t) buf[1] << 16);
@@ -88,7 +88,7 @@ uint32_t input_stringbuilder::get_int() {
 float input_stringbuilder::get_float() {
   float value = 0.0f;
   if (nullptr != _str_bldr) {
-    uint8_t buf[4] = {0, };
+    uint8_t buf[4] = {0, 0, 0, 0};
     uint8_t* ptr = (uint8_t*)(void*) &value;
     const int THIS_SIZE = _str_bldr->copyToBuffer(buf, 4, _offset);
     *(ptr + 3) = buf[0];
@@ -104,7 +104,7 @@ float input_stringbuilder::get_float() {
 double input_stringbuilder::get_double() {
   double value = 0.0d;
   if (nullptr != _str_bldr) {
-    uint8_t buf[8] = {0, };
+    uint8_t buf[8] = {0, 0, 0, 0, 0, 0, 0, 0};
     uint8_t* ptr = (uint8_t*)(void*) &value;
     const int THIS_SIZE = _str_bldr->copyToBuffer(buf, 8, _offset);
     *(ptr + 7) = buf[0];
@@ -124,7 +124,7 @@ double input_stringbuilder::get_double() {
 uint64_t input_stringbuilder::get_long() {
   uint64_t value = 0;
   if (nullptr != _str_bldr) {
-    uint8_t buf[8] = {0, };
+    uint8_t buf[8] = {0, 0, 0, 0, 0, 0, 0, 0};
     const int THIS_SIZE = _str_bldr->copyToBuffer(buf, 8, _offset);
     value |= ((uint64_t) buf[0] << 56);
     value |= ((uint64_t) buf[1] << 48);
@@ -631,7 +631,7 @@ void decoder::run() {
             _state = STATE_TYPE;
             break;
           case 8:
-            _listener->on_extra_integer(_in->get_long(), 1);
+            _listener->on_integer(_in->get_long());
             _state = STATE_TYPE;
             break;
         }
@@ -675,7 +675,7 @@ void decoder::run() {
           _state = STATE_TYPE;
           break;
           case 8:
-          _listener->on_extra_integer(_in->get_long(), -1);
+          _listener->on_integer(_in->get_long());
           break;
         }
       } else break;
@@ -815,7 +815,6 @@ void decoder::run() {
           _state = STATE_TYPE;
           break;
           case 8:
-          //_listener->on_extra_special(_in->get_long());
           _listener->on_double(_in->get_double());
           _state = STATE_TYPE;
           break;
@@ -1033,7 +1032,7 @@ C3PValue* decoder_c3pvalue::next() {
             _state = STATE_TYPE;
             break;
           case 8:
-            _listener->on_extra_integer(_in->get_long(), 1);
+            _listener->on_integer(_in->get_long());
             _state = STATE_TYPE;
             break;
         }
@@ -1079,7 +1078,7 @@ C3PValue* decoder_c3pvalue::next() {
             _state = STATE_TYPE;
             break;
           case 8:
-            _listener->on_extra_integer(_in->get_long(), -1);
+            _listener->on_integer((int64_t) _in->get_long());
             break;
         }
       }

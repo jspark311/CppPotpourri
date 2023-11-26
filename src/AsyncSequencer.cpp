@@ -19,7 +19,7 @@
 * @param output is the buffer to receive the text.
 */
 void AsyncSequencer::printDebug(StringBuilder* output, const char* hdr) {
-  StringBuilder::styleHeader1(output, hdr);
+  StringBuilder::styleHeader1(output, ((nullptr != hdr) ? hdr : "AsyncSequencer"));
   output->concatf("\tRequest Fulfilled:    %c\n", request_fulfilled() ? 'y':'n');
   output->concatf("\tSteps outstanding:    %c\n", all_steps_have_run() ? 'n':'y');
   output->concatf("\tAll steps pass:       %c\n", all_steps_have_passed() ? 'y':'n');
@@ -37,10 +37,12 @@ void AsyncSequencer::printDebug(StringBuilder* output, const char* hdr) {
   //   build tables such as this, and it would be ok to take a long time to do it.
   StringBuilder row_def_string;
   row_def_string.concatf("\t%%%us |         %%c |        %%c |       %%c |        %%c |   %%s\n", col_width_0);
-  char dyn_row_0[SPACER_LENGTH + 1] = {0, };
-  char dyn_row_1[SPACER_LENGTH + 1] = {0, };
+  char dyn_row_0[SPACER_LENGTH + 1];
+  char dyn_row_1[SPACER_LENGTH + 1];
   memset(dyn_row_0, ' ', SPACER_LENGTH);
   memset(dyn_row_1, '-', SPACER_LENGTH);
+  dyn_row_0[SPACER_LENGTH] = 0;
+  dyn_row_1[SPACER_LENGTH] = 0;
   output->concatf("\t%s ", COL_0_HEADER);
   output->concat(dyn_row_0);
   output->concat("| Requested | Runnable | Running | Complete | Result\n");
