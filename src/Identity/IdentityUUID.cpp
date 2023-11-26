@@ -73,7 +73,8 @@ IdentityUUID::~IdentityUUID() {
 *******************************************************************************/
 
 void IdentityUUID::toString(StringBuilder* output) {
-  char uuid_str[40] = {0, };
+  char uuid_str[40];
+  memset(uuid_str, 0, sizeof(uuid_str));
   uuid_to_str(&uuid, uuid_str, 40);
   output->concat(uuid_str);
 }

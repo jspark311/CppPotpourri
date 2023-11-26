@@ -416,7 +416,7 @@ void ParsingConsole::printHelp(StringBuilder* output) {
   ConsoleCommand* tmpcmd = nullptr;
   for (int i = 0; i < count; i++) {
     tmpcmd = _cmd_list.get(i);
-    char sc_str[4] = {0, };
+    char sc_str[4] = {0, 0, 0, 0};
     memcpy(sc_str, "   ", 3);
     if ('\0' != tmpcmd->shortcut) {
       sc_str[0] = '(';
