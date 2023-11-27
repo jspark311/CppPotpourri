@@ -147,7 +147,8 @@ C3PType* getTypeHelper(const TCode);
 * This is a binder object for consolidating pointer-length parameters into a
 *   single object. Some binary types need this for ease of handling.
 * Objects of this type are mainly internal to C3PType and
-*   C3PValue, and will always be heap-allocated (and free'd) by those classes.
+*   C3PValue, and will always be heap-allocated (and free'd) by those classes
+*   when necessary.
 * Buffer write-through semantics are abstracted by C3PType's API.
 */
 typedef struct c3p_bin_binder_t {

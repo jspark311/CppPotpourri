@@ -102,20 +102,6 @@ C3P wants the following capabilities, which will probably implicate this file.
 
 
 /*******************************************************************************
-* Supported type support for C3PValue.
-* These options govern which high-level types can be handled by C3PValue. These
-*   choices will impact support for parsing/packing specific types.
-* These tend to multiply build size costs, and most programs don't need to parse
-*   or pack all of the high-level types that they might support internally.
-*   Because their call-chains are often opaque to the linker, we allow them to
-*   be disabled this way, following the enablement of their respective types.
-*******************************************************************************/
-// TODO: Image
-// TODO: EnumWrapper
-// TODO:
-
-
-/*******************************************************************************
 * Assumptions about platform properties.
 * NOTE: This abstraction strategy relies on the platform being built with
 *   the same options as C3P.
@@ -285,6 +271,28 @@ C3P wants the following capabilities, which will probably implicate this file.
   #endif    // CONFIG_C3P_IMG_SUPPORT
 #endif   // CONFIG_C3P_SSD1331
 #endif   // false
+
+
+
+/*******************************************************************************
+* Supported type support for C3PValue.
+* These options govern which high-level types can be handled by C3P's
+*   type-interchange layer. These choices will impact support for parsing and
+*   packing specific types.
+* These tend to multiply build size costs, and most programs don't need to parse
+*   or pack all of the high-level types that they might support internally.
+*   Because their call-chains are often opaque to the linker, we allow them to
+*   be disabled this way, following the enablement of their respective types.
+*******************************************************************************/
+// TODO: Image
+// TODO: EnumWrapper
+
+// If we want exportable trace, we need to support some data types for
+//   cross-system interchange.
+#if defined(CONFIG_C3P_TIL_TRACE) && \
+    !defined(CONFIG_C3P_TIL_STOPWATCH)
+  #define CONFIG_C3P_TIL_STOPWATCH
+#endif
 
 
 #endif  // BUILD_RATIONALIZER_META_HEADER
