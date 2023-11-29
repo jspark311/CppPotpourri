@@ -18,24 +18,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 
-This class descends from ManuvrOS's Argument and TypeTranscriber classes.
-
-Lessons learned from ManuvrOS:
---------------------------------------------------------------------------------
-This class can easily become obnoxious and brittle. ManuvrOS tried to use this
-  idea as a richly-typed data carrier for general internal use. Although this
-  strategy functioned, it was prone to memory faults and ownership confusion.
-The use of this class should be restricted to working as an intermediary
-  between the serialized and the in-memory forms of class data. Unless/until
-  the API can be made to work without the problems it grew the last time.
-
-TODO: Part of the problem it had last time was that it was (and still is) doing
-  too much. C3PValue should handle the type abstraction, and this should be
-  concerned with typing those objects into a shape for aggregate handling.
-
 TODO: Since this class renders large chains of function calls opaque to the
   linker, it would be nice to put bounds on binary size with pre-processor
-  case-offs. Eventually, that will be C3PValue's ambit.
+  case-offs.
 */
 
 
@@ -59,7 +44,7 @@ TODO: Since this class renders large chains of function calls opaque to the
 
 
 /*******************************************************************************
-*
+* KeyValuePair
 *******************************************************************************/
 class KeyValuePair {
   public:
@@ -294,7 +279,6 @@ class KeyValuePair {
     uint32_t count();
 
     /* Accessors to type information and underpinnings. */
-    //int8_t getValueAs(void* trg_buf);
     C3PValue* valueWithIdx(uint32_t idx);
     int8_t    valueWithIdx(uint32_t idx, void* trg_buf);
     C3PValue* valueWithKey(const char*);

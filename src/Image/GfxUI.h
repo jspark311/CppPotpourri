@@ -4,12 +4,11 @@ Author: J. Ian Lindsay
 Date:   2022.05.28
 
 These classes are built on top of the Image and graphics classes, and implement
-  bi-directional button flows between the user and firmware. These classes
+  bi-directional UI flows between the user and firmware. These classes
   only make sense if the mode of user input is a 2-axis surface, such as a
   mouse or touchscreen).
-Touch and render coordinates are assumed to be isometric and to have the same
-  origin. Arrangements where this is not true must do transform work prior ro
-  providing input events.
+
+See the README.md fil the GfxUI directory for details.
 
 This source file was never part of Adafruit's library. They are small graphics
   utilities that help implement simple UIs.
@@ -292,6 +291,8 @@ class GfxUILayout {
 *******************************************************************************/
 class GfxUIElement : public GfxUILayout {
   public:
+    virtual ~GfxUIElement() {};
+
     void enableFrames(uint32_t frame_flags = GFXUI_FLAG_DRAW_FRAME_MASK) {
       _class_clear_flag(GFXUI_FLAG_DRAW_FRAME_MASK);
       _class_set_flag(frame_flags & GFXUI_FLAG_DRAW_FRAME_MASK);
@@ -359,8 +360,6 @@ class GfxUIElement : public GfxUILayout {
     GfxUIElement(GfxUILayout* layout, GfxUIStyle* style, uint32_t f);
     GfxUIElement(GfxUILayout* layout, uint32_t f) : GfxUIElement(layout, nullptr, f) {};
     GfxUIElement(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f);
-
-    virtual ~GfxUIElement() {};
 
     int _add_child(GfxUIElement*);
     int _remove_child(GfxUIElement*);

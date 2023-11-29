@@ -20,7 +20,7 @@ limitations under the License.
 
 An abstract typeless data container class. This is used to support type
   abstraction of our internal types and cuts down on templating elsewhere. It
-  is primarilly used as an intermediary for parsers and packers.
+  is primarily used as an intermediary for parsers and packers.
 
 NOTE: The TCode of a C3PValue is const for assurance reasons, and cannot be
   changed once set. This fact precludes the use of C3PValue in any milieu that
@@ -94,7 +94,6 @@ class Identity;
 
 /*
 * An abstract typeless data container class.
-* TODO: This needs to eat all of the type polymorphism in KeyValuePair.
 */
 class C3PValue {
   public:
@@ -256,7 +255,7 @@ class C3PValue {
     *
     * Still keeping it.
     *        ---J. Ian Lindsay   Sat Sep 25 01:05:52 MST 2021
-    *        ---J. Ian Lindsay   Tue Nov 14 23:55:39 MST 2021
+    *        ---J. Ian Lindsay   Tue Nov 14 23:55:39 MST 2023
     */
     const TCode _TCODE;        // The hard-declared type of this Value.
     bool        _val_by_ref;   // If true, _target_mem's native type is a pointer to something.
@@ -269,7 +268,6 @@ class C3PValue {
 
     void _reap_existing_value();
 
-    //inline void* _type_pun() {  return &_target_mem;  };
     inline void* _type_pun() {  return (_punned_ptr ? &_target_mem : _target_mem);  };
 };
 
