@@ -35,6 +35,12 @@ This file contains the implementation of type constraints for our wrapped types.
   #include "../cbor-cpp/cbor.h"
 #endif
 
+/* Image support costs code size. Don't support it unless requested. */
+#if defined(CONFIG_C3P_IMG_SUPPORT)
+  #include "../Image/Image.h"
+#endif
+
+
 // Some numeric types might be handled as pointer-puns on 64-bit ALUs, but must
 //   be heap-allocated on 32-bit builds for the sake of maintaining uniform
 //   assurances about their behavior with the type API. Specifically, it allows
@@ -65,10 +71,13 @@ This file contains the implementation of type constraints for our wrapped types.
 static const C3PTypeConstraint<int8_t>          c3p_type_helper_int8(         "INT8",         1,  TCode::INT8,           (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
 static const C3PTypeConstraint<int16_t>         c3p_type_helper_int16(        "INT16",        2,  TCode::INT16,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
 static const C3PTypeConstraint<int32_t>         c3p_type_helper_int32(        "INT32",        4,  TCode::INT32,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
+static const C3PTypeConstraint<int64_t>         c3p_type_helper_int64(        "INT64",        8,  TCode::INT64,          (CONDITIONAL_TFLAGS_64_BIT));
 static const C3PTypeConstraint<uint8_t>         c3p_type_helper_uint8(        "UINT8",        1,  TCode::UINT8,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
 static const C3PTypeConstraint<uint16_t>        c3p_type_helper_uint16(       "UINT16",       2,  TCode::UINT16,         (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
 static const C3PTypeConstraint<uint32_t>        c3p_type_helper_uint32(       "UINT32",       4,  TCode::UINT32,         (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
+static const C3PTypeConstraint<uint64_t>        c3p_type_helper_uint64(       "UINT64",       8,  TCode::UINT64,         (CONDITIONAL_TFLAGS_64_BIT));
 static const C3PTypeConstraint<float>           c3p_type_helper_float(        "FLOAT",        4,  TCode::FLOAT,          (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
+static const C3PTypeConstraint<double>          c3p_type_helper_double(       "DOUBLE",       8,  TCode::DOUBLE,         (CONDITIONAL_TFLAGS_64_BIT));
 static const C3PTypeConstraint<bool>            c3p_type_helper_bool(         "BOOL",         1,  TCode::BOOLEAN,        (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
 static const C3PTypeConstraint<char*>           c3p_type_helper_str(          "STR",          0,  TCode::STR,            (TCODE_FLAG_MASK_STRING_TYPE));
 static const C3PTypeConstraint<StringBuilder*>  c3p_type_helper_stringbuilder("STR_BLDR",     0,  TCode::STR_BUILDER,    (TCODE_FLAG_VALUE_IS_POINTER));
@@ -84,10 +93,6 @@ static const C3PTypeConstraint<Image*>          c3p_type_helper_image(        "I
 static const C3PTypeConstraint<KeyValuePair*>   c3p_type_helper_kvp(          "KVP",          0,  TCode::KVP,            (TCODE_FLAG_VALUE_IS_POINTER));
 static const C3PTypeConstraint<Identity*>       c3p_type_helper_identity(     "IDENTITY",     0,  TCode::IDENTITY,       (TCODE_FLAG_VALUE_IS_POINTER));
 static const C3PTypeConstraint<StopWatch*>      c3p_type_helper_stopwatch(    "STOPWATCH",    sizeof(StopWatch),  TCode::STOPWATCH,      (TCODE_FLAG_VALUE_IS_POINTER));
-
-static const C3PTypeConstraint<int64_t>         c3p_type_helper_int64(        "INT64",        8,  TCode::INT64,          (CONDITIONAL_TFLAGS_64_BIT));
-static const C3PTypeConstraint<uint64_t>        c3p_type_helper_uint64(       "UINT64",       8,  TCode::UINT64,         (CONDITIONAL_TFLAGS_64_BIT));
-static const C3PTypeConstraint<double>          c3p_type_helper_double(       "DOUBLE",       8,  TCode::DOUBLE,         (CONDITIONAL_TFLAGS_64_BIT));
 
 // Type-indirected handlers (parameter binders).
 static const C3PTypeConstraint<C3PBinBinder>    c3p_type_helper_ptrlen(       "BINARY",       0,  TCode::BINARY,         (TCODE_FLAG_PTR_LEN_TYPE | TCODE_FLAG_LEGAL_FOR_ENCODING));

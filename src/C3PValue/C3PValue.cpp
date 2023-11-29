@@ -28,6 +28,11 @@ limitations under the License.
   #include "../cbor-cpp/cbor.h"
 #endif
 
+/* Image support costs code size. Don't support it unless requested. */
+#if defined(CONFIG_C3P_IMG_SUPPORT)
+  #include "../Image/Image.h"
+#endif
+
 
 /*******************************************************************************
 *   ___ _              ___      _ _              _      _
@@ -226,7 +231,6 @@ int8_t C3PValue::set(uint8_t* src, uint32_t l, const TCode SRC_TYPE) {
   }
   return ret;
 }
-
 
 
 /*

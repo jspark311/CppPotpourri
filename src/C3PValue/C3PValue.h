@@ -89,7 +89,7 @@ class Identity;
 
 /* Image support costs code size. Don't support it unless requested. */
 #if defined(CONFIG_C3P_IMG_SUPPORT)
-  #include "../Image/Image.h"
+  class Image;
 #endif
 
 /*
