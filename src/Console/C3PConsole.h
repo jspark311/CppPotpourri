@@ -23,11 +23,11 @@ limitations under the License.
 
 #include <inttypes.h>
 #include <stdint.h>
-#include "StringBuilder.h"
-#include "CppPotpourri.h"
-#include "Pipes/BufferAccepter/BufferAccepter.h"
-#include "LightLinkedList.h"
-#include "EnumeratedTypeCodes.h"
+#include "../StringBuilder.h"
+#include "../CppPotpourri.h"
+#include "../Pipes/BufferAccepter/BufferAccepter.h"
+#include "../LightLinkedList.h"
+#include "../EnumeratedTypeCodes.h"
 
 /* Class flags. */
 #define CONSOLE_FLAG_LOCAL_ECHO         0x01  // Should the console echo back?

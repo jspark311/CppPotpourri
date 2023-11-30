@@ -46,7 +46,7 @@ const char* TripleAxisCompass::errorString(CompassErr x) {
 *
 * @return 0 on acceptance, or -1 on sense mis-match.
 */
-int8_t TripleAxisCompass::pushVector(SpatialSense s, Vector3f* data, Vector3f* error) {
+FAST_FUNC int8_t TripleAxisCompass::pushVector(SpatialSense s, Vector3f* data, Vector3f* error) {
   uint32_t tmp_millis;
   bool compass_updated = false;
   switch (s) {

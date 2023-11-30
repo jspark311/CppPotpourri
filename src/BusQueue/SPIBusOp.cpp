@@ -85,7 +85,7 @@ SPIBusOp::~SPIBusOp() {
 }
 
 
-int8_t  SPIBusOp::bitsPerFrame(SPIFrameSize fsz) {
+FAST_FUNC int8_t  SPIBusOp::bitsPerFrame(SPIFrameSize fsz) {
   switch (fsz) {
     case SPIFrameSize::BITS_8:
     case SPIFrameSize::BITS_9:
@@ -102,7 +102,7 @@ int8_t  SPIBusOp::bitsPerFrame(SPIFrameSize fsz) {
 }
 
 
-uint8_t SPIBusOp::bitsPerFrame() {
+FAST_FUNC uint8_t SPIBusOp::bitsPerFrame() {
   uint8_t ret = 0;
   switch ((SPIFrameSize) (_busop_flags() & SPI_XFER_FLAG_FRAME_SIZE_MASK)) {
     case SPIFrameSize::BITS_32:    ret += 8;
@@ -129,7 +129,7 @@ uint8_t SPIBusOp::bitsPerFrame() {
 * @param  p6 The third transfer parameter.
 * @param  p7 The fourth transfer parameter.
 */
-void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4, uint8_t p5, uint8_t p6, uint8_t p7) {
+FAST_FUNC void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4, uint8_t p5, uint8_t p6, uint8_t p7) {
   xfer_params[0] = p0;
   xfer_params[1] = p1;
   xfer_params[2] = p2;
@@ -141,37 +141,37 @@ void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t
   _param_len     = 8;
 }
 
-void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4, uint8_t p5, uint8_t p6) {
+FAST_FUNC void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4, uint8_t p5, uint8_t p6) {
   setParams(p0, p1, p2, p3, p4, p5, p6, 0);
   _param_len     = 7;
 }
 
-void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4, uint8_t p5) {
+FAST_FUNC void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4, uint8_t p5) {
   setParams(p0, p1, p2, p3, p4, p5, 0, 0);
   _param_len     = 6;
 }
 
-void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4) {
+FAST_FUNC void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3, uint8_t p4) {
   setParams(p0, p1, p2, p3, p4, 0, 0, 0);
   _param_len     = 5;
 }
 
-void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3) {
+FAST_FUNC void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2, uint8_t p3) {
   setParams(p0, p1, p2, p3, 0, 0, 0, 0);
   _param_len     = 4;
 }
 
-void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2) {
+FAST_FUNC void SPIBusOp::setParams(uint8_t p0, uint8_t p1, uint8_t p2) {
   setParams(p0, p1, p2, 0, 0, 0, 0, 0);
   _param_len     = 3;
 }
 
-void SPIBusOp::setParams(uint8_t p0, uint8_t p1) {
+FAST_FUNC void SPIBusOp::setParams(uint8_t p0, uint8_t p1) {
   setParams(p0, p1, 0, 0, 0, 0, 0, 0);
   _param_len     = 2;
 }
 
-void SPIBusOp::setParams(uint8_t p0) {
+FAST_FUNC void SPIBusOp::setParams(uint8_t p0) {
   setParams(p0, 0, 0, 0, 0, 0, 0, 0);
   _param_len     = 1;
 }
@@ -190,7 +190,7 @@ void SPIBusOp::setParams(uint8_t p0) {
 * 1 1 0 | 1  0   // C  = (P ^ D)
 * 1 1 1 | 0  1
 */
-int8_t SPIBusOp::_assert_cs(bool asrt) {
+FAST_FUNC int8_t SPIBusOp::_assert_cs(bool asrt) {
   if (csAsserted() ^ asrt) {
     csAsserted(asrt);
     setPin(_cs_pin, !(asrt ^ csActiveHigh()));
@@ -221,7 +221,7 @@ int8_t SPIBusOp::abort(XferFault cause) {
 *
 * @return 0 on success. Non-zero on failure.
 */
-int8_t SPIBusOp::markComplete() {
+FAST_FUNC int8_t SPIBusOp::markComplete() {
   //if (csAsserted()) {
     // If this job has bus control, we need to release the bus.
     _assert_cs(false);
@@ -243,7 +243,7 @@ int8_t SPIBusOp::markComplete() {
 * Wipes this bus operation so it can be reused.
 * Be careful not to blow away the flags that prevent us from being reaped.
 */
-void SPIBusOp::wipe() {
+FAST_FUNC void SPIBusOp::wipe() {
   BusOp::_busop_wipe(this);
   // Flags that deal with memory management are untouched.
   _cs_pin     = 255;

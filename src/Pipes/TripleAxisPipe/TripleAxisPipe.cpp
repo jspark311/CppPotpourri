@@ -51,7 +51,7 @@ const char* TripleAxisPipe::spatialSenseStr(SpatialSense s) {
 *
 * @return 0 on sucess on both sides of the fork, -1 on one failure, or -2 on two failures.
 */
-int8_t TripleAxisFork::pushVector(SpatialSense s, Vector3f* data, Vector3f* error) {
+FAST_FUNC int8_t TripleAxisFork::pushVector(SpatialSense s, Vector3f* data, Vector3f* error) {
   int8_t ret = -2;
   if ((nullptr != _LEFT) && (0 == _LEFT->pushVector(s, data, error))) {
     ret++;
@@ -88,7 +88,7 @@ void TripleAxisFork::printPipe(StringBuilder* output, uint8_t stage, uint8_t ver
 *
 * @return -2 on null NXT, or return code from downstream pushVector() fxn.
 */
-int8_t TripleAxisConvention::pushVector(SpatialSense s, Vector3f* data, Vector3f* error) {
+FAST_FUNC int8_t TripleAxisConvention::pushVector(SpatialSense s, Vector3f* data, Vector3f* error) {
   Vector3f stacked_dat;
   Vector3f stacked_err;
   float inversion = 1.0;
@@ -180,7 +180,7 @@ int8_t TripleAxisTerminus::getDataWithErr(Vector3f* d, Vector3f* e, uint32_t* c)
 *
 * @return 0 on refresh, or -1 on sense mis-match.
 */
-int8_t TripleAxisTerminus::pushVector(SpatialSense s, Vector3f* data, Vector3f* error) {
+FAST_FUNC int8_t TripleAxisTerminus::pushVector(SpatialSense s, Vector3f* data, Vector3f* error) {
   int8_t ret = -1;
   if (_SENSE == s) {
     _last_update = millis();
@@ -261,7 +261,7 @@ int8_t TripleAxisSingleFilter::getDataWithErr(Vector3f* d, Vector3f* e) {
 *
 * @return 0 on refresh, or -1 on sense mis-match, -3 on uninitialized.
 */
-int8_t TripleAxisSingleFilter::pushVector(SpatialSense s, Vector3f* data, Vector3f* error) {
+FAST_FUNC int8_t TripleAxisSingleFilter::pushVector(SpatialSense s, Vector3f* data, Vector3f* error) {
   int8_t ret = -3;
 
   if (!initialized()) {

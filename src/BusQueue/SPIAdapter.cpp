@@ -67,11 +67,11 @@ int8_t SPIAdapter::init() {
 * @param  _op  The bus operation to execute.
 * @return Zero on success, or appropriate error code.
 */
-int8_t SPIAdapter::queue_io_job(BusOp* _op){
+FAST_FUNC int8_t SPIAdapter::queue_io_job(BusOp* _op){
   return SPIAdapter::queue_io_job(_op, 0);
 }
 
-int8_t SPIAdapter::queue_io_job(BusOp* _op, int priority) {
+FAST_FUNC int8_t SPIAdapter::queue_io_job(BusOp* _op, int priority) {
   SPIBusOp* op = (SPIBusOp*) _op;
   int8_t ret = -5;
 
@@ -129,7 +129,7 @@ int8_t SPIAdapter::queue_io_job(BusOp* _op, int priority) {
 *
 * @return the number of bus operations proc'd.
 */
-int8_t SPIAdapter::advance_work_queue() {
+FAST_FUNC int8_t SPIAdapter::advance_work_queue() {
   int8_t return_value = 0;
 
   if (nullptr == current_job) {
@@ -199,7 +199,7 @@ int8_t SPIAdapter::advance_work_queue() {
 *
 * @return the number of callbacks proc'd.
 */
-int8_t SPIAdapter::service_callback_queue() {
+FAST_FUNC int8_t SPIAdapter::service_callback_queue() {
   int8_t return_value = 0;
 
   while ((return_value < _cb_per_event) && (0 < callback_queue.size())) {

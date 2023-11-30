@@ -18,8 +18,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#ifndef __STOP_WATCH_H__
-#define __STOP_WATCH_H__
+#ifndef __C3P_TIMER_TOOLS_H__
+#define __C3P_TIMER_TOOLS_H__
 
 #include <inttypes.h>
 #include <stdint.h>
@@ -50,7 +50,6 @@ class StopWatch {
     int serialize(StringBuilder*, const TCode FORMAT);
 
     static void printDebugHeader(StringBuilder*);
-
 
   private:
     uint32_t _tag;      // A slot for arbitrary application data.
@@ -120,4 +119,4 @@ class MicrosTimeout : public PeriodicTimeout {
 };
 
 
-#endif // __STOP_WATCH_H__
+#endif // __C3P_TIMER_TOOLS_H__

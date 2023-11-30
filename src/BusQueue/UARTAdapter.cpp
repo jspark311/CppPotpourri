@@ -261,3 +261,4 @@ int UARTAdapter::_handle_rx_push() {
   }
   return ret;
 }
+

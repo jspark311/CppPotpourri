@@ -22,7 +22,6 @@ This is the basal implementation of the Storage interface.
 */
 
 #include "Storage.h"
-#include "cbor-cpp/cbor.h"
 
 
 const char* Storage::errStr(const StorageErr e) {

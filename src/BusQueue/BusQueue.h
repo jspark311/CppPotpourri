@@ -1,5 +1,5 @@
 /*
-File:   BusQueue/BusQueue.h
+File:   BusQueue.h
 Author: J. Ian Lindsay
 Date:   2016.05.28
 
@@ -511,7 +511,7 @@ template <class T> class BusAdapter : public BusOpCallback {
     T preallocated_bus_jobs[14];
 
 
-    BusAdapter(uint8_t anum, uint8_t maxq) : ADAPTER_NUM(anum), MAX_Q_DEPTH(maxq), preallocated(8) {};
+    BusAdapter(uint8_t anum, uint8_t maxq) : ADAPTER_NUM(anum), MAX_Q_DEPTH(maxq), preallocated(14) {};
 
     /*
     * Wipe all of our preallocated BusOps and pass them into the prealloc queue.

@@ -20,7 +20,7 @@ limitations under the License.
 
 */
 
-#include "BusQueue/BusQueue.h"
+#include "BusQueue.h"
 
 
 /*******************************************************************************

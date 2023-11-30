@@ -1,8 +1,8 @@
 #include <inttypes.h>
 #include <stdint.h>
-#include "BusQueue/BusQueue.h"
-#include "StringBuilder.h"
-#include "AbstractPlatform.h"
+#include "BusQueue.h"
+#include "../StringBuilder.h"
+#include "../AbstractPlatform.h"
 
 #ifndef __SPI_QUEUE_TEMPLATE_H__
 #define __SPI_QUEUE_TEMPLATE_H__

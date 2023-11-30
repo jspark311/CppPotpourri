@@ -32,8 +32,8 @@ limitations under the License.
 #include "../PriorityQueue.h"
 #include "../ElementPool.h"
 #include "../AbstractPlatform.h"
-#include "../C3PLogger.h"
 #include "../SensorFilter.h"
+#include "../C3PLogger.h"
 
 
 /*******************************************************************************

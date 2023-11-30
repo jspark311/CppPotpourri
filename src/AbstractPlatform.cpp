@@ -181,7 +181,7 @@ int8_t __attribute__((weak)) setPin(uint8_t, bool) {        return -1;       }
 int8_t __attribute__((weak)) readPin(uint8_t) {             return -1;       }
 int8_t __attribute__((weak)) analogWrite(uint8_t pin, float val) {               return -1;  }
 int8_t __attribute__((weak)) analogWriteFrequency(uint8_t pin, uint32_t freq) {  return -1;  }
-void __attribute__((weak)) c3p_log(uint8_t, const char*, StringBuilder*) {   }
+void   __attribute__((weak)) c3p_log(uint8_t, const char*, StringBuilder*) {   }
 AbstractPlatform* __attribute__((weak)) platformObj() {     return nullptr;  }
 
 /*

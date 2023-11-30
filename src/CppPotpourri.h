@@ -150,15 +150,10 @@ int randomArt(uint8_t* dgst_raw, unsigned int dgst_raw_len, const char* title, S
 /*******************************************************************************
 * Interfaces and callback definitions in use throughout this library.
 *******************************************************************************/
-/*
-* Shorthand for a pointer to a "void fxn(void)"
-* No contracts. It is just used to make code read better.
-*/
-typedef void (*FxnPointer)();
+/* Shorthand for a pointer to a "void fxn(void)" */
+typedef void  (*FxnPointer)();
 
-/*
-* Callbacks for drivers that provide extra GPI pins.
-*/
+/* Callbacks for drivers that provide extra GPI pins. */
 typedef void (*PinCallback)(uint8_t pin, uint8_t level);
 
 

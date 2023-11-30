@@ -20,8 +20,9 @@ limitations under the License.
 
 #include "../CppPotpourri.h"
 #include "../StringBuilder.h"
-#include "TimerTools.h"
+#include "../Meta/Rationalizer.h"
 #include "../cbor-cpp/cbor.h"
+#include "TimerTools.h"
 
 
 /**
@@ -48,7 +49,7 @@ void StopWatch::reset() {
 *   use-cases in which collection-points must be controlled for carefully (such
 *   as in C3PTrace).
 */
-bool StopWatch::addRuntime(const unsigned long START_TIME, const unsigned long STOP_TIME) {
+ISR_FUNC bool StopWatch::addRuntime(const unsigned long START_TIME, const unsigned long STOP_TIME) {
   _executions++;
   _run_time_last    = delta_assume_wrap((uint32_t) STOP_TIME, (uint32_t) START_TIME);
   _run_time_best    = strict_min(_run_time_last, _run_time_best);
@@ -60,7 +61,7 @@ bool StopWatch::addRuntime(const unsigned long START_TIME, const unsigned long S
 }
 
 
-bool StopWatch::markStop() {
+ISR_FUNC bool StopWatch::markStop() {
   const uint32_t STOP_TIME = micros();
   bool ret = false;
   if (_start_micros > 0) {

@@ -159,7 +159,7 @@ int8_t I2CAdapter::io_op_callback(BusOp* _op) {
 * @param  _op  The bus operation to execute.
 * @return Zero on success, or appropriate error code.
 */
-int8_t I2CAdapter::queue_io_job(BusOp* op) {
+FAST_FUNC int8_t I2CAdapter::queue_io_job(BusOp* op) {
   int8_t ret = -1;
   I2CBusOp* nu = (I2CBusOp*) op;
   //nu->setVerbosity(getVerbosity());
@@ -200,7 +200,7 @@ int8_t I2CAdapter::queue_io_job(BusOp* op) {
 *
 * @return the number of bus operations proc'd.
 */
-int8_t I2CAdapter::advance_work_queue() {
+FAST_FUNC int8_t I2CAdapter::advance_work_queue() {
   int8_t return_value = 0;
   bool recycle = busOnline();
   while (recycle) {

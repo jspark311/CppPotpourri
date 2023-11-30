@@ -32,7 +32,7 @@ This file is the tortured result of growing pains since the beginning of
 #include <stdint.h>
 #include <stdarg.h>
 
-#include "BusQueue/BusQueue.h"
+#include "BusQueue.h"
 #include "StringBuilder.h"
 #include "LightLinkedList.h"
 #include "AbstractPlatform.h"
