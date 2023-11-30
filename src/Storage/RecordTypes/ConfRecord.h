@@ -66,6 +66,8 @@ class ConfRecord : public SimpleDataRecord {
     inline int8_t getConf(const char* KEY, float* val) {        return _get_conf(KEY, TCode::FLOAT, (void*) val);  };
     inline int8_t getConf(const char* KEY, double* val) {       return _get_conf(KEY, TCode::DOUBLE, (void*) val);  };
 
+    KeyValuePair* getKVP();
+
     /* Obligate overrides from DataRecord. */
     int8_t serialize(StringBuilder*, TCode);
     int8_t deserialize(StringBuilder*, TCode);

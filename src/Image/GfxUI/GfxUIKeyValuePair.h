@@ -12,11 +12,8 @@ These classes are built on top of the GfxUI classes, and implement higher-level
 #ifndef __C3P_GFXUI_KIT_KVP_H
 #define __C3P_GFXUI_KIT_KVP_H
 
-#include "../Image.h"
-#include "../ImageUtils.h"
 #include "../../C3PValue/C3PValue.h"
 #include "../../C3PValue/KeyValuePair.h"
-#include "../GfxUI.h"
 
 #define GFXUI_C3PVAL_FLAG_SHOW_TYPE_INFO     0x01000000   //
 #define GFXUI_C3PVAL_FLAG_INHIBIT_REFRESH    0x02000000   //
@@ -87,6 +84,7 @@ class GfxUIKeyValuePair : public GfxUIElement {
 
   private:
     KeyValuePair* _kvp;
+    bool _kvp_loaded;
 };
 
 

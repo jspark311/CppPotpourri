@@ -6,10 +6,11 @@ Date:   2023.10.04
 */
 
 #include "../GfxUI.h"
+#include "../../Storage/Storage.h"
 
 
 /*******************************************************************************
-* GfxUIDataRecord
+* GfxUIOptionsView
 *******************************************************************************/
 GfxUIOptionsView::GfxUIOptionsView(ConfRecord* conf_record, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f) :
   GfxUITabbedContentPane(lay, sty, (f | GFXUI_FLAG_ALWAYS_REDRAW)), _conf(conf_record)

@@ -138,6 +138,18 @@ void ConfRecord::printConfRecord(StringBuilder* output, const char* spec_key) {
 }
 
 
+KeyValuePair* ConfRecord::getKVP() {
+  if (allocated(true)) {
+    return _kvp;
+  }
+  return nullptr;
+}
+
+
+/*******************************************************************************
+* Memory management
+*******************************************************************************/
+
 /**
 * This is a fast check of the enum plan against the KVP memory conditions. If
 *   the force parameter is true, the check will also attempt allocation of any

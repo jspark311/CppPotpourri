@@ -25,13 +25,13 @@ static GfxUIStyle* gfxui_style_for_tcode(const TCode TC, GfxUIStyle* s) {
       case TCode::INT16:   acc += 0x191900;
       case TCode::INT32:   acc += 0x191900;
       case TCode::INT64:   acc += 0x191900;
-        acc += 0x4dd2ff;
+        acc += 0x5072ff;
         break;
       case TCode::UINT8:   acc += 0x191900;
       case TCode::UINT16:  acc += 0x191900;
       case TCode::UINT32:  acc += 0x191900;
       case TCode::UINT64:  acc += 0x191900;
-        acc += 0x4dc3ff;
+        acc += 0x4d93ff;
         break;
       case TCode::FLOAT:   acc += 0x2a0c0c;
       case TCode::DOUBLE:  acc += 0x2a0c0c;
@@ -98,7 +98,7 @@ int GfxUIC3PType::_render(UIGfxWrapper* ui_gfx) {
     uint32_t i_y = internalPosY();
     uint16_t i_w = internalWidth();
     uint16_t i_h = internalHeight();
-    ui_gfx->img()->fillRect(i_x, i_y, i_w, i_h, _style.color_bg);
+    //ui_gfx->img()->fillRect(i_x, i_y, i_w, i_h, _style.color_bg);   // TODO: Somehow this is out of bounds.
     ui_gfx->img()->setCursor(i_x, i_y);
     ui_gfx->img()->setTextSize(_style.text_size);
     ui_gfx->img()->setTextColor(_style.color_active);
@@ -162,7 +162,7 @@ int GfxUIC3PValue::_render(UIGfxWrapper* ui_gfx) {
         uint32_t type_y = 0;
         uint32_t type_w = 0;
         uint32_t type_h = 0;
-        ui_gfx->img()->getTextBounds((const uint8_t*) TC_STRING, 0, 0, &type_x, &type_y, &type_w, &type_h);
+        ui_gfx->img()->getTextBounds((const uint8_t*) TC_STRING, i_x, i_y, &type_x, &type_y, &type_w, &type_h);
         GfxUILayout tc_layout(
           i_x, i_y, TC_STR_PAD_PX_MIN, type_h,
           0, 0, 0, (TC_STR_PAD_PX_MIN - type_w),
@@ -187,6 +187,8 @@ int GfxUIC3PValue::_render(UIGfxWrapper* ui_gfx) {
       ui_gfx->img()->fillRect(i_x, i_y, i_w, i_h, _style.color_bg);
       StringBuilder line;
       _value->toString(&line, false);
+      //if (line.length() > some_limit) {
+      //}
       ui_gfx->img()->setCursor(i_x, i_y);
       ui_gfx->img()->setTextSize(_style.text_size);
       ui_gfx->img()->setTextColor(_style.color_active, _style.color_bg);
