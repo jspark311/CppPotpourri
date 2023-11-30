@@ -784,13 +784,13 @@ void StringBuilder::concat(char nu) {
   concat(temp);
 }
 void StringBuilder::concat(int nu) {
-  char temp[12];
+  char temp[24];
   memset(temp, 0, sizeof(temp));
   sprintf(temp, "%d", nu);
   concat(temp);
 }
 void StringBuilder::concat(unsigned int nu) {
-  char temp[12];
+  char temp[24];
   memset(temp, 0, sizeof(temp));
   sprintf(temp, "%u", nu);
   concat(temp);

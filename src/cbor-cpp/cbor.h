@@ -3,9 +3,6 @@
 *   the original package. It was grouped together to aid repo orginization, and
 *   has been mutated. The author's original license is reproduced below.
 *                                                      ---J. Ian Lindsay
-*
-* TODO: Make all integers a specified width.
-* TODO: Fully test changes.
 */
 
 /*
