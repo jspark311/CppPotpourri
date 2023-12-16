@@ -227,6 +227,7 @@ int8_t C3PValue::set(uint8_t* src, uint32_t l, const TCode SRC_TYPE) {
   if (nullptr != _target_mem) {
     ((C3PBinBinder*) _target_mem)->buf = src;
     ((C3PBinBinder*) _target_mem)->len = l;
+    _set_trace++;
     ret = 0;
   }
   return ret;

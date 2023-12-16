@@ -9,7 +9,7 @@
 #include "StringBuilder.h"
 #include "CryptoBurrito/Cryptographic.h"
 
-class ParsingConsole;
+class C3P_Console;
 class CryptoProcessor;
 
 #ifndef __ABSTRACT_PLATFORM_TEMPLATE_H__
@@ -281,7 +281,7 @@ class AbstractPlatform {
     };
 
     /* These are bootstrap checkpoints. */
-    int8_t configureConsole(ParsingConsole*);
+    int8_t configureConsole(C3P_Console*);
     inline uint8_t platformState() {   return (_pflags & ABSTRACT_PF_FLAG_P_STATE_MASK);  };
 
     void printCryptoOverview(StringBuilder*);

@@ -72,7 +72,6 @@ SOURCES_CPP += ../../src/C3PValue/*.cpp
 SOURCES_CPP += ../../src/Image/*.cpp
 SOURCES_CPP += ../../src/Console/*.cpp
 SOURCES_CPP += ../../src/cbor-cpp/*.cpp
-SOURCES_CPP += ../../src/C3PEvents/*.cpp
 SOURCES_CPP += ../../src/Pipes/TripleAxisPipe/*.cpp
 SOURCES_CPP += ../../src/M2MLink/*.cpp
 SOURCES_CPP += ../../src/Identity/*.cpp

@@ -314,11 +314,6 @@ int callback_reboot(StringBuilder* text_return, StringBuilder* args) {
 }
 
 
-const ConsoleCommand cmd00 = ConsoleCommand("gpio",   '\0', "GPIO values", "[val|mode] [pin] [value]", 2, callback_gpio_value);
-const ConsoleCommand cmd01 = ConsoleCommand("pfinfo", '\0', "Platform information", "[types | crypto]", 0, callback_platform_info);
-const ConsoleCommand cmd02 = ConsoleCommand("reboot", '\0', "Reboot firmware", "[reason code]", 0, callback_reboot);
-
-
 /**
 * The application would optionally call this function with a console handler to
 *   add the platform functions above. This overhead should be removed from the
@@ -327,10 +322,16 @@ const ConsoleCommand cmd02 = ConsoleCommand("reboot", '\0', "Reboot firmware", "
 * @param console is the application-created object for handling consoles.
 * @return 0 always.
 */
-int8_t AbstractPlatform::configureConsole(ParsingConsole* console) {
-  console->defineCommand(&cmd00);
-  console->defineCommand(&cmd01);
-  console->defineCommand(&cmd02);
+int8_t AbstractPlatform::configureConsole(C3P_Console* console) {
+  #if defined(CONFIG_C3P_CONSOLE_GPIO_TOOL)
+    console->defineCommand("gpio",   '\0', "GPIO values", "[val|mode] [pin] [value]", 2, callback_gpio_value);
+  #endif
+  #if defined(CONFIG_C3P_CONSOLE_PFINFO_TOOL)
+    console->defineCommand("pfinfo", '\0', "Platform information", "[types | crypto]", 0, callback_platform_info);
+  #endif   
+  #if defined(CONFIG_C3P_CONSOLE_REBOOT_TOOL)
+    console->defineCommand("reboot", '\0', "Reboot firmware", "[reason code]", 0, callback_reboot);
+  #endif
   return 0;
 }
 

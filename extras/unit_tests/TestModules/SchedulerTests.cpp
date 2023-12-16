@@ -25,7 +25,7 @@ This program tests the Scheduler class. Since Scheduler is truely aware of the
   actually closed. That said, we test as much as we can.
 */
 
-#include "C3PEvents/C3PScheduler.h"
+#include "TimerTools/C3PScheduler.h"
 #include "AsyncSequencer.h"
 
 /*******************************************************************************

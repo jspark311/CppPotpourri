@@ -23,7 +23,7 @@ These classes are built on top of the GfxUI classes, and implement higher-level
 #include "../../Storage/Storage.h"
 #include "../../Storage/RecordTypes/ConfRecord.h"
 #include "../../Pipes/TripleAxisPipe/TripleAxisPipe.h"
-#include "../../C3PEvents/C3PScheduler.h"
+#include "../../TimerTools/C3PScheduler.h"
 
 /*******************************************************************************
 * Non-interacting utility shims. These are invisibile classes used to
