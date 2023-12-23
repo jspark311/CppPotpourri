@@ -6,6 +6,7 @@ Date:   2022.06.25
 */
 
 #include "../GfxUI.h"
+#include "../ImageUtils/BlobPlotter.h"
 
 
 /*
@@ -186,14 +187,36 @@ int GfxUIC3PValue::_render(UIGfxWrapper* ui_gfx) {
 
       ui_gfx->img()->fillRect(i_x, i_y, i_w, i_h, _style.color_bg);
       StringBuilder line;
-      _value->toString(&line, false);
-      //if (line.length() > some_limit) {
-      //}
-      ui_gfx->img()->setCursor(i_x, i_y);
-      ui_gfx->img()->setTextSize(_style.text_size);
-      ui_gfx->img()->setTextColor(_style.color_active, _style.color_bg);
-      ui_gfx->img()->writeString(&line);
-      ret = 1;
+      if (_value->is_ptr_len()) {
+        // Graphical environments can handle doing things a bit smarter than
+        //   just string-dumping.
+        BlobStylerHeatMap blob_style(ui_gfx->img(), 0, 0);
+        BlobPlotterHilbertCurve curve_render(
+          &blob_style, _value, ui_gfx->img(),
+          i_x, i_y, i_w, i_h
+        );
+        int8_t ret_local = curve_render.apply();
+        if (0 != ret_local) {
+          line.concatf("Curve rendered failed (%d)", ret_local);
+          ui_gfx->img()->setCursor(i_x, i_y);
+          ui_gfx->img()->setTextSize(_style.text_size);
+          ui_gfx->img()->setTextColor(_style.color_active, _style.color_bg);
+          ui_gfx->img()->writeString(&line);
+        }
+        ret = 1;
+      }
+      else {
+        // Unspecialized workflows (generally, anything that can sensibly be
+        //   rendered to a string).
+        _value->toString(&line, false);
+        //if (line.length() > some_limit) {
+        //}
+        ui_gfx->img()->setCursor(i_x, i_y);
+        ui_gfx->img()->setTextSize(_style.text_size);
+        ui_gfx->img()->setTextColor(_style.color_active, _style.color_bg);
+        ui_gfx->img()->writeString(&line);
+        ret = 1;
+      }
     }
   }
   return ret;

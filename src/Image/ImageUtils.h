@@ -117,14 +117,21 @@ class UIGfxWrapper {
 /*
 * This is a data processing class that scales the source Image, and writes it
 *   into the target.
-* Can also be used to do a region-bounded copy from one image to another.
+* Can also be used to do a region-bounded copy from one image to another (with
+*   or without scaling).
+*
+* Scaling constraints:
+* 1) Over-unity scaling ("zooming in") must be done in round-integer pixel ratios. 1x, 2x, 3x...
+* 2) Under-unity scaling ("zooming out") must be done in round-integer pixel ratios. 1/2x, 1/3x, 1/4x...
+* The class will handle both of the constraints, but it will do so by allowing any rounding truncations
+*   to manifest as "jitter" in W and H written to the target image.
 */
 class ImageScaler {
   public:
     ImageScaler(
       Image* i_s, Image* i_t, float scale,
-      int s_x = 0, int s_y = 0, int s_w = 0, int s_h = 0,
-      int t_x = 0, int t_y = 0
+      uint32_t s_x = 0, uint32_t s_y = 0, uint32_t s_w = 0, uint32_t s_h = 0,
+      uint32_t t_x = 0, uint32_t t_y = 0
     );
     ~ImageScaler() {};
 
@@ -132,20 +139,21 @@ class ImageScaler {
     inline float scale() {         return _scale;    };
     inline void scale(float x) {   _scale = x;       };
 
-    void setParameters(float scale, int s_x, int s_y, int s_w, int s_h, int t_x, int t_y);
+    void setParameters(float scale, uint32_t s_x, uint32_t s_y, uint32_t s_w, uint32_t s_h, uint32_t t_x, uint32_t t_y);
 
 
   private:
-    Image* _source;
-    Image* _target;
-    float _scale;
-    int   _s_x;
-    int   _s_y;
-    int   _s_w;
-    int   _s_h;
-    int   _t_x;
-    int   _t_y;
+    Image*   _source;
+    Image*   _target;
+    float    _scale;
+    uint32_t _s_x;
+    uint32_t _s_y;
+    uint32_t _s_w;
+    uint32_t _s_h;
+    uint32_t _t_x;
+    uint32_t _t_y;
 };
+
 
 
 /*

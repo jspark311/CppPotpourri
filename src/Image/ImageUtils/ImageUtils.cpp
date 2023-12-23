@@ -246,7 +246,6 @@ void UIGfxWrapper::drawVector(
 * Functions for rendering common UI elements
 *******************************************************************************/
 
-
 /*
 * Draw the data view selector widget.
 */

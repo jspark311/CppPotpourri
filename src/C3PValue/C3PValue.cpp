@@ -166,6 +166,19 @@ C3PValue::C3PValue(uint8_t* val, uint32_t len) : C3PValue(TCode::BINARY, nullptr
 }
 
 
+
+/*******************************************************************************
+* Type glue
+*******************************************************************************/
+bool C3PValue::is_ptr_len() {
+  C3PType* t_helper = getTypeHelper(_TCODE);
+  if (nullptr != t_helper) {
+    return (t_helper->is_ptr_len());
+  }
+  return false;
+}
+
+
 /*******************************************************************************
 * Basal accessors
 * These functions ultimately wrap the C3PTypeConstraint template that handles
@@ -310,7 +323,17 @@ double C3PValue::get_as_double(int8_t* success) {
 
 C3PBinBinder C3PValue::get_as_ptr_len(int8_t* success) {
   C3PBinBinder ret;
-  int8_t suc = get_as(TCode::BINARY, (void*) &ret) + 1;
+  int8_t suc = 1;
+  if (is_ptr_len()) {
+    suc = get_as(TCode::BINARY, (void*) &ret) + 1;
+  }
+  else {
+    // TODO: This ought to properly coerce any not ptr/len into such a
+    //   representation. But it is untested.
+    ret.buf = (uint8_t*) _type_pun();
+    ret.len = length();
+  }
+
   if (success) {  *success = suc;  }
   return ret;
 }

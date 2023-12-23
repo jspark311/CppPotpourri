@@ -43,6 +43,22 @@ This source file was never part of Adafruit's library. They are small graphics
 #define GFXUI_FLAG_DRAGGING                   0x00002000   // This element is undergoing a drag.
 #define GFXUI_FLAG_TRACK_POINTER              0x00004000   //
 
+// NOTE: This is thinking out-loud about "what" flow needs to accomplish.
+//   Don't write against it.
+// HTML was very well thought-out, and many people understand it. I should imagine
+//   element flows and positioning/scaling rules should endeavor to follow that
+//   pattern, without explicitly spending too many resources to do so. Mint tin.
+#define GFXUI_FLAG_FLOW_POS_LOCK_U            0x00008000   // If set, auto-flow is inhibited in this direction.
+#define GFXUI_FLAG_FLOW_POS_LOCK_D            0x00010000   // If set, auto-flow is inhibited in this direction.
+#define GFXUI_FLAG_FLOW_POS_LOCK_L            0x00020000   // If set, auto-flow is inhibited in this direction.
+#define GFXUI_FLAG_FLOW_POS_LOCK_R            0x00040000   // If set, auto-flow is inhibited in this direction.
+#define GFXUI_FLAG_FLOW_POS_LOCK_PROPAGATE    0x00080000   // Propagate the locks?
+#define GFXUI_FLAG_FLOW_SCALE_LOCK_X          0x00100000   // If set, auto-flow is inhibited on this axis.
+#define GFXUI_FLAG_FLOW_SCALE_LOCK_Y          0x00200000   // If set, auto-flow is inhibited on this axis.
+#define GFXUI_FLAG_FLOW_SCALE_LOCK_PROPAGATE  0x00400000   // Propagate the locks?
+
+//////////////////////////////////
+// TODO: Stark Fist of Removal
 #define GFXUI_BUTTON_FLAG_STATE               0x01000000   // Button state
 #define GFXUI_BUTTON_FLAG_MOMENTARY           0x02000000   // Button reverts to off when released.
 
@@ -62,6 +78,8 @@ This source file was never part of Adafruit's library. They are small graphics
 
 #define GFXUI_TABBAR_FLAG_VERTICAL_TABS       0x01000000   // The tabs are stacked veritcally.
 #define GFXUI_TABBAR_FLAG_SCROLL_CYCLES_TABS  0x02000000   // Scroll wheel cycles tabs.
+// TODO: /Stark Fist
+//////////////////////////////////
 
 
 #define GFXUI_FLAG_DRAW_FRAME_MASK  (GFXUI_FLAG_DRAW_FRAME_U | GFXUI_FLAG_DRAW_FRAME_D | GFXUI_FLAG_DRAW_FRAME_L | GFXUI_FLAG_DRAW_FRAME_R)
