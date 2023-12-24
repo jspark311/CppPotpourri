@@ -33,7 +33,7 @@ int GfxUIKeyValuePair::_render(UIGfxWrapper* ui_gfx) {
   uint32_t i_x = internalPosX();
   uint32_t i_y = internalPosY();
   uint16_t i_w = internalWidth();
-  uint16_t i_h = internalHeight();
+  //uint16_t i_h = internalHeight();
 
   if (!_kvp_loaded & (nullptr != _kvp)) {
     uint32_t tracked_x = i_x;

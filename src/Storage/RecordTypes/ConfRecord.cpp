@@ -56,7 +56,7 @@ int8_t ConfRecord::_get_conf(const char* KEY, const TCode TC_ARG, void* dest) {
   int8_t ret = -1;
   if (allocated(true)) {
     ret--;
-    const TCode TC_KEY = _key_tcode(KEY);
+    //const TCode TC_KEY = _key_tcode(KEY);
     C3PValue* container_of_interest = _kvp->valueWithKey(KEY);
     if (nullptr != container_of_interest) {
       ret--;
@@ -81,7 +81,7 @@ int8_t ConfRecord::_set_conf(const char* KEY, const TCode TC_ARG, void* src) {
   int8_t ret = -1;
   if (allocated(true)) {
     ret--;
-    const TCode TC_KEY = _key_tcode(KEY);
+    //const TCode TC_KEY = _key_tcode(KEY);
     C3PValue* container_of_interest = _kvp->valueWithKey(KEY);
     if (nullptr != container_of_interest) {
       ret--;
@@ -101,7 +101,6 @@ int8_t ConfRecord::_set_conf(const char* KEY, const TCode TC_ARG, void* src) {
 void ConfRecord::printConfRecord(StringBuilder* output, const char* spec_key) {
   if (allocated()) {
     if (nullptr != spec_key) {
-      int8_t ret = 0;
       KeyValuePair* obj = _kvp->retrieveByKey(spec_key);
       if (nullptr != obj) {
         char* current_key = obj->getKey();

@@ -97,8 +97,8 @@ int GfxUIC3PType::_render(UIGfxWrapper* ui_gfx) {
   if (nullptr != _type) {
     uint32_t i_x = internalPosX();
     uint32_t i_y = internalPosY();
-    uint16_t i_w = internalWidth();
-    uint16_t i_h = internalHeight();
+    // uint16_t i_w = internalWidth();
+    // uint16_t i_h = internalHeight();
     //ui_gfx->img()->fillRect(i_x, i_y, i_w, i_h, _style.color_bg);   // TODO: Somehow this is out of bounds.
     ui_gfx->img()->setCursor(i_x, i_y);
     ui_gfx->img()->setTextSize(_style.text_size);
@@ -197,7 +197,7 @@ int GfxUIC3PValue::_render(UIGfxWrapper* ui_gfx) {
         );
         int8_t ret_local = curve_render.apply();
         if (0 != ret_local) {
-          line.concatf("Curve rendered failed (%d)", ret_local);
+          line.concatf("%u bytes", _value->length());
           ui_gfx->img()->setCursor(i_x, i_y);
           ui_gfx->img()->setTextSize(_style.text_size);
           ui_gfx->img()->setTextColor(_style.color_active, _style.color_bg);

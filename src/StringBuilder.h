@@ -220,6 +220,7 @@ class StringBuilder {
     // Wrapper for high-level string functions that we may or may not have.
     static char* strcasestr(const char* haystack, const char* needle);
     static int   strcasecmp(const char*, const char*);
+    static char* trim(char*);
 
     static void styleHeader1(StringBuilder*, const char*);
     static void styleHeader2(StringBuilder*, const char*);

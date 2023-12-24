@@ -34,6 +34,22 @@ limitations under the License.
 *******************************************************************************/
 
 /*
+* Trim the whitespace from the beginning and end of the input string.
+* Should not be used on malloc'd space, because it will eliminate the
+*   reference to the start of an allocated range which must be freed.
+*/
+char* StringBuilder::trim(char* str) {
+  char* end;
+  while(isspace(*str)) str++;
+  if(*str == 0) return str;
+  end = str + strlen(str) - 1;
+  while(end > str && isspace(*end)) end--;
+  *(end+1) = '\0';
+  return str;
+}
+
+
+/*
 * Locate a substring within a string (case insensitive).
 */
 char* StringBuilder::strcasestr(const char* haystack, const char* needle) {

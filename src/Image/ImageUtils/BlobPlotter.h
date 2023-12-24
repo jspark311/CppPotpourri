@@ -24,11 +24,18 @@ class C3PValue;  // For-dec this so we don't have to bring that whole branch in.
 */
 class BlobStyler {
   public:
-    virtual uint32_t getColor(const uint8_t* PTR, const uint32_t LEN, uint32_t offset) =0;
+    inline bool renderByteFrames() {          return _render_frames;   };
+    inline void renderByteFrames(bool x) {    _render_frames = x;      };
+
+    virtual int8_t   init(const uint8_t* PTR, const uint32_t LEN) =0;
+    virtual uint32_t getColor(const uint8_t* PTR, const uint32_t LEN, const uint32_t OFFSET) =0;
+
 
   protected:
     ImgBufferFormat _color_fmt;
-    BlobStyler(Image* target) : _color_fmt(target->format()) {};
+    bool _render_frames;
+
+    BlobStyler(Image* target) : _color_fmt(target->format()), _render_frames(false) {};
     ~BlobStyler() {};
 };
 
@@ -41,10 +48,12 @@ class BlobStylerEntropyMap : public BlobStyler {
     BlobStylerEntropyMap(Image* target) : BlobStyler(target) {};
     ~BlobStylerEntropyMap() {};
 
-    uint32_t getColor(const uint8_t* PTR, const uint32_t LEN, uint32_t offset);
+    int8_t   init(const uint8_t* PTR, const uint32_t LEN);
+    uint32_t getColor(const uint8_t* PTR, const uint32_t LEN, const uint32_t OFFSET);
 
 
   protected:
+    double  _stdev;
 };
 
 
@@ -57,14 +66,14 @@ class BlobStylerHeatMap : public BlobStyler {
         BlobStyler(target), _color_base(color_base), _color_tween(color_tween) {};
     ~BlobStylerHeatMap() {};
 
-    uint32_t getColor(const uint8_t* PTR, const uint32_t LEN, uint32_t offset);
+    int8_t   init(const uint8_t* PTR, const uint32_t LEN);
+    uint32_t getColor(const uint8_t* PTR, const uint32_t LEN, const uint32_t OFFSET);
 
 
   protected:
     uint32_t   _color_base;
     uint32_t   _color_tween;
 };
-
 
 
 /*
@@ -75,7 +84,12 @@ class BlobStylerExplicitFencing : public BlobStyler {
     BlobStylerExplicitFencing(Image* target) : BlobStyler(target) {};
     ~BlobStylerExplicitFencing() {};
 
-    uint32_t getColor(const uint8_t* PTR, const uint32_t LEN, uint32_t offset);
+    int8_t   init(const uint8_t* PTR, const uint32_t LEN);
+    uint32_t getColor(const uint8_t* PTR, const uint32_t LEN, const uint32_t OFFSET);
+
+    /* Wipes all the existing fences. */
+    inline void wipe() {  _fences.clear();  };
+    int8_t addOffset(uint32_t offset, uint32_t color);
 
 
   protected:
@@ -101,7 +115,8 @@ class BlobPlotter {
     ~BlobPlotter() {};
 
     void setParameters(uint32_t x, uint32_t y, uint32_t w, uint32_t h);
-    inline void setBlob(C3PValue* blob) {  _src_blob = blob;  };
+    inline void setBlob(C3PValue* blob) {     _src_blob = blob;  };
+    inline uint32_t renderLength() {          return (_offset_stop - _offset_start);   };
     int8_t apply();
 
 
@@ -116,12 +131,15 @@ class BlobPlotter {
     uint32_t    _offset_start;
     uint32_t    _offset_stop;
     uint16_t    _val_trace;
+    uint16_t    _bytes_wide;
+    uint16_t    _bytes_high;
     bool        _force_render;   // Set when a frustum is changed.
 
     bool _needs_render();
     bool _able_to_render();
     int8_t _calculate_square_size(const uint32_t LEN, const uint32_t T_SIZE, uint32_t* square_size);
-    virtual int8_t _curve_render(const uint8_t* PTR, const uint32_t LEN, const uint32_t SQUARE_SIZE) =0;
+    inline uint32_t _pixels_available() {     return (_t_w * _t_h);   };
+    virtual int8_t _curve_render(const uint8_t* PTR, const uint32_t OFFSET, const uint32_t LEN) =0;
 };
 
 
@@ -139,7 +157,7 @@ class BlobPlotterHilbertCurve : public BlobPlotter {
 
 
   protected:
-    virtual int8_t _curve_render(const uint8_t* PTR, const uint32_t LEN, const uint32_t T_SIZE);
+    virtual int8_t _curve_render(const uint8_t* PTR, const uint32_t OFFSET, const uint32_t LEN);
     uint32_t _bin_to_reflected_gray(uint32_t idx);
     uint32_t _reflected_gray_to_idx(uint32_t gray);
 };
@@ -159,7 +177,7 @@ class BlobPlotterLinear : public BlobPlotter {
 
 
   protected:
-    virtual int8_t _curve_render(const uint8_t* PTR, const uint32_t LEN, const uint32_t T_SIZE);
+    virtual int8_t _curve_render(const uint8_t* PTR, const uint32_t OFFSET, const uint32_t LEN);
 };
 
 #endif  // __C3P_IMG_BLOB_PLOTTER_H

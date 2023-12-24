@@ -1662,7 +1662,6 @@ template <> int8_t      C3PTypeConstraint<float>::set_from(void* dest, const TCo
 template <> int8_t      C3PTypeConstraint<float>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
   // To avoid inducing bugs related to alignment, we copy the value byte-wise
   //   into our on-stack storage, where it's alignment can be controlled.
-  float s = 0.0f;
   switch (DEST_TYPE) {
     case TCode::FLOAT:      memcpy(dest, src, FIXED_LEN);  return 0;
     case TCode::DOUBLE:

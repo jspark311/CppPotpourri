@@ -603,7 +603,7 @@ template <class T> T PriorityQueue<T>::get(int pos) {
     i++;
     current = current->next;
   }
-  return nullptr;
+  return T(0);  // Will be nullptr for pointer types.
 }
 #if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
 #pragma GCC diagnostic pop
@@ -622,7 +622,7 @@ template <class T> T PriorityQueue<T>::getByPriority(int pri) {
     }
     current = current->next;
   }
-  return nullptr;
+  return T(0);  // Will be nullptr for pointer types.
 }
 #if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)
 #pragma GCC diagnostic pop
