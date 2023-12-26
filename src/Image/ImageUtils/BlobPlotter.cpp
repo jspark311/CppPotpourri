@@ -136,11 +136,20 @@ int8_t BlobStylerExplicitFencing::addOffset(uint32_t offset, uint32_t color) {
 /*******************************************************************************
 * BlobPlotter
 *******************************************************************************/
-BlobPlotter::BlobPlotter(BlobStyler* styler, C3PValue* src_blob, Image* target, uint32_t x, uint32_t y, uint32_t w, uint32_t h) :
+BlobPlotter::BlobPlotter(
+  const BlobPlotterID P_ID,
+  BlobStyler* styler,
+  C3PValue* src_blob,
+  Image* target,
+  uint32_t x, uint32_t y,
+  uint32_t w, uint32_t h
+) :
+  _PLOTTER_ID(P_ID),
+  _force_render(false),
   _styler(styler),
   _src_blob(src_blob), _target(target), _t_x(x), _t_y(y), _t_w(w), _t_h(h),
   _offset_start(0), _offset_stop(0), _val_trace(0), _bytes_wide(0), _bytes_high(0),
-  _force_render(false) {}
+  _mapping_ptr(nullptr) {}
 
 
 void BlobPlotter::setParameters(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
@@ -190,8 +199,9 @@ bool BlobPlotter::_able_to_render() {
 * TODO: These return conventions rack disciprin.
 * @return 0 on success, on negative on error.
 */
-int8_t BlobPlotter::apply() {
+int8_t BlobPlotter::apply(bool force) {
   int8_t ret = 0;
+  _force_render |= force;
   if (_needs_render()) {
     ret--;
     if (_able_to_render()) {
@@ -205,8 +215,10 @@ int8_t BlobPlotter::apply() {
           // Hard-stop the offsets. If the caller has set them to something
           //   non-zero, they should be retained.
           // TODO: This will be buggy under some conditions. Re-think it.
-          if ((_offset_stop  >= bin_binder.len) | (0 == _offset_stop)) {              _offset_stop  = bin_binder.len;  }
-          if ((_offset_start >= bin_binder.len) | (_offset_start >= _offset_stop)) {  _offset_start = 0;               }
+          _offset_start = 0;
+          _offset_stop = bin_binder.len;
+          //if ((_offset_stop  >= bin_binder.len) | (0 == _offset_stop)) {              _offset_stop  = bin_binder.len;  }
+          //if ((_offset_start >= bin_binder.len) | (_offset_start >= _offset_stop)) {  _offset_start = 0;               }
           const uint32_t DESIRED_RENDER_LEN = renderLength();
           if (_pixels_available() >= DESIRED_RENDER_LEN) {  // Enough area to hold all the data?
             ret--;
@@ -238,7 +250,8 @@ int8_t BlobPlotter::apply() {
 /*
 * Pad the LEN value such that it will produce a square output of squares.
 */
-int8_t BlobPlotter::_calculate_square_size(const uint32_t LEN, const uint32_t T_SIZE, uint32_t* square_size) {
+int8_t BlobPlotter::_calculate_square_size(const uint32_t LEN, const uint32_t T_SIZE) {
+  _square_size = 0;
   const uint32_t STRICT_SQUARE_LIMIT = strict_min(_t_w, _t_h);   // Can't have a square larger than the bounding area...
   const double S_TO_FILL_AREA = sqrt(((double) T_SIZE / (double) LEN));
   if (1.0d > S_TO_FILL_AREA) return -1;
@@ -258,7 +271,7 @@ int8_t BlobPlotter::_calculate_square_size(const uint32_t LEN, const uint32_t T_
   const uint32_t P_BYTES_PER_ROW  = ((_t_w / P_SQUARE_SIZE) + 1);
   if (0 == P_BYTES_PER_ROW) return -1;
   const uint32_t P_TOTAL_ROWS     = ((LEN / P_BYTES_PER_ROW) + 1);
-  *square_size = P_SQUARE_SIZE;
+  _square_size = P_SQUARE_SIZE;
   return 0;
 }
 
@@ -284,10 +297,15 @@ uint32_t BlobPlotterHilbertCurve::_reflected_gray_to_idx(uint32_t gray) {
 }
 
 /*
-* Superclass gives us a reasonable square size, so we don't need to worry about
-*   scaling the curve to fit within the area. We only need to worry about
-*   rendering the correct bytes to the correct square locations to preserve
-*   locallity.
+* Superclass can give us a reasonable square size, but it wouldn't account for
+*   our preference to render with possible right-padding for the sake of clean
+*   divisibility. So we need to worry about scaling the curve to fit within the
+*   area, as well as rendering the correct bytes to the correct square locations
+*   to preserve locallity. These are treated as separate concerns, and the
+*   render will be auto-scaled to fit (if possible).
+*
+* TODO: Touch this again to make the class preserve state that it invests so
+*   heavily in determining. This should be economized.
 *
 * Algorithm for the Hilbert curve came from...
 * Programming the Hilbert curve (John Skilling)
@@ -298,21 +316,25 @@ int8_t BlobPlotterHilbertCurve::_curve_render(const uint8_t* PTR, const uint32_t
   int8_t ret = -1;
   // We need to find the ratio of H/W for this dataset, and we need to do
   //   it while (ideally) keeping a power-of-2 on the X-axis.
+  // Presume a square size of 1, just to see if it will all fit. Then, scale it
+  //   upward until it doesn't fit.
   uint32_t crude_scale = _pixels_available() / LEN;
-  uint32_t square_size = 1;
+  _square_size = 1;
   while (crude_scale > 3) {
-    square_size = square_size * 2;    // Mul-2
+    _square_size = _square_size * 2;    // Mul-2
     crude_scale = crude_scale >> 2;   // Div-4
   }
-  const uint16_t BYTES_PER_ROW = (_t_w / square_size);
-  const uint16_t BYTES_PER_COL = (_t_h / square_size);
-
+  // These are temporary working values.
+  const uint16_t BYTES_PER_ROW = (_t_w / _square_size);
+  const uint16_t BYTES_PER_COL = (_t_h / _square_size);
   uint16_t x0_bits = 0;
   uint16_t x1_bits = 0;
+  // Fit as many bits as possible into the X-axis. And determine the resulting
+  //   size of each bitfield.
   while (BYTES_PER_ROW >= pow(2, (x0_bits + 1))) {    x0_bits++;  }
   while (BYTES_PER_COL >= pow(2, (x1_bits + 1))) {    x1_bits++;  }
   if ((x0_bits == 0) | (x1_bits == 0) | (32 < (x0_bits + x1_bits))) {
-    c3p_log(LOG_LEV_ERROR, "BlobPlotterHilbertCurve", "Bailout. Bits (x0/x1): %u/%u\t SS: %u", x0_bits, x1_bits, _bytes_wide, _bytes_high, square_size);
+    c3p_log(LOG_LEV_ERROR, "BlobPlotterHilbertCurve", "Bailout. Bits (x0/x1): %u/%u\t SS: %u", x0_bits, x1_bits, _bytes_wide, _bytes_high, _square_size);
     return ret;
   }
   _bytes_wide = pow(2, x0_bits);        // Now we know.
@@ -322,22 +344,26 @@ int8_t BlobPlotterHilbertCurve::_curve_render(const uint8_t* PTR, const uint32_t
 
   // In light of the resulting true field sizes, scale-back the per-byte render
   //   to fill the available area while still remaining within it.
-  while ((_t_w < (square_size * _bytes_wide)) || (_t_h < (square_size * _bytes_high))) {
-    square_size--;
+  while ((_t_w < (_square_size * _bytes_wide)) || (_t_h < (_square_size * _bytes_high))) {
+    _square_size--;
   }
   // Bailout condition. Not enough area to fully-render in terms of
   //   perfect-squares on the X-axis.
   // NOTE: This is technically not a deal-breaker for the algorithm, but
   //   considering what we are rendering, pow(2) offsets make comprehension
   //   much easier. So we insist on it.
-  if (square_size == 0) {
-    c3p_log(LOG_LEV_ERROR, "BlobPlotterHilbertCurve", "Bailout. Bits (x0/x1): %u/%u\t (w/h): %u/%u\t SS: %u", x0_bits, x1_bits, _bytes_wide, _bytes_high, square_size);
+  if (_square_size == 0) {
+    c3p_log(LOG_LEV_ERROR, "BlobPlotterHilbertCurve", "Bailout. Bits (x0/x1): %u/%u\t (w/h): %u/%u\t SS: %u", x0_bits, x1_bits, _bytes_wide, _bytes_high, _square_size);
     return ret;
   }
 
   // Generate bitmasks for each coordinate.
   const uint32_t X0_BIT_MASK_BASE = (0xAAAAAAAA >> (32-(x0_bits << 1)));
   const uint32_t X1_BIT_MASK_BASE = (0x55555555 >> (32-(x1_bits << 1)));
+
+  // Setup a few parameters for the render loop...
+  const bool HAVE_MAPPING_ARRAY = ((nullptr != _mapping_ptr) & ((LEN << 1) <= _mapping_len));
+  const uint16_t BITS_TO_LOOP = (strict_max(x0_bits, x1_bits) << 1);
 
   for (uint32_t i = 0; i < LEN; i++) {
     uint32_t graycode = _bin_to_reflected_gray(i);
@@ -346,7 +372,6 @@ int8_t BlobPlotterHilbertCurve::_curve_render(const uint8_t* PTR, const uint32_t
     //   reflections in the curve,
     // LSB first. The bottom two bits are just taken as-is. All subsequent bits
     //   impact the transform of the inferior bits.
-    const uint16_t BITS_TO_LOOP = (strict_max(x0_bits, x1_bits) << 1);
     for (uint16_t n = 2; n < (BITS_TO_LOOP+1); n++) {
       const bool BIT_VALUE = ((graycode >> n) & 0x00000001);
       const uint32_t LOWER_BIT_MASK = (0xFFFFFFFF >> (31 - (n & 0xFE)));
@@ -365,22 +390,31 @@ int8_t BlobPlotterHilbertCurve::_curve_render(const uint8_t* PTR, const uint32_t
 
     // Demux X/Y from Hilbert index.
     uint16_t geo_coord[2] = {0, 0};
-    for (uint32_t n = 0; n < 32; n++) {
+    for (uint32_t n = 0; n < 32; n++) {   // TODO: Only need to loop (x0_bits + x1_bits)... wasteful.
       // Odd bits are x0, which we construe as Cartesian-X.
       // Even bits are x1, which we construe as Cartesian-Y.
       const uint8_t COORD_IDX = ((n & 1) ? 0 : 1);
       const bool    BIT_VALUE = ((graycode >> n) & 0x00000001);
-      geo_coord[COORD_IDX] = (geo_coord[COORD_IDX] >> 1) + (BIT_VALUE ? 0x8000 : 0);
+      geo_coord[COORD_IDX] = (geo_coord[COORD_IDX] >> 1) + (BIT_VALUE ? 0x8000 : 0);  // NOTE: Width-dependency. Careful...
     }
-    // Draw the byte.
-    uint32_t target_x = _t_x + (geo_coord[0] * square_size);
-    uint32_t target_y = _t_y + (geo_coord[1] * square_size);
-    if (((target_x + square_size) <= (_t_x + _t_w)) & ((target_y + square_size) <= (_t_y + _t_h))) {
+    // If the mapping is being observed, write the relative coordinates of the
+    //   upper-left of each byte's square into an offset-indexed array.
+    const uint32_t COORD_REL_X = (geo_coord[0] * _square_size);
+    const uint32_t COORD_REL_Y = (geo_coord[1] * _square_size);
+    if (HAVE_MAPPING_ARRAY) {
+      uint16_t* map_ptr_offset = (_mapping_ptr + (i << 1));
+      *(map_ptr_offset + 0) = COORD_REL_X;
+      *(map_ptr_offset + 1) = COORD_REL_Y;
+    }
+    // Draw the byte into the absolute location in the target Image.
+    const uint32_t TARGET_X = (_t_x + COORD_REL_X);
+    const uint32_t TARGET_Y = _t_y + (geo_coord[1] * _square_size);
+    if (((TARGET_X + _square_size) <= (_t_x + _t_w)) & ((TARGET_Y + _square_size) <= (_t_y + _t_h))) {
       uint32_t color = _styler->getColor(PTR, LEN, (i+OFFSET));
-      _target->fillRect(target_x, target_y, square_size, square_size, color);
+      _target->fillRect(TARGET_X, TARGET_Y, _square_size, _square_size, color);
     }
     else {
-      c3p_log(LOG_LEV_ERROR, "BlobPlotterHilbertCurve", "Boundary violation: (%u)  %u   %u", i, target_x, target_y);
+      c3p_log(LOG_LEV_ERROR, "BlobPlotterHilbertCurve", "Boundary violation: (%u)  %u   %u", i, TARGET_X, TARGET_Y);
     }
   }
   ret = 0;
@@ -394,25 +428,33 @@ int8_t BlobPlotterHilbertCurve::_curve_render(const uint8_t* PTR, const uint32_t
 *******************************************************************************/
 int8_t BlobPlotterLinear::_curve_render(const uint8_t* PTR, const uint32_t OFFSET, const uint32_t LEN) {
   int8_t ret = -1;
-  uint32_t square_size = 0;
   const uint32_t PIX_AVAILABLE = (_t_h * _t_w);
-  if (0 == _calculate_square_size(LEN, PIX_AVAILABLE, &square_size)) {
-    //const uint32_t BYTES_PER_ROW  = (_t_w / square_size);
+  if (0 == _calculate_square_size(LEN, PIX_AVAILABLE)) {
+    _bytes_wide  = (_t_w / _square_size);
+    _bytes_high = (LEN / _bytes_wide);    // This is also certain to be properly scaled, but...
+    if ((_bytes_wide * _bytes_high) < LEN) {  _bytes_high++;  }  // ...account for possible rounding error...
+
+    const bool HAVE_MAPPING_ARRAY = ((nullptr != _mapping_ptr) & ((LEN << 1) <= _mapping_len));
     uint32_t target_x = _t_x;
     uint32_t target_y = _t_y;
     for (uint32_t i = 0; i < LEN; i++) {
-      uint32_t color = _styler->getColor(PTR, LEN, (i+OFFSET));
       if (0 < i) {  // TODO: Letting the compiler optimize this slop away bugs me. Just write it cleaner.
         //if (0 == (i % BYTES_PER_ROW)) {
-        if ((target_x + square_size) >= (_t_x + _t_w)) {
+        if ((target_x + _square_size) >= (_t_x + _t_w)) {
           target_x  = _t_x;
-          target_y += square_size;
+          target_y += _square_size;
         }
         else {
-          target_x += square_size;
+          target_x += _square_size;
         }
       }
-      _target->fillRect(target_x, target_y, square_size, square_size, color);
+      if (HAVE_MAPPING_ARRAY) {
+        uint16_t* map_ptr_offset = (_mapping_ptr + (i << 1));
+        *(map_ptr_offset + 0) = (target_x - _t_x);
+        *(map_ptr_offset + 1) = (target_y - _t_y);
+      }
+      uint32_t color = _styler->getColor(PTR, LEN, (i+OFFSET));
+      _target->fillRect(target_x, target_y, _square_size, _square_size, color);
     }
     ret = 0;
   }

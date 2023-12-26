@@ -410,6 +410,7 @@ class GfxUIElement : public GfxUILayout {
 *******************************************************************************/
 #include "GfxUI/GfxUIKit.h"
 #include "GfxUI/GfxUIKeyValuePair.h"
+#include "GfxUI/GfxUIBlobRender.h"
 #include "GfxUI/GfxUIGraphing.h"
 #include "GfxUI/GfxUICryptoBurrito.h"
 

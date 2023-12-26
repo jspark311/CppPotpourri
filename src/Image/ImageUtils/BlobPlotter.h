@@ -14,6 +14,27 @@ These classes are built on top of the GfxUI classes, and implement various
 #include "../../PriorityQueue.h"
 
 class C3PValue;  // For-dec this so we don't have to bring that whole branch in.
+class BlobPlotter;
+
+/*******************************************************************************
+* Enums
+*******************************************************************************/
+enum class BlobPlotterID : uint8_t {
+  NONE = 0,
+  LINEAR,
+  HILBERT,
+  INVALID
+};
+
+
+enum class BlobStylerID : uint8_t {
+  NONE = 0,
+  HEAT,
+  ENTROPY,
+  FENCING,
+  INVALID
+};
+
 
 
 /*******************************************************************************
@@ -21,9 +42,13 @@ class C3PValue;  // For-dec this so we don't have to bring that whole branch in.
 *******************************************************************************/
 /*
 * A pure-virtual class to assign colors to specific bytes.
+* TODO: Style class should do the rendering. Not simply provide the styles.
 */
 class BlobStyler {
   public:
+    virtual ~BlobStyler() {};
+
+    inline const BlobStylerID stylerID() {    return _STYLER_ID;       };
     inline bool renderByteFrames() {          return _render_frames;   };
     inline void renderByteFrames(bool x) {    _render_frames = x;      };
 
@@ -32,11 +57,13 @@ class BlobStyler {
 
 
   protected:
+    friend class BlobPlotter;
+    const BlobStylerID _STYLER_ID;
     ImgBufferFormat _color_fmt;
     bool _render_frames;
 
-    BlobStyler(Image* target) : _color_fmt(target->format()), _render_frames(false) {};
-    ~BlobStyler() {};
+    BlobStyler(const BlobStylerID S_ID, Image* target) :
+      _STYLER_ID(S_ID), _color_fmt(target->format()), _render_frames(false) {};
 };
 
 
@@ -45,7 +72,7 @@ class BlobStyler {
 */
 class BlobStylerEntropyMap : public BlobStyler {
   public:
-    BlobStylerEntropyMap(Image* target) : BlobStyler(target) {};
+    BlobStylerEntropyMap(Image* target) : BlobStyler(BlobStylerID::ENTROPY, target) {};
     ~BlobStylerEntropyMap() {};
 
     int8_t   init(const uint8_t* PTR, const uint32_t LEN);
@@ -63,7 +90,7 @@ class BlobStylerEntropyMap : public BlobStyler {
 class BlobStylerHeatMap : public BlobStyler {
   public:
     BlobStylerHeatMap(Image* target, uint32_t color_base, uint32_t color_tween) :
-        BlobStyler(target), _color_base(color_base), _color_tween(color_tween) {};
+        BlobStyler(BlobStylerID::HEAT, target), _color_base(color_base), _color_tween(color_tween) {};
     ~BlobStylerHeatMap() {};
 
     int8_t   init(const uint8_t* PTR, const uint32_t LEN);
@@ -81,7 +108,7 @@ class BlobStylerHeatMap : public BlobStyler {
 */
 class BlobStylerExplicitFencing : public BlobStyler {
   public:
-    BlobStylerExplicitFencing(Image* target) : BlobStyler(target) {};
+    BlobStylerExplicitFencing(Image* target) : BlobStyler(BlobStylerID::FENCING, target) {};
     ~BlobStylerExplicitFencing() {};
 
     int8_t   init(const uint8_t* PTR, const uint32_t LEN);
@@ -108,20 +135,39 @@ class BlobStylerExplicitFencing : public BlobStyler {
 class BlobPlotter {
   public:
     BlobPlotter(
-      BlobStyler* styler,
+      const BlobPlotterID P_ID, BlobStyler* styler,
       C3PValue* src_blob, Image* target,
       uint32_t x = 0, uint32_t y = 0, uint32_t w = 0, uint32_t h = 0
     );
-    ~BlobPlotter() {};
+    virtual ~BlobPlotter() {};
 
     void setParameters(uint32_t x, uint32_t y, uint32_t w, uint32_t h);
     inline void setBlob(C3PValue* blob) {     _src_blob = blob;  };
+
+    inline const BlobPlotterID plotterID() {  return _PLOTTER_ID;   };
     inline uint32_t renderLength() {          return (_offset_stop - _offset_start);   };
-    int8_t apply();
+    inline uint32_t bytesWide() {             return _bytes_wide;   };
+    inline uint32_t bytesHigh() {             return _bytes_high;   };
+
+    int8_t apply(bool force = false);
+
+    inline void setStyler(BlobStyler* styler) {     _styler = styler;  };
+
+    // This is an optional feature that allows for a Cartesian mapping of the
+    //   curve back into an offset.
+    // TODO: This costs extravegantly of memory, but saves on CPU. Think this
+    //   through a bit better... The only other direct alternative is
+    //   back-clocking the black magic in the Hilbert curve. And although
+    //   possible, doing it will require sustained careful thought.
+    //   Would be cleaner to use a callback fxn, probably... But more overhead.
+    inline void setMapMem(uint16_t* PTR, const uint32_t LEN) {  _mapping_ptr = PTR;  _mapping_len = LEN;  };
+
 
 
   protected:
-    BlobStyler* _styler;
+    const BlobPlotterID _PLOTTER_ID;
+    bool        _force_render;   // Set when a frustum is changed.
+    BlobStyler* _styler;    // TODO: Remove?
     C3PValue*   _src_blob;
     Image*      _target;
     uint32_t    _t_x;
@@ -133,11 +179,13 @@ class BlobPlotter {
     uint16_t    _val_trace;
     uint16_t    _bytes_wide;
     uint16_t    _bytes_high;
-    bool        _force_render;   // Set when a frustum is changed.
+    uint16_t    _square_size;
+    uint16_t*   _mapping_ptr;
+    uint32_t    _mapping_len;
 
     bool _needs_render();
     bool _able_to_render();
-    int8_t _calculate_square_size(const uint32_t LEN, const uint32_t T_SIZE, uint32_t* square_size);
+    int8_t _calculate_square_size(const uint32_t LEN, const uint32_t T_SIZE);
     inline uint32_t _pixels_available() {     return (_t_w * _t_h);   };
     virtual int8_t _curve_render(const uint8_t* PTR, const uint32_t OFFSET, const uint32_t LEN) =0;
 };
@@ -152,7 +200,7 @@ class BlobPlotterHilbertCurve : public BlobPlotter {
       BlobStyler* styler,
       C3PValue* src_blob, Image* target,
       uint32_t x = 0, uint32_t y = 0, uint32_t w = 0, uint32_t h = 0
-    ) : BlobPlotter(styler, src_blob, target, x, y, w, h) {};
+    ) : BlobPlotter(BlobPlotterID::HILBERT, styler, src_blob, target, x, y, w, h) {};
     ~BlobPlotterHilbertCurve() {};
 
 
@@ -172,7 +220,7 @@ class BlobPlotterLinear : public BlobPlotter {
       BlobStyler* styler,
       C3PValue* src_blob, Image* target,
       uint32_t x = 0, uint32_t y = 0, uint32_t w = 0, uint32_t h = 0
-    ) : BlobPlotter(styler, src_blob, target, x, y, w, h) {};
+    ) : BlobPlotter(BlobPlotterID::LINEAR, styler, src_blob, target, x, y, w, h) {};
     ~BlobPlotterLinear() {};
 
 
