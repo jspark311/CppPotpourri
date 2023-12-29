@@ -2,18 +2,18 @@
 * Abstract shape to which platform implementations must conform.
 * This is broadly modeled from Arduino to facilitate cross-porting.
 */
+#ifndef __ABSTRACT_PLATFORM_TEMPLATE_H__
+#define __ABSTRACT_PLATFORM_TEMPLATE_H__
+
 #include <inttypes.h>
 #include <stdint.h>
 #include <limits.h>
-#include "BusQueue/BusQueue.h"
+#include "CppPotpourri.h"
 #include "StringBuilder.h"
 #include "CryptoBurrito/Cryptographic.h"
 
-class C3P_Console;
+class C3PConsole;
 class CryptoProcessor;
-
-#ifndef __ABSTRACT_PLATFORM_TEMPLATE_H__
-#define __ABSTRACT_PLATFORM_TEMPLATE_H__
 
 /**
 * These are _pflags definitions.
@@ -281,7 +281,7 @@ class AbstractPlatform {
     };
 
     /* These are bootstrap checkpoints. */
-    int8_t configureConsole(C3P_Console*);
+    int8_t configureConsole(C3PConsole*);
     inline uint8_t platformState() {   return (_pflags & ABSTRACT_PF_FLAG_P_STATE_MASK);  };
 
     void printCryptoOverview(StringBuilder*);
@@ -325,7 +325,7 @@ class AbstractPlatform {
 * /_/  /_/_/____/\___/
 *******************************************************************************/
   /*
-  * These are callbacks for ParsingConsole that the application
+  * These are callbacks for C3PConsole that the application
   *   might rather use in isolation.
   */
   int callback_gpio_value(StringBuilder* text_return, StringBuilder* args);

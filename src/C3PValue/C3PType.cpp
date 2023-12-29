@@ -27,17 +27,11 @@ This file contains the implementation of type constraints for our wrapped types.
 #include "C3PValue.h"
 #include "KeyValuePair.h"
 #include "../StringBuilder.h"
-#include "../Identity/Identity.h"
 #include "../TimerTools/TimerTools.h"
 
 /* CBOR support should probably be required to parse/pack. */
 #if defined(CONFIG_C3P_CBOR)
   #include "../cbor-cpp/cbor.h"
-#endif
-
-/* Image support costs code size. Don't support it unless requested. */
-#if defined(CONFIG_C3P_IMG_SUPPORT)
-  #include "../Image/Image.h"
 #endif
 
 
@@ -89,13 +83,22 @@ static const C3PTypeConstraint<Vector3u16>      c3p_type_helper_vect3_u16(    "V
 static const C3PTypeConstraint<Vector3u32>      c3p_type_helper_vect3_u32(    "VEC3_U32",     12, TCode::VECT_3_UINT32,  (TCODE_FLAG_VALUE_IS_POINTER));
 static const C3PTypeConstraint<Vector3f>        c3p_type_helper_vect3_float(  "VEC3_FLOAT",   12, TCode::VECT_3_FLOAT,   (TCODE_FLAG_VALUE_IS_POINTER));
 static const C3PTypeConstraint<Vector3f64>      c3p_type_helper_vect3_double( "VEC3_DOUBLE",  24, TCode::VECT_3_DOUBLE,  (TCODE_FLAG_VALUE_IS_POINTER));
-static const C3PTypeConstraint<Image*>          c3p_type_helper_image(        "IMAGE",        0,  TCode::IMAGE,          (TCODE_FLAG_VALUE_IS_POINTER));
 static const C3PTypeConstraint<KeyValuePair*>   c3p_type_helper_kvp(          "KVP",          0,  TCode::KVP,            (TCODE_FLAG_VALUE_IS_POINTER));
-static const C3PTypeConstraint<Identity*>       c3p_type_helper_identity(     "IDENTITY",     0,  TCode::IDENTITY,       (TCODE_FLAG_VALUE_IS_POINTER));
 static const C3PTypeConstraint<StopWatch*>      c3p_type_helper_stopwatch(    "STOPWATCH",    sizeof(StopWatch),  TCode::STOPWATCH,      (TCODE_FLAG_VALUE_IS_POINTER));
 
 // Type-indirected handlers (parameter binders).
 static const C3PTypeConstraint<C3PBinBinder>    c3p_type_helper_ptrlen(       "BINARY",       0,  TCode::BINARY,         (TCODE_FLAG_PTR_LEN_TYPE | TCODE_FLAG_LEGAL_FOR_ENCODING));
+
+#if defined(CONFIG_C3P_IDENTITY_SUPPORT)
+  #include "../Identity/Identity.h"
+  static const C3PTypeConstraint<Identity*>       c3p_type_helper_identity(     "IDENTITY",     0,  TCode::IDENTITY,       (TCODE_FLAG_VALUE_IS_POINTER));
+#endif
+
+/* Image support costs code size. Don't support it unless requested. */
+#if defined(CONFIG_C3P_IMG_SUPPORT)
+  #include "../Image/Image.h"
+  static const C3PTypeConstraint<Image*>          c3p_type_helper_image(        "IMAGE",        0,  TCode::IMAGE,          (TCODE_FLAG_VALUE_IS_POINTER));
+#endif
 
 //{TCode::SI_UNIT,        (TCODE_FLAG_MASK_STRING_TYPE),                             0,  "SI_UNIT",       (C3PType*) &c3p_type_helper_str            },
 //{TCode::UINT128,        (0),                                                       16, "UINT128",       nullptr },
@@ -151,11 +154,17 @@ static const C3PType* _get_type_def(const TCode TC) {
     case TCode::VECT_3_UINT32:   return (const C3PType*) &c3p_type_helper_vect3_u32;
     case TCode::VECT_3_FLOAT:    return (const C3PType*) &c3p_type_helper_vect3_float;
     case TCode::VECT_3_DOUBLE:   return (const C3PType*) &c3p_type_helper_vect3_double;
-    case TCode::IMAGE:           return (const C3PType*) &c3p_type_helper_image;
     case TCode::KVP:             return (const C3PType*) &c3p_type_helper_kvp;
-    case TCode::IDENTITY:        return (const C3PType*) &c3p_type_helper_identity;
     case TCode::STOPWATCH:       return (const C3PType*) &c3p_type_helper_stopwatch;
     case TCode::BINARY:          return (const C3PType*) &c3p_type_helper_ptrlen;
+
+    #if defined(CONFIG_C3P_IDENTITY_SUPPORT)
+    case TCode::IDENTITY:        return (const C3PType*) &c3p_type_helper_identity;
+    #endif
+
+    #if defined(CONFIG_C3P_IMG_SUPPORT)
+    case TCode::IMAGE:           return (const C3PType*) &c3p_type_helper_image;
+    #endif
 
     case TCode::SI_UNIT:         return (const C3PType*) &c3p_type_helper_str;
     default:  break;
@@ -682,7 +691,7 @@ template <> int8_t      C3PTypeConstraint<int16_t>::deserialize(void* obj, Strin
 ///
 template <> void        C3PTypeConstraint<int32_t>::to_string(void* obj, StringBuilder* out) {
   int32_t o = _load_from_mem(obj);
-  out->concat(o);
+  out->concatf("%d", o);
 }
 
 template <> int8_t C3PTypeConstraint<int32_t>::representable_by(const TCode DEST_TYPE) {
@@ -1229,7 +1238,7 @@ template <> int8_t      C3PTypeConstraint<uint16_t>::deserialize(void* obj, Stri
 ///
 template <> void        C3PTypeConstraint<uint32_t>::to_string(void* obj, StringBuilder* out) {
   uint32_t o = _load_from_mem(obj);
-  out->concat(o);
+  out->concatf("%u", o);
 }
 
 template <> int8_t C3PTypeConstraint<uint32_t>::representable_by(const TCode DEST_TYPE) {
@@ -2290,6 +2299,7 @@ template <> int8_t      C3PTypeConstraint<C3PBinBinder>::get_as(void* src, const
 ////////////////////////////////////////////////////////////////////////////////
 /// Identity*
 ///
+#if defined(CONFIG_C3P_IDENTITY_SUPPORT)
 template <> uint32_t    C3PTypeConstraint<Identity*>::length(void* obj) {  return ((Identity*) obj)->length();  }
 template <> void        C3PTypeConstraint<Identity*>::to_string(void* obj, StringBuilder* out) {  ((Identity*) obj)->toString(out);  }
 
@@ -2336,7 +2346,7 @@ template <> int8_t      C3PTypeConstraint<Identity*>::deserialize(void* obj, Str
   int8_t ret = -1;
   return ret;
 }
-
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// StopWatch*

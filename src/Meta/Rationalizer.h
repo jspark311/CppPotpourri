@@ -36,8 +36,8 @@ C3P wants the following capabilities, which will probably implicate this file.
 #define BUILD_RATIONALIZER_META_HEADER
 
 /* Some programs might prefer to configure C3P via header file. */
-#if defined(C3P_CONF_FILE)
-  #include C3P_CONF_FILE
+#if defined(CONFIG_C3P_CONF_FILE)
+  #include CONFIG_C3P_CONF_FILE
 #endif
 
 

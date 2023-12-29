@@ -257,15 +257,22 @@ namespace cbor {
       encoder(output &out) : _out(&out) {};
       ~encoder() {};
 
-      void write_int(int value);
-      void write_int(int64_t value);
       void write_float(float value);
       void write_double(double value);
       void write_bytes(const uint8_t* data, uint32_t size);
       void write_string(const char* data, uint32_t size);
       void write_string(const char* str);
-      inline void write_int(unsigned int v) {      write_type_value(0, v);     }; // TODO: This might be a use-case for type auto.
-      inline void write_int(uint64_t v) {          write_type_value64(0, v);   }; // TODO: This might be a use-case for type auto.
+
+      inline void write_int(uint8_t v) {           write_type_value(0, (uint32_t) v);     };
+      inline void write_int(uint16_t v) {          write_type_value(0, (uint32_t) v);     };
+      inline void write_int(uint32_t v) {          write_type_value(0, v);     };
+      inline void write_int(uint64_t v) {          write_type_value64(0, v);   };
+
+      inline void write_int(int8_t v) {            write_type_value(1,   (uint32_t) -(v+1));   };
+      inline void write_int(int16_t v) {           write_type_value(1,   (uint32_t) -(v+1));   };
+      inline void write_int(int32_t v) {           write_type_value(1,   (uint32_t) -(v+1));   };
+      inline void write_int(int64_t v) {           write_type_value64(1, (uint64_t) -(v+1));   };
+
       inline void write_tag(const uint32_t tag) {  write_type_value(6, tag);   };
       inline void write_array(uint32_t size) {     write_type_value(4, size);  };
       inline void write_map(uint32_t size) {       write_type_value(5, size);  };

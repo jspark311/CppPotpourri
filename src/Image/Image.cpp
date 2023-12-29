@@ -781,7 +781,7 @@ uint32_t Image::convertColor(uint32_t c, ImgBufferFormat src_fmt) {
 void Image::orientation(ImgOrientation nu) {
   ImgOrientation original = orientation();
   if (original != nu) {
-    _img_clear_flag(MANUVR_IMG_FLAG_ROTATION_MASK);
+    _img_clear_flag(C3P_IMG_FLAG_ROTATION_MASK);
     _img_set_flag(((uint8_t) nu) << 6);
     if (nullptr != _buffer) {
       // TODO:

@@ -115,6 +115,12 @@ void UARTAdapter::printDebug(StringBuilder* output) {
 *******************************************************************************/
 
 /**
+* This function is the basis of all write operations to the UART.
+*
+* NOTE: The abstraction will not allow excursions past its declared buffer limit.
+*   In the event that it is requested, the UART driver will take all that it can,
+*   free that memory from the arguemnt, and return 0 to inform the caller that
+*   not all memory was claimed.
 *
 * @param is the pointer to the managed container for the content.
 * @return -1 to reject buffer, 0 to accept with partial claim, 1 to accept with full claim.
@@ -128,19 +134,28 @@ int8_t UARTAdapter::pushBuffer(StringBuilder* buf) {
     //   and some free buffer to accept it.
     const int32_t BYTES_TO_TAKE = strict_min(TXBUF_AVAILBLE, FULL_BUFFER_LEN);
     if (0 < BYTES_TO_TAKE) {
-      // NOTE: The abstraction will not allow excursions past its declared buffer limit.
-      //   In the event that it is requested, the UART driver will take all that it can,
-      //   free that memory from the arguemnt, and return 0 to inform the caller that
-      //   not all memory was claimed.
-      // TODO: It would be much better to iterate through each chunk of the
-      //   StringBuilder and copy and free that way, versus this expedient. By
-      //   calling StringBuilder::string(), we might force a reallocation. We
-      //   should use the tokenizer API to consume it in-situ.
-      const int32_t BYTES_TAKEN = _tx_buffer.insert(buf->string(), FULL_BUFFER_LEN);
-      if (0 < BYTES_TAKEN) {
-        buf->cull(BYTES_TAKEN);
-        ret = (FULL_BUFFER_LEN > BYTES_TAKEN) ? 0 : 1;
+      // Iterate through each fragment in the StringBuilder and bulk-insert each
+      //   into the RingBuffer, freeing them as we go.
+      // If we were to call StringBuilder::string(), there is an excellent
+      //   chance of needlessly forcing reallocation in StringBuilder. So this
+      //   is not only safer, but faster.
+      int32_t bytes_taken  = 0;
+      bool    bail_on_loop = false;
+      while (!bail_on_loop & (bytes_taken < BYTES_TO_TAKE)) {
+        uint32_t frag_len = 0;
+        uint8_t* frag_ptr = buf->position(0, &frag_len);
+        bail_on_loop = (nullptr == frag_ptr) & (frag_len > 0);
+        if (!bail_on_loop) {
+          const int32_t BYTES_REMAINING = (BYTES_TO_TAKE - bytes_taken);
+          const int32_t BYTES_TO_INSERT = strict_min((int32_t) frag_len, BYTES_REMAINING);
+          const uint32_t BYTES_INSERTED = _tx_buffer.insert(frag_ptr, BYTES_TO_INSERT);
+          bytes_taken += BYTES_INSERTED;
+          // Drop the entire fragment (if possible) or cull the bytes we took.
+          if (BYTES_INSERTED == frag_len) {   buf->drop_position(0);      }
+          else {                              buf->cull(BYTES_INSERTED);  }
+        }
       }
+      ret = (FULL_BUFFER_LEN > bytes_taken) ? 0 : 1;
     }
   }
   return ret;
@@ -157,7 +172,7 @@ int8_t UARTAdapter::pushBuffer(StringBuilder* buf) {
 int32_t UARTAdapter::bufferAvailable() {
   int32_t ret = -1;
   if (_tx_buffer.allocated()) {
-    ret = (_tx_buffer.capacity() - _tx_buffer.count());
+    ret = (int32_t) _tx_buffer.vacancy();
   }
   return ret;
 }
@@ -170,6 +185,14 @@ int32_t UARTAdapter::bufferAvailable() {
 *   directly.
 *******************************************************************************/
 
+uint32_t UARTAdapter::write(StringBuilder* buf) {
+  const uint32_t STARTING_LENGTH = (uint32_t) buf->length();
+  pushBuffer(buf);
+  const uint32_t ENDING_LENGTH   = (uint32_t) buf->length();
+  return (STARTING_LENGTH >= ENDING_LENGTH) ? (STARTING_LENGTH - ENDING_LENGTH) : 0;
+}
+
+
 /*
 * Write to the UART.
 */
@@ -177,7 +200,6 @@ uint32_t UARTAdapter::write(uint8_t* buf, uint32_t len) {
   uint32_t ret = 0;
   if (txCapable()) {
     ret = _tx_buffer.insert(buf, len);
-    _flushed = false;
   }
   return ret;
 }
@@ -186,11 +208,10 @@ uint32_t UARTAdapter::write(uint8_t* buf, uint32_t len) {
 /*
 * Write to the UART.
 */
-uint UARTAdapter::write(char c) {
+uint32_t UARTAdapter::write(char c) {
   uint32_t ret = 0;
   if (txCapable()) {
     ret = ((0 == _tx_buffer.insert(c)) ? 1 : 0);
-    _flushed = false;
   }
   return ret;
 }
@@ -261,4 +282,3 @@ int UARTAdapter::_handle_rx_push() {
   }
   return ret;
 }
-

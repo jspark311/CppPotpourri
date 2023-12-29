@@ -1,9 +1,9 @@
 #include <inttypes.h>
 #include <stdint.h>
-#include "BusQueue.h"
-#include "StringBuilder.h"
-#include "RingBuffer.h"
-#include "AbstractPlatform.h"
+#include "../Pipes/BufferAccepter/BufferAccepter.h"
+#include "../StringBuilder.h"
+#include "../RingBuffer.h"
+#include "../AbstractPlatform.h"
 
 #ifndef __ABSTRACT_UART_QUEUE_TEMPLATE_H__
 #define __ABSTRACT_UART_QUEUE_TEMPLATE_H__
@@ -91,6 +91,7 @@ class UARTAdapter : public BufferAccepter {
     inline bool txCapable() {    return _adapter_flag(UART_FLAG_HAS_TX);     };
     inline bool rxCapable() {    return _adapter_flag(UART_FLAG_HAS_RX);     };
 
+    uint32_t write(StringBuilder*);
     uint32_t write(uint8_t* buf, uint32_t len);
     uint32_t write(char c);
     uint32_t read(uint8_t* buf, uint32_t len);

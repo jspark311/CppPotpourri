@@ -362,25 +362,6 @@ void encoder::write_type_value64(int major_type, uint64_t value) {
   }
 }
 
-
-void encoder::write_int(int64_t value) {
-  if(value < 0) {
-    write_type_value(1, (uint64_t) -(value+1));
-  }
-  else {
-    write_type_value(0, (uint64_t) value);
-  }
-}
-
-void encoder::write_int(int value) {
-  if(value < 0) {
-    write_type_value(1, (uint32_t) -(value+1));
-  }
-  else {
-    write_type_value(0, (uint32_t) value);
-  }
-}
-
 void encoder::write_float(float value) {
   void* punny = &value;
   _out->put_byte((uint8_t) (7<<5) | 26);

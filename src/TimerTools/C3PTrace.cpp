@@ -160,7 +160,7 @@ int TracePoint::serialize(StringBuilder* out, const TCode FORMAT) {
         encoder.write_map(3);
         encoder.write_string("F");    encoder.write_int(fileID());
         encoder.write_string("L");    encoder.write_int(lineID());
-        encoder.write_string("T");    encoder.write_int(ts_micros);
+        encoder.write_string("T");    encoder.write_int((uint32_t) ts_micros);
         ret = 0;
       }
       break;

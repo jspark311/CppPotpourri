@@ -790,15 +790,17 @@ KeyValuePair* CBORArgListener::_inflate_c3p_type(uint8_t* data, int size, const 
       }
       break;
 
-    // Inflation of Identities.
-    case TCode::IDENTITY:
-      {
-        Identity* tmp = Identity::fromBuffer(data, size);
-        if (tmp) {
-          ret = new KeyValuePair(tmp);
+    #if defined(CONFIG_C3P_IDENTITY_SUPPORT)
+      // Inflation of Identities.
+      case TCode::IDENTITY:
+        {
+          Identity* tmp = Identity::fromBuffer(data, size);
+          if (tmp) {
+            ret = new KeyValuePair(tmp);
+          }
         }
-      }
-      break;
+        break;
+    #endif   // CONFIG_C3P_IDENTITY_SUPPORT
 
     #if defined(CONFIG_C3P_IMG_SUPPORT)
       // Inflation of Images.

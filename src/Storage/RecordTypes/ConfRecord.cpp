@@ -45,7 +45,7 @@ int8_t ConfRecord::_discard_allocations() {
 *******************************************************************************/
 
 /**
-* Sets a value for the given ConfKey.
+* Gets a value for the given ConfKey.
 *
 * @param KEY is the enum-controlled conf key to set.
 * @param TC_ARG is the type code for the value pointer.
@@ -61,6 +61,32 @@ int8_t ConfRecord::_get_conf(const char* KEY, const TCode TC_ARG, void* dest) {
     if (nullptr != container_of_interest) {
       ret--;
       if (0 == container_of_interest->get_as(TC_ARG, dest)) {
+        ret = 0;
+      }
+    }
+  }
+  return ret;
+}
+
+
+/**
+* Gets a value for the given ConfKey.
+*
+* @param KEY is the enum-controlled conf key to set.
+* @param TC_ARG is the type code for the value pointer.
+* @param dest_ptr is a pointer for the memory to receive the value.
+* @param dest_len is the length of the value.
+* @return 0 on success, -1 for incomplete allocation, -2 key not found, -3 for type conversion failure.
+*/
+int8_t ConfRecord::_get_conf(const char* KEY, const TCode TC_ARG, uint8_t** dest_ptr, uint32_t* dest_len) {
+  int8_t ret = -1;
+  if (allocated(true)) {
+    ret--;
+    //const TCode TC_KEY = _key_tcode(KEY);
+    C3PValue* container_of_interest = _kvp->valueWithKey(KEY);
+    if (nullptr != container_of_interest) {
+      ret--;
+      if (0 == container_of_interest->get_as(dest_ptr, dest_len)) {
         ret = 0;
       }
     }
@@ -238,6 +264,7 @@ int8_t ConfRecord::serialize(StringBuilder* out, TCode format) {
   }
   switch (format) {
     case TCode::CBOR:
+      #if defined(__BUILD_HAS_CBOR)
       {
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
@@ -249,6 +276,7 @@ int8_t ConfRecord::serialize(StringBuilder* out, TCode format) {
 
         ret = 0;  // TODO: Error handling?
       }
+      #endif
       break;
 
     case TCode::JSON:     // TODO
@@ -267,6 +295,7 @@ int8_t ConfRecord::deserialize(StringBuilder* raw, TCode format) {
   }
   switch (format) {
     case TCode::CBOR:
+      #if defined(__BUILD_HAS_CBOR)
       {
         CBORArgListener cl(&_kvp);
         cbor::input_static input(raw->string(), raw->length());
@@ -274,6 +303,7 @@ int8_t ConfRecord::deserialize(StringBuilder* raw, TCode format) {
         decoder.run();
         ret = (decoder.failed() ? -2 : 0);
       }
+      #endif
       break;
 
     case TCode::JSON:     // TODO

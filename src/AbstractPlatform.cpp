@@ -322,7 +322,7 @@ int callback_reboot(StringBuilder* text_return, StringBuilder* args) {
 * @param console is the application-created object for handling consoles.
 * @return 0 always.
 */
-int8_t AbstractPlatform::configureConsole(C3P_Console* console) {
+int8_t AbstractPlatform::configureConsole(C3PConsole* console) {
   #if defined(CONFIG_C3P_CONSOLE_GPIO_TOOL)
     console->defineCommand("gpio",   '\0', "GPIO values", "[val|mode] [pin] [value]", 2, callback_gpio_value);
   #endif

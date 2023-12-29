@@ -29,6 +29,7 @@ This file is the tortured result of growing pains since the beginning of
 */
 
 #include "AbstractPlatform.h"
+#include "../TimerTools/TimerTools.h"
 #include "I2CAdapter.h"
 
 
@@ -360,6 +361,7 @@ void I2CAdapter::printDebug(StringBuilder* output) {
 * `info`      | Prints debugging information for specified `I2CAdapter`. | None
 */
 int8_t I2CAdapter::console_handler(StringBuilder* text_return, StringBuilder* args) {
+  #if defined(CONFIG_C3P_I2CADAPTER_ENABLE_CONSOLE)
   int ret = 0;
   char* cmd    = args->position_trimmed(0);
   int   arg1   = args->position_as_int(1);
@@ -382,6 +384,8 @@ int8_t I2CAdapter::console_handler(StringBuilder* text_return, StringBuilder* ar
     printDebug(text_return);
     printPingMap(text_return);
   }
-
   return ret;
+  #else
+  return -2;   // TODO: Indicate a dead handler.
+  #endif  // CONFIG_C3P_I2CADAPTER_ENABLE_CONSOLE
 }

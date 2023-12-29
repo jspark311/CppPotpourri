@@ -25,11 +25,13 @@ TODO: Finish conversion to RingBuffer, and put constraints on BusAdapter's init
 #ifndef __ABSTRACT_BUS_QUEUE_H__
 #define __ABSTRACT_BUS_QUEUE_H__
 
-#include "CppPotpourri.h"
-#include "PriorityQueue.h"
-#include "RingBuffer.h"
-#include "AbstractPlatform.h"
-#include "C3PLogger.h"
+#include "../Meta/Rationalizer.h"
+#include "../CppPotpourri.h"
+#include "../PriorityQueue.h"
+#include "../RingBuffer.h"
+#include "../AbstractPlatform.h"
+#include "../C3PLogger.h"
+#include "../TimerTools/TimerTools.h"
 
 // TODO: I suppose it is too late to enum this....
 #define BUSOP_CALLBACK_ERROR    -1
@@ -44,10 +46,6 @@ TODO: Finish conversion to RingBuffer, and put constraints on BusAdapter's init
 #define BUSOP_FLAG_FREE_BUFFER     0x40    // If set in a transaction's flags field, the buffer will be free()'d, if present.
 #define BUSOP_FLAG_NO_FREE         0x80    // If set in a transaction's flags field, it will not be free()'d.
 
-
-extern "C" {
-  #include <stdio.h>   // TODO: Only needed for printf. Do something smarter.
-}
 
 /*
 * These are possible transfer states.
@@ -322,6 +320,8 @@ class BusOp {
 */
 template <class T> class BusAdapter : public BusOpCallback {
   public:
+    StopWatch profiler_poll;    // Profiler for bureaucracy within BusAdapter.
+
     inline T*      currentJob() {             return current_job;  };
     inline uint8_t adapterNumber() {          return ADAPTER_NUM;  };
     inline uint8_t getVerbosity() {           return _verbosity;   };
@@ -352,8 +352,11 @@ template <class T> class BusAdapter : public BusOpCallback {
     * Call periodically to keep the bus moving.
     * Returns the number of operations cleared.
     */
-    inline int8_t poll() {
-      return advance_work_queue();
+    int8_t poll() {
+      profiler_poll.markStart();
+      int8_t ret = advance_work_queue();
+      if (ret > 0) {  profiler_poll.markStop();  }
+      return ret;
     };
 
 
@@ -454,7 +457,7 @@ template <class T> class BusAdapter : public BusOpCallback {
         /* If we are here, it must mean that some other class fed us a const BusOp
         and wants us to ignore the memory cleanup. But we should at least set it
         back to IDLE.*/
-        if (getVerbosity() >= LOG_LEV_DEBUG) c3p_log(LOG_LEV_DEBUG, __PRETTY_FUNCTION__, "Dropping...");
+        if (getVerbosity() >= LOG_LEV_DEBUG) { c3p_log(LOG_LEV_DEBUG, "BusAdapter", "BusAdapter::reclaim_queue_item(): \t Dropping...."); }
         op->set_state(XferState::IDLE);
       }
     }
@@ -469,7 +472,7 @@ template <class T> class BusAdapter : public BusOpCallback {
       output->concatf("-- Adapter #%u\n", ADAPTER_NUM);
       output->concatf("-- Xfers (fail/total)  %u/%u\n", _failed_xfers, _total_xfers);
       output->concat("-- Prealloc:\n");
-      output->concatf("--\tavailable        %d\n",  preallocated.count());
+      output->concatf("--\tavailable        %d/%d\n",  preallocated.count(), preallocated.capacity());
       output->concatf("--\tmisses/frees     %u/%u\n", _prealloc_misses, _heap_frees);
       output->concat("-- Work queue:\n");
       output->concatf("--\tdepth/max        %u/%u\n", work_queue.size(), MAX_Q_DEPTH);

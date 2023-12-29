@@ -32,7 +32,9 @@ TODO: This class (and its children) are treading an uncomfortable line between
 #include "StringBuilder.h"
 #include "EnumeratedTypeCodes.h"
 #include "Vector3.h"
-#include "cbor-cpp/cbor.h"
+
+#include "Meta/Rationalizer.h"
+#include "C3PValue/KeyValuePair.h"
 
 
 enum class FilteringStrategy : uint8_t {
@@ -97,8 +99,10 @@ class SensorFilterBase {
 
     virtual int8_t _reallocate_sample_window(uint32_t) =0;
     virtual int8_t _zero_samples() =0;
-    virtual void   _serialize_value(cbor::encoder*, uint32_t idx)    =0;
-    virtual void   _deserialize_value(cbor::encoder*, uint32_t idx)  =0;
+    #if defined(__BUILD_HAS_CBOR)
+      virtual void   _serialize_value(cbor::encoder*, uint32_t idx)    =0;
+      virtual void   _deserialize_value(cbor::encoder*, uint32_t idx)  =0;
+    #endif
     virtual TCode  _value_tcode() =0;
 
     void _print_filter_base(StringBuilder*);
@@ -152,8 +156,10 @@ template <class T> class SensorFilter : public SensorFilterBase {
 
     int8_t  _reallocate_sample_window(uint32_t);
     int8_t  _zero_samples();
-    void    _serialize_value(cbor::encoder*, uint32_t idx);
-    void    _deserialize_value(cbor::encoder*, uint32_t idx);
+    #if defined(__BUILD_HAS_CBOR)
+      void    _serialize_value(cbor::encoder*, uint32_t idx);
+      void    _deserialize_value(cbor::encoder*, uint32_t idx);
+    #endif
     TCode   _value_tcode();
 
     void    _calculate_minmax();
@@ -209,8 +215,10 @@ template <class T> class SensorFilter3 : public SensorFilterBase {
 
     int8_t  _reallocate_sample_window(uint32_t);
     int8_t  _zero_samples();
-    void    _serialize_value(cbor::encoder*, uint32_t idx);
-    void    _deserialize_value(cbor::encoder*, uint32_t idx);
+    #if defined(__BUILD_HAS_CBOR)
+      void    _serialize_value(cbor::encoder*, uint32_t idx);
+      void    _deserialize_value(cbor::encoder*, uint32_t idx);
+    #endif
     TCode   _value_tcode();
 
     int8_t  _calculate_minmax();

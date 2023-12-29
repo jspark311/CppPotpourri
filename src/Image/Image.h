@@ -50,31 +50,43 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef __MANUVR_TYPE_IMG_H
-#define __MANUVR_TYPE_IMG_H
+#ifndef __C3P_TYPE_IMG_H
+#define __C3P_TYPE_IMG_H
 
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "../Meta/Rationalizer.h"
 #include "../EnumeratedTypeCodes.h"
 #include "../CppPotpourri.h"
 #include "../StringBuilder.h"
 
-// TODO: Reduce these to uint16_t without causing terrible consequences.
-#define MANUVR_IMG_COORD_UTYPE  uint32_t
-#define MANUVR_IMG_COORD_ITYPE  uint32_t
+// Do some pre-processor work to not waste memory on storing pixel addresses.
+// Some programs only need 8x8 pixel images, and some are desktop applications.
+// In any case, if the build options don't specify, we'll have 16-bit pixel
+//   addresses. No one has a gigapizel monitor, and this class isn't being used
+//   to stitch many images together.
+#if !defined(CONFIG_C3P_IMG_COORD_BITS)
+  #define CONFIG_C3P_IMG_COORD_BITS  16
+#endif
 
-
-#define MANUVR_IMG_FLAG_BUFFER_OURS     0x01  // We are responsible for freeing the buffer.
-#define MANUVR_IMG_FLAG_BUFFER_LOCKED   0x02  // Buffer should not be modified when set.
-#define MANUVR_IMG_FLAG_IS_FRAMEBUFFER  0x04  // This class holds the framebuffer for some piece of hardware.
-#define MANUVR_IMG_FLAG_IS_FB_DIRTY     0x08  // This image is dirty for the purposes of rendering.
-#define MANUVR_IMG_FLAG_IS_TEXT_WRAP    0x10  // If set, 'wrap' text at right edge of display
-#define MANUVR_IMG_FLAG_IS_STRICT_CP437 0x20  // If set, use correct CP437 charset (default is off)
-
-
-#define MANUVR_IMG_FLAG_ROTATION_MASK   0xC0  // The bits that hold our orientation value.
+// Once the bit-width is defined, assign properly-sized integer types to our
+//   wrapped types.
+// TODO: PixInt might be wrong-headed. Might be better to just up-case to int32
+//   while doing signed arithmetic on PixUInt (which is the primary type).
+#if(9 > CONFIG_C3P_IMG_COORD_BITS)
+  typedef uint8_t PixUInt;
+  typedef int8_t  PixInt;
+#elif(17 > CONFIG_C3P_IMG_COORD_BITS)
+  typedef uint16_t PixUInt;
+  typedef int16_t  PixInt;
+#elif(33 > CONFIG_C3P_IMG_COORD_BITS)
+  typedef uint32_t PixUInt;
+  typedef int32_t  PixInt;
+#else
+  #error Integers for holding pixel addresses cannot be larger than 32-bit.
+#endif
 
 
 // Font data stored PER GLYPH
@@ -119,6 +131,54 @@ enum class ImgOrientation : uint8_t {
 };
 
 
+
+/*******************************************************************************
+* Coordinate types
+*******************************************************************************/
+
+/* A representation of a pixel address. */
+class PixAddr {
+  public:
+    PixUInt x;   // X-coordinate (horizonal axis, larger values are further right)
+    PixUInt y;   // Y-coordinate (vertical axis, larger values are further down)
+
+    PixAddr(const PixUInt X, const PixUInt Y) : x(X), y(Y) {};
+    PixAddr() : x(0), y(0) {};
+};
+
+/* A representation of a bounding-box within the Image. */
+class PixBoundingBox : PixAddr {
+  public:
+    PixUInt w;   // Width
+    PixUInt h;   // Height
+
+    PixBoundingBox(const PixUInt X, const PixUInt Y, const PixUInt W, const PixUInt H) : PixAddr(X, Y), w(W), h(H) {};
+    PixBoundingBox(const PixUInt W, const PixUInt H) : PixAddr(0, 0), w(W), h(H) {};
+    PixBoundingBox() : PixAddr(0, 0), w(0), h(0) {};
+
+    // Pass an optional OFFSET value to arrive at an absolute location.
+    PixUInt extentX(const PixUInt OFFSET = 0) {     return (OFFSET + w + x);  };
+    PixUInt extentY(const PixUInt OFFSET = 0) {     return (OFFSET + h + y);  };
+    PixAddr extent() {                     return PixAddr((w + x), (h + y));  };
+
+};
+
+
+
+/* Class flags */
+#define C3P_IMG_FLAG_BUFFER_OURS     0x01  // We are responsible for freeing the buffer.
+#define C3P_IMG_FLAG_BUFFER_LOCKED   0x02  // Buffer should not be modified when set.
+#define C3P_IMG_FLAG_IS_FRAMEBUFFER  0x04  // This class holds the framebuffer for some piece of hardware.
+#define C3P_IMG_FLAG_IS_FB_DIRTY     0x08  // This image is dirty for the purposes of rendering.
+#define C3P_IMG_FLAG_IS_TEXT_WRAP    0x10  // If set, 'wrap' text at right edge of display
+#define C3P_IMG_FLAG_IS_STRICT_CP437 0x20  // If set, use correct CP437 charset (default is off)
+
+#define C3P_IMG_FLAG_ROTATION_MASK   0xC0  // The bits that hold our orientation value.
+
+
+/*******************************************************************************
+* Our wrapper class for image data.
+*******************************************************************************/
 class Image {
   public:
     Image(uint32_t x, uint32_t y, ImgBufferFormat, uint8_t*);
@@ -157,11 +217,11 @@ class Image {
     inline uint32_t        pixels() {       return (_x * _y);              };
     inline uint32_t        bytesUsed() {    return ((_x * _y * _bits_per_pixel()) >> 3);  };
     inline uint8_t         bitsPerPixel() { return _bits_per_pixel(_buf_fmt);   };
-    inline ImgOrientation  orientation() {  return ((ImgOrientation) ((_imgflags & MANUVR_IMG_FLAG_ROTATION_MASK) >> 6));  };
+    inline ImgOrientation  orientation() {  return ((ImgOrientation) ((_imgflags & C3P_IMG_FLAG_ROTATION_MASK) >> 6));  };
     void orientation(ImgOrientation);
 
-    inline bool  isFrameBuffer() {   return _img_flag(MANUVR_IMG_FLAG_IS_FRAMEBUFFER);   };
-    inline bool  locked() {          return _img_flag(MANUVR_IMG_FLAG_BUFFER_LOCKED);    };
+    inline bool  isFrameBuffer() {   return _img_flag(C3P_IMG_FLAG_IS_FRAMEBUFFER);   };
+    inline bool  locked() {          return _img_flag(C3P_IMG_FLAG_BUFFER_LOCKED);    };
 
     /* BEGIN ADAFRUIT GFX SPLICE */
     void drawFastHLine(uint32_t x, uint32_t y, uint32_t w, uint32_t color);
@@ -201,10 +261,10 @@ class Image {
     inline uint32_t getCursorX() const {          return _cursor_x;           };
     inline uint32_t getCursorY() const {          return _cursor_y;           };
 
-    inline void textWrap(bool x) {  _img_set_flag(MANUVR_IMG_FLAG_IS_TEXT_WRAP, x);      };
-    inline bool textWrap() {        return _img_flag(MANUVR_IMG_FLAG_IS_TEXT_WRAP);      };
-    inline void cp437(bool x) {     _img_set_flag(MANUVR_IMG_FLAG_IS_STRICT_CP437, x);   };
-    inline bool cp437() {           return _img_flag(MANUVR_IMG_FLAG_IS_STRICT_CP437);   };
+    inline void textWrap(bool x) {  _img_set_flag(C3P_IMG_FLAG_IS_TEXT_WRAP, x);      };
+    inline bool textWrap() {        return _img_flag(C3P_IMG_FLAG_IS_TEXT_WRAP);      };
+    inline void cp437(bool x) {     _img_set_flag(C3P_IMG_FLAG_IS_STRICT_CP437, x);   };
+    inline bool cp437() {           return _img_flag(C3P_IMG_FLAG_IS_STRICT_CP437);   };
     /* END ADAFRUIT GFX SPLICE */
 
 
@@ -215,10 +275,10 @@ class Image {
     ImgBufferFormat _buf_fmt  = ImgBufferFormat::UNALLOCATED;
 
     inline uint8_t _bits_per_pixel() {     return _bits_per_pixel(_buf_fmt);    };
-    inline bool _is_dirty() {              return _img_flag(MANUVR_IMG_FLAG_IS_FB_DIRTY);     };
-    inline void _is_dirty(bool x) {        _img_set_flag(MANUVR_IMG_FLAG_IS_FB_DIRTY, x);     };
-    inline void _is_framebuffer(bool x) {  _img_set_flag(MANUVR_IMG_FLAG_IS_FRAMEBUFFER, x);  };
-    inline void _lock(bool x) {            _img_set_flag(MANUVR_IMG_FLAG_BUFFER_LOCKED, x);   };
+    inline bool _is_dirty() {              return _img_flag(C3P_IMG_FLAG_IS_FB_DIRTY);     };
+    inline void _is_dirty(bool x) {        _img_set_flag(C3P_IMG_FLAG_IS_FB_DIRTY, x);     };
+    inline void _is_framebuffer(bool x) {  _img_set_flag(C3P_IMG_FLAG_IS_FRAMEBUFFER, x);  };
+    inline void _lock(bool x) {            _img_set_flag(C3P_IMG_FLAG_BUFFER_LOCKED, x);   };
 
 
   private:
@@ -265,8 +325,8 @@ class Image {
       return ((_pixel_number(x, y) * _bits_per_pixel()) >> 3);
     };
 
-    inline bool  _is_ours() {     return _img_flag(MANUVR_IMG_FLAG_BUFFER_OURS);     };
-    inline void  _ours(bool l) {  _img_set_flag(MANUVR_IMG_FLAG_BUFFER_OURS, l);     };
+    inline bool  _is_ours() {     return _img_flag(C3P_IMG_FLAG_BUFFER_OURS); };
+    inline void  _ours(bool l) {  _img_set_flag(C3P_IMG_FLAG_BUFFER_OURS, l); };
 
     inline uint8_t _img_flags() {                return _imgflags;            };
     inline bool _img_flag(uint8_t _flag) {       return (_imgflags & _flag);  };
@@ -281,4 +341,4 @@ class Image {
     static uint8_t _bits_per_pixel(ImgBufferFormat);
 };
 
-#endif   // __MANUVR_TYPE_IMG_H
+#endif   // __C3P_TYPE_IMG_H

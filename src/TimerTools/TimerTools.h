@@ -72,11 +72,12 @@ class PeriodicTimeout {
   public:
     virtual ~PeriodicTimeout() {};      // Featureless destructor.
 
-    inline void reset() {                  _mark = _now();               };
-    inline void reset(unsigned long p) {   _mark = _now(); _period = p;  };
-    inline void period(unsigned long p) {  _period = p;                  };
-    inline bool enabled() {                return (0 < _period);         };
-    inline unsigned long period() {        return _period;               };
+    inline void trigger() {                _mark = (_now() - (_period+1));  };
+    inline void reset() {                  _mark = _now();                  };
+    inline void reset(unsigned long p) {   _mark = _now(); _period = p;     };
+    inline void period(unsigned long p) {  _period = p;                     };
+    inline bool enabled() {                return (0 < _period);            };
+    inline unsigned long period() {        return _period;                  };
     inline unsigned long remaining() {
       return (expired() ? 0 : _until(_mark + _period));
     };

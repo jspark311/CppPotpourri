@@ -54,17 +54,38 @@ class ConfRecord : public SimpleDataRecord {
     * @param val is the pointer to the variable to receive the result.
     * @return 0 on success, -1 for invalid key, -2 for data deprecation if converted, -3 for no values.
     */
-    inline int8_t setConf(const char* KEY, const char* val) {   return _set_conf(KEY, TCode::STR, (void*) val);  };
+    //int8_t setConf(ConfKey, uint8_t*,  uint32_t  len) =0;  // Used for opaque tables.
+    //int8_t getConf(ConfKey, uint8_t**, uint32_t* len) =0;  // Used for opaque tables.
 
-    inline int8_t getConf(const char* KEY, uint8_t* val) {      return _get_conf(KEY, TCode::UINT8, (void*) val);  };
-    inline int8_t getConf(const char* KEY, int* val) {          return _get_conf(KEY, TCode::INT32, (void*) val);  };
-    inline int8_t getConf(const char* KEY, int64_t* val) {      return _get_conf(KEY, TCode::INT64, (void*) val);  };
-    inline int8_t getConf(const char* KEY, uint32_t* val) {     return _get_conf(KEY, TCode::UINT32, (void*) val);  };
-    inline int8_t getConf(const char* KEY, uint64_t* val) {     return _get_conf(KEY, TCode::UINT64, (void*) val);  };
-    inline int8_t getConf(const char* KEY, Vector3f* val) {     return _get_conf(KEY, TCode::VECT_3_FLOAT, (void*) val);  };
+    inline int8_t setConf(const char* KEY, uint8_t val) {       return _set_conf(KEY, TCode::UINT8,   (void*) &val);  };
+    inline int8_t setConf(const char* KEY, uint16_t val) {      return _set_conf(KEY, TCode::UINT16,  (void*) &val);  };
+    inline int8_t setConf(const char* KEY, uint32_t val) {      return _set_conf(KEY, TCode::UINT32,  (void*) &val);  };
+    inline int8_t setConf(const char* KEY, uint64_t val) {      return _set_conf(KEY, TCode::UINT64,  (void*) &val);  };
+    inline int8_t setConf(const char* KEY, int8_t val) {        return _set_conf(KEY, TCode::INT8,    (void*) &val);  };
+    inline int8_t setConf(const char* KEY, int16_t val) {       return _set_conf(KEY, TCode::INT16,   (void*) &val);  };
+    inline int8_t setConf(const char* KEY, int32_t val) {       return _set_conf(KEY, TCode::INT32,   (void*) &val);  };
+    inline int8_t setConf(const char* KEY, int64_t val) {       return _set_conf(KEY, TCode::INT64,   (void*) &val);  };
+    inline int8_t setConf(const char* KEY, bool val) {          return _set_conf(KEY, TCode::BOOLEAN, (void*) &val);  };
+    inline int8_t setConf(const char* KEY, float val) {         return _set_conf(KEY, TCode::FLOAT,   (void*) &val);  };
+    inline int8_t setConf(const char* KEY, double val) {        return _set_conf(KEY, TCode::DOUBLE,  (void*) &val);  };
+    inline int8_t setConf(const char* KEY, char* val) {         return _set_conf(KEY, TCode::STR,     (void*) val);  };
+    inline int8_t setConf(const char* KEY, const char* val) {   return _set_conf(KEY, TCode::STR,     (void*) val);  };
+    inline int8_t setConf(const char* KEY, Vector3f* val) {     return _set_conf(KEY, TCode::VECT_3_FLOAT, (void*) val);  };
+
+    inline int8_t getConf(const char* KEY, uint8_t* val) {      return _get_conf(KEY, TCode::UINT8,   (void*) val);  };
+    inline int8_t getConf(const char* KEY, uint16_t* val) {     return _get_conf(KEY, TCode::UINT16,  (void*) val);  };
+    inline int8_t getConf(const char* KEY, uint32_t* val) {     return _get_conf(KEY, TCode::UINT32,  (void*) val);  };
+    inline int8_t getConf(const char* KEY, uint64_t* val) {     return _get_conf(KEY, TCode::UINT64,  (void*) val);  };
+    inline int8_t getConf(const char* KEY, int8_t* val) {       return _get_conf(KEY, TCode::INT8,    (void*) val);  };
+    inline int8_t getConf(const char* KEY, int16_t* val) {      return _get_conf(KEY, TCode::INT16,   (void*) val);  };
+    inline int8_t getConf(const char* KEY, int32_t* val) {      return _get_conf(KEY, TCode::INT32,   (void*) val);  };
+    inline int8_t getConf(const char* KEY, int64_t* val) {      return _get_conf(KEY, TCode::INT64,   (void*) val);  };
     inline int8_t getConf(const char* KEY, bool* val) {         return _get_conf(KEY, TCode::BOOLEAN, (void*) val);  };
-    inline int8_t getConf(const char* KEY, float* val) {        return _get_conf(KEY, TCode::FLOAT, (void*) val);  };
-    inline int8_t getConf(const char* KEY, double* val) {       return _get_conf(KEY, TCode::DOUBLE, (void*) val);  };
+    inline int8_t getConf(const char* KEY, float* val) {        return _get_conf(KEY, TCode::FLOAT,   (void*) val);  };
+    inline int8_t getConf(const char* KEY, double* val) {       return _get_conf(KEY, TCode::DOUBLE,  (void*) val);  };
+    inline int8_t getConf(const char* KEY, char** val) {        return _get_conf(KEY, TCode::STR,     (void*) val);  };
+    inline int8_t getConf(const char* KEY, const char** val) {  return _get_conf(KEY, TCode::STR,     (void*) val);  };
+    inline int8_t getConf(const char* KEY, Vector3f* val) {     return _get_conf(KEY, TCode::VECT_3_FLOAT, (void*) val);  };
 
     KeyValuePair* getKVP();
 
@@ -94,6 +115,7 @@ class ConfRecord : public SimpleDataRecord {
 
     int8_t _set_conf(const char* KEY, const TCode, void* val);
     int8_t _get_conf(const char* KEY, const TCode, void* val);
+    int8_t _get_conf(const char* KEY, const TCode, uint8_t**, uint32_t* len);
 
     /* Slots to be occupied by the validation template. */
     virtual const char* const _list_name() =0;
@@ -116,6 +138,38 @@ template <class T> class ConfRecordValidation : public ConfRecord {
 
     /* Optional public API overrides for extending classes. */
     //virtual int8_t resetToDefaults() {  return 0;  };
+
+    // If the user of the ConfRecord knows exactly what enum is doing the
+    //   validation, provide lookup on that basis to reduce string replication.
+    inline int8_t setConf(const T KEY, uint8_t val) {       return _set_conf(_KEY_DEFS->enumStr(KEY), TCode::UINT8,   (void*) &val);  };
+    inline int8_t setConf(const T KEY, uint16_t val) {      return _set_conf(_KEY_DEFS->enumStr(KEY), TCode::UINT16,  (void*) &val);  };
+    inline int8_t setConf(const T KEY, uint32_t val) {      return _set_conf(_KEY_DEFS->enumStr(KEY), TCode::UINT32,  (void*) &val);  };
+    inline int8_t setConf(const T KEY, uint64_t val) {      return _set_conf(_KEY_DEFS->enumStr(KEY), TCode::UINT64,  (void*) &val);  };
+    inline int8_t setConf(const T KEY, int8_t val) {        return _set_conf(_KEY_DEFS->enumStr(KEY), TCode::INT8,    (void*) &val);  };
+    inline int8_t setConf(const T KEY, int16_t val) {       return _set_conf(_KEY_DEFS->enumStr(KEY), TCode::INT16,   (void*) &val);  };
+    inline int8_t setConf(const T KEY, int32_t val) {       return _set_conf(_KEY_DEFS->enumStr(KEY), TCode::INT32,   (void*) &val);  };
+    inline int8_t setConf(const T KEY, int64_t val) {       return _set_conf(_KEY_DEFS->enumStr(KEY), TCode::INT64,   (void*) &val);  };
+    inline int8_t setConf(const T KEY, bool val) {          return _set_conf(_KEY_DEFS->enumStr(KEY), TCode::BOOLEAN, (void*) &val);  };
+    inline int8_t setConf(const T KEY, float val) {         return _set_conf(_KEY_DEFS->enumStr(KEY), TCode::FLOAT,   (void*) &val);  };
+    inline int8_t setConf(const T KEY, double val) {        return _set_conf(_KEY_DEFS->enumStr(KEY), TCode::DOUBLE,  (void*) &val);  };
+    inline int8_t setConf(const T KEY, char* val) {         return _set_conf(_KEY_DEFS->enumStr(KEY), TCode::STR,     (void*) val);  };
+    inline int8_t setConf(const T KEY, const char* val) {   return _set_conf(_KEY_DEFS->enumStr(KEY), TCode::STR,     (void*) val);  };
+    inline int8_t setConf(const T KEY, Vector3f* val) {     return _set_conf(_KEY_DEFS->enumStr(KEY), TCode::VECT_3_FLOAT, (void*) val);  };
+
+    inline int8_t getConf(const T KEY, uint8_t* val) {      return _get_conf(_KEY_DEFS->enumStr(KEY), TCode::UINT8,   (void*) val);  };
+    inline int8_t getConf(const T KEY, uint16_t* val) {     return _get_conf(_KEY_DEFS->enumStr(KEY), TCode::UINT16,  (void*) val);  };
+    inline int8_t getConf(const T KEY, uint32_t* val) {     return _get_conf(_KEY_DEFS->enumStr(KEY), TCode::UINT32,  (void*) val);  };
+    inline int8_t getConf(const T KEY, uint64_t* val) {     return _get_conf(_KEY_DEFS->enumStr(KEY), TCode::UINT64,  (void*) val);  };
+    inline int8_t getConf(const T KEY, int8_t* val) {       return _get_conf(_KEY_DEFS->enumStr(KEY), TCode::INT8,    (void*) val);  };
+    inline int8_t getConf(const T KEY, int16_t* val) {      return _get_conf(_KEY_DEFS->enumStr(KEY), TCode::INT16,   (void*) val);  };
+    inline int8_t getConf(const T KEY, int32_t* val) {      return _get_conf(_KEY_DEFS->enumStr(KEY), TCode::INT32,   (void*) val);  };
+    inline int8_t getConf(const T KEY, int64_t* val) {      return _get_conf(_KEY_DEFS->enumStr(KEY), TCode::INT64,   (void*) val);  };
+    inline int8_t getConf(const T KEY, bool* val) {         return _get_conf(_KEY_DEFS->enumStr(KEY), TCode::BOOLEAN, (void*) val);  };
+    inline int8_t getConf(const T KEY, float* val) {        return _get_conf(_KEY_DEFS->enumStr(KEY), TCode::FLOAT,   (void*) val);  };
+    inline int8_t getConf(const T KEY, double* val) {       return _get_conf(_KEY_DEFS->enumStr(KEY), TCode::DOUBLE,  (void*) val);  };
+    inline int8_t getConf(const T KEY, char** val) {        return _get_conf(_KEY_DEFS->enumStr(KEY), TCode::STR,     (void*) val);  };
+    inline int8_t getConf(const T KEY, const char** val) {  return _get_conf(_KEY_DEFS->enumStr(KEY), TCode::STR,     (void*) val);  };
+    inline int8_t getConf(const T KEY, Vector3f* val) {     return _get_conf(_KEY_DEFS->enumStr(KEY), TCode::VECT_3_FLOAT, (void*) val);  };
 
 
   protected:

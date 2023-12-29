@@ -157,6 +157,8 @@ class SPIBusOp : public BusOp {
 */
 class SPIAdapter : public BusAdapter<SPIBusOp> {
   public:
+    StopWatch profiler_cb;    // Profiler for bureaucracy within SPIBusOpCallback.
+
     SPIAdapter(const uint8_t adapter, const uint8_t clk_pin, const uint8_t mosi_pin, const uint8_t miso_pin, const uint8_t max_queue);
     ~SPIAdapter();
 
@@ -176,6 +178,8 @@ class SPIAdapter : public BusAdapter<SPIBusOp> {
     int8_t init();
     void printDebug(StringBuilder*);
     void printHardwareState(StringBuilder*);
+
+    inline bool allQueuesClear() {   return (busIdle() && (0 == callback_queue.count()));  };
 
     /* Built-in per-instance console handler. */
     int8_t console_handler(StringBuilder* text_return, StringBuilder* args);

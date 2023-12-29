@@ -33,9 +33,9 @@ This file is the tortured result of growing pains since the beginning of
 #include <stdarg.h>
 
 #include "BusQueue.h"
-#include "StringBuilder.h"
-#include "LightLinkedList.h"
-#include "AbstractPlatform.h"
+#include "../StringBuilder.h"
+#include "../LightLinkedList.h"
+#include "../AbstractPlatform.h"
 
 #ifndef __I2C_ABSTRACTION_LAYER_H__
 #define __I2C_ABSTRACTION_LAYER_H__

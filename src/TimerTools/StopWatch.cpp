@@ -103,6 +103,7 @@ int StopWatch::serialize(StringBuilder* out, const TCode FORMAT) {
       }
       break;
     case TCode::CBOR:
+      #if defined(__BUILD_HAS_CBOR)
       {
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
@@ -118,6 +119,7 @@ int StopWatch::serialize(StringBuilder* out, const TCode FORMAT) {
         encoder.write_string("last");   encoder.write_int(_run_time_last);
         ret = 0;
       }
+      #endif
       break;
     case TCode::BINARY:
       break;

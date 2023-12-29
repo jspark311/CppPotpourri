@@ -771,34 +771,34 @@ int test_CBOR_KeyValuePair() {
       printf("CBOR decoded:\n");
       dump_kvp(r);
 
-      if ((0 == r->valueWithIdx(0, &ret0)) && (ret0 == val0)) {
-        if ((0 == r->valueWithIdx(1, &ret1)) && (ret1 == val1)) {
-          if ((0 == r->valueWithIdx(2, &ret2)) && (ret2 == val2)) {
-            if ((0 == r->valueWithIdx(3, &ret3)) && (ret3 == val3)) {
-              if ((0 == r->valueWithIdx(4, &ret4)) && (ret4 == val4)) {
-                if ((0 == r->valueWithIdx(5, &ret5)) && (ret5 == val5)) {
-                  if ((0 == r->valueWithIdx(6, &ret6)) && (ret6 == val6)) {
-                    if ((0 == r->valueWithKey("val8", &ret8)) && (ret8 == val8)) {
-                      if (r->count() == a.count()) {
+      if (r->count() == a.count()) {
+        if ((0 == r->valueWithIdx(0, &ret0)) && (ret0 == val0)) {
+          if ((0 == r->valueWithIdx(1, &ret1)) && (ret1 == val1)) {
+            if ((0 == r->valueWithIdx(2, &ret2)) && (ret2 == val2)) {
+              if ((0 == r->valueWithIdx(3, &ret3)) && (ret3 == val3)) {
+                if ((0 == r->valueWithIdx(4, &ret4)) && (ret4 == val4)) {
+                  if ((0 == r->valueWithIdx(5, &ret5)) && (ret5 == val5)) {
+                    if ((0 == r->valueWithIdx(6, &ret6)) && (ret6 == val6)) {
+                      if ((0 == r->valueWithKey("val8", &ret8)) && (ret8 == val8)) {
                         return_value = 0;
                       }
-                      else printf("Arg counts don't match: %d vs %d\n", r->count(), a.count());
+                      else printf("Failed to vet key 'val8'... %.6f vs %.6f\n", ret8, val8);
                     }
-                    else printf("Failed to vet key 'value8'... %.6f vs %.6f\n", ret8, val8);
+                    else printf("Failed to vet key 'val6'... %.3f vs %.3f\n", (double) ret6, (double) val6);
                   }
-                  else printf("Failed to vet key 'value6'... %.3f vs %.3f\n", (double) ret6, (double) val6);
+                  else printf("Failed to vet key 'val5'... %u vs %u\n", ret5, val5);
                 }
-                else printf("Failed to vet key 'value5'... %u vs %u\n", ret5, val5);
+                else printf("Failed to vet key 'val4'... %u vs %u\n", ret4, val4);
               }
-              else printf("Failed to vet key 'value4'... %u vs %u\n", ret4, val4);
+              else printf("Failed to vet key 'val3'... %u vs %u\n", ret3, val3);
             }
-            else printf("Failed to vet key 'value3'... %u vs %u\n", ret3, val3);
+            else printf("Failed to vet key 'val2'... %u vs %u\n", ret2, val2);
           }
-          else printf("Failed to vet key 'value2'... %u vs %u\n", ret2, val2);
+          else printf("Failed to vet key 'val1'... %u vs %u\n", ret1, val1);
         }
-        else printf("Failed to vet key 'value1'... %u vs %u\n", ret1, val1);
+        else printf("Failed to vet key 'val0'... %u vs %u\n", ret0, val0);
       }
-      else printf("Failed to vet key 'value0'... %u vs %u\n", ret0, val0);
+      else printf("Arg counts don't match: %d vs %d\n", r->count(), a.count());
     }
     else printf("Failed to decode KVP chain from CBOR...\n");
   }

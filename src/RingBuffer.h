@@ -28,12 +28,13 @@ NOTE: RingBuffer will not allow excursions past its declared buffer limit. In
   much it actually took.
 */
 
+#ifndef __DS_RING_BUFFER_H
+#define __DS_RING_BUFFER_H
+
 #include <stdlib.h>
 #include <inttypes.h>
 #include <stdint.h>
-
-#ifndef __DS_RING_BUFFER_H
-#define __DS_RING_BUFFER_H
+#include "CppPotpourri.h"
 
 template <class T> class RingBuffer {
   public:

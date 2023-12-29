@@ -20,6 +20,7 @@ limitations under the License.
 */
 
 #include "AbstractPlatform.h"
+#include "../TimerTools/TimerTools.h"
 #include "I2CAdapter.h"
 
 

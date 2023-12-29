@@ -1,5 +1,5 @@
 /*
-File:   ParsingConsole.cpp
+File:   C3PConsole.cpp
 Author: J. Ian Lindsay
 Date:   2020.01.05
 
@@ -19,6 +19,7 @@ limitations under the License.
 */
 
 #include "C3PConsole.h"
+#include "../CppPotpourri.h"
 
 /*******************************************************************************
 *      _______.___________.    ___   .___________. __    ______     _______.
@@ -51,13 +52,13 @@ const char* const ParsingConsole::errToStr(ConsoleErr err) {
 
 
 /*******************************************************************************
-* C3P_Console base implementation
+* C3PConsole base implementation
 *******************************************************************************/
 
 /*
 * Destructor
 */
-C3P_Console::~C3P_Console() {
+C3PConsole::~C3PConsole() {
   while (0 < _cmd_list.size()) {
     // Clear out all the command definitions.
     ConsoleCommand* tmp_cmd = _cmd_list.remove(_cmd_list.size() - 1);
@@ -68,7 +69,7 @@ C3P_Console::~C3P_Console() {
 }
 
 
-int8_t C3P_Console::defineCommand(const char* c, const char* h, const char* p, const uint8_t r, const consoleCallback ccb) {
+int8_t C3PConsole::defineCommand(const char* c, const char* h, const char* p, const uint8_t r, const consoleCallback ccb) {
   ConsoleCommand* cmd = new ConsoleCommand(c, '\0', h, p, r, ccb, true);
   if (nullptr != cmd) {
     _max_cmd_len = strict_max(_max_cmd_len, (uint8_t) strlen(c));
@@ -79,7 +80,7 @@ int8_t C3P_Console::defineCommand(const char* c, const char* h, const char* p, c
 }
 
 
-int8_t C3P_Console::defineCommand(const char* c, const char sc, const char* h, const char* p, const uint8_t r, const consoleCallback ccb) {
+int8_t C3PConsole::defineCommand(const char* c, const char sc, const char* h, const char* p, const uint8_t r, const consoleCallback ccb) {
   ConsoleCommand* cmd = new ConsoleCommand(c, sc, h, p, r, ccb, true);
   if (nullptr != cmd) {
     _max_cmd_len = strict_max(_max_cmd_len, (uint8_t) strlen(c));
@@ -90,7 +91,7 @@ int8_t C3P_Console::defineCommand(const char* c, const char sc, const char* h, c
 }
 
 
-int8_t C3P_Console::defineCommand(const ConsoleCommand* cmd) {
+int8_t C3PConsole::defineCommand(const ConsoleCommand* cmd) {
   if (nullptr != cmd) {
     _max_cmd_len = strict_max(_max_cmd_len, (uint8_t) strlen(cmd->cmd));
     _cmd_list.insert((ConsoleCommand*) cmd);
@@ -104,7 +105,7 @@ int8_t C3P_Console::defineCommand(const ConsoleCommand* cmd) {
 *   of ConsoleCommand objects.
 * NOTE: This is only providing API features at the moment. It is not saving any RAM.
 */
-int8_t C3P_Console::defineCommands(const ConsoleCommand* cmds, const int cmd_count) {
+int8_t C3PConsole::defineCommands(const ConsoleCommand* cmds, const int cmd_count) {
   if (nullptr != cmds) {
     for (int i = 0; i < cmd_count; i++) {
       _cmd_list.insert((ConsoleCommand*) cmds + i);
@@ -121,7 +122,7 @@ int8_t C3P_Console::defineCommands(const ConsoleCommand* cmds, const int cmd_cou
 * If the command is not found that way, try again by a case-sensitive shortcut.
 * Returns NULL if nothing was found.
 */
-ConsoleCommand* C3P_Console::_cmd_def_lookup(char* str) {
+ConsoleCommand* C3PConsole::_cmd_def_lookup(char* str) {
   ConsoleCommand* ret = nullptr;
   if (nullptr != str) {
     int i = 0;

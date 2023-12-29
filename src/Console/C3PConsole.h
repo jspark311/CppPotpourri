@@ -104,7 +104,7 @@ typedef int (*consoleErrCallback)(StringBuilder*, const ConsoleErr, const Consol
 /*
 * This is the base for a console class.
 */
-class C3P_Console : public BufferAccepter {
+class C3PConsole : public BufferAccepter {
   public:
     /* Implementation of BufferAccepter is done by the child class. */
     virtual int8_t  pushBuffer(StringBuilder*) =0;
@@ -114,14 +114,16 @@ class C3P_Console : public BufferAccepter {
     int8_t defineCommand(const char* c, const char sc, const char* h, const char* p, const uint8_t r, const consoleCallback);
     int8_t defineCommand(const ConsoleCommand* cmd);
     int8_t defineCommands(const ConsoleCommand* cmds, const int cmd_count);
+    inline void setOutputTarget(BufferAccepter* obj) {   _output_target = obj;  };
 
   protected:
     LinkedList<StringBuilder*>  _history;   // Stores a list of prior commands.
     LinkedList<ConsoleCommand*> _cmd_list;  // Stores a list of command definitions.
+    BufferAccepter* _output_target = nullptr;
     uint8_t _max_cmd_len = 0;
 
-    C3P_Console() {};
-    ~C3P_Console();
+    C3PConsole() {};
+    ~C3PConsole();
 
     ConsoleCommand* _cmd_def_lookup(char*);     // Get a command from our list by its name.
 };
@@ -131,7 +133,7 @@ class C3P_Console : public BufferAccepter {
 /*
 * This is the console class.
 */
-class ParsingConsole : public C3P_Console {
+class ParsingConsole : public C3PConsole {
   public:
     ParsingConsole(const uint16_t max_len) : _MAX_LEN(max_len) {};
     ~ParsingConsole();
@@ -155,7 +157,6 @@ class ParsingConsole : public C3P_Console {
     inline LineTerm getRXTerminator() {   return _rx_terminator;   };
 
     inline void errorCallback(consoleErrCallback ecb) {  errCB = ecb;           };
-    inline void setOutputTarget(BufferAccepter* obj) {   _output_target = obj;  };
 
     // History management...
     void clearHistory();
@@ -198,7 +199,6 @@ class ParsingConsole : public C3P_Console {
     consoleErrCallback errCB = nullptr;    // Optional function pointer for failed commands.
     StringBuilder _buffer;     // Unused input is accumulated here.
     StringBuilder _log;        // Stores a log for retreival.
-    BufferAccepter* _output_target = nullptr;
 
     int8_t _relay_to_output_target();
 

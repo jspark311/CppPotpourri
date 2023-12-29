@@ -44,7 +44,7 @@ TODO: Points and lines collected from within ISR stack frames (or threads)
   annoyance. But unless we inform C3PTrace that a trace() call is originating
   from an ISR, there will be no way to discover the discontinuity in lines
   drawn with points in different stack frames, which will obfuscate timing
-  relationships. 
+  relationships.
 This may not be a problem as long as we understand that our trace will be a
   projection of a 4D object into 3-space, and take care to trace lines without
   crossing stack frames.
@@ -52,6 +52,8 @@ This may not be a problem as long as we understand that our trace will be a
 TODO: Add wrapper macros in header file so access is cheaper, and usage easier.
 */
 #include "../Meta/Rationalizer.h"
+#include "../PriorityQueue.h"
+#include "../RingBuffer.h"
 
 #ifndef __C3P_TRACE_H
 #define __C3P_TRACE_H

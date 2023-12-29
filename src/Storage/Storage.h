@@ -48,6 +48,7 @@ This file represents the platform-agnostic interface to a persistent
 #define DATA_RECORD_FLAG_PENDING_IO     0x01  // We are in the process of saving or loading.
 #define DATA_RECORD_FLAG_PENDING_ALLOC  0x02  // We are waiting on an allocation to happen.
 #define DATA_RECORD_READ_ONLY           0x04  // Set for records which will not be written as a matter of policy.
+#define DATA_RECORD_FLAG_WAS_LOADED     0x08  // This record was loaded from storage.
 
 /*
 * DataRecord types. Although laregly arbitrary, this 8-bit enum space must be
@@ -84,10 +85,12 @@ class SimpleDataRecord {
     inline StorageRecordType recordType() {   return _record_type;                  };
     inline uint64_t          timestamp() {    return _timestamp;                    };
     inline bool              isDirty() {      return (_hash != _calculate_hash());  };
+    inline bool              wasLoaded() {    return _dr_flag(DATA_RECORD_FLAG_WAS_LOADED);  };
 
     void printDebug(StringBuilder*);
     int8_t save(uint32_t storage_tag, const char* name, StringBuilder* outbound_buf);
     int8_t load(uint32_t storage_tag, StringBuilder* inbound_buf);
+    int8_t load(uint32_t storage_tag, uint8_t* inbound_buf, uint32_t len);
 
     virtual int8_t serialize(StringBuilder*, TCode) =0;
     virtual int8_t deserialize(StringBuilder*, TCode) =0;

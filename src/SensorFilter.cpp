@@ -119,6 +119,7 @@ int8_t SensorFilterBase::serialize(StringBuilder* out, TCode format) {
       break;
 
     case TCode::CBOR:
+      #if defined(__BUILD_HAS_CBOR)
       {
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
@@ -137,9 +138,9 @@ int8_t SensorFilterBase::serialize(StringBuilder* out, TCode format) {
             encoder.write_string(_name);
         }
         encoder.write_string("win_sz");
-          encoder.write_int((unsigned int) windowSize());
+          encoder.write_int(windowSize());
         encoder.write_string("total");
-          encoder.write_int((unsigned int) totalSamples());
+          encoder.write_int(totalSamples());
         encoder.write_string("strat");
           encoder.write_string(getFilterStr(strategy()));
         if (_filter_initd) {
@@ -152,6 +153,7 @@ int8_t SensorFilterBase::serialize(StringBuilder* out, TCode format) {
             ret = 0;
           }
       }
+      #endif
       break;
     default:
       break;
@@ -166,6 +168,7 @@ int8_t SensorFilterBase::deserialize(StringBuilder* raw, TCode format) {
   int8_t ret = -1;
   switch (format) {
     case TCode::CBOR:
+      #if defined(__BUILD_HAS_CBOR)
       {
         //KeyValuePair* kvp = KeyValuePair::unserialize(raw->string(), raw->length(), TCode::CBOR);
         KeyValuePair* kvp = nullptr;
@@ -180,6 +183,7 @@ int8_t SensorFilterBase::deserialize(StringBuilder* raw, TCode format) {
           ret = 0;
         }
       }
+      #endif
       break;
 
     default:
@@ -195,6 +199,7 @@ int8_t SensorFilterBase::deserialize(StringBuilder* raw, TCode format) {
 // CBOR handles integer length on its own.
 // If someone wants to teach me a less obnoxious way to do this, please branch
 //   and PR. I will probably take it.
+#if defined(__BUILD_HAS_CBOR)
 template <> void SensorFilter<uint32_t>::_serialize_value(cbor::encoder* enc, uint32_t idx) {   enc->write_int(samples[idx]);  }
 template <> void SensorFilter<uint32_t>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
 template <> void SensorFilter<uint16_t>::_serialize_value(cbor::encoder* enc, uint32_t idx) {   enc->write_int(samples[idx]);  }
@@ -218,15 +223,17 @@ template <> void SensorFilter<double>::_deserialize_value(cbor::encoder* enc, ui
 // template <> void SensorFilter3<unsigned int>::_serialize_value(cbor::encoder* enc, uint32_t idx) {   enc->write_int(samples[idx]);  }
 // template <> void SensorFilter3<unsigned int>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
 
-// template <> void SensorFilter3<int>::_serialize_value(cbor::encoder* enc, uint32_t idx) {    enc->write_int(samples[idx]);    }
-// template <> void SensorFilter3<int>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
-
-// template <> void SensorFilter3<float>::_serialize_value(cbor::encoder* enc, uint32_t idx) {  enc->write_float(samples[idx]);  }
-// template <> void SensorFilter3<float>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
+template <> void SensorFilter3<float>::_serialize_value(cbor::encoder* enc, uint32_t idx) {
+  enc->write_array(3);
+  enc->write_float(samples[idx].x);
+  enc->write_float(samples[idx].y);
+  enc->write_float(samples[idx].z);  
+}
+template <> void SensorFilter3<float>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
 
 // template <> void SensorFilter3<double>::_serialize_value(cbor::encoder* enc, uint32_t idx) {  enc->write_double(samples[idx]);  }
 // template <> void SensorFilter3<double>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
-
+#endif
 
 
 template <> TCode SensorFilter<int8_t>::_value_tcode() {     return TCode::INT8;    };

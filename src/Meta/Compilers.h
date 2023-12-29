@@ -76,6 +76,11 @@ The library was originally written under GCC, but others have reported broad
     //   security assurances.
     #define SECURE_FUNC __attribute__((section(".secfunc")))
   #endif
+  #ifndef WEAK_FUNC
+    // Weak reference is tagged for readability.
+    #define WEAK_FUNC __attribute__ ((weak))
+  #endif
+
 
   /*
   * Optimizer attributes

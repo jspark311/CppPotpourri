@@ -176,6 +176,39 @@ int8_t SimpleDataRecord::save(uint32_t storage_tag, const char* name, StringBuil
 *         -3 on hash mismatch
 *         -4 on failure to deserialize
 */
+int8_t SimpleDataRecord::load(uint32_t storage_tag, uint8_t* inbound_buf, uint32_t buf_len) {
+  int8_t ret = -1;
+  if (buf_len > DATARECORD_BASE_SIZE) {
+    StringBuilder desc_container(inbound_buf, DATARECORD_BASE_SIZE);
+    if (0 == _descriptor_deserialize(&desc_container)) {
+      ret--;
+      if (_storage_tag == storage_tag) {
+        if ((buf_len - DATARECORD_BASE_SIZE) >= _data_length) {
+          ret--;
+          if (_hash == static_hash_wrapper_fxn((inbound_buf+DATARECORD_BASE_SIZE), _data_length)) {
+            // Hash matches. Cull the useless edges of the buffer...
+            ret--;
+            StringBuilder payload_container((inbound_buf+DATARECORD_BASE_SIZE), _data_length);
+            if (0 == deserialize(&payload_container, _format)) {
+              _dr_set_flag(DATA_RECORD_FLAG_WAS_LOADED);
+              ret = 0;
+            }
+          }
+        }
+      }
+    }
+  }
+  return ret;
+}
+
+
+/**
+* @return  0 on success
+*         -1 on bad descriptor
+*         -2 on wrong storage tag
+*         -3 on hash mismatch
+*         -4 on failure to deserialize
+*/
 int8_t SimpleDataRecord::load(uint32_t storage_tag, StringBuilder* inbound_buf) {
   int8_t ret = -1;
   if (0 == _descriptor_deserialize(inbound_buf)) {
@@ -187,6 +220,7 @@ int8_t SimpleDataRecord::load(uint32_t storage_tag, StringBuilder* inbound_buf) 
         inbound_buf->cull(DATARECORD_BASE_SIZE);
         ret--;
         if (0 == deserialize(inbound_buf, _format)) {
+          _dr_set_flag(DATA_RECORD_FLAG_WAS_LOADED);
           ret = 0;
         }
       }
