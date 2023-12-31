@@ -142,7 +142,7 @@ int8_t UARTAdapter::pushBuffer(StringBuilder* buf) {
       int32_t bytes_taken  = 0;
       bool    bail_on_loop = false;
       while (!bail_on_loop & (bytes_taken < BYTES_TO_TAKE)) {
-        uint32_t frag_len = 0;
+        int frag_len = 0;
         uint8_t* frag_ptr = buf->position(0, &frag_len);
         bail_on_loop = (nullptr == frag_ptr) & (frag_len > 0);
         if (!bail_on_loop) {

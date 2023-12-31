@@ -179,7 +179,7 @@ class SPIAdapter : public BusAdapter<SPIBusOp> {
     void printDebug(StringBuilder*);
     void printHardwareState(StringBuilder*);
 
-    inline bool allQueuesClear() {   return (busIdle() && (0 == callback_queue.count()));  };
+    inline bool allQueuesClear() {   return (busIdle() && (0 == callback_queue.size()));  };
 
     /* Built-in per-instance console handler. */
     int8_t console_handler(StringBuilder* text_return, StringBuilder* args);

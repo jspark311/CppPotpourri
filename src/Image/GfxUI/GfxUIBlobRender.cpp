@@ -26,8 +26,8 @@ GfxUIBlobRender::GfxUIBlobRender(C3PValue* value, const GfxUILayout lay, const G
   _plotter_selector(
     GfxUILayout(
       (internalPosX()+(internalWidth()-160)), internalPosY(),
-      160, ((sty.text_size * 8) + 16),  // TODO: Better, but still arbitrary.
-      1, 1, 1, 0,
+      160, ((sty.text_size * 8) + 18),  // TODO: Better, but still arbitrary.
+      1, 1, 1, 1,
       0, 0, 0, 0               // Border_px(t, b, l, r)
     ),
     GfxUIStyle(0, // bg
@@ -45,8 +45,8 @@ GfxUIBlobRender::GfxUIBlobRender(C3PValue* value, const GfxUILayout lay, const G
   _style_selector(
     GfxUILayout(
       _plotter_selector.elementPosX(), (_plotter_selector.elementPosY() + _plotter_selector.elementHeight()),
-      _plotter_selector.elementWidth(), ((sty.text_size * 8) + 16),  // TODO: Better, but still arbitrary.
-      1, 1, 1, 0,
+      _plotter_selector.elementWidth(), ((sty.text_size * 8) + 18),  // TODO: Better, but still arbitrary.
+      1, 1, 1, 1,
       0, 0, 0, 0               // Border_px(t, b, l, r)
     ),
     GfxUIStyle(0, // bg
@@ -156,20 +156,20 @@ int8_t GfxUIBlobRender::_check_plotter(Image* img) {
   }
 
   if (need_to_create) {   // If a plotter needs to be created, do so.
-    uint32_t i_x = internalPosX();
-    uint32_t i_y = internalPosY();
-    uint16_t i_w = (internalWidth() - 160);
-    uint16_t i_h = internalHeight();
+    PixUInt i_x = internalPosX();
+    PixUInt i_y = internalPosY();
+    PixUInt i_w = (internalWidth() - 160);
+    PixUInt i_h = internalHeight();
     switch (desired) {
       case BlobPlotterID::LINEAR:
         _plotter = new BlobPlotterLinear(
-          nullptr, _value, img,
+          _styler, _value, img,
           i_x, i_y, i_w, i_h
         );
         break;
       case BlobPlotterID::HILBERT:
         _plotter = new BlobPlotterHilbertCurve(
-          nullptr, _value, img,
+          _styler, _value, img,
           i_x, i_y, i_w, i_h
         );
         break;
@@ -245,10 +245,10 @@ int GfxUIBlobRender::_render(UIGfxWrapper* ui_gfx) {
     int8_t s_check = _check_styler(img);
     bool should_refresh = (p_check > 0) | (s_check > 0);
     if (_value->dirty(&_last_trace) | should_refresh) {
-      uint32_t i_x = internalPosX();
-      uint32_t i_y = internalPosY();
-      uint16_t i_w = internalWidth();
-      uint16_t i_h = internalHeight();
+      PixUInt i_x = internalPosX();
+      PixUInt i_y = internalPosY();
+      PixUInt i_w = internalWidth();
+      PixUInt i_h = internalHeight();
       img->fillRect(i_x, i_y, i_w, i_h, _style.color_bg);   // Wipe the field.
       StringBuilder line;
       if (_value->is_ptr_len()) {

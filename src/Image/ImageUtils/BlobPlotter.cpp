@@ -254,7 +254,7 @@ int8_t BlobPlotter::_calculate_square_size(const uint32_t LEN, const uint32_t T_
   _square_size = 0;
   const PixUInt  STRICT_SQUARE_LIMIT = strict_min(_t_w, _t_h);   // Can't have a square larger than the bounding area...
   const double   S_TO_FILL_AREA = sqrt(((double) T_SIZE / (double) LEN));
-  if (1.0d > S_TO_FILL_AREA) return -1;
+  if ((double) 1.0d > S_TO_FILL_AREA) return -1;
   const PixUInt  ROUNDED_SQUARE_SIZE = (PixUInt) ceil(S_TO_FILL_AREA);
   const PixUInt  SQUARE_SIZE    = strict_min(ROUNDED_SQUARE_SIZE, STRICT_SQUARE_LIMIT);
   const PixUInt  BYTES_PER_ROW  = ((_t_w / SQUARE_SIZE) + 1);
