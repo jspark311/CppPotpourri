@@ -36,7 +36,7 @@ These classes are built on top of the GfxUI classes, and implement higher-level
 */
 class GfxUIGroup : public GfxUIElement {
   public:
-    GfxUIGroup(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0) : GfxUIElement(x, y, w, h, f) {};
+    GfxUIGroup(PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t f = 0) : GfxUIElement(x, y, w, h, f) {};
     GfxUIGroup(GfxUILayout layout, uint32_t f = 0) : GfxUIElement(&layout, f) {};
     GfxUIGroup(GfxUILayout* layout, uint32_t f = 0) : GfxUIElement(layout, f) {};
     ~GfxUIGroup() {};
@@ -47,7 +47,7 @@ class GfxUIGroup : public GfxUIElement {
     /* Implementation of GfxUIElement. */
     // This class has no rendering tasks, and doesn't respond to user input.
     int  _render(UIGfxWrapper* ui_gfx) {    return 0;   };
-    bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {  return false;   };
+    bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {  return false;   };
 };
 
 
@@ -97,7 +97,7 @@ class GfxUIButton : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
 
   protected:
@@ -137,7 +137,7 @@ class GfxUITabBar : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
 
   protected:
@@ -159,7 +159,7 @@ class GfxUITabbedContentPane : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
 
   protected:
@@ -183,7 +183,7 @@ class GfxUISlider : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
 
   protected:
@@ -202,7 +202,7 @@ class GfxUISlider : public GfxUIElement {
 *******************************************************************************/
 class GfxUIMagnifier : public GfxUIElement {
   public:
-    GfxUIMagnifier(Image* src_img, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0);
+    GfxUIMagnifier(Image* src_img, PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color, uint32_t f = 0);
     ~GfxUIMagnifier() {};
 
     inline float scale() {         return _scale;    };
@@ -216,14 +216,14 @@ class GfxUIMagnifier : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
 
   protected:
     uint32_t _color;      // The accent color of the position mark.
     Image*   _src;        // The source image to magnify.
-    uint32_t _pointer_x;  // The center of the feed.
-    uint32_t _pointer_y;  // The center of the feed.
+    PixUInt  _pointer_x;  // The center of the feed.
+    PixUInt  _pointer_y;  // The center of the feed.
     float    _scale;      // The current scale factor to apply to the source.
     float    _min_mag;    // The current scale factor to apply to the source.
     float    _max_mag;    // The current scale factor to apply to the source.
@@ -241,7 +241,7 @@ class GfxUITextArea : public GfxUIElement, public BufferAccepter {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
     /* Implementation of BufferAccepter. */
     int8_t pushBuffer(StringBuilder*);
@@ -259,10 +259,10 @@ class GfxUITextArea : public GfxUIElement, public BufferAccepter {
 
 
   private:
-    uint32_t _cursor_x = 0;  // Location of the next character.
-    uint32_t _cursor_y = 0;  // Location of the next character.
+    PixUInt  _cursor_x = 0;  // Location of the next character.
+    PixUInt  _cursor_y = 0;  // Location of the next character.
     uint32_t _max_scrollback_bytes = 600;   //
-    uint32_t _max_cols = 0;  // Maximum number of columns that will fit in render area.
+    uint16_t _max_cols = 0;  // Maximum number of columns that will fit in render area.
     uint16_t _max_rows = 0;  // Maximum number of lines that will fit in render area.
     uint16_t _top_line = 0;  // Which line index is at the top of the render?
     StringBuilder _scrollback;  //
@@ -280,12 +280,12 @@ class GfxUITextArea : public GfxUIElement, public BufferAccepter {
 *******************************************************************************/
 class GfxUI3AxisRender : public GfxUIElement, public TripleAxisPipe {
   public:
-    GfxUI3AxisRender(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f) {};
+    GfxUI3AxisRender(PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color, uint32_t f = 0) : GfxUIElement(x, y, w, h, f) {};
     ~GfxUI3AxisRender() {};
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
     virtual int8_t pushVector(SpatialSense, Vector3f* data, Vector3f* error = nullptr);
     virtual void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
@@ -309,11 +309,11 @@ class GfxUIStopWatch : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
   private:
     const char* _name;
-    StopWatch* _stopwatch;
+    StopWatch*  _stopwatch;
 };
 
 
@@ -329,11 +329,11 @@ class GfxUIIdentity : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
 
   private:
-    Identity* _ident;
+    Identity*     _ident;
     GfxUITextArea _txt_handle;
     GfxUITextArea _txt_format;
     GfxUITextArea _txt_meta;
@@ -355,7 +355,7 @@ class GfxUIMLink : public GfxUITabbedContentPane {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
 
   private:
@@ -384,7 +384,7 @@ class GfxUIC3PSchedule : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
     inline C3PSchedule* getSchedule() {    return _sched;  };
 
@@ -403,7 +403,7 @@ class GfxUIC3PScheduler : public GfxUITabbedContentPane {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
 
   private:
@@ -424,12 +424,12 @@ class GfxUIC3PScheduler : public GfxUITabbedContentPane {
 /* Storage */
 //class GfxUIStorage : public GfxUIElement {
 //  public:
-//    GfxUIStorage(Storage* storage, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f = 0);
+//    GfxUIStorage(Storage* storage, PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t f = 0);
 //    ~GfxUIStorage() {};
 //
 //    /* Implementation of GfxUIElement. */
 //    virtual int  _render(UIGfxWrapper* ui_gfx);
-//    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+//    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 //
 //
 //  private:
@@ -445,7 +445,7 @@ class GfxUIDataRecord : public GfxUITabbedContentPane {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
 
   private:
@@ -465,7 +465,7 @@ class GfxUIOptionsView : public GfxUITabbedContentPane {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
 
   protected:
@@ -489,7 +489,7 @@ class GfxUISIUnitChooser : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
 
   protected:
@@ -513,7 +513,7 @@ class GfxUICPUProfiler : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
 
   private:

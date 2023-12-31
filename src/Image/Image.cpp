@@ -400,7 +400,7 @@ uint8_t Image::_bits_per_pixel(ImgBufferFormat x) {
 /*
 * Constructor
 */
-Image::Image(uint32_t x, uint32_t y, ImgBufferFormat fmt, uint8_t* buf) : Image(x, y) {
+Image::Image(PixUInt x, PixUInt y, ImgBufferFormat fmt, uint8_t* buf) : Image(x, y) {
   _buf_fmt  = fmt;
   _imgflags = 0;
   _buffer   = buf;
@@ -410,7 +410,7 @@ Image::Image(uint32_t x, uint32_t y, ImgBufferFormat fmt, uint8_t* buf) : Image(
 /*
 * Constructor
 */
-Image::Image(uint32_t x, uint32_t y, ImgBufferFormat fmt) : Image(x, y) {
+Image::Image(PixUInt x, PixUInt y, ImgBufferFormat fmt) : Image(x, y) {
   _buf_fmt  = fmt;
 }
 
@@ -418,7 +418,7 @@ Image::Image(uint32_t x, uint32_t y, ImgBufferFormat fmt) : Image(x, y) {
 /*
 * Constructor
 */
-Image::Image(uint32_t x, uint32_t y) : _x(x), _y(y) {}
+Image::Image(PixUInt x, PixUInt y) : _x(x), _y(y) {}
 
 /*
 * Constructor
@@ -528,7 +528,7 @@ bool Image::setBufferByCopy(uint8_t* buf, ImgBufferFormat fmt) {
 }
 
 
-bool Image::setSize(uint32_t x, uint32_t y) {
+bool Image::setSize(PixUInt x, PixUInt y) {
   _x = x;
   _y = y;
   return (0 == _buffer_allocator());
@@ -672,23 +672,73 @@ int8_t Image::serializeWithoutBuffer(uint8_t* buf, uint32_t* len) {
 */
 int8_t Image::deserialize(uint8_t* buf, uint32_t len) {
   if (ImgBufferFormat::UNALLOCATED == _buf_fmt) {
-    if (len > 9) {
-      uint32_t temp_x = ((uint32_t) *(buf + 0) << 24) | ((uint32_t) *(buf + 1) << 16) | ((uint32_t) *(buf + 2) << 8) | ((uint32_t) *(buf + 3));
-      uint32_t temp_y = ((uint32_t) *(buf + 4) << 24) | ((uint32_t) *(buf + 5) << 16) | ((uint32_t) *(buf + 6) << 8) | ((uint32_t) *(buf + 7));
-      ImgBufferFormat temp_fmt = (ImgBufferFormat) *(buf + 8);
-      uint32_t temp_f = *(buf + 9);
+    // TODO: This is awful, and will absolutely wreck someone later.
+    //   Shunt this responsibility to C3PType.
+    const uint8_t PIX_AND_FMT_LEN = (sizeof(PixUInt) + 1);
+    if (len > PIX_AND_FMT_LEN) {
+      #if(9 > CONFIG_C3P_IMG_COORD_BITS)
+        PixUInt temp_x = (PixUInt) *(buf + 0);
+        PixUInt temp_y = (PixUInt) *(buf + 1);
+      #elif(17 > CONFIG_C3P_IMG_COORD_BITS)
+        PixUInt temp_x = ((PixUInt) *(buf + 0) << 8) | ((PixUInt) *(buf + 1));
+        PixUInt temp_y = ((PixUInt) *(buf + 2) << 8) | ((PixUInt) *(buf + 3));
+      #elif(33 > CONFIG_C3P_IMG_COORD_BITS)
+        PixUInt temp_x = ((PixUInt) *(buf + 0) << 24) | ((PixUInt) *(buf + 1) << 16) | ((PixUInt) *(buf + 2) << 8) | ((PixUInt) *(buf + 3));
+        PixUInt temp_y = ((PixUInt) *(buf + 4) << 24) | ((PixUInt) *(buf + 5) << 16) | ((PixUInt) *(buf + 6) << 8) | ((PixUInt) *(buf + 7));
+      #else
+        #error Integers for holding pixel addresses cannot be larger than 32-bit.
+      #endif
+      ImgBufferFormat temp_fmt = (ImgBufferFormat) *(buf + (PIX_AND_FMT_LEN-1));
+      uint32_t temp_f = *(buf + PIX_AND_FMT_LEN);
       uint32_t proposed_size = (_bits_per_pixel(temp_fmt) * temp_x * temp_y) >> 3;
-      if (proposed_size == (len - 10)) {
+      if (proposed_size == (len - (PIX_AND_FMT_LEN+1))) {
         // The derived and declared sizes match.
         _x = temp_x;
         _y = temp_y;
         _buf_fmt  = temp_fmt;
         _imgflags = temp_f;
-        return setBufferByCopy(buf + 10) ? 0 : -2;
+        return setBufferByCopy(buf + (PIX_AND_FMT_LEN+1)) ? 0 : -2;
       }
     }
   }
   return -1;
+}
+
+
+
+const char* const Image::formatString(const ImgBufferFormat FMT) {
+  switch (FMT) {
+    case ImgBufferFormat::UNALLOCATED:     return "UNALLOCATED";
+    case ImgBufferFormat::MONOCHROME:      return "MONOCHROME";
+    case ImgBufferFormat::GREY_24:         return "GREY_24";
+    case ImgBufferFormat::GREY_16:         return "GREY_16";
+    case ImgBufferFormat::GREY_8:          return "GREY_8";
+    case ImgBufferFormat::R8_G8_B8_ALPHA:  return "R8_G8_B8_ALPHA";
+    case ImgBufferFormat::R8_G8_B8:        return "R8_G8_B8";
+    case ImgBufferFormat::R5_G6_B5:        return "R5_G6_B5";
+    case ImgBufferFormat::R3_G3_B2:        return "R3_G3_B2";
+    default:                               return "UNKNOWN";
+  }
+}
+
+
+const float Image::rotationAngle(const ImgOrientation ROT_ENUM) {
+  switch (ROT_ENUM) {
+    default:
+    case ImgOrientation::ROTATION_0:      return 0.0f;
+    case ImgOrientation::ROTATION_90:     return 90.0f;
+    case ImgOrientation::ROTATION_180:    return 180.0f;
+    case ImgOrientation::ROTATION_270:    return 270.0f;
+  }
+}
+
+
+void Image::printImageInfo(StringBuilder* out, const bool DETAIL) {
+  if (DETAIL) {
+  }
+  else {   // Issue the TL;DR
+    out->concatf("(%u x %u) %s\n", _x, _y, formatString(_buf_fmt));
+  }
 }
 
 
@@ -792,7 +842,7 @@ void Image::orientation(ImgOrientation nu) {
 }
 
 
-void Image::_remap_for_orientation(uint32_t* xn, uint32_t* yn) {
+void Image::_remap_for_orientation(PixUInt* xn, PixUInt* yn) {
   switch (orientation()) {
     case ImgOrientation::ROTATION_270:
       strict_swap(xn, yn);
@@ -816,7 +866,7 @@ void Image::_remap_for_orientation(uint32_t* xn, uint32_t* yn) {
 * TODO: This class presumes a big-endian buffer to facilitate DMA to
 *   framebuffers. This assumption is bad.
 */
-uint32_t Image::getPixel(uint32_t x, uint32_t y) {
+uint32_t Image::getPixel(PixUInt x, PixUInt y) {
   uint32_t ret = 0;
   uint32_t sz = bytesUsed();
   _remap_for_orientation(&x, &y);
@@ -864,7 +914,7 @@ uint32_t Image::getPixel(uint32_t x, uint32_t y) {
 }
 
 
-uint32_t Image::getPixelAsFormat(uint32_t x, uint32_t y, ImgBufferFormat target_fmt) {
+uint32_t Image::getPixelAsFormat(PixUInt x, PixUInt y, ImgBufferFormat target_fmt) {
   uint32_t c = getPixel(x, y);
   if (target_fmt == _buf_fmt) {
     return c;   // Nothing further to do.
@@ -957,7 +1007,7 @@ uint32_t Image::getPixelAsFormat(uint32_t x, uint32_t y, ImgBufferFormat target_
 /**
 * Takes a color in 32-bit. Squeezes it into the buffer's format, discarding low bits as appropriate.
 */
-bool Image::setPixel(uint32_t x, uint32_t y, uint32_t c) {
+bool Image::setPixel(PixUInt x, PixUInt y, uint32_t c) {
   _remap_for_orientation(&x, &y);
   switch (_buf_fmt) {
     case ImgBufferFormat::R3_G3_B2:          // 8-bit color
@@ -977,7 +1027,7 @@ bool Image::setPixel(uint32_t x, uint32_t y, uint32_t c) {
       break;
     case ImgBufferFormat::MONOCHROME:        // Monochrome
       {
-        const uint32_t term0 = (_y >> 3);
+        const PixUInt term0 = (_y >> 3);
         const uint32_t offset = x * term0 + (term0 - (y >> 3) - 1);
         const uint8_t bit_mask = 1 << (7 - (y & 0x07));
         uint8_t byte_group = *(_buffer + offset);
@@ -995,7 +1045,7 @@ bool Image::setPixel(uint32_t x, uint32_t y, uint32_t c) {
 /**
 * Takes a color in discrete RGB values. Squeezes it into the buffer's format, discarding low bits as appropriate.
 */
-bool Image::setPixel(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b) {
+bool Image::setPixel(PixUInt x, PixUInt y, uint8_t r, uint8_t g, uint8_t b) {
   _remap_for_orientation(&x, &y);
   uint32_t sz = bytesUsed();
   uint32_t offset = _pixel_offset(x, y);
@@ -1018,7 +1068,7 @@ bool Image::setPixel(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b) {
         break;
       case ImgBufferFormat::MONOCHROME:        // Monochrome
         {
-          const uint32_t term0 = (_y >> 3);
+          const PixUInt term0 = (_y >> 3);
           const uint8_t bit_mask = 1 << (7 - (y & 0x07));
           offset = x * term0 + (term0 - (y >> 3) - 1);
           uint8_t byte_group = *(_buffer + offset);
@@ -1052,7 +1102,7 @@ bool Image::setPixel(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b) {
     @param    bg 16-bit 5-6-5 Color to fill background with (if same as color, no background)
     @param    size  Font magnification level, 1 is 'original' size
 */
-void Image::drawChar(uint32_t x, uint32_t y, unsigned char c, uint32_t color, uint32_t bg, uint8_t size) {
+void Image::drawChar(PixUInt x, PixUInt y, unsigned char c, uint32_t color, uint32_t bg, uint8_t size) {
   if (!_gfxFont) { // 'Classic' built-in font
     if ((x >= _x)  || // Clip right
        (y >= _y)   || // Clip bottom
@@ -1234,7 +1284,7 @@ void Image::writeString(const char* str) {
   @param  x    X coordinate in pixels
   @param  y    Y coordinate in pixels
 */
-void Image::setCursor(uint32_t x, uint32_t y) {
+void Image::setCursor(PixUInt x, PixUInt y) {
   _cursor_x = x;
   _cursor_y = y;
 }
@@ -1279,7 +1329,7 @@ void Image::setTextColor(uint32_t c, uint32_t bg) {
   @param    maxx  Maximum clipping value for X
   @param    maxy  Maximum clipping value for Y
 */
-void Image::charBounds(char c, uint32_t* x, uint32_t* y, uint32_t* minx, uint32_t* miny, uint32_t* maxx, uint32_t* maxy) {
+void Image::charBounds(char c, PixUInt* x, PixUInt* y, PixUInt* minx, PixUInt* miny, PixUInt* maxx, PixUInt* maxy) {
   if (_gfxFont) {
     if (c == '\n') { // Newline?
       *x  = 0;    // Reset x to zero, advance y by one line
@@ -1300,10 +1350,10 @@ void Image::charBounds(char c, uint32_t* x, uint32_t* y, uint32_t* minx, uint32_
           *y += _textsize * (uint8_t) _gfxFont->yAdvance;
         }
         int16_t ts = (int16_t) _textsize;
-        uint32_t x1 = *x + xo * ts;
-        uint32_t y1 = *y + yo * ts;
-        uint32_t x2 = x1 + gw * ts - 1;
-        uint32_t y2 = y1 + gh * ts - 1;
+        PixUInt x1 = *x + xo * ts;
+        PixUInt y1 = *y + yo * ts;
+        PixUInt x2 = x1 + gw * ts - 1;
+        PixUInt y2 = y1 + gh * ts - 1;
         if(x1 < *minx) *minx = x1;
         if(y1 < *miny) *miny = y1;
         if(x2 > *maxx) *maxx = x2;
@@ -1345,16 +1395,16 @@ void Image::charBounds(char c, uint32_t* x, uint32_t* y, uint32_t* minx, uint32_
   @param    w      The boundary width, set by function
   @param    h      The boundary height, set by function
 */
-void Image::getTextBounds(const char* str, uint32_t x, uint32_t y, uint32_t* x1, uint32_t* y1, uint32_t* w, uint32_t* h) {
+void Image::getTextBounds(const char* str, PixUInt x, PixUInt y, PixUInt* x1, PixUInt* y1, PixUInt* w, PixUInt* h) {
   uint8_t c; // Current character
   *x1 = x;
   *y1 = y;
   *w  = *h = 0;
 
-  uint32_t minx = _x;
-  uint32_t miny = _y;
-  uint32_t maxx = 0;
-  uint32_t maxy = 0;
+  PixUInt minx = _x;
+  PixUInt miny = _y;
+  PixUInt maxx = 0;
+  PixUInt maxy = 0;
 
   while((c = *str++)) {
     charBounds(c, &x, &y, &minx, &miny, &maxx, &maxy);
@@ -1381,7 +1431,7 @@ void Image::getTextBounds(const char* str, uint32_t x, uint32_t y, uint32_t* x1,
   @param    w      The boundary width, set by function
   @param    h      The boundary height, set by function
 */
-void Image::getTextBounds(StringBuilder* str, uint32_t x, uint32_t y, uint32_t* x1, uint32_t* y1, uint32_t* w, uint32_t* h) {
+void Image::getTextBounds(StringBuilder* str, PixUInt x, PixUInt y, PixUInt* x1, PixUInt* y1, PixUInt* w, PixUInt* h) {
   if (str->length() != 0) {
     getTextBounds((const uint8_t*) str->string(), x, y, x1, y1, w, h);
   }
@@ -1398,17 +1448,17 @@ void Image::getTextBounds(StringBuilder* str, uint32_t x, uint32_t y, uint32_t* 
   @param    w      The boundary width, set by function
   @param    h      The boundary height, set by function
 */
-void Image::getTextBounds(const uint8_t* str, uint32_t x, uint32_t y, uint32_t* x1, uint32_t* y1, uint32_t* w, uint32_t* h) {
+void Image::getTextBounds(const uint8_t* str, PixUInt x, PixUInt y, PixUInt* x1, PixUInt* y1, PixUInt* w, PixUInt* h) {
   uint8_t* s = (uint8_t*) str;
   uint8_t c;
   *x1 = x;
   *y1 = y;
   *w  = *h = 0;
 
-  uint32_t minx = _x;
-  uint32_t miny = _y;
-  uint32_t maxx = -1;
-  uint32_t maxy = -1;
+  PixUInt minx = _x;
+  PixUInt miny = _y;
+  PixUInt maxx = -1;
+  PixUInt maxy = -1;
 
   while((c = *s++)) {
     charBounds(c, &x, &y, &minx, &miny, &maxx, &maxy);
@@ -1433,7 +1483,7 @@ void Image::getTextBounds(const uint8_t* str, uint32_t x, uint32_t y, uint32_t* 
   @param    h   Height in pixels
   @param    color 16-bit 5-6-5 Color to fill with
 */
-void Image::drawFastVLine(uint32_t x, uint32_t y, uint32_t h, uint32_t color) {
+void Image::drawFastVLine(PixUInt x, PixUInt y, PixUInt h, uint32_t color) {
   // Overwrite in subclasses if startWrite is defined!
   // Can be just drawLine(x, y, x, y+h-1, color);
   // or fillRect(x, y, 1, h, color);
@@ -1450,7 +1500,7 @@ void Image::drawFastVLine(uint32_t x, uint32_t y, uint32_t h, uint32_t color) {
   @param    w   Width in pixels
   @param    color 16-bit 5-6-5 Color to fill with
 */
-void Image::drawFastHLine(uint32_t x, uint32_t y, uint32_t w, uint32_t color) {
+void Image::drawFastHLine(PixUInt x, PixUInt y, PixUInt w, uint32_t color) {
   // Overwrite in subclasses if startWrite is defined!
   // Example: drawLine(x, y, x+w-1, y, color);
   // or fillRect(x, y, w, 1, color);
@@ -1468,7 +1518,7 @@ void Image::drawFastHLine(uint32_t x, uint32_t y, uint32_t w, uint32_t color) {
   @param    h   Height in pixels
   @param    color 16-bit 5-6-5 Color to fill with
 */
-void Image::fillRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color) {
+void Image::fillRect(PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color) {
   _lock(true);
   for (uint32_t i=x; i<x+w; i++) {
     drawLine(i, y, i, y+h-1, color);
@@ -1485,7 +1535,7 @@ void Image::fillRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t co
 *  @param    h   Height in pixels
 *  @param    color 16-bit 5-6-5 Color to draw with
 */
-void Image::drawRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color) {
+void Image::drawRect(PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color) {
   drawFastHLine(x, y, w, color);
   drawFastHLine(x, y + h - 1, w, color);
   drawFastVLine(x, y, h, color);
@@ -1501,8 +1551,8 @@ void Image::drawRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t co
     @param    r   Radius of corner rounding
     @param    color 16-bit 5-6-5 Color to draw with
 */
-void Image::drawRoundRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t r, uint32_t color) {
-  uint32_t max_radius = ((w < h) ? w : h) >> 1; // 1/2 minor axis
+void Image::drawRoundRect(PixUInt x, PixUInt y, PixUInt w, PixUInt h, PixUInt r, uint32_t color) {
+  PixUInt max_radius = ((w < h) ? w : h) >> 1; // 1/2 minor axis
   if (r > max_radius) r = max_radius;
   // smarter version
   drawFastHLine(x + r, y, w - 2 * r, color);         // Top
@@ -1526,8 +1576,8 @@ void Image::drawRoundRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32
     @param    r   Radius of corner rounding
     @param    color 16-bit 5-6-5 Color to draw/fill with
 */
-void Image::fillRoundRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t r, uint32_t color) {
-  uint32_t max_radius = ((w < h) ? w : h) >> 1; // 1/2 minor axis
+void Image::fillRoundRect(PixUInt x, PixUInt y, PixUInt w, PixUInt h, PixUInt r, uint32_t color) {
+  PixUInt max_radius = ((w < h) ? w : h) >> 1; // 1/2 minor axis
   if (r > max_radius) r = max_radius;
   // smarter version
   fillRect(x + r, y, w - 2 * r, h, color);
@@ -1547,7 +1597,7 @@ void Image::fillRoundRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32
     @param    y2  Vertex #2 y coordinate
     @param    color 16-bit 5-6-5 Color to draw with
 */
-void Image::drawTriangle(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint32_t color) {
+void Image::drawTriangle(PixUInt x0, PixUInt y0, PixUInt x1, PixUInt y1, PixUInt x2, PixUInt y2, uint32_t color) {
   drawLine(x0, y0, x1, y1, color);
   drawLine(x1, y1, x2, y2, color);
   drawLine(x2, y2, x0, y0, color);
@@ -1564,8 +1614,8 @@ void Image::drawTriangle(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uin
     @param    y2  Vertex #2 y coordinate
     @param    color 16-bit 5-6-5 Color to fill/draw with
 */
-void Image::fillTriangle(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint32_t color) {
-  uint32_t a, b, y, last;
+void Image::fillTriangle(PixUInt x0, PixUInt y0, PixUInt x1, PixUInt y1, PixUInt x2, PixUInt y2, uint32_t color) {
+  PixUInt a, b, y, last;
   // Sort coordinates by Y order (y2 >= y1 >= y0)
   if (y0 > y1) {
     strict_swap(&y0, &y1);
@@ -1590,9 +1640,9 @@ void Image::fillTriangle(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uin
     return;
   }
 
-  uint32_t dx01 = x1 - x0, dy01 = y1 - y0, dx02 = x2 - x0, dy02 = y2 - y0,
-           dx12 = x2 - x1, dy12 = y2 - y1;
-  uint32_t sa = 0, sb = 0;
+  PixUInt dx01 = x1 - x0, dy01 = y1 - y0, dx02 = x2 - x0, dy02 = y2 - y0,
+          dx12 = x2 - x1, dy12 = y2 - y1;
+  PixUInt sa = 0, sb = 0;
 
   // For upper part of triangle, find scanline crossings for segments
   // 0-1 and 0-2.  If y1=y2 (flat-bottomed triangle), the scanline y1
@@ -1642,7 +1692,7 @@ void Image::fillTriangle(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uin
     @param    r   Radius of circle
     @param    color 16-bit 5-6-5 Color to draw with
 */
-void Image::drawCircle(uint32_t x0, uint32_t y0, uint32_t r, uint32_t color) {
+void Image::drawCircle(PixUInt x0, PixUInt y0, PixUInt r, uint32_t color) {
   int32_t f = 1 - r;
   int32_t ddF_x = 1;
   int32_t ddF_y = -2 * r;
@@ -1685,7 +1735,7 @@ void Image::drawCircle(uint32_t x0, uint32_t y0, uint32_t r, uint32_t color) {
     @param    rotation Rotation (in degrees) clockwise about the center.
     @param    color    Color to draw with
 */
-void Image::drawEllipse(uint32_t x0, uint32_t y0, uint32_t v_axis, uint32_t h_axis, float rotation, uint32_t color) {
+void Image::drawEllipse(PixUInt x0, PixUInt y0, PixUInt v_axis, PixUInt h_axis, float rotation, uint32_t color) {
   if (v_axis == h_axis) {  // Is this an over-specified circle?
     drawCircle(x0, y0, h_axis, color);
   }
@@ -1693,11 +1743,11 @@ void Image::drawEllipse(uint32_t x0, uint32_t y0, uint32_t v_axis, uint32_t h_ax
     float radians = (PI/180.0) * rotation;
     //int32_t vertical_extent   = abs(sin(radians)) * v_axis;
     int32_t horizontal_extent = abs(cos(radians)) * h_axis;
-    int32_t starting_x = strict_max(0,   (int32_t) (x0 - horizontal_extent));
-    int32_t ending_x   = strict_min(x(), x0 + horizontal_extent);
+    int32_t starting_x = strict_max(0,             (int32_t) (x0 - horizontal_extent));
+    int32_t ending_x   = strict_min((int32_t) x(), (int32_t) (x0 + horizontal_extent));
     for (int32_t i = starting_x; i < ending_x; i++) {
-      uint32_t a = h_axis;
-      uint32_t b = v_axis;
+      PixUInt a = h_axis;
+      PixUInt b = v_axis;
       float    y_diff   = (b / a) * sqrt((a*a) - (i*i));
       int32_t  y_top    = y0 - y_diff;
       int32_t  y_bottom = y0 + y_diff;
@@ -1721,7 +1771,7 @@ void Image::drawEllipse(uint32_t x0, uint32_t y0, uint32_t v_axis, uint32_t h_ax
    the circle we're doing
     @param    color 16-bit 5-6-5 Color to draw with
 */
-void Image::drawCircleHelper(uint32_t x0, uint32_t y0, uint32_t r, uint8_t quadrant, uint32_t color) {
+void Image::drawCircleHelper(PixUInt x0, PixUInt y0, PixUInt r, uint8_t quadrant, uint32_t color) {
   int32_t f = 1 - r;
   int32_t ddF_x = 1;
   int32_t ddF_y = -2 * r;
@@ -1764,7 +1814,7 @@ void Image::drawCircleHelper(uint32_t x0, uint32_t y0, uint32_t r, uint8_t quadr
     @param    r   Radius of circle
     @param    color 16-bit 5-6-5 Color to fill with
 */
-void Image::fillCircle(uint32_t x0, uint32_t y0, uint32_t r, uint32_t color) {
+void Image::fillCircle(PixUInt x0, PixUInt y0, PixUInt r, uint32_t color) {
   drawFastVLine(x0, y0 - r, 2 * r + 1, color);
   fillCircleHelper(x0, y0, r, 3, 0, color);
 }
@@ -1778,7 +1828,7 @@ void Image::fillCircle(uint32_t x0, uint32_t y0, uint32_t r, uint32_t color) {
     @param  delta    Offset from center-point, used for round-rects
     @param  color    16-bit 5-6-5 Color to fill with
 */
-void Image::fillCircleHelper(uint32_t x0, uint32_t y0, uint32_t r, uint8_t corners, uint32_t delta, uint32_t color) {
+void Image::fillCircleHelper(PixUInt x0, PixUInt y0, PixUInt r, uint8_t corners, PixUInt delta, uint32_t color) {
   int32_t f = 1 - r;
   int32_t ddF_x = 1;
   int32_t ddF_y = -2 * r;
@@ -1827,9 +1877,9 @@ void Image::fillCircleHelper(uint32_t x0, uint32_t y0, uint32_t r, uint8_t corne
     @param    w   Width of bitmap in pixels
     @param    h   Height of bitmap in pixels
 */
-void Image::drawBitmap(uint32_t x, uint32_t y, const uint8_t* bitmap, uint32_t w, uint32_t h) {
-  for (uint32_t j = 0; j < h; j++, y++) {
-    for (uint32_t i = 0; i < w; i++) {
+void Image::drawBitmap(PixUInt x, PixUInt y, const uint8_t* bitmap, PixUInt w, PixUInt h) {
+  for (PixUInt j = 0; j < h; j++, y++) {
+    for (PixUInt i = 0; i < w; i++) {
       setPixel(x + i, y, *(bitmap + (j * w + i)));
     }
   }
@@ -1866,7 +1916,7 @@ void Image::fill(uint32_t color) {
       }
       break;
     case 1:   // NOTE: Assumes a pixel count of mod(8).
-      for (uint32_t i=0; i < ((_x * _y) >> 3); i++) {
+      for (uint32_t i=0; i < (uint32_t) ((_x * _y) >> 3); i++) {
         *(_buffer + i) = (0 != color) ? 0xFF : 0x00;
       }
       break;
@@ -1883,7 +1933,7 @@ void Image::fill(uint32_t color) {
   @param    y1  End point y coordinate
   @param    color 16-bit 5-6-5 Color to draw with
 */
-void Image::drawLine(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uint32_t color) {
+void Image::drawLine(PixUInt x0, PixUInt y0, PixUInt x1, PixUInt y1, uint32_t color) {
   const bool steep = strict_abs_delta(y1, y0) > strict_abs_delta(x1, x0);
   if (steep) {
     strict_swap(&x0, &y0);
@@ -1894,8 +1944,8 @@ void Image::drawLine(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uint32_
     strict_swap(&y0, &y1);
   }
 
-  const uint32_t dx    = x1 - x0;
-  const uint32_t dy    = strict_abs_delta(y1, y0);
+  const PixUInt dx    = x1 - x0;
+  const PixUInt dy    = strict_abs_delta(y1, y0);
   const int8_t   ystep = (y0 < y1) ? 1 : -1;
   int32_t err = (int32_t) (dx >> 1);  // NOTE: Imposes width limit of 2,147,483,648 pixels.
 

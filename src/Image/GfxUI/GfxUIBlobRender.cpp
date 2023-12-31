@@ -279,7 +279,7 @@ int GfxUIBlobRender::_render(UIGfxWrapper* ui_gfx) {
 }
 
 
-bool GfxUIBlobRender::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+bool GfxUIBlobRender::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   switch (GFX_EVNT) {
     // case GfxUIEvent::TOUCH:

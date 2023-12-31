@@ -20,7 +20,7 @@ ImageCatcher::ImageCatcher() :
 
 
 /* Constructor */
-ImageCatcher::ImageCatcher(Image* i_t, int x, int y, int w, int h) :
+ImageCatcher::ImageCatcher(Image* i_t, PixUInt x, PixUInt y, PixUInt w, PixUInt h) :
   _id(0), _target(i_t), _t_x(x), _t_y(y), _t_w_max(w), _t_h_max(h),
   _target_is_ours(false)
 {

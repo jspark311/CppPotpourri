@@ -62,7 +62,7 @@ uint32_t BlobStylerHeatMap::getColor(const uint8_t* PTR, const uint32_t LEN, con
   // The Stark Fist of Retrieval
   //const bool lock_range_to_absolute = (flags & GFXUI_FLAG_LOCK_RANGE_V) ? true : false;
   //const uint32_t MIN_ELEMENTS = strict_min((uint32_t) filt->windowSize(), (uint32_t) w * h);
-  //const uint32_t PIXEL_SIZE   = strict_min((uint32_t) w, (uint32_t) h) / MIN_ELEMENTS;
+  //const PixUInt PIXEL_SIZE   = strict_min((PixUInt) w, (PixUInt) h) / MIN_ELEMENTS;
   //const float    TEMP_MIN     = (range_lock_low == range_lock_hi) ? filt->minValue() : range_lock_low;
   //const float    TEMP_MAX     = (range_lock_low == range_lock_hi) ? filt->maxValue() : range_lock_hi;
   //const float    TEMP_RANGE   = TEMP_MAX - TEMP_MIN;
@@ -71,8 +71,8 @@ uint32_t BlobStylerHeatMap::getColor(const uint8_t* PTR, const uint32_t LEN, con
   //float* dataset = filt->memPtr();
 
   //for (uint32_t i = 0; i < MIN_ELEMENTS; i++) {
-  //  uint32_t x = (i & 0x07) * PIXEL_SIZE;
-  //  uint32_t y = (i >> 3) * PIXEL_SIZE;
+  //  PixUInt x = (i & 0x07) * PIXEL_SIZE;
+  //  PixUInt y = (i >> 3) * PIXEL_SIZE;
   //  float pix_deviation = abs(MIDPOINT_T - dataset[i]);
   //  uint8_t pix_intensity = BINSIZE_T * (pix_deviation / (TEMP_MAX - MIDPOINT_T));
   //  uint32_t color = (dataset[i] <= MIDPOINT_T) ? pix_intensity : (pix_intensity << 11);
@@ -141,8 +141,8 @@ BlobPlotter::BlobPlotter(
   BlobStyler* styler,
   C3PValue* src_blob,
   Image* target,
-  uint32_t x, uint32_t y,
-  uint32_t w, uint32_t h
+  PixUInt x, PixUInt y,
+  PixUInt w, PixUInt h
 ) :
   _PLOTTER_ID(P_ID),
   _force_render(false),
@@ -152,7 +152,7 @@ BlobPlotter::BlobPlotter(
   _mapping_ptr(nullptr) {}
 
 
-void BlobPlotter::setParameters(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
+void BlobPlotter::setParameters(PixUInt x, PixUInt y, PixUInt w, PixUInt h) {
   _t_x = x;  _t_y = y;  _t_w = w;  _t_h = h;
   _force_render = true;
 }
@@ -181,8 +181,8 @@ bool BlobPlotter::_able_to_render() {
   if (nullptr != _styler) {
     if ((nullptr != _target) && _target->allocated()) {
       if ((0 < _t_w) & (0 < _t_h)) {
-        const uint32_t X_EXTENT = (_t_x + _t_w);
-        const uint32_t Y_EXTENT = (_t_y + _t_h);
+        const PixUInt X_EXTENT = (_t_x + _t_w);
+        const PixUInt Y_EXTENT = (_t_y + _t_h);
         safe = ((_target->x() > X_EXTENT) & (_target->y() > Y_EXTENT));
       }
     }
@@ -252,25 +252,25 @@ int8_t BlobPlotter::apply(bool force) {
 */
 int8_t BlobPlotter::_calculate_square_size(const uint32_t LEN, const uint32_t T_SIZE) {
   _square_size = 0;
-  const uint32_t STRICT_SQUARE_LIMIT = strict_min(_t_w, _t_h);   // Can't have a square larger than the bounding area...
-  const double S_TO_FILL_AREA = sqrt(((double) T_SIZE / (double) LEN));
+  const PixUInt  STRICT_SQUARE_LIMIT = strict_min(_t_w, _t_h);   // Can't have a square larger than the bounding area...
+  const double   S_TO_FILL_AREA = sqrt(((double) T_SIZE / (double) LEN));
   if (1.0d > S_TO_FILL_AREA) return -1;
-  const uint32_t ROUNDED_SQUARE_SIZE = (uint32_t) ceil(S_TO_FILL_AREA);
-  const uint32_t SQUARE_SIZE    = strict_min(ROUNDED_SQUARE_SIZE, STRICT_SQUARE_LIMIT);
-  const uint32_t BYTES_PER_ROW  = ((_t_w / SQUARE_SIZE) + 1);
+  const PixUInt  ROUNDED_SQUARE_SIZE = (PixUInt) ceil(S_TO_FILL_AREA);
+  const PixUInt  SQUARE_SIZE    = strict_min(ROUNDED_SQUARE_SIZE, STRICT_SQUARE_LIMIT);
+  const PixUInt  BYTES_PER_ROW  = ((_t_w / SQUARE_SIZE) + 1);
   if (0 == BYTES_PER_ROW) return -1;
-  const uint32_t TOTAL_ROWS     = ((LEN / BYTES_PER_ROW) + 1);
+  const PixUInt  TOTAL_ROWS     = ((LEN / BYTES_PER_ROW) + 1);
   const uint32_t UNSQUARE_BYTES = (LEN - (BYTES_PER_ROW * TOTAL_ROWS));   // Number of bytes surplus to the square.
 
   // Pad the length to yield a square that will include all the bytes in the
   //   range, and then recalculate the square size.
   const uint32_t PADDED_LEN       = (LEN + (BYTES_PER_ROW - UNSQUARE_BYTES));
-  const uint32_t P_S_TO_FILL_AREA = (uint32_t) sqrt((double) T_SIZE / (double) PADDED_LEN);
+  const PixUInt  P_S_TO_FILL_AREA = (PixUInt) sqrt((double) T_SIZE / (double) PADDED_LEN);
   if (0 == P_S_TO_FILL_AREA) return -1;
-  const uint32_t P_SQUARE_SIZE    = strict_min(P_S_TO_FILL_AREA, STRICT_SQUARE_LIMIT);
+  const PixUInt  P_SQUARE_SIZE    = strict_min(P_S_TO_FILL_AREA, STRICT_SQUARE_LIMIT);
   const uint32_t P_BYTES_PER_ROW  = ((_t_w / P_SQUARE_SIZE) + 1);
   if (0 == P_BYTES_PER_ROW) return -1;
-  const uint32_t P_TOTAL_ROWS     = ((LEN / P_BYTES_PER_ROW) + 1);
+  //const uint32_t P_TOTAL_ROWS     = ((LEN / P_BYTES_PER_ROW) + 1);
   _square_size = P_SQUARE_SIZE;
   return 0;
 }
@@ -389,26 +389,26 @@ int8_t BlobPlotterHilbertCurve::_curve_render(const uint8_t* PTR, const uint32_t
     }
 
     // Demux X/Y from Hilbert index.
-    uint16_t geo_coord[2] = {0, 0};
+    PixUInt geo_coord[2] = {0, 0};
     for (uint32_t n = 0; n < 32; n++) {   // TODO: Only need to loop (x0_bits + x1_bits)... wasteful.
       // Odd bits are x0, which we construe as Cartesian-X.
       // Even bits are x1, which we construe as Cartesian-Y.
       const uint8_t COORD_IDX = ((n & 1) ? 0 : 1);
       const bool    BIT_VALUE = ((graycode >> n) & 0x00000001);
-      geo_coord[COORD_IDX] = (geo_coord[COORD_IDX] >> 1) + (BIT_VALUE ? 0x8000 : 0);  // NOTE: Width-dependency. Careful...
+      geo_coord[COORD_IDX] = (geo_coord[COORD_IDX] >> 1) + (BIT_VALUE ? 0x8000 : 0);  // TODO: Width-dependency. Careful...
     }
     // If the mapping is being observed, write the relative coordinates of the
     //   upper-left of each byte's square into an offset-indexed array.
-    const uint32_t COORD_REL_X = (geo_coord[0] * _square_size);
-    const uint32_t COORD_REL_Y = (geo_coord[1] * _square_size);
+    const PixUInt COORD_REL_X = (geo_coord[0] * _square_size);
+    const PixUInt COORD_REL_Y = (geo_coord[1] * _square_size);
     if (HAVE_MAPPING_ARRAY) {
-      uint16_t* map_ptr_offset = (_mapping_ptr + (i << 1));
+      PixUInt* map_ptr_offset = (_mapping_ptr + (i << 1));
       *(map_ptr_offset + 0) = COORD_REL_X;
       *(map_ptr_offset + 1) = COORD_REL_Y;
     }
     // Draw the byte into the absolute location in the target Image.
-    const uint32_t TARGET_X = (_t_x + COORD_REL_X);
-    const uint32_t TARGET_Y = _t_y + (geo_coord[1] * _square_size);
+    const PixUInt TARGET_X = (_t_x + COORD_REL_X);
+    const PixUInt TARGET_Y = _t_y + (geo_coord[1] * _square_size);
     if (((TARGET_X + _square_size) <= (_t_x + _t_w)) & ((TARGET_Y + _square_size) <= (_t_y + _t_h))) {
       uint32_t color = _styler->getColor(PTR, LEN, (i+OFFSET));
       _target->fillRect(TARGET_X, TARGET_Y, _square_size, _square_size, color);
@@ -435,8 +435,8 @@ int8_t BlobPlotterLinear::_curve_render(const uint8_t* PTR, const uint32_t OFFSE
     if ((_bytes_wide * _bytes_high) < LEN) {  _bytes_high++;  }  // ...account for possible rounding error...
 
     const bool HAVE_MAPPING_ARRAY = ((nullptr != _mapping_ptr) & ((LEN << 1) <= _mapping_len));
-    uint32_t target_x = _t_x;
-    uint32_t target_y = _t_y;
+    PixUInt target_x = _t_x;
+    PixUInt target_y = _t_y;
     for (uint32_t i = 0; i < LEN; i++) {
       if (0 < i) {  // TODO: Letting the compiler optimize this slop away bugs me. Just write it cleaner.
         //if (0 == (i % BYTES_PER_ROW)) {

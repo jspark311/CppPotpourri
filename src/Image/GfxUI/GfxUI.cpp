@@ -45,7 +45,7 @@ const EnumDefList<GfxUIEvent> GFXUI_EVENT_LIST(&_ENUM_LIST[0], (sizeof(_ENUM_LIS
 *******************************************************************************/
 
 /* Simple constructor with discrete paramters. */
-GfxUIElement::GfxUIElement(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f) :
+GfxUIElement::GfxUIElement(PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t f) :
   GfxUILayout(
     x, y, w, h,
     0, 0, 0, 0,
@@ -86,7 +86,7 @@ void GfxUIElement::muteRender(bool x) {
 
 
 
-void GfxUIElement::reposition(uint32_t x, uint32_t y) {
+void GfxUIElement::reposition(PixUInt x, PixUInt y) {
   int32_t shift_x = x - _x;
   int32_t shift_y = y - _y;
   _x += shift_x;
@@ -112,7 +112,7 @@ int GfxUIElement::_remove_child(GfxUIElement* chld) {
 }
 
 
-bool GfxUIElement::notify(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+bool GfxUIElement::notify(const GfxUIEvent GFX_EVNT, const PixUInt x, const PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   const bool INCLUDES_POINT = includesPoint(x, y);
   _flags.set(GFXUI_FLAG_UNDER_POINTER, INCLUDES_POINT);
@@ -187,7 +187,7 @@ bool GfxUIElement::notify(const GfxUIEvent GFX_EVNT, const uint32_t x, const uin
 }
 
 
-bool GfxUIElement::_notify_children(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+bool GfxUIElement::_notify_children(const GfxUIEvent GFX_EVNT, const PixUInt x, const PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   if (_children.hasNext()) {
     // There are child objects to notify.
     const uint32_t QUEUE_SIZE = _children.size();

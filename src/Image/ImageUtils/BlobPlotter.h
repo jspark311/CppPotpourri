@@ -137,11 +137,11 @@ class BlobPlotter {
     BlobPlotter(
       const BlobPlotterID P_ID, BlobStyler* styler,
       C3PValue* src_blob, Image* target,
-      uint32_t x = 0, uint32_t y = 0, uint32_t w = 0, uint32_t h = 0
+      PixUInt x = 0, PixUInt y = 0, PixUInt w = 0, PixUInt h = 0
     );
     virtual ~BlobPlotter() {};
 
-    void setParameters(uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+    void setParameters(PixUInt x, PixUInt y, PixUInt w, PixUInt h);
     inline void setBlob(C3PValue* blob) {     _src_blob = blob;  };
 
     inline const BlobPlotterID plotterID() {  return _PLOTTER_ID;   };
@@ -170,16 +170,16 @@ class BlobPlotter {
     BlobStyler* _styler;    // TODO: Remove?
     C3PValue*   _src_blob;
     Image*      _target;
-    uint32_t    _t_x;
-    uint32_t    _t_y;
-    uint32_t    _t_w;
-    uint32_t    _t_h;
+    PixUInt     _t_x;
+    PixUInt     _t_y;
+    PixUInt     _t_w;
+    PixUInt     _t_h;
     uint32_t    _offset_start;
     uint32_t    _offset_stop;
     uint16_t    _val_trace;
     uint16_t    _bytes_wide;
     uint16_t    _bytes_high;
-    uint16_t    _square_size;
+    PixUInt     _square_size;
     uint16_t*   _mapping_ptr;
     uint32_t    _mapping_len;
 
@@ -199,7 +199,7 @@ class BlobPlotterHilbertCurve : public BlobPlotter {
     BlobPlotterHilbertCurve(
       BlobStyler* styler,
       C3PValue* src_blob, Image* target,
-      uint32_t x = 0, uint32_t y = 0, uint32_t w = 0, uint32_t h = 0
+      PixUInt x = 0, PixUInt y = 0, PixUInt w = 0, PixUInt h = 0
     ) : BlobPlotter(BlobPlotterID::HILBERT, styler, src_blob, target, x, y, w, h) {};
     ~BlobPlotterHilbertCurve() {};
 
@@ -219,7 +219,7 @@ class BlobPlotterLinear : public BlobPlotter {
     BlobPlotterLinear(
       BlobStyler* styler,
       C3PValue* src_blob, Image* target,
-      uint32_t x = 0, uint32_t y = 0, uint32_t w = 0, uint32_t h = 0
+      PixUInt x = 0, PixUInt y = 0, PixUInt w = 0, PixUInt h = 0
     ) : BlobPlotter(BlobPlotterID::LINEAR, styler, src_blob, target, x, y, w, h) {};
     ~BlobPlotterLinear() {};
 

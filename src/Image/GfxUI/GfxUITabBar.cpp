@@ -31,7 +31,7 @@ int GfxUITabBar::_render(UIGfxWrapper* ui_gfx) {
 * GfxUITabBar is a container for buttons with special logic. It does not itself
 *   respond to _notify().
 */
-bool GfxUITabBar::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+bool GfxUITabBar::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   switch (GFX_EVNT) {
 
@@ -203,7 +203,7 @@ int GfxUITabbedContentPane::_render(UIGfxWrapper* ui_gfx) {
 }
 
 
-bool GfxUITabbedContentPane::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+bool GfxUITabbedContentPane::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   // If the event was directed at the nav pane, it will be handled by the natural
   //   flow that comes from its addition as a child object.
   return false;

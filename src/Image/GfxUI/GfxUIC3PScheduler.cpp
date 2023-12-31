@@ -131,7 +131,7 @@ int GfxUIC3PScheduler::_render(UIGfxWrapper* ui_gfx) {
 }
 
 
-bool GfxUIC3PScheduler::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+bool GfxUIC3PScheduler::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
 
   switch (GFX_EVNT) {
@@ -228,7 +228,7 @@ int GfxUIC3PSchedule::_render(UIGfxWrapper* ui_gfx) {
 
 
 
-bool GfxUIC3PSchedule::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+bool GfxUIC3PSchedule::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   switch (GFX_EVNT) {
     case GfxUIEvent::TOUCH:

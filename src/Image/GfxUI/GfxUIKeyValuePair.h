@@ -31,7 +31,7 @@ class GfxUIC3PType : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
 
   private:
@@ -48,7 +48,7 @@ class GfxUIC3PValue : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
     inline void showTypeInfo(bool x) {    _class_set_flag(GFXUI_C3PVAL_FLAG_SHOW_TYPE_INFO, x);   };
     inline bool showTypeInfo() {          return _class_flag(GFXUI_C3PVAL_FLAG_SHOW_TYPE_INFO);   };
@@ -78,7 +78,7 @@ class GfxUIKeyValuePair : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
     int8_t showKVP(KeyValuePair*);
 
@@ -99,7 +99,7 @@ class GfxUIKVPUtil : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
     int8_t setKVP(KeyValuePair*);
     int8_t setKVP(StringBuilder*, TCode);

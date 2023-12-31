@@ -66,41 +66,41 @@ class UIGfxWrapper {
     inline Image* img() {   return _img;   };
 
     void drawProgressBarH(
-      int x, int y, int w, int h, uint32_t color,
+      PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color,
       bool draw_base, bool draw_val, float percent
     );
 
     void drawProgressBarV(
-      int x, int y, int w, int h, uint32_t color,
+      PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color,
       bool draw_base, bool draw_val, float percent
     );
 
     void drawCompass(
-      int x, int y, int w, int h,
+      PixUInt x, PixUInt y, PixUInt w, PixUInt h,
       bool scale_needle, bool draw_val, float bearing_field, float bearing_true_north
     );
 
     void drawHeatMap(
-      uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+      PixUInt x, PixUInt y, PixUInt w, PixUInt h,
       SensorFilter<float>* filt,
       uint32_t flags,
       float range_lock_low = 0.0f, float range_lock_hi = 0.0f
     );
 
     void drawVector(
-      int x, int y, int w, int h, uint32_t color,
+      PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color,
       bool draw_axes, bool draw_val, float vx, float vy, float vz
     );
 
     void drawSphere(
-      int x, int y, int w, int h,
+      PixUInt x, PixUInt y, PixUInt w, PixUInt h,
       bool opaque,
       int meridians, int parallels,
       float euler_about_x, float euler_about_y   // TODO: A quat would be cleaner.
     );
 
     void draw_data_view_selector(
-      int x, int y, int w, int h,
+      PixUInt x, PixUInt y, PixUInt w, PixUInt h,
       DataVis opt0, DataVis opt1, DataVis opt2, DataVis opt3, DataVis opt4, DataVis opt5,
       DataVis selected
     );
@@ -130,8 +130,8 @@ class ImageScaler {
   public:
     ImageScaler(
       Image* i_s, Image* i_t, float scale,
-      uint32_t s_x = 0, uint32_t s_y = 0, uint32_t s_w = 0, uint32_t s_h = 0,
-      uint32_t t_x = 0, uint32_t t_y = 0
+      PixUInt s_x = 0, PixUInt s_y = 0, PixUInt s_w = 0, PixUInt s_h = 0,
+      PixUInt t_x = 0, PixUInt t_y = 0
     );
     ~ImageScaler() {};
 
@@ -139,19 +139,19 @@ class ImageScaler {
     inline float scale() {         return _scale;    };
     inline void scale(float x) {   _scale = x;       };
 
-    void setParameters(float scale, uint32_t s_x, uint32_t s_y, uint32_t s_w, uint32_t s_h, uint32_t t_x, uint32_t t_y);
+    void setParameters(float scale, PixUInt s_x, PixUInt s_y, PixUInt s_w, PixUInt s_h, PixUInt t_x, PixUInt t_y);
 
 
   private:
     Image*   _source;
     Image*   _target;
     float    _scale;
-    uint32_t _s_x;
-    uint32_t _s_y;
-    uint32_t _s_w;
-    uint32_t _s_h;
-    uint32_t _t_x;
-    uint32_t _t_y;
+    PixUInt _s_x;
+    PixUInt _s_y;
+    PixUInt _s_w;
+    PixUInt _s_h;
+    PixUInt _t_x;
+    PixUInt _t_y;
 };
 
 
@@ -161,7 +161,7 @@ class ImageScaler {
 */
 class ImageCaster {
   public:
-    ImageCaster(M2MLink* l, Image* i_s, int x = 0, int y = 0, int w = 0, int h = 0);
+    ImageCaster(M2MLink* l, Image* i_s, PixUInt x = 0, PixUInt y = 0, PixUInt w = 0, PixUInt h = 0);
     ~ImageCaster() {};
 
     //int M2MLink::send(KeyValuePair* kvp, bool need_reply);
@@ -171,12 +171,12 @@ class ImageCaster {
 
   private:
     const uint32_t _id;
-    M2MLink* _link;
-    Image* _source;
-    int   _s_x;
-    int   _s_y;
-    int   _s_w;
-    int   _s_h;
+    M2MLink*       _link;
+    Image*         _source;
+    PixUInt        _s_x;
+    PixUInt        _s_y;
+    PixUInt        _s_w;
+    PixUInt        _s_h;
 };
 
 
@@ -186,7 +186,7 @@ class ImageCaster {
 class ImageCatcher {
   public:
     ImageCatcher();
-    ImageCatcher(Image* i_t, int x, int y, int w = 0, int h = 0);
+    ImageCatcher(Image* i_t, PixUInt x, PixUInt y, PixUInt w = 0, PixUInt h = 0);
     ~ImageCatcher();
 
     int8_t apply(KeyValuePair* kvp);   // Takes a serialized Image.
@@ -196,12 +196,12 @@ class ImageCatcher {
 
   private:
     uint32_t _id;
-    Image* _target;
-    int   _t_x;
-    int   _t_y;
-    int   _t_w_max;
-    int   _t_h_max;
-    bool  _target_is_ours;
+    Image*   _target;
+    PixUInt  _t_x;
+    PixUInt  _t_y;
+    PixUInt  _t_w_max;
+    PixUInt  _t_h_max;
+    bool     _target_is_ours;
 };
 
 
@@ -228,17 +228,17 @@ class ImageCrossfader {
 
 
   private:
-    Image* _source0;
-    Image* _source1;
-    Image* _target;
-    float _s0_bias;
-    float _s1_bias;
-    int   _s_x;
-    int   _s_y;
-    int   _s_w;
-    int   _s_h;
-    int   _t_x;
-    int   _t_y;
+    Image*   _source0;
+    Image*   _source1;
+    Image*   _target;
+    float    _s0_bias;
+    float    _s1_bias;
+    PixUInt  _s_x;
+    PixUInt  _s_y;
+    PixUInt  _s_w;
+    PixUInt  _s_h;
+    PixUInt  _t_x;
+    PixUInt  _t_y;
     uint8_t  _algo;
 };
 
@@ -323,18 +323,18 @@ class ImageAuthenticator {
 */
 class PerlinNoise {
   public:
-    PerlinNoise(Image* i_t, int x, int y, int w, int h);
+    PerlinNoise(Image* i_t, PixUInt x, PixUInt y, PixUInt w, PixUInt h);
     ~PerlinNoise() {};
 
     int8_t apply();
 
 
   private:
-    Image* _target;
-    int   _t_x;
-    int   _t_y;
-    int   _t_w;
-    int   _t_h;
+    Image*  _target;
+    PixUInt _t_x;
+    PixUInt _t_y;
+    PixUInt _t_w;
+    PixUInt _t_h;
 };
 
 
@@ -344,18 +344,18 @@ class PerlinNoise {
 */
 class ImageHeatMap {
   public:
-    ImageHeatMap(Image* i_t, int x, int y, int w, int h);
+    ImageHeatMap(Image* i_t, PixUInt x, PixUInt y, PixUInt w, PixUInt h);
     ~ImageHeatMap() {};
 
     //int8_t apply(SensorFilter*);
 
 
   private:
-    Image* _target;
-    int   _t_x;
-    int   _t_y;
-    int   _t_w;
-    int   _t_h;
+    Image*  _target;
+    PixUInt _t_x;
+    PixUInt _t_y;
+    PixUInt _t_w;
+    PixUInt _t_h;
 };
 
 

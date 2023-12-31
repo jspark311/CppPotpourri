@@ -95,10 +95,10 @@ GfxUIC3PType::GfxUIC3PType(const TCode TC, const GfxUILayout lay, const GfxUISty
 int GfxUIC3PType::_render(UIGfxWrapper* ui_gfx) {
   int ret = 0;
   if (nullptr != _type) {
-    uint32_t i_x = internalPosX();
-    uint32_t i_y = internalPosY();
-    // uint16_t i_w = internalWidth();
-    // uint16_t i_h = internalHeight();
+    PixUInt i_x = internalPosX();
+    PixUInt i_y = internalPosY();
+    // PixUInt i_w = internalWidth();
+    // PixUInt i_h = internalHeight();
     //ui_gfx->img()->fillRect(i_x, i_y, i_w, i_h, _style.color_bg);   // TODO: Somehow this is out of bounds.
     ui_gfx->img()->setCursor(i_x, i_y);
     ui_gfx->img()->setTextSize(_style.text_size);
@@ -110,7 +110,7 @@ int GfxUIC3PType::_render(UIGfxWrapper* ui_gfx) {
 }
 
 
-bool GfxUIC3PType::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+bool GfxUIC3PType::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   return false;
 }
 
@@ -142,10 +142,10 @@ int GfxUIC3PValue::_render(UIGfxWrapper* ui_gfx) {
   int ret = 0;
   if (!inhibitRefresh() & (nullptr != _value)) {
     const bool SHOW_TYPE_INFO = ((isFocused() & hoverResponse()) | showTypeInfo());
-    uint32_t i_x = internalPosX();
-    uint32_t i_y = internalPosY();
-    uint16_t i_w = internalWidth();
-    uint16_t i_h = internalHeight();
+    PixUInt i_x = internalPosX();
+    PixUInt i_y = internalPosY();
+    PixUInt i_w = internalWidth();
+    PixUInt i_h = internalHeight();
     bool have_type_obj  = (0 < _children.size());
     bool flip_type_obj  = (have_type_obj ^ showTypeInfo());
     if (flip_type_obj) {
@@ -159,10 +159,10 @@ int GfxUIC3PValue::_render(UIGfxWrapper* ui_gfx) {
         // Automatically set the width to the minimum required.
         const char* TC_STRING = typecodeToStr(_value->tcode());
         const uint8_t TC_STR_PAD_PX_MIN = 68;
-        uint32_t type_x = 0;
-        uint32_t type_y = 0;
-        uint32_t type_w = 0;
-        uint32_t type_h = 0;
+        PixUInt type_x = 0;
+        PixUInt type_y = 0;
+        PixUInt type_w = 0;
+        PixUInt type_h = 0;
         ui_gfx->img()->getTextBounds((const uint8_t*) TC_STRING, i_x, i_y, &type_x, &type_y, &type_w, &type_h);
         GfxUILayout tc_layout(
           i_x, i_y, TC_STR_PAD_PX_MIN, type_h,
@@ -223,7 +223,7 @@ int GfxUIC3PValue::_render(UIGfxWrapper* ui_gfx) {
 }
 
 
-bool GfxUIC3PValue::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+bool GfxUIC3PValue::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   switch (GFX_EVNT) {
     case GfxUIEvent::TOUCH:

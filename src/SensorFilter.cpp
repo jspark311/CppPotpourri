@@ -163,8 +163,8 @@ int8_t SensorFilterBase::serialize(StringBuilder* out, TCode format) {
 
 
 int8_t SensorFilterBase::deserialize(StringBuilder* raw, TCode format) {
-  const uint8_t* SERDAT = raw->string();
-  const uint32_t SERLEN = raw->length();
+  //const uint8_t* SERDAT = raw->string();
+  //const uint32_t SERLEN = raw->length();
   int8_t ret = -1;
   switch (format) {
     case TCode::CBOR:
@@ -227,7 +227,7 @@ template <> void SensorFilter3<float>::_serialize_value(cbor::encoder* enc, uint
   enc->write_array(3);
   enc->write_float(samples[idx].x);
   enc->write_float(samples[idx].y);
-  enc->write_float(samples[idx].z);  
+  enc->write_float(samples[idx].z);
 }
 template <> void SensorFilter3<float>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
 

@@ -28,7 +28,7 @@ template <class T> class GfxUISensorFilter : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
     inline void showValue(bool x) {  _class_set_flag(GFXUI_SENFILT_FLAG_SHOW_VALUE, x); };
     inline bool showValue() {        return _class_flag(GFXUI_SENFILT_FLAG_SHOW_VALUE); };
@@ -89,7 +89,7 @@ template <class T> class GfxUITimeSeriesDetail : public GfxUITabbedContentPane {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    //virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    //virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
     int fast_forward_data();
 
@@ -116,7 +116,7 @@ template <class T> class GfxUITimeSeriesDetail : public GfxUITabbedContentPane {
 /*
 * All types used with this template have isomorphic notify behavior.
 */
-template <class T> bool GfxUISensorFilter<T>::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+template <class T> bool GfxUISensorFilter<T>::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   switch (GFX_EVNT) {
     case GfxUIEvent::TOUCH:

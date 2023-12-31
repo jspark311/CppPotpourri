@@ -12,7 +12,7 @@ Date:   2022.06.25
 * GfxUIMagnifier
 *******************************************************************************/
 
-GfxUIMagnifier::GfxUIMagnifier(Image* src_img, uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t color, uint32_t f) :
+GfxUIMagnifier::GfxUIMagnifier(Image* src_img, PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color, uint32_t f) :
   GfxUIElement(x, y, w, h, (f | GFXUI_FLAG_ALWAYS_REDRAW)), _color(color), _src(src_img), _scale(2.0), _min_mag(1.0f), _max_mag(40.0f) {}
 
 
@@ -55,7 +55,7 @@ int GfxUIMagnifier::_render(UIGfxWrapper* ui_gfx) {
 }
 
 
-bool GfxUIMagnifier::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+bool GfxUIMagnifier::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   switch (GFX_EVNT) {
     case GfxUIEvent::MOVE_UP:

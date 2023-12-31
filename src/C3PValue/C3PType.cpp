@@ -2408,7 +2408,7 @@ template <> int8_t      C3PTypeConstraint<KeyValuePair*>::deserialize(void* obj,
 template <> uint32_t    C3PTypeConstraint<Image*>::length(void* obj) {  return ((Image*) obj)->bytesUsed();  }
 template <> void        C3PTypeConstraint<Image*>::to_string(void* obj, StringBuilder* out) {
   Image* img = (Image*) obj;
-  out->concatf("Image (%ux%u %u bpp)", img->x(), img->y(), img->bitsPerPixel());
+  img->printImageInfo(out, false);
 }
 
 template <> int8_t      C3PTypeConstraint<Image*>::set_from(void* dest, const TCode SRC_TYPE, void* src) {

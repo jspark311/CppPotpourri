@@ -142,6 +142,7 @@ class PixAddr {
     PixUInt x;   // X-coordinate (horizonal axis, larger values are further right)
     PixUInt y;   // Y-coordinate (vertical axis, larger values are further down)
 
+    PixAddr(const PixAddr& src) : x(src.x), y(src.y) {};    // Copy-constructor
     PixAddr(const PixUInt X, const PixUInt Y) : x(X), y(Y) {};
     PixAddr() : x(0), y(0) {};
 };
@@ -152,6 +153,7 @@ class PixBoundingBox : PixAddr {
     PixUInt w;   // Width
     PixUInt h;   // Height
 
+    PixBoundingBox(const PixBoundingBox& src) : PixAddr(src.x, src.y), w(src.w), h(src.h) {};   // Copy-constructor
     PixBoundingBox(const PixUInt X, const PixUInt Y, const PixUInt W, const PixUInt H) : PixAddr(X, Y), w(W), h(H) {};
     PixBoundingBox(const PixUInt W, const PixUInt H) : PixAddr(0, 0), w(W), h(H) {};
     PixBoundingBox() : PixAddr(0, 0), w(0), h(0) {};
@@ -160,7 +162,6 @@ class PixBoundingBox : PixAddr {
     PixUInt extentX(const PixUInt OFFSET = 0) {     return (OFFSET + w + x);  };
     PixUInt extentY(const PixUInt OFFSET = 0) {     return (OFFSET + h + y);  };
     PixAddr extent() {                     return PixAddr((w + x), (h + y));  };
-
 };
 
 
@@ -181,9 +182,9 @@ class PixBoundingBox : PixAddr {
 *******************************************************************************/
 class Image {
   public:
-    Image(uint32_t x, uint32_t y, ImgBufferFormat, uint8_t*);
-    Image(uint32_t x, uint32_t y, ImgBufferFormat);
-    Image(uint32_t x, uint32_t y);
+    Image(PixUInt x, PixUInt y, ImgBufferFormat, uint8_t*);
+    Image(PixUInt x, PixUInt y, ImgBufferFormat);
+    Image(PixUInt x, PixUInt y);
     Image();
     ~Image();
 
@@ -191,7 +192,7 @@ class Image {
     bool setBuffer(uint8_t*, ImgBufferFormat);
     bool setBufferByCopy(uint8_t*);
     bool setBufferByCopy(uint8_t*, ImgBufferFormat);
-    bool setSize(uint32_t x, uint32_t y);
+    bool setSize(PixUInt x, PixUInt y);
     bool reallocate();
 
     void wipe();
@@ -199,18 +200,19 @@ class Image {
     int8_t serialize(uint8_t*, uint32_t*);
     int8_t serializeWithoutBuffer(uint8_t*, uint32_t*);
     int8_t deserialize(uint8_t*, uint32_t);
+    void   printImageInfo(StringBuilder*, const bool DETAIL = false);
 
     bool isColor();
     uint32_t convertColor(uint32_t color, ImgBufferFormat);
     inline uint32_t convertColor(uint32_t color) {    return convertColor(color, _buf_fmt);    };
 
-    uint32_t getPixel(uint32_t x, uint32_t y);
-    uint32_t getPixelAsFormat(uint32_t x, uint32_t y, ImgBufferFormat);
-    bool     setPixel(uint32_t x, uint32_t y, uint32_t);
-    bool     setPixel(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b);
+    uint32_t getPixel(PixUInt x, PixUInt y);
+    uint32_t getPixelAsFormat(PixUInt x, PixUInt y, ImgBufferFormat);
+    bool     setPixel(PixUInt x, PixUInt y, uint32_t color);
+    bool     setPixel(PixUInt x, PixUInt y, uint8_t r, uint8_t g, uint8_t b);
 
-    inline uint32_t        x() {            return _x;                     };
-    inline uint32_t        y() {            return _y;                     };
+    inline PixUInt         x() {            return _x;                     };
+    inline PixUInt         y() {            return _y;                     };
     inline uint8_t*        buffer() {       return _buffer;                };
     inline ImgBufferFormat format() {       return _buf_fmt;               };
     inline bool            allocated() {    return (nullptr != _buffer);   };
@@ -224,33 +226,33 @@ class Image {
     inline bool  locked() {          return _img_flag(C3P_IMG_FLAG_BUFFER_LOCKED);    };
 
     /* BEGIN ADAFRUIT GFX SPLICE */
-    void drawFastHLine(uint32_t x, uint32_t y, uint32_t w, uint32_t color);
-    void drawFastVLine(uint32_t x, uint32_t y, uint32_t h, uint32_t color);
-    void drawLine(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, uint32_t color);
-    void fillRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color);
-    void drawRect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color);
-    void drawRoundRect(uint32_t x0, uint32_t y0, uint32_t w,  uint32_t h, uint32_t radius, uint32_t color);
-    void fillRoundRect(uint32_t x0, uint32_t y0, uint32_t w,  uint32_t h,  uint32_t radius, uint32_t color);
-    void drawTriangle(uint32_t x0,  uint32_t y0, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint32_t color);
-    void fillTriangle(uint32_t x0,  uint32_t y0, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2, uint32_t color);
-    void drawCircle(uint32_t x0, uint32_t y0, uint32_t r, uint32_t color);
-    void drawCircleHelper(uint32_t x0, uint32_t y0, uint32_t r, uint8_t quadrants, uint32_t color);
-    void fillCircle(uint32_t x0, uint32_t y0, uint32_t r, uint32_t color);
-    void fillCircleHelper(uint32_t x0, uint32_t y0, uint32_t r, uint8_t quadrants, uint32_t delta, uint32_t color);
+    void drawFastHLine(PixUInt x, PixUInt y, PixUInt w, uint32_t color);
+    void drawFastVLine(PixUInt x, PixUInt y, PixUInt h, uint32_t color);
+    void drawLine(PixUInt x0, PixUInt y0, PixUInt x1, PixUInt y1, uint32_t color);
+    void fillRect(PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color);
+    void drawRect(PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color);
+    void drawRoundRect(PixUInt x0, PixUInt y0, PixUInt w,  PixUInt h, PixUInt radius, uint32_t color);
+    void fillRoundRect(PixUInt x0, PixUInt y0, PixUInt w,  PixUInt h,  PixUInt radius, uint32_t color);
+    void drawTriangle(PixUInt x0,  PixUInt y0, PixUInt x1, PixUInt y1, PixUInt x2, PixUInt y2, uint32_t color);
+    void fillTriangle(PixUInt x0,  PixUInt y0, PixUInt x1, PixUInt y1, PixUInt x2, PixUInt y2, uint32_t color);
+    void drawCircle(PixUInt x0, PixUInt y0, PixUInt r, uint32_t color);
+    void drawCircleHelper(PixUInt x0, PixUInt y0, PixUInt r, uint8_t quadrants, uint32_t color);
+    void fillCircle(PixUInt x0, PixUInt y0, PixUInt r, uint32_t color);
+    void fillCircleHelper(PixUInt x0, PixUInt y0, PixUInt r, uint8_t quadrants, PixUInt delta, uint32_t color);
     void fill(uint32_t color);
-    void drawBitmap(uint32_t x, uint32_t y, const uint8_t* bitmap, uint32_t w, uint32_t h);
+    void drawBitmap(PixUInt x, PixUInt y, const uint8_t* bitmap, PixUInt w, PixUInt h);
 
-    void drawEllipse(uint32_t x0, uint32_t y0, uint32_t v_axis, uint32_t h_axis, float rotation, uint32_t color);
-    //void drawArc(uint32_t x0, uint32_t y0, uint32_t v_axis, uint32_t h_axis, float rotation, float radians_start, float radians_stop, uint32_t color);
+    void drawEllipse(PixUInt x0, PixUInt y0, PixUInt v_axis, PixUInt h_axis, float rotation, uint32_t color);
+    //void drawArc(PixUInt x0, PixUInt y0, PixUInt v_axis, PixUInt h_axis, float rotation, float radians_start, float radians_stop, uint32_t color);
 
-    void drawChar(uint32_t x, uint32_t y, unsigned char c, uint32_t color, uint32_t bg, uint8_t size);
+    void drawChar(PixUInt x, PixUInt y, unsigned char c, uint32_t color, uint32_t bg, uint8_t size);
     void writeChar(uint8_t c);
     void writeString(StringBuilder*);
     void writeString(const char*);
-    void setCursor(uint32_t x, uint32_t y);
-    void getTextBounds(const char *string, uint32_t x, uint32_t y, uint32_t* x1, uint32_t* y1, uint32_t* w, uint32_t* h);
-    void getTextBounds(const uint8_t* s, uint32_t x, uint32_t y, uint32_t* x1, uint32_t* y1, uint32_t* w, uint32_t* h);
-    void getTextBounds(StringBuilder*, uint32_t x, uint32_t y, uint32_t* x1, uint32_t* y1, uint32_t* w, uint32_t* h);
+    void setCursor(PixUInt x, PixUInt y);
+    void getTextBounds(const char *string, PixUInt x, PixUInt y, PixUInt* x1, PixUInt* y1, PixUInt* w, PixUInt* h);
+    void getTextBounds(const uint8_t* s, PixUInt x, PixUInt y, PixUInt* x1, PixUInt* y1, PixUInt* w, PixUInt* h);
+    void getTextBounds(StringBuilder*, PixUInt x, PixUInt y, PixUInt* x1, PixUInt* y1, PixUInt* w, PixUInt* h);
     void setTextSize(uint8_t s);
     void setTextColor(uint32_t c, uint32_t bg);
     void setTextColor(uint32_t c);
@@ -258,8 +260,8 @@ class Image {
     uint16_t getFontHeight();
     inline void     setFont(const GFXfont* f) {   _gfxFont = (GFXfont*) f;    };
     inline GFXfont* getFont() {                   return _gfxFont;            };
-    inline uint32_t getCursorX() const {          return _cursor_x;           };
-    inline uint32_t getCursorY() const {          return _cursor_y;           };
+    inline PixUInt getCursorX() const {           return _cursor_x;           };
+    inline PixUInt getCursorY() const {           return _cursor_y;           };
 
     inline void textWrap(bool x) {  _img_set_flag(C3P_IMG_FLAG_IS_TEXT_WRAP, x);      };
     inline bool textWrap() {        return _img_flag(C3P_IMG_FLAG_IS_TEXT_WRAP);      };
@@ -267,10 +269,13 @@ class Image {
     inline bool cp437() {           return _img_flag(C3P_IMG_FLAG_IS_STRICT_CP437);   };
     /* END ADAFRUIT GFX SPLICE */
 
+    static const char* const formatString(const ImgBufferFormat);
+    static const float rotationAngle(const ImgOrientation);
+
 
   protected:
-    uint32_t        _x        = 0;
-    uint32_t        _y        = 0;
+    PixUInt        _x         = 0;
+    PixUInt        _y         = 0;
     uint8_t*        _buffer   = nullptr;
     ImgBufferFormat _buf_fmt  = ImgBufferFormat::UNALLOCATED;
 
@@ -282,34 +287,34 @@ class Image {
 
 
   private:
-    uint8_t  _imgflags     = 0;
-    uint8_t  _textsize     = 0;       // Desired magnification of text to print()
     GFXfont* _gfxFont      = nullptr; // Pointer to font
-    uint32_t _cursor_x     = 0;       // x location to start print()ing text
-    uint32_t _cursor_y     = 0;       // y location to start print()ing text
+    PixUInt  _cursor_x     = 0;       // x location to start print()ing text
+    PixUInt  _cursor_y     = 0;       // y location to start print()ing text
     uint32_t _textcolor    = 0;       // 16-bit background color for print()
     uint32_t _textbgcolor  = 0;       // 16-bit text color for print()
+    uint8_t  _imgflags     = 0;
+    uint8_t  _textsize     = 0;       // Desired magnification of text to print()
 
-    void charBounds(char c, uint32_t* x, uint32_t* y, uint32_t* minx, uint32_t* miny, uint32_t* maxx, uint32_t* maxy);
+    void charBounds(char c, PixUInt* x, PixUInt* y, PixUInt* minx, PixUInt* miny, PixUInt* maxx, PixUInt* maxy);
     /* END ADAFRUIT GFX SPLICE */
 
     int8_t _buffer_allocator();
 
-    inline void _set_pixel_32(uint32_t x, uint32_t y, uint32_t c) {
+    inline void _set_pixel_32(PixUInt x, PixUInt y, uint32_t c) {
       *((uint32_t*) (_buffer + (_pixel_number(x, y) << 2))) = c;
     };
-    inline void _set_pixel_24(uint32_t x, uint32_t y, uint32_t c) {
+    inline void _set_pixel_24(PixUInt x, PixUInt y, uint32_t c) {
       // TODO: Wrong.
       *((uint32_t*) (_buffer + (_pixel_number(x, y) << 2))) = c;
     };
-    inline void _set_pixel_16(uint32_t x, uint32_t y, uint32_t c) {
+    inline void _set_pixel_16(PixUInt x, PixUInt y, uint32_t c) {
       *((uint16_t*) (_buffer + (_pixel_number(x, y) << 1))) = (uint16_t) c;
     };
-    inline void _set_pixel_8(uint32_t x, uint32_t y, uint32_t c) {
+    inline void _set_pixel_8(PixUInt x, PixUInt y, uint32_t c) {
       *(_buffer + _pixel_number(x, y)) = (uint8_t) c;
     };
 
-    void _remap_for_orientation(uint32_t* x, uint32_t* y);
+    void _remap_for_orientation(PixUInt* x, PixUInt* y);
 
     /* Linearizes the X/y value in preparation for array indexing. */
     inline uint32_t _pixel_number(uint32_t x, uint32_t y) {
@@ -321,7 +326,7 @@ class Image {
     *
     * @return The byte offset in the buffer that holds the pixel.
     */
-    inline uint32_t _pixel_offset(uint32_t x, uint32_t y) {
+    inline uint32_t _pixel_offset(PixUInt x, PixUInt y) {
       return ((_pixel_number(x, y) * _bits_per_pixel()) >> 3);
     };
 

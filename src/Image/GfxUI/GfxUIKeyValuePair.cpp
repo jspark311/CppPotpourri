@@ -30,27 +30,27 @@ int8_t GfxUIKeyValuePair::showKVP(KeyValuePair* new_kvp) {
 int GfxUIKeyValuePair::_render(UIGfxWrapper* ui_gfx) {
   int8_t ret = 0;
 
-  uint32_t i_x = internalPosX();
-  uint32_t i_y = internalPosY();
-  uint16_t i_w = internalWidth();
-  //uint16_t i_h = internalHeight();
+  PixUInt i_x = internalPosX();
+  PixUInt i_y = internalPosY();
+  PixUInt i_w = internalWidth();
+  //PixUInt i_h = internalHeight();
 
   if (!_kvp_loaded & (nullptr != _kvp)) {
-    uint32_t tracked_x = i_x;
-    uint32_t tracked_y = i_y;
+    PixUInt tracked_x = i_x;
+    PixUInt tracked_y = i_y;
 
     KeyValuePair* current_kvp = _kvp;
-    const uint16_t HARDCODED_HEIGHT = 16;   // TODO: Flows...
+    const PixUInt HARDCODED_HEIGHT = 16;   // TODO: Flows...
 
     while (nullptr != current_kvp) {
       StringBuilder keystr;
       keystr.concatf("\"%s\":", current_kvp->getKey());
-      uint32_t keystr_x = 0;
-      uint32_t keystr_y = 0;
-      uint32_t keystr_w = 0;
-      uint32_t keystr_h = 0;
+      PixUInt keystr_x = 0;
+      PixUInt keystr_y = 0;
+      PixUInt keystr_w = 0;
+      PixUInt keystr_h = 0;
       ui_gfx->img()->getTextBounds((const uint8_t*) keystr.string(), 0, 0, &keystr_x, &keystr_y, &keystr_w, &keystr_h);
-      tracked_x = strict_max(tracked_x, (i_x + keystr_w));
+      tracked_x = strict_max((PixUInt) tracked_x, (PixUInt) (i_x + keystr_w));
       ui_gfx->img()->setCursor(i_x, tracked_y);
       ui_gfx->img()->setTextSize(_style.text_size);
       ui_gfx->img()->setTextColor(_style.color_active, _style.color_bg);
@@ -94,7 +94,7 @@ int GfxUIKeyValuePair::_render(UIGfxWrapper* ui_gfx) {
 }
 
 
-bool GfxUIKeyValuePair::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+bool GfxUIKeyValuePair::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = true;
   switch (GFX_EVNT) {
     default:
@@ -171,7 +171,7 @@ int GfxUIKVPUtil::_render(UIGfxWrapper* ui_gfx) {
 }
 
 
-bool GfxUIKVPUtil::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+bool GfxUIKVPUtil::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   switch (GFX_EVNT) {
     default:

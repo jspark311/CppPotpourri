@@ -34,7 +34,7 @@ class GfxUICryptoRNG : public GfxUIElement, public PollableObj {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
     /* Implementation of PollableObj. */
     PollingResult poll();
@@ -108,7 +108,7 @@ class GfxUICryptoBurrito : public GfxUITabbedContentPane {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    //virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    //virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
     int fast_forward_data();
 

@@ -55,7 +55,7 @@ int GfxUICryptoRNG::_render(UIGfxWrapper* ui_gfx) {
 }
 
 
-bool GfxUICryptoRNG::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+bool GfxUICryptoRNG::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = _rng_buffer.dirty();
 
   switch (GFX_EVNT) {
@@ -103,7 +103,7 @@ int GfxUICryptoBurrito::_render(UIGfxWrapper* ui_gfx) {
 
 
 
-//bool GfxUICryptoBurrito::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+//bool GfxUICryptoBurrito::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
 //  bool ret = false;
 //
 //  if (ret) {

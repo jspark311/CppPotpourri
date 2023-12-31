@@ -30,7 +30,7 @@ class GfxUIBlobRender : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
     int8_t setPlotter(const BlobPlotterID);
     int8_t setStyler(const BlobStylerID);

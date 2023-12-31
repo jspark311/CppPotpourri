@@ -909,7 +909,7 @@ int StringBuilder::copyToBuffer(uint8_t* buf, const uint32_t LIMIT_LEN, const ui
     const uint32_t COPY_LENGTH = strict_min(LIMIT_LEN, (uint32_t) SUBJECT_LENGTH);
     int strll_offset   = START_OFFSET;
     StrLL* src_ll      = _get_ll_containing_offset(_root, &strll_offset);
-    StrLL* starting_ll = src_ll;
+    //StrLL* starting_ll = src_ll;
     while ((nullptr != src_ll) & (ret < (int) COPY_LENGTH)) {
       const int32_t INNER_LENGTH = strict_min((int32_t) (src_ll->len - strll_offset), (int32_t) (COPY_LENGTH - ret));
       memcpy((buf + ret), (uint8_t*)(src_ll->str + strll_offset), INNER_LENGTH);

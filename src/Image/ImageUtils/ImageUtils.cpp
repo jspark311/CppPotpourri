@@ -56,13 +56,13 @@ void UIGfxWrapper::_apply_color_map() {
 * @param percent is in the range [0.0, 1.0]
 */
 void UIGfxWrapper::drawProgressBarH(
-  int x, int y, int w, int h, uint32_t color,
+  PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color,
   bool draw_base, bool draw_val, float percent
 ) {
   if (draw_base) {   // Clear the way.
     _img->fillRect(x, y, w, h, bg_color);
   }
-  uint32_t pix_width = percent * (w-2);
+  PixUInt pix_width = percent * (w-2);
   int blackout_x = x+1+pix_width;
   int blackout_w = (w+2)-pix_width;
 
@@ -89,13 +89,13 @@ void UIGfxWrapper::drawProgressBarH(
 * @param percent is in the range [0.0, 1.0]
 */
 void UIGfxWrapper::drawProgressBarV(
-  int x, int y, int w, int h, uint32_t color,
+  PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color,
   bool draw_base, bool draw_val, float percent
 ) {
   if (draw_base) {   // Clear the way.
     _img->fillRect(x, y, w, h, bg_color);
   }
-  uint32_t pix_height = percent * (h-2);
+  PixUInt pix_height = percent * (h-2);
   int blackout_h = y+(h-1)-pix_height;
   _img->fillRoundRect(x+1, y+1, w-2, blackout_h, 3, bg_color);
   _img->fillRoundRect(x+1, (y+h-1)-pix_height, w-2, pix_height, 3, color);
@@ -124,7 +124,7 @@ void UIGfxWrapper::drawProgressBarV(
 /*
 */
 void UIGfxWrapper::drawCompass(
-  int x, int y, int w, int h,
+  PixUInt x, PixUInt y, PixUInt w, PixUInt h,
   bool scale_needle, bool draw_val, float bearing_field, float bearing_true_north
 ) {
   int origin_x = x + (w >> 1);
@@ -132,13 +132,13 @@ void UIGfxWrapper::drawCompass(
   const uint32_t RED   = _img->convertColor(0x000000FF);
   const uint32_t WHITE = _img->convertColor(0x00FFFFFF);
   int maximal_extent = (strict_min((int16_t) w, (int16_t) h) >> 1) - 1;
-  const int NEEDLE_WIDTH = maximal_extent >> 3;
+  //const int NEEDLE_WIDTH = maximal_extent >> 3;
   _img->fillCircle(origin_x, origin_y, maximal_extent, bg_color);
   _img->drawCircle(origin_x, origin_y, maximal_extent, fg_color);
   int displacement_x = cos(bearing_field * (PI/180.0)) * maximal_extent;
   int displacement_y = sin(bearing_field * (PI/180.0)) * maximal_extent;
-  int displacement_tri_x = cos((bearing_field + 90.0) * (PI/180.0)) * NEEDLE_WIDTH;
-  int displacement_tri_y = sin((bearing_field + 90.0) * (PI/180.0)) * NEEDLE_WIDTH;
+  //int displacement_tri_x = cos((bearing_field + 90.0) * (PI/180.0)) * NEEDLE_WIDTH;
+  //int displacement_tri_y = sin((bearing_field + 90.0) * (PI/180.0)) * NEEDLE_WIDTH;
 
   int needle_tip_n_x = displacement_x + origin_x;
   int needle_tip_n_y = displacement_y + origin_y;
@@ -159,14 +159,14 @@ void UIGfxWrapper::drawCompass(
 * Draw the given data as a plane.
 */
 void UIGfxWrapper::drawHeatMap(
-  uint32_t x, uint32_t y, uint32_t w, uint32_t h,
+  PixUInt x, PixUInt y, PixUInt w, PixUInt h,
   SensorFilter<float>* filt,
   uint32_t flags,
   float range_lock_low, float range_lock_hi
 ) {
-  const bool lock_range_to_absolute = (flags & GFXUI_FLAG_LOCK_RANGE_V) ? true : false;
+  //const bool lock_range_to_absolute = (flags & GFXUI_FLAG_LOCK_RANGE_V) ? true : false;
   const uint32_t MIN_ELEMENTS = strict_min((uint32_t) filt->windowSize(), (uint32_t) w * h);
-  const uint32_t PIXEL_SIZE   = strict_min((uint32_t) w, (uint32_t) h) / MIN_ELEMENTS;
+  const PixUInt PIXEL_SIZE    = strict_min(w, h) / MIN_ELEMENTS;
   const float    TEMP_MIN     = (range_lock_low == range_lock_hi) ? filt->minValue() : range_lock_low;
   const float    TEMP_MAX     = (range_lock_low == range_lock_hi) ? filt->maxValue() : range_lock_hi;
   const float    TEMP_RANGE   = TEMP_MAX - TEMP_MIN;
@@ -191,8 +191,8 @@ void UIGfxWrapper::drawHeatMap(
 
   //_img->setAddrWindow(x, y, w, h);
   for (uint32_t i = 0; i < MIN_ELEMENTS; i++) {
-    uint32_t x = (i & 0x07) * PIXEL_SIZE;
-    uint32_t y = (i >> 3) * PIXEL_SIZE;
+    PixUInt x = (i & 0x07) * PIXEL_SIZE;
+    PixUInt y = (i >> 3) * PIXEL_SIZE;
     float pix_deviation = abs(MIDPOINT_T - dataset[i]);
     uint8_t pix_intensity = BINSIZE_T * (pix_deviation / (TEMP_MAX - MIDPOINT_T));
     uint32_t color = (dataset[i] <= MIDPOINT_T) ? pix_intensity : (pix_intensity << 11);
@@ -213,7 +213,7 @@ void UIGfxWrapper::drawHeatMap(
 *   display. The given vector must be normalized.
 */
 void UIGfxWrapper::drawVector(
-  int x, int y, int w, int h, uint32_t color,
+  PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color,
   bool draw_axes, bool draw_val, float vx, float vy, float vz
 ) {
   const int PERSPECTIVE_SCALE = 1;
@@ -250,7 +250,7 @@ void UIGfxWrapper::drawVector(
 * Draw the data view selector widget.
 */
 void UIGfxWrapper::draw_data_view_selector(
-  int x, int y, int w, int h,
+  PixUInt x, PixUInt y, PixUInt w, PixUInt h,
   DataVis opt0, DataVis opt1, DataVis opt2, DataVis opt3, DataVis opt4, DataVis opt5,
   DataVis selected
 ) {

@@ -18,15 +18,15 @@ Templates for abstracted rendering of cartesian graphs.
 /**
 *
 */
-template <> void ImageGraph<uint32_t>::drawGraph(Image* img, const uint32_t POS_X, const uint32_t POS_Y) {
-  const uint32_t FRUS_W  = frustum_width();
-  const uint32_t FRUS_H  = frustum_height();
-  const uint32_t INSET_X = (_w - FRUS_W);
-  const uint32_t INSET_Y = (_h - FRUS_H);
-  const uint32_t GRAPH_X = (POS_X  + INSET_X);
-  const uint32_t GRAPH_Y = (POS_Y  + INSET_Y);
-  const uint32_t GRAPH_W = (FRUS_W - INSET_X);
-  const uint32_t GRAPH_H = (FRUS_H - INSET_Y);
+template <> void ImageGraph<uint32_t>::drawGraph(Image* img, const PixUInt POS_X, const PixUInt POS_Y) {
+  const PixUInt FRUS_W  = frustum_width();
+  const PixUInt FRUS_H  = frustum_height();
+  const PixUInt INSET_X = (_w - FRUS_W);
+  const PixUInt INSET_Y = (_h - FRUS_H);
+  const PixUInt GRAPH_X = (POS_X  + INSET_X);
+  const PixUInt GRAPH_Y = (POS_Y  + INSET_Y);
+  const PixUInt GRAPH_W = (FRUS_W - INSET_X);
+  const PixUInt GRAPH_H = (FRUS_H - INSET_Y);
 
   if ((img->x() >= (POS_X + _w)) && (img->y() >= (POS_Y + _h))) {
     // Blank the space and draw the basic frame and axes.
@@ -41,19 +41,19 @@ template <> void ImageGraph<uint32_t>::drawGraph(Image* img, const uint32_t POS_
       for (uint32_t i = 0; i < tmp_len; i++) {
         const uint32_t DATA_VALUE = *(tmp_ptr + i);
         const uint32_t DELTA_Y    = (DATA_VALUE / trace0.v_scale);
-        const uint32_t PNT_X_POS  = (GRAPH_X + i);
-        const uint32_t PNT_Y_POS  = ((GRAPH_Y + FRUS_H) - DELTA_Y);
+        const PixUInt PNT_X_POS  = (GRAPH_X + i);
+        const PixUInt PNT_Y_POS  = ((GRAPH_Y + FRUS_H) - DELTA_Y);
         if ((int32_t) i != trace0.accented_idx) {
           // Draw a normal point on the curve.
           img->setPixel(PNT_X_POS, PNT_Y_POS, trace0.color);
         }
         else {
           // Draw an accented point on the curve.
-          const uint32_t POINT_SIZE = 3;
-          uint32_t point_x = (PNT_X_POS - POINT_SIZE);
-          uint32_t point_y = (PNT_Y_POS - POINT_SIZE);
-          uint32_t point_h = ((POINT_SIZE << 1) + 1);  // Ensure an odd number.
-          uint32_t point_w = ((POINT_SIZE << 1) + 1);  // Ensure an odd number.
+          const PixUInt POINT_SIZE = 3;
+          PixUInt point_x = (PNT_X_POS - POINT_SIZE);
+          PixUInt point_y = (PNT_Y_POS - POINT_SIZE);
+          PixUInt point_h = ((POINT_SIZE << 1) + 1);  // Ensure an odd number.
+          PixUInt point_w = ((POINT_SIZE << 1) + 1);  // Ensure an odd number.
 
           if (point_x < GRAPH_X) {
             // Point overflowing the left-hand element boundary?
@@ -78,10 +78,10 @@ template <> void ImageGraph<uint32_t>::drawGraph(Image* img, const uint32_t POS_
 
           const uint16_t TXT_PIXEL_HEIGHT = img->getFontHeight();
           StringBuilder temp_txt;
-          uint32_t txt_x = (point_x + point_w + 1);
-          uint32_t txt_y = ((point_y - GRAPH_Y) > TXT_PIXEL_HEIGHT) ? (point_y - TXT_PIXEL_HEIGHT) : GRAPH_Y;
-          uint32_t txt_w = 0;
-          uint32_t txt_h = 0;
+          PixUInt txt_x = (point_x + point_w + 1);
+          PixUInt txt_y = ((point_y - GRAPH_Y) > TXT_PIXEL_HEIGHT) ? (point_y - TXT_PIXEL_HEIGHT) : GRAPH_Y;
+          PixUInt txt_w = 0;
+          PixUInt txt_h = 0;
           temp_txt.concatf("%u: %u", (trace0.offset_x + trace0.rend_offset_x + i), DATA_VALUE);
           img->getTextBounds(&temp_txt, txt_x, txt_y, &txt_x, &txt_y, &txt_w, &txt_h);
           if ((txt_w + txt_x) > (GRAPH_X + GRAPH_W)) {
@@ -129,7 +129,7 @@ template <> void ImageGraph<uint32_t>::drawGraph(Image* img, const uint32_t POS_
         const uint32_t FINAL_DATUM = *(tmp_ptr + (tmp_len-1));
         uint32_t tmp = (FINAL_DATUM / trace0.v_scale);
         //img->fillCircle(x+w, tmp+y, 1, color);
-        img->setCursor(GRAPH_X, strict_min((uint32_t) ((GRAPH_Y+FRUS_H)-tmp), (uint32_t) (FRUS_H-1)));
+        img->setCursor(GRAPH_X, strict_min((PixUInt) ((GRAPH_Y+FRUS_H)-tmp), (PixUInt) (FRUS_H-1)));
         img->setTextColor(trace0.color, bg_color);
         tmp_val_str.concatf("%u", FINAL_DATUM);
         img->writeString(&tmp_val_str);
@@ -144,15 +144,15 @@ template <> void ImageGraph<uint32_t>::drawGraph(Image* img, const uint32_t POS_
 /**
 *
 */
-template <> void ImageGraph<float>::drawGraph(Image* img, const uint32_t POS_X, const uint32_t POS_Y) {
-  const uint32_t FRUS_W  = frustum_width();
-  const uint32_t FRUS_H  = frustum_height();
-  const uint32_t INSET_X = (_w - FRUS_W);
-  const uint32_t INSET_Y = (_h - FRUS_H);
-  const uint32_t GRAPH_X = (POS_X  + INSET_X);
-  const uint32_t GRAPH_Y = (POS_Y  + INSET_Y);
-  const uint32_t GRAPH_W = (FRUS_W - INSET_X);
-  const uint32_t GRAPH_H = (FRUS_H - INSET_Y);
+template <> void ImageGraph<float>::drawGraph(Image* img, const PixUInt POS_X, const PixUInt POS_Y) {
+  const PixUInt FRUS_W  = frustum_width();
+  const PixUInt FRUS_H  = frustum_height();
+  const PixUInt INSET_X = (_w - FRUS_W);
+  const PixUInt INSET_Y = (_h - FRUS_H);
+  const PixUInt GRAPH_X = (POS_X  + INSET_X);
+  const PixUInt GRAPH_Y = (POS_Y  + INSET_Y);
+  const PixUInt GRAPH_W = (FRUS_W - INSET_X);
+  const PixUInt GRAPH_H = (FRUS_H - INSET_Y);
 
   if ((img->x() >= (POS_X + _w)) && (img->y() >= (POS_Y + _h))) {
     // Blank the space and draw the basic frame and axes.
@@ -167,19 +167,19 @@ template <> void ImageGraph<float>::drawGraph(Image* img, const uint32_t POS_X, 
       for (uint32_t i = 0; i < tmp_len; i++) {
         const float    DATA_VALUE = *(tmp_ptr + i);
         const uint32_t DELTA_Y    = (DATA_VALUE / trace0.v_scale);
-        const uint32_t PNT_X_POS  = (GRAPH_X + i);
-        const uint32_t PNT_Y_POS  = ((GRAPH_Y + FRUS_H) - DELTA_Y);
+        const PixUInt PNT_X_POS  = (GRAPH_X + i);
+        const PixUInt PNT_Y_POS  = ((GRAPH_Y + FRUS_H) - DELTA_Y);
         if ((int32_t) i != trace0.accented_idx) {
           // Draw a normal point on the curve.
           img->setPixel(PNT_X_POS, PNT_Y_POS, trace0.color);
         }
         else {
           // Draw an accented point on the curve.
-          const uint32_t POINT_SIZE = 3;
-          uint32_t point_x = (PNT_X_POS - POINT_SIZE);
-          uint32_t point_y = (PNT_Y_POS - POINT_SIZE);
-          uint32_t point_h = ((POINT_SIZE << 1) + 1);  // Ensure an odd number.
-          uint32_t point_w = ((POINT_SIZE << 1) + 1);  // Ensure an odd number.
+          const PixUInt POINT_SIZE = 3;
+          PixUInt point_x = (PNT_X_POS - POINT_SIZE);
+          PixUInt point_y = (PNT_Y_POS - POINT_SIZE);
+          PixUInt point_h = ((POINT_SIZE << 1) + 1);  // Ensure an odd number.
+          PixUInt point_w = ((POINT_SIZE << 1) + 1);  // Ensure an odd number.
 
           if (point_x < GRAPH_X) {
             // Point overflowing the left-hand element boundary?
@@ -204,10 +204,10 @@ template <> void ImageGraph<float>::drawGraph(Image* img, const uint32_t POS_X, 
 
           const uint16_t TXT_PIXEL_HEIGHT = img->getFontHeight();
           StringBuilder temp_txt;
-          uint32_t txt_x = (point_x + point_w + 1);
-          uint32_t txt_y = ((point_y - GRAPH_Y) > TXT_PIXEL_HEIGHT) ? (point_y - TXT_PIXEL_HEIGHT) : GRAPH_Y;
-          uint32_t txt_w = 0;
-          uint32_t txt_h = 0;
+          PixUInt txt_x = (point_x + point_w + 1);
+          PixUInt txt_y = ((point_y - GRAPH_Y) > TXT_PIXEL_HEIGHT) ? (point_y - TXT_PIXEL_HEIGHT) : GRAPH_Y;
+          PixUInt txt_w = 0;
+          PixUInt txt_h = 0;
           temp_txt.concatf("%u: %.3f", (trace0.offset_x + trace0.rend_offset_x + i), (double) DATA_VALUE);
           img->getTextBounds(&temp_txt, txt_x, txt_y, &txt_x, &txt_y, &txt_w, &txt_h);
           if ((txt_w + txt_x) > (GRAPH_X + GRAPH_W)) {
@@ -255,7 +255,7 @@ template <> void ImageGraph<float>::drawGraph(Image* img, const uint32_t POS_X, 
         const float FINAL_DATUM = *(tmp_ptr + (tmp_len-1));
         float tmp = (FINAL_DATUM / trace0.v_scale);
         //img->fillCircle(x+w, tmp+y, 1, color);
-        img->setCursor(GRAPH_X, strict_min((uint32_t) ((GRAPH_Y+FRUS_H)-tmp), (uint32_t) (FRUS_H-1)));
+        img->setCursor(GRAPH_X, strict_min((PixUInt) ((GRAPH_Y+FRUS_H)-tmp), (PixUInt) (FRUS_H-1)));
         img->setTextColor(trace0.color, bg_color);
         tmp_val_str.concatf("%.3f", (double) FINAL_DATUM);
         img->writeString(&tmp_val_str);

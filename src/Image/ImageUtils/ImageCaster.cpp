@@ -17,7 +17,7 @@ static uint32_t image_caster_id = 0;
 *******************************************************************************/
 
 /* Constructor */
-ImageCaster::ImageCaster(M2MLink* l, Image* i_s, int x, int y, int w, int h) :
+ImageCaster::ImageCaster(M2MLink* l, Image* i_s, PixUInt x, PixUInt y, PixUInt w, PixUInt h) :
   _id(++image_caster_id), _link(l), _source(i_s), _s_x(x), _s_y(y)
 {
   _s_w = (0 != w) ? w : (_source->x() - x);  // If not provided, assume the entire source image.

@@ -23,10 +23,10 @@ template <class T> class ImageGraphTrace {
     uint32_t color = 0x808080;
     float std_err_pos     = 0.0;  // Default is to not plot error bars.
     float std_err_neg     = 0.0;  // Default is to not plot error bars.
-    uint32_t major_grid_x = 0;    // Default is off.
-    uint32_t minor_grid_x = 0;    // Default is off.
-    uint32_t major_grid_y = 0;    // Default is off.
-    uint32_t minor_grid_y = 0;    // Default is off.
+    PixUInt major_grid_x = 0;    // Default is off.
+    PixUInt minor_grid_x = 0;    // Default is off.
+    PixUInt major_grid_y = 0;    // Default is off.
+    PixUInt minor_grid_y = 0;    // Default is off.
     //int32_t  scale_min_y  = 0;    // Default is off.
     //int32_t  scale_max_y  = 0;    // Default is off.
     float    v_scale       = 0.0; // The vertical scaling factor for the data.
@@ -53,7 +53,7 @@ template <class T> class ImageGraphTrace {
     inline T minValue() {        return _min_value;                 };
     inline T rangeInFrustum() {  return (_max_value - _min_value);  };
 
-    void findBounds(const uint32_t w, const uint32_t h);
+    void findBounds(const PixUInt w, const PixUInt h);
 
 
   private:
@@ -77,19 +77,19 @@ template <class T> class ImageGraph {
     ImageGraphTrace<T> trace1;
     ImageGraphTrace<T> trace2;
 
-    ImageGraph(uint32_t w, uint32_t h) : fg_color(0), bg_color(0), _w(w), _h(h) {};
+    ImageGraph(PixUInt w, PixUInt h) : fg_color(0), bg_color(0), _w(w), _h(h) {};
     ~ImageGraph() {};
 
-    void drawGraph(Image*, const uint32_t x, const uint32_t y);  // Width and Height are implied.
+    void drawGraph(Image*, const PixUInt x, const PixUInt y);  // Width and Height are implied.
 
     void setWidth(int w, int h);  //
-    uint32_t frustum_width();
-    uint32_t frustum_height();
+    PixUInt frustum_width();
+    PixUInt frustum_height();
 
 
   private:
-    uint32_t _w;
-    uint32_t _h;
+    PixUInt _w;
+    PixUInt _h;
     bool draw_ticks_x = false;
     bool draw_ticks_y = false;
 
@@ -106,7 +106,7 @@ template <class T> class ImageGraph {
 * Given a pixel width and height of a frustum, finds the min/max values in the
 *   visible dataset, and recalculates any stored parameters that depend on them.
 */
-template <class T> void ImageGraphTrace<T>::findBounds(const uint32_t W, const uint32_t H) {
+template <class T> void ImageGraphTrace<T>::findBounds(const PixUInt W, const PixUInt H) {
   if (W < data_len) {
     // Adjust the range of data to consider if the frustum width and data
     //   length don't match.
@@ -139,10 +139,10 @@ template <class T> void ImageGraphTrace<T>::findBounds(const uint32_t W, const u
 
 
 /* After options are applied, returns the size of the data that will exactly fill the window. */
-template <class T> uint32_t ImageGraph<T>::frustum_width() {
-  uint32_t ret = _w;
-  uint32_t tmp = _w;
-  const uint32_t INSET_X = (draw_ticks_x ? 3 : 1);
+template <class T> PixUInt ImageGraph<T>::frustum_width() {
+  PixUInt ret = _w;
+  PixUInt tmp = _w;
+  const PixUInt INSET_X = (draw_ticks_x ? 3 : 1);
   if (tmp > INSET_X) {
     tmp -= INSET_X;   // Apply size of axis.
     ret = tmp;
@@ -151,10 +151,10 @@ template <class T> uint32_t ImageGraph<T>::frustum_width() {
 }
 
 /* After options are applied, returns the pixel height where data will be shown. */
-template <class T> uint32_t ImageGraph<T>::frustum_height() {
-  uint32_t ret = _h;
-  uint32_t tmp = _h;
-  const uint32_t INSET_Y = (draw_ticks_y ? 3 : 1);
+template <class T> PixUInt ImageGraph<T>::frustum_height() {
+  PixUInt ret = _h;
+  PixUInt tmp = _h;
+  const PixUInt INSET_Y = (draw_ticks_y ? 3 : 1);
   if (tmp > INSET_Y) {
     tmp -= INSET_Y;   // Apply size of axis.
     ret = tmp;

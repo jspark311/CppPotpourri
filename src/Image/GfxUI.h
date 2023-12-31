@@ -199,18 +199,18 @@ class GfxUIStyle {
 class GfxUILayout {
   public:
     /* Constructor with optional global margins and borders. */
-    GfxUILayout(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint8_t margin = 0, uint8_t border = 0) :
+    GfxUILayout(PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint8_t margin = 0, uint8_t border = 0) :
       _x(x), _y(y), _w(w), _h(h),
       _mrgn_t(margin), _mrgn_b(margin), _mrgn_l(margin), _mrgn_r(margin),
       _bordr_t(border), _bordr_b(border), _bordr_l(border), _bordr_r(border) {};
 
     /* Constructor that specifies each margin specifically. */
-    GfxUILayout(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint8_t m_t, uint8_t m_b, uint8_t m_l, uint8_t m_r) :
+    GfxUILayout(PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint8_t m_t, uint8_t m_b, uint8_t m_l, uint8_t m_r) :
       _x(x), _y(y), _w(w), _h(h), _mrgn_t(m_t), _mrgn_b(m_b), _mrgn_l(m_l), _mrgn_r(m_r) {};
 
     /* Fully-specified constructor. */
     GfxUILayout(
-      uint32_t x, uint32_t y, uint16_t w, uint16_t h,
+      PixUInt x, PixUInt y, PixUInt w, PixUInt h,
       uint8_t m_t, uint8_t m_b, uint8_t m_l, uint8_t m_r,
       uint8_t b_t, uint8_t b_b, uint8_t b_l, uint8_t b_r
     ) :
@@ -231,29 +231,29 @@ class GfxUILayout {
       _bordr_t(src->_bordr_t), _bordr_b(src->_bordr_b), _bordr_l(src->_bordr_l), _bordr_r(src->_bordr_r) {};
 
 
-    inline uint32_t elementPosX() {      return _x;    };
-    inline uint32_t elementPosY() {      return _y;    };
-    inline uint16_t elementWidth() {     return _w;    };
-    inline uint16_t elementHeight() {    return _h;    };
+    inline PixUInt elementPosX() {      return _x;    };
+    inline PixUInt elementPosY() {      return _y;    };
+    inline PixUInt elementWidth() {     return _w;    };
+    inline PixUInt elementHeight() {    return _h;    };
 
-    inline uint32_t xCornerUpperLeft() {     return _x;    };
-    inline uint32_t xCornerUpperRight() {    return (_x + _w);    };
-    inline uint32_t xCornerLowerLeft() {     return _x;    };
-    inline uint32_t xCornerLowerRight() {    return (_x + _w);    };
-    inline uint32_t yCornerUpperLeft() {     return _y;    };
-    inline uint32_t yCornerUpperRight() {    return _y;    };
-    inline uint32_t yCornerLowerLeft() {     return (_y + _h);    };
-    inline uint32_t yCornerLowerRight() {    return (_y + _h);    };
+    inline PixUInt xCornerUpperLeft() {     return _x;    };
+    inline PixUInt xCornerUpperRight() {    return (_x + _w);    };
+    inline PixUInt xCornerLowerLeft() {     return _x;    };
+    inline PixUInt xCornerLowerRight() {    return (_x + _w);    };
+    inline PixUInt yCornerUpperLeft() {     return _y;    };
+    inline PixUInt yCornerUpperRight() {    return _y;    };
+    inline PixUInt yCornerLowerLeft() {     return (_y + _h);    };
+    inline PixUInt yCornerLowerRight() {    return (_y + _h);    };
 
     // These terrible inlines calculate the internal bounds of the renderable
     //   area after borders and margin have been taken into account.
-    inline uint16_t internalPosX() {     return (_x + _mrgn_l + _bordr_l);  };
-    inline uint16_t internalPosY() {     return (_y + _mrgn_t + _bordr_t);  };
-    inline uint16_t internalWidth() {    return (_w - (_mrgn_r + _bordr_r + _mrgn_l + _bordr_l));   };
-    inline uint16_t internalHeight() {   return (_h - (_mrgn_t + _bordr_t + _mrgn_b + _bordr_b));   };
+    inline PixUInt internalPosX() {     return (_x + _mrgn_l + _bordr_l);  };
+    inline PixUInt internalPosY() {     return (_y + _mrgn_t + _bordr_t);  };
+    inline PixUInt internalWidth() {    return (_w - (_mrgn_r + _bordr_r + _mrgn_l + _bordr_l));   };
+    inline PixUInt internalHeight() {   return (_h - (_mrgn_t + _bordr_t + _mrgn_b + _bordr_b));   };
 
     /* Does the given point fall on this region? */
-    bool includesPoint(const uint32_t x, const uint32_t y) {
+    bool includesPoint(const PixUInt x, const PixUInt y) {
       return ((x >= _x) && (x < (_x + _w)) && (y >= _y) && (y < (_y + _h)));
     };
 
@@ -268,15 +268,15 @@ class GfxUILayout {
 
 
     /* Static utility methods for automating flows during view construction. */
-    static bool flowRight(GfxUILayout*, uint32_t spacing = 0);
-    static bool flowDown(GfxUILayout*, uint32_t spacing = 0);
+    static bool flowRight(GfxUILayout*, PixUInt spacing = 0);
+    static bool flowDown(GfxUILayout*, PixUInt spacing = 0);
 
 
   protected:
-    uint32_t _x;       // Location of the upper-left corner.
-    uint32_t _y;       // Location of the upper-left corner.
-    uint16_t _w;       // Size of the element.
-    uint16_t _h;       // Size of the element.
+    PixUInt  _x;       // Location of the upper-left corner.
+    PixUInt  _y;       // Location of the upper-left corner.
+    PixUInt  _w;       // Size of the element.
+    PixUInt  _h;       // Size of the element.
     uint8_t  _mrgn_t;  // How many pixels inset should be the content?
     uint8_t  _mrgn_b;  // How many pixels inset should be the content?
     uint8_t  _mrgn_l;  // How many pixels inset should be the content?
@@ -347,9 +347,9 @@ class GfxUIElement : public GfxUILayout {
       ui_gfx->img()->fillRect(internalPosX(), internalPosY(), internalWidth(), internalHeight(), color);
     };
 
-    void reposition(uint32_t x, uint32_t y);
+    void reposition(PixUInt x, PixUInt y);
 
-    void resize(uint32_t w, uint32_t h) {
+    void resize(PixUInt w, PixUInt h) {
       _w = w;
       _h = h;
       _need_redraw(true);
@@ -359,7 +359,7 @@ class GfxUIElement : public GfxUILayout {
     * Top-level objects are the first to handle notify.
     * Iteration and recursion both stop on the first positive return value.
     */
-    bool notify(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    bool notify(const GfxUIEvent GFX_EVNT, const PixUInt x, const PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
     /*
     * Top-level objects are the last to render.
@@ -371,20 +371,20 @@ class GfxUIElement : public GfxUILayout {
   protected:
     GfxUIStyle _style;
     PriorityQueue<GfxUIElement*> _children;
-    uint32_t _pointer_x;
-    uint32_t _pointer_y;
+    PixUInt _pointer_x;
+    PixUInt _pointer_y;
 
     GfxUIElement(const GfxUILayout layout, const GfxUIStyle style, uint32_t f);
     GfxUIElement(GfxUILayout* layout, GfxUIStyle* style, uint32_t f);
     GfxUIElement(GfxUILayout* layout, uint32_t f) : GfxUIElement(layout, nullptr, f) {};
-    GfxUIElement(uint32_t x, uint32_t y, uint16_t w, uint16_t h, uint32_t f);
+    GfxUIElement(PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t f);
 
     int _add_child(GfxUIElement*);
     int _remove_child(GfxUIElement*);
     //int8_t _reflow(GfxUILayout);   // TODO: Now that laytouts are working well, automate their flows.
 
     /* These are the obligate overrides. */
-    virtual bool _notify(const GfxUIEvent, const uint32_t x, const uint32_t y, PriorityQueue<GfxUIElement*>* change_log) =0;
+    virtual bool _notify(const GfxUIEvent, const PixUInt x, const PixUInt y, PriorityQueue<GfxUIElement*>* change_log) =0;
     virtual int  _render(UIGfxWrapper*) =0;
 
     inline void _need_redraw(bool x) {  _class_set_flag(GFXUI_FLAG_NEED_RERENDER, x);   };
@@ -399,7 +399,7 @@ class GfxUIElement : public GfxUILayout {
   private:
     FlagContainer32 _flags;  // If set, the step has been done.
 
-    bool   _notify_children(const GfxUIEvent GFX_EVNT, const uint32_t x, const uint32_t y, PriorityQueue<GfxUIElement*>* change_log);
+    bool   _notify_children(const GfxUIEvent GFX_EVNT, const PixUInt x, const PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
     int    _render_children(UIGfxWrapper*, bool force);
 };
 

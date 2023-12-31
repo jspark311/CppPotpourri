@@ -95,7 +95,7 @@ int GfxUIIdentity::_render(UIGfxWrapper* ui_gfx) {
   return 1;
 }
 
-bool GfxUIIdentity::_notify(const GfxUIEvent GFX_EVNT, uint32_t x, uint32_t y, PriorityQueue<GfxUIElement*>* change_log) {
+bool GfxUIIdentity::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   switch (GFX_EVNT) {
     default:
