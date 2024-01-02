@@ -23,10 +23,10 @@ template <class T> class ImageGraphTrace {
     uint32_t color = 0x808080;
     float std_err_pos     = 0.0;  // Default is to not plot error bars.
     float std_err_neg     = 0.0;  // Default is to not plot error bars.
-    PixUInt major_grid_x = 0;    // Default is off.
-    PixUInt minor_grid_x = 0;    // Default is off.
-    PixUInt major_grid_y = 0;    // Default is off.
-    PixUInt minor_grid_y = 0;    // Default is off.
+    PixUInt major_grid_x  = 0;    // Default is off.
+    PixUInt minor_grid_x  = 0;    // Default is off.
+    PixUInt major_grid_y  = 0;    // Default is off.
+    PixUInt minor_grid_y  = 0;    // Default is off.
     //int32_t  scale_min_y  = 0;    // Default is off.
     //int32_t  scale_max_y  = 0;    // Default is off.
     float    v_scale       = 0.0; // The vertical scaling factor for the data.

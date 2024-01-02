@@ -227,6 +227,9 @@ class GfxUIMagnifier : public GfxUIElement {
     float    _scale;      // The current scale factor to apply to the source.
     float    _min_mag;    // The current scale factor to apply to the source.
     float    _max_mag;    // The current scale factor to apply to the source.
+    bool     _detach_view;    // Render the magnified view into a constant location.
+    bool     _show_src_frame; // For a detatched view, draw a frame around the source.
+    bool     _show_tracers;   // For a detatched view, draw lines to the source frustum.
 };
 
 

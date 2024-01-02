@@ -361,28 +361,49 @@ static const unsigned char font[] = {
 };
 
 
+const char* const Image::formatString(const ImgBufferFormat FMT) {
+  switch (FMT) {
+    case ImgBufferFormat::UNALLOCATED:     return "UNALLOCATED";
+    case ImgBufferFormat::MONOCHROME:      return "MONOCHROME";
+    case ImgBufferFormat::GREY_24:         return "GREY_24";
+    case ImgBufferFormat::GREY_16:         return "GREY_16";
+    case ImgBufferFormat::GREY_8:          return "GREY_8";
+    case ImgBufferFormat::GREY_4:          return "GREY_4";
+    case ImgBufferFormat::R8_G8_B8_ALPHA:  return "R8_G8_B8_ALPHA";
+    case ImgBufferFormat::R8_G8_B8:        return "R8_G8_B8";
+    case ImgBufferFormat::R5_G6_B5:        return "R5_G6_B5";
+    case ImgBufferFormat::R3_G3_B2:        return "R3_G3_B2";
+    default:                               return "UNKNOWN";
+  }
+}
+
+const float Image::rotationAngle(const ImgOrientation ROT_ENUM) {
+  switch (ROT_ENUM) {
+    default:
+    case ImgOrientation::ROTATION_0:      return 0.0f;
+    case ImgOrientation::ROTATION_90:     return 90.0f;
+    case ImgOrientation::ROTATION_180:    return 180.0f;
+    case ImgOrientation::ROTATION_270:    return 270.0f;
+  }
+}
+
 /**
 * @param ImgBufferFormat
 * @return the number of bits to represent a pixel for the given ImgBufferFormat.
 */
-uint8_t Image::_bits_per_pixel(ImgBufferFormat x) {
-  switch (x) {
-    case ImgBufferFormat::MONOCHROME:
-      return 1;
+const uint8_t Image::_bits_per_pixel(const ImgBufferFormat FMT) {
+  switch (FMT) {
+    case ImgBufferFormat::MONOCHROME:      return 1;
+    case ImgBufferFormat::GREY_4:          return 4;
     case ImgBufferFormat::GREY_8:
-    case ImgBufferFormat::R3_G3_B2:
-      return 8;    // 8-bit color
+    case ImgBufferFormat::R3_G3_B2:        return 8;    // 8-bit color
     case ImgBufferFormat::GREY_16:
-    case ImgBufferFormat::R5_G6_B5:
-      return 16;   // 16-bit color
+    case ImgBufferFormat::R5_G6_B5:        return 16;   // 16-bit color
     case ImgBufferFormat::GREY_24:
-    case ImgBufferFormat::R8_G8_B8:
-      return 24;   // 24-bit color
-    case ImgBufferFormat::R8_G8_B8_ALPHA:
-      return 32;   // 24-bit color with 8-bits of alpha
+    case ImgBufferFormat::R8_G8_B8:        return 24;   // 24-bit color
+    case ImgBufferFormat::R8_G8_B8_ALPHA:  return 32;   // 24-bit color with 8-bits of alpha
     case ImgBufferFormat::UNALLOCATED:
-    default:
-      break;
+    default:  break;
   }
   return 0;
 }
@@ -705,34 +726,6 @@ int8_t Image::deserialize(uint8_t* buf, uint32_t len) {
 }
 
 
-
-const char* const Image::formatString(const ImgBufferFormat FMT) {
-  switch (FMT) {
-    case ImgBufferFormat::UNALLOCATED:     return "UNALLOCATED";
-    case ImgBufferFormat::MONOCHROME:      return "MONOCHROME";
-    case ImgBufferFormat::GREY_24:         return "GREY_24";
-    case ImgBufferFormat::GREY_16:         return "GREY_16";
-    case ImgBufferFormat::GREY_8:          return "GREY_8";
-    case ImgBufferFormat::R8_G8_B8_ALPHA:  return "R8_G8_B8_ALPHA";
-    case ImgBufferFormat::R8_G8_B8:        return "R8_G8_B8";
-    case ImgBufferFormat::R5_G6_B5:        return "R5_G6_B5";
-    case ImgBufferFormat::R3_G3_B2:        return "R3_G3_B2";
-    default:                               return "UNKNOWN";
-  }
-}
-
-
-const float Image::rotationAngle(const ImgOrientation ROT_ENUM) {
-  switch (ROT_ENUM) {
-    default:
-    case ImgOrientation::ROTATION_0:      return 0.0f;
-    case ImgOrientation::ROTATION_90:     return 90.0f;
-    case ImgOrientation::ROTATION_180:    return 180.0f;
-    case ImgOrientation::ROTATION_270:    return 270.0f;
-  }
-}
-
-
 void Image::printImageInfo(StringBuilder* out, const bool DETAIL) {
   if (DETAIL) {
   }
@@ -828,11 +821,31 @@ uint32_t Image::convertColor(uint32_t c, ImgBufferFormat src_fmt) {
 * Pixel-level operations, and the linkage with the buffer.
 *******************************************************************************/
 
+void Image::flipX(bool f) {
+  if (_img_flag(C3P_IMG_FLAG_FLIP_X) != f) {
+    _img_set_flag(C3P_IMG_FLAG_FLIP_X, f);
+    if (nullptr != _buffer) {
+      // TODO:
+      // If we already have a buffer allocated, apply the transform to the
+      //   existing buffer.
+    }
+  }
+}
+
+void Image::flipY(bool f) {
+  if (_img_flag(C3P_IMG_FLAG_FLIP_Y) != f) {
+    _img_set_flag(C3P_IMG_FLAG_FLIP_Y, f);
+    if (nullptr != _buffer) {
+      // TODO:
+      // If we already have a buffer allocated, apply the transform to the
+      //   existing buffer.
+    }
+  }
+}
+
 void Image::orientation(ImgOrientation nu) {
-  ImgOrientation original = orientation();
-  if (original != nu) {
-    _img_clear_flag(C3P_IMG_FLAG_ROTATION_MASK);
-    _img_set_flag(((uint8_t) nu) << 6);
+  if (_rotation != nu) {
+    _rotation = nu;
     if (nullptr != _buffer) {
       // TODO:
       // If we already have a buffer allocated, apply the transform to the
@@ -954,6 +967,7 @@ uint32_t Image::getPixelAsFormat(PixUInt x, PixUInt y, ImgBufferFormat target_fm
     case ImgBufferFormat::GREY_24:           // 24-bit greyscale   TODO: Wrong. Has to be.
     case ImgBufferFormat::GREY_16:           // 16-bit greyscale   TODO: Wrong. Has to be.
     case ImgBufferFormat::GREY_8:            // 8-bit greyscale    TODO: Wrong. Has to be.
+    case ImgBufferFormat::GREY_4:
     default:
       return ret;
   }
@@ -982,8 +996,10 @@ uint32_t Image::getPixelAsFormat(PixUInt x, PixUInt y, ImgBufferFormat target_fm
       ret |= ((uint32_t)(g >> 5) << 2);
       ret |= ((uint32_t)(b >> 6));
       break;
+    case ImgBufferFormat::GREY_4:            // 4-bit greyscale
+      target_bpp -= 4;
     case ImgBufferFormat::GREY_8:            // 8-bit greyscale
-      target_bpp -= 16;
+      target_bpp -= 8;
     case ImgBufferFormat::GREY_16:           // 16-bit greyscale
       target_bpp -= 8;
     case ImgBufferFormat::GREY_24:           // 24-bit greyscale
@@ -1329,7 +1345,7 @@ void Image::setTextColor(uint32_t c, uint32_t bg) {
   @param    maxx  Maximum clipping value for X
   @param    maxy  Maximum clipping value for Y
 */
-void Image::charBounds(char c, PixUInt* x, PixUInt* y, PixUInt* minx, PixUInt* miny, PixUInt* maxx, PixUInt* maxy) {
+void Image::_char_bounds(char c, PixUInt* x, PixUInt* y, PixUInt* minx, PixUInt* miny, PixUInt* maxx, PixUInt* maxy) {
   if (_gfxFont) {
     if (c == '\n') { // Newline?
       *x  = 0;    // Reset x to zero, advance y by one line
@@ -1407,7 +1423,7 @@ void Image::getTextBounds(const char* str, PixUInt x, PixUInt y, PixUInt* x1, Pi
   PixUInt maxy = 0;
 
   while((c = *str++)) {
-    charBounds(c, &x, &y, &minx, &miny, &maxx, &maxy);
+    _char_bounds(c, &x, &y, &minx, &miny, &maxx, &maxy);
   }
 
   if(maxx >= minx) {
@@ -1461,7 +1477,7 @@ void Image::getTextBounds(const uint8_t* str, PixUInt x, PixUInt y, PixUInt* x1,
   PixUInt maxy = -1;
 
   while((c = *s++)) {
-    charBounds(c, &x, &y, &minx, &miny, &maxx, &maxy);
+    _char_bounds(c, &x, &y, &minx, &miny, &maxx, &maxy);
   }
 
   if(maxx >= minx) {

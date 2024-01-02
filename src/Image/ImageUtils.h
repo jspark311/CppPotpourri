@@ -143,9 +143,9 @@ class ImageScaler {
 
 
   private:
-    Image*   _source;
-    Image*   _target;
-    float    _scale;
+    Image*  _source;
+    Image*  _target;
+    float   _scale;
     PixUInt _s_x;
     PixUInt _s_y;
     PixUInt _s_w;
