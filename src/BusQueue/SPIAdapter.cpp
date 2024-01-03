@@ -201,7 +201,7 @@ FAST_FUNC int8_t SPIAdapter::advance_work_queue() {
 */
 FAST_FUNC int8_t SPIAdapter::service_callback_queue() {
   int8_t return_value = 0;
-
+  profiler_cb.markStart();
   while ((return_value < _cb_per_event) && (0 < callback_queue.size())) {
     SPIBusOp* temp_op = callback_queue.dequeue();
     if (nullptr != temp_op->callback) {
@@ -232,7 +232,9 @@ FAST_FUNC int8_t SPIAdapter::service_callback_queue() {
     }
     return_value++;
   }
-
+  if (0 < return_value) {
+    profiler_cb.markStop();
+  }
   return return_value;
 }
 

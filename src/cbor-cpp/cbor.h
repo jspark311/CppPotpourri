@@ -263,16 +263,14 @@ namespace cbor {
       void write_string(const char* data, uint32_t size);
       void write_string(const char* str);
 
-      inline void write_int(uint8_t v) {           write_type_value(0, (uint32_t) v);     };
-      inline void write_int(uint16_t v) {          write_type_value(0, (uint32_t) v);     };
-      inline void write_int(uint32_t v) {          write_type_value(0, v);     };
-      inline void write_int(uint64_t v) {          write_type_value64(0, v);   };
-
-      inline void write_int(int8_t v) {            write_type_value(1,   (uint32_t) -(v+1));   };
-      inline void write_int(int16_t v) {           write_type_value(1,   (uint32_t) -(v+1));   };
-      inline void write_int(int32_t v) {           write_type_value(1,   (uint32_t) -(v+1));   };
-      inline void write_int(int64_t v) {           write_type_value64(1, (uint64_t) -(v+1));   };
-
+      inline void write_int(uint8_t v) {           write_type_value(0, (uint32_t) v);   };
+      inline void write_int(uint16_t v) {          write_type_value(0, (uint32_t) v);   };
+      inline void write_int(uint32_t v) {          write_type_value(0, v);              };
+      inline void write_int(uint64_t v) {          write_type_value64(0, v);            };
+      inline void write_int(int8_t v) {            write_type_value_signed((int32_t) v);  };
+      inline void write_int(int16_t v) {           write_type_value_signed((int32_t) v);  };
+      inline void write_int(int32_t v) {           write_type_value_signed(v);     };
+      inline void write_int(int64_t v) {           write_type_value_signed64(v);   };
       inline void write_tag(const uint32_t tag) {  write_type_value(6, tag);   };
       inline void write_array(uint32_t size) {     write_type_value(4, size);  };
       inline void write_map(uint32_t size) {       write_type_value(5, size);  };
@@ -283,6 +281,8 @@ namespace cbor {
       output* _out;
 
       void write_type_value(int major_type, uint32_t value);
+      void write_type_value_signed(int32_t value);
+      void write_type_value_signed64(int64_t value);
       void write_type_value64(int major_type, uint64_t value);
   };
 

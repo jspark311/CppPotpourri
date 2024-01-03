@@ -779,10 +779,13 @@ int test_CBOR_KeyValuePair() {
                 if ((0 == r->valueWithIdx(4, &ret4)) && (ret4 == val4)) {
                   if ((0 == r->valueWithIdx(5, &ret5)) && (ret5 == val5)) {
                     if ((0 == r->valueWithIdx(6, &ret6)) && (ret6 == val6)) {
-                      if ((0 == r->valueWithKey("val8", &ret8)) && (ret8 == val8)) {
-                        return_value = 0;
+                      if ((0 == r->valueWithIdx(7, &ret7)) && (ret7 == val7)) {
+                        if ((0 == r->valueWithIdx(8, &ret8)) && (ret8 == val8)) {
+                          return_value = 0;
+                        }
+                        else printf("Failed to vet key 'val8'... %.6f vs %.6f\n", ret8, val8);
                       }
-                      else printf("Failed to vet key 'val8'... %.6f vs %.6f\n", ret8, val8);
+                      else printf("Failed to vet key 'val7'...\n");
                     }
                     else printf("Failed to vet key 'val6'... %.3f vs %.3f\n", (double) ret6, (double) val6);
                   }

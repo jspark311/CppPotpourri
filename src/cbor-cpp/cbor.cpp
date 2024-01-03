@@ -400,6 +400,17 @@ void encoder::write_string(const char* str) {
   _out->put_bytes((const uint8_t* ) str, len);
 }
 
+void encoder::write_type_value_signed(int32_t v) {
+  if (0 > v) {  write_type_value(1,   (uint32_t) -(v+1));    }
+  else {        write_type_value(0,   (uint32_t) v);         }
+}
+
+void encoder::write_type_value_signed64(int64_t v) {
+  if (0 > v) {  write_type_value64(1, (uint64_t) -(v+1));    }
+  else {        write_type_value64(0, (uint64_t) v);         }
+}
+
+
 
 /*******************************************************************************
 * decoder
