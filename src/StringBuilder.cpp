@@ -887,8 +887,8 @@ void StringBuilder::concat(String s) {
   const int INPUT_LEN  = s.length()+1;
   char  out[INPUT_LEN];
   memset(out, 0, INPUT_LEN);
-  s.toCharArray(out, len);
-  concat((uint8_t*) out, strlen(out));
+  s.toCharArray(out, INPUT_LEN);
+  concat((char*) out);
 }
 #endif   // ARDUINO
 
@@ -1344,7 +1344,7 @@ int StringBuilder::chunk(const int CSIZE) {
 
           // Do length correction, and decide if we need to loop again.
           remaining_len -= current_chunk_len;
-          current_chunk_len = strict_min(remaining_len, CSIZE);
+          current_chunk_len = strict_min((int32_t) remaining_len, (int32_t) CSIZE);
           if (current_chunk_len > 0) {
             // There is another chunk. Loop will run again unless we fail to
             //   allocate a fresh StrLL of the required size.
