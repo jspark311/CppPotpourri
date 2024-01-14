@@ -66,8 +66,8 @@ int8_t BufferAccepterFork::pushBuffer(StringBuilder* buf) {
     // Note the drift distance for each side of the fork.
     const int32_t LEFT_OFFER_LEN  = (BYTES_TO_TAKE - _left_drift);
     const int32_t RIGHT_OFFER_LEN = (BYTES_TO_TAKE - _right_drift);
-    int left_range_covered  = BYTES_TO_TAKE;
-    int right_range_covered = BYTES_TO_TAKE;
+    int32_t left_range_covered  = BYTES_TO_TAKE;
+    int32_t right_range_covered = BYTES_TO_TAKE;
     if ((nullptr != _left_hand) & (LEFT_OFFER_LEN > 0)) {
       StringBuilder deep_copy(buf->string() + _left_drift, LEFT_OFFER_LEN);
       _left_hand->pushBuffer(&deep_copy);
@@ -78,7 +78,7 @@ int8_t BufferAccepterFork::pushBuffer(StringBuilder* buf) {
       _right_hand->pushBuffer(&deep_copy);
       right_range_covered -= deep_copy.length();
     }
-    const int TOTAL_TAKEN = strict_min(left_range_covered, right_range_covered);
+    const int32_t TOTAL_TAKEN = strict_min(left_range_covered, right_range_covered);
     buf->cull(TOTAL_TAKEN);
     _left_drift  = (TOTAL_TAKEN - left_range_covered);
     _right_drift = (TOTAL_TAKEN - right_range_covered);

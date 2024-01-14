@@ -232,6 +232,7 @@ class GPSWrapper : public BufferAccepter {
 
     /* Implementation of BufferAccepter. */
     int8_t pushBuffer(StringBuilder* buf);
+    int32_t bufferAvailable();
 
     int8_t init();
     void printDebug(StringBuilder*);

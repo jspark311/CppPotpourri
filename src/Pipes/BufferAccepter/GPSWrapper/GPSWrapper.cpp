@@ -138,6 +138,7 @@ static inline float minmea_tocoord(struct minmea_float *f) {
 /*******************************************************************************
 * GPS-specific functions                                                       *
 *******************************************************************************/
+#define GPSWRAPPER_MAX_ACCUMULATOR_LEN   1024
 
 /**
 * Takes a buffer from outside of this class. Typically a comm port.
@@ -148,10 +149,28 @@ static inline float minmea_tocoord(struct minmea_float *f) {
 */
 int8_t GPSWrapper::pushBuffer(StringBuilder* buf) {
   _accumulator.concatHandoff(buf);
-  if (MINMEA_MAX_LENGTH < _accumulator.length()) {
+  const int32_t ACC_LEN = _accumulator.length();
+  if (MINMEA_MAX_LENGTH < ACC_LEN) {
     _attempt_parse();
   }
+
+  if (ACC_LEN > GPSWRAPPER_MAX_ACCUMULATOR_LEN) {
+    _accumulator.cull(ACC_LEN - GPSWRAPPER_MAX_ACCUMULATOR_LEN);
+  }
   return 1;
+}
+
+
+// NOTE: This object effectively has no buffer limit, since it is a sink. All
+//   buffers given will end here. So just report a reasonable maximum size for
+//   a sentence.
+int32_t GPSWrapper::bufferAvailable() {
+  int32_t ret = 0;
+  const int32_t ACC_LEN = _accumulator.length();
+  if (ACC_LEN <= GPSWRAPPER_MAX_ACCUMULATOR_LEN) {
+    ret = (GPSWRAPPER_MAX_ACCUMULATOR_LEN - _accumulator.length());
+  }
+  return ret;
 }
 
 

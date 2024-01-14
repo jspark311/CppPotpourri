@@ -32,7 +32,7 @@ The simplest use of this header is to use the SensorCallBack function
 #include "StringBuilder.h"
 #include "CppPotpourri.h"
 #include "EnumeratedTypeCodes.h"
-#include "C3PValue.h"
+#include "C3PValue/C3PValue.h"
 #include "AbstractPlatform.h"
 
 class C3PSensor;

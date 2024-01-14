@@ -79,10 +79,13 @@ template <class T> class StateMachine {
     void     _fsm_reset(T);
     void     _fsm_mark_current_state(T);
 
+    inline bool     _fsm_state_planned(T x) {   return (_waypoints.contains((uint8_t) x));    };
+
     inline void     _fsm_lockout(uint32_t x) {  _lockout_timer.reset(x);            };
     inline uint32_t _fsm_lockout() {            return _lockout_timer.remaining();  };
     inline bool     _fsm_is_waiting() {         return !_lockout_timer.expired();   };
-    inline T        _fsm_pos_next() {           return (T) _waypoints.peek();       };
+    inline T        _fsm_pos_next() {           return (T) _waypoints.peek();       };   // TODO: This is risky.
+    inline bool     _fsm_is_next_pos(T x) {     return ((0 < _waypoints.count()) & (x == (T)_waypoints.peek())); };
     inline bool     _fsm_is_stable() {          return (0 == _waypoints.count());   };
     inline void     _fsm_slowdown(uint32_t x) { _slowdown_ms = x;                   };
     inline uint32_t _fsm_slowdown() {           return _slowdown_ms;                };

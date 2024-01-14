@@ -13,7 +13,7 @@ Tewmplates for abstracted rendering of cartesian graphs.
 #define __C3P_IMG_GRAPHING_H
 
 #include "../Image.h"
-#include "../../SensorFilter.h"
+#include "../../SensorFilter.h"  // TODO: remove
 
 /*
 * A parameter class that defines a trace on a cartesian graph.
