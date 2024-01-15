@@ -63,18 +63,18 @@ The library was originally written under GCC, but others have reported broad
     //   in a section with low execution latency.
     // NOTE: Speed is a concern orthogonal to that of ISR_FUNC.
     // NOTE: Section placement is a distinct attribute from optimizer level.
-    #define FAST_FUNC __attribute__((section(".fastfunc")))
+    #define FAST_FUNC __attribute__((section(".text.fastfunc")))
   #endif
   #ifndef ISR_FUNC
     // Functions intended to be run as interrupt service routines might need to
     //   be located in a section that isn't paged (is always avaialbe).
     // NOTE: Availability is a concern orthogonal to that of FASTFUNC.
-    #define ISR_FUNC __attribute__((section(".isrfunc")))
+    #define ISR_FUNC __attribute__((section(".text.isrfunc")))
   #endif
   #ifndef SECURE_FUNC
     // Some code might prefer to be run inside of memory that has some
     //   security assurances.
-    #define SECURE_FUNC __attribute__((section(".secfunc")))
+    #define SECURE_FUNC __attribute__((section(".text.secfunc")))
   #endif
   #ifndef WEAK_FUNC
     // Weak reference is tagged for readability.

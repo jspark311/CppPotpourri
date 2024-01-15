@@ -27,7 +27,7 @@ limitations under the License.
 * It is worth re-iterating here, that this class ought to never malloc() or free() the buf member. That should be
 *   under the exclusive control of the caller.
 */
-I2CBusOp::I2CBusOp() {
+I2CBusOp::I2CBusOp() : BusOp() {
   set_state(XferState::IDLE);
 };
 

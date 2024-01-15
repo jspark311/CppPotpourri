@@ -37,9 +37,10 @@ limitations under the License.
 /**
 * Vanilla constructor that calls wipe().
 */
-SPIBusOp::SPIBusOp() {
-  wipe();
+SPIBusOp::SPIBusOp() : BusOp(), _bus(nullptr), _max_freq(0), _param_len(0), _cs_pin(255) {
+  memset(xfer_params, 0, sizeof(xfer_params));
 }
+
 
 
 /**
@@ -83,6 +84,38 @@ SPIBusOp::~SPIBusOp() {
   //   printDebug(&debug_log);
   //   Kernel::log(&debug_log);
   // }
+}
+
+
+/**
+* This will mark the bus operation complete with a given error code.
+*
+* @param  cause A failure code to mark the operation with.
+* @return 0 on success. Non-zero on failure.
+*/
+int8_t SPIBusOp::abort(XferFault cause) {
+  set_fault(cause);
+  return markComplete();
+}
+
+
+/**
+* Marks this bus operation complete.
+*
+* Need to remember: this gets called in the event of ANY condition that ends this job. And
+*   that includes abort() where the bus operation was never begun, and SOME OTHER job has
+*   control of the bus.
+*
+* @return 0 on success. Non-zero on failure.
+*/
+FAST_FUNC int8_t SPIBusOp::markComplete() {
+  //if (csAsserted()) {
+    // If this job has bus control, we need to release the bus.
+    _assert_cs(false);
+  //}
+  //time_ended = micros();
+  set_state(!hasFault() ? XferState::COMPLETE : XferState::FAULT);
+  return 0;
 }
 
 
@@ -198,38 +231,6 @@ FAST_FUNC int8_t SPIBusOp::_assert_cs(bool asrt) {
     return 0;
   }
   return -1;
-}
-
-
-/**
-* This will mark the bus operation complete with a given error code.
-*
-* @param  cause A failure code to mark the operation with.
-* @return 0 on success. Non-zero on failure.
-*/
-int8_t SPIBusOp::abort(XferFault cause) {
-  set_fault(cause);
-  return markComplete();
-}
-
-
-/**
-* Marks this bus operation complete.
-*
-* Need to remember: this gets called in the event of ANY condition that ends this job. And
-*   that includes abort() where the bus operation was never begun, and SOME OTHER job has
-*   control of the bus.
-*
-* @return 0 on success. Non-zero on failure.
-*/
-FAST_FUNC int8_t SPIBusOp::markComplete() {
-  //if (csAsserted()) {
-    // If this job has bus control, we need to release the bus.
-    _assert_cs(false);
-  //}
-  //time_ended = micros();
-  set_state(!hasFault() ? XferState::COMPLETE : XferState::FAULT);
-  return 0;
 }
 
 

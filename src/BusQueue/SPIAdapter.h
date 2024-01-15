@@ -77,14 +77,9 @@ class SPIBusOp : public BusOp {
     void printDebug(StringBuilder*);
 
     int8_t advance_operation(uint32_t status_reg, uint8_t data_reg);
-    int8_t markComplete();
 
-    /**
-    * This will mark the bus operation complete with a given error code.
-    *
-    * @return 0 on success. Non-zero on failure.
-    */
     int8_t abort(XferFault fault = XferFault::NO_REASON);
+    int8_t markComplete();
 
     int8_t  bitsPerFrame(SPIFrameSize);
     uint8_t bitsPerFrame();
@@ -141,11 +136,11 @@ class SPIBusOp : public BusOp {
 
 
   private:
-    SPIAdapter* _bus       = nullptr;
-    uint8_t xfer_params[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-    uint32_t _max_freq     = 0;
-    uint8_t  _param_len    = 0;
-    uint8_t  _cs_pin       = 255;  // Chip-select pin.
+    SPIAdapter* _bus;
+    uint32_t    _max_freq;
+    uint8_t     _param_len;
+    uint8_t     _cs_pin;
+    uint8_t     xfer_params[8];
 
     int8_t _assert_cs(bool);
 };
@@ -167,8 +162,8 @@ class SPIAdapter : public BusAdapter<SPIBusOp> {
     int8_t io_op_callback(BusOp*);
     int8_t queue_io_job(BusOp*);
     int8_t queue_io_job(BusOp*, int);
-    int8_t advance_work_queue();
 
+    int8_t advance_work_queue();
     int8_t service_callback_queue();
 
     int8_t setMode(const uint8_t);

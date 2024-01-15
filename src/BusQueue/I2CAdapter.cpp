@@ -376,6 +376,9 @@ int8_t I2CAdapter::console_handler(StringBuilder* text_return, StringBuilder* ar
     purge_queued_work();
     purge_current_job();
   }
+  else if (0 == StringBuilder::strcasecmp(cmd, "poll")) {
+    text_return->concatf("i2c%d.poll() returns %d.\n", _bus_opts.adapter, poll());
+  }
   else if (0 == StringBuilder::strcasecmp(cmd, "ping")) {
     ping_slave_addr((args->count() > 1) ? arg1 : 1);
     text_return->concatf("i2c%d.ping_slave_addr(0x%02x) started.\n", _bus_opts.adapter, arg1);

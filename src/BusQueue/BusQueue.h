@@ -133,7 +133,7 @@ class BusOpCallback {
 */
 class BusOp {
   public:
-    BusOpCallback* callback = nullptr;  // Which class gets pinged when we've finished?
+    BusOpCallback* callback;  // Which class gets pinged when we've finished?
 
     /* Mandatory overrides from the BusOp interface... */
     virtual XferFault begin() =0;
@@ -285,9 +285,15 @@ class BusOp {
 
 
   protected:
-    uint8_t*  _buf          = 0;        // Pointer to the data buffer for the transaction.
-    uint16_t  _buf_len      = 0;        // How large is the above buffer?
-    uint16_t  _extnd_flags  = 0;        // Flags for the concrete class to use.
+    uint8_t*  _buf;           // Pointer to the data buffer for the transaction.
+    uint16_t  _buf_len;       // How large is the above buffer?
+    uint16_t  _extnd_flags;   // Flags for the concrete class to use.
+
+    BusOp(BusOpCallback* cb) : callback(cb), _buf(nullptr), _buf_len(0),
+        _extnd_flags(0), _flags(0), _opcode(BusOpcode::UNDEF),
+        _xfer_state(XferState::IDLE), _xfer_fault(XferFault::NONE) {};
+    BusOp() : BusOp(nullptr) {};
+    ~BusOp() {};
 
     inline void set_fault(XferFault nu) {   _xfer_fault = nu;    };
 
@@ -305,10 +311,10 @@ class BusOp {
 
 
   private:
-    uint8_t   _flags        = 0;        // Encapsulated flags for all BusOp instances.
-    BusOpcode _opcode       = BusOpcode::UNDEF;  // What is the particular operation being done?
-    XferState _xfer_state   = XferState::UNDEF;  // What state is this transfer in?
-    XferFault _xfer_fault   = XferFault::NONE;   // Fault code.
+    uint8_t   _flags;        // Encapsulated flags for all BusOp instances.
+    BusOpcode _opcode;       // What is the particular operation being done?
+    XferState _xfer_state;   // What state is this transfer in?
+    XferFault _xfer_fault;   // Fault code.
 };
 
 
@@ -477,6 +483,9 @@ template <class T> class BusAdapter : public BusOpCallback {
       output->concat("-- Work queue:\n");
       output->concatf("--\tdepth/max        %u/%u\n", work_queue.size(), MAX_Q_DEPTH);
       output->concatf("--\tfloods           %u\n",  _queue_floods);
+
+      StopWatch::printDebugHeader(output);
+      profiler_poll.printDebug("poll()", output);
     };
 
     // TODO: I hate that I'm doing this in a template.
@@ -508,13 +517,12 @@ template <class T> class BusAdapter : public BusOpCallback {
     uint16_t _queue_floods    = 0;  // How many times has the queue rejected work?
     uint16_t _prealloc_misses = 0;  // How many times have we starved the preallocation queue?
     uint16_t _heap_frees      = 0;  // How many times have we freed a BusOp?
-    T*       current_job      = nullptr;
+    T*       current_job;
     PriorityQueue<T*> work_queue;   // A work queue to keep transactions in order.
     RingBuffer<T*> preallocated;    //
-    T preallocated_bus_jobs[14];
+    T preallocated_bus_jobs[8];
 
-
-    BusAdapter(uint8_t anum, uint8_t maxq) : ADAPTER_NUM(anum), MAX_Q_DEPTH(maxq), preallocated(14) {};
+    BusAdapter(uint8_t anum, uint8_t maxq) : ADAPTER_NUM(anum), MAX_Q_DEPTH(maxq), current_job(nullptr), preallocated(8) {};
 
     /*
     * Wipe all of our preallocated BusOps and pass them into the prealloc queue.
@@ -522,7 +530,8 @@ template <class T> class BusAdapter : public BusOpCallback {
     void _memory_init() {
       if (preallocated.allocated()) {
         for (uint8_t i = 0; i < (sizeof(preallocated_bus_jobs) / sizeof(preallocated_bus_jobs[0])); i++) {
-          preallocated_bus_jobs[i].wipe();
+          preallocated_bus_jobs[i] = T();
+          preallocated_bus_jobs[i].shouldReap(false);
           preallocated.insert(&preallocated_bus_jobs[i]);
         }
       }

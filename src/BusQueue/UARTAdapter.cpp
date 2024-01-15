@@ -151,8 +151,8 @@ int8_t UARTAdapter::pushBuffer(StringBuilder* buf) {
           const uint32_t BYTES_INSERTED = _tx_buffer.insert(frag_ptr, BYTES_TO_INSERT);
           bytes_taken += BYTES_INSERTED;
           // Drop the entire fragment (if possible) or cull the bytes we took.
-          if (BYTES_INSERTED == frag_len) {   buf->drop_position(0);      }
-          else {                              buf->cull(BYTES_INSERTED);  }
+          if ((int32_t) BYTES_INSERTED == frag_len) {  buf->drop_position(0);      }
+          else {                                       buf->cull(BYTES_INSERTED);  }
         }
       }
       ret = (FULL_BUFFER_LEN > bytes_taken) ? 0 : 1;

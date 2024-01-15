@@ -277,6 +277,18 @@ int8_t SPIAdapter::console_handler(StringBuilder* text_return, StringBuilder* ar
       text_return->concatf("SP%u advance_work_queue() returns: %d\n", adapterNumber(), advance_work_queue());
       text_return->concatf("SP%u service_callback_queue() returns: %d\n", adapterNumber(), service_callback_queue());
     }
+    else if (0 == StringBuilder::strcasecmp(cmd, "advance")) {
+      char* subcmd = args->position_trimmed(1);
+      if (0 == StringBuilder::strcasecmp(subcmd, "work")) {
+        text_return->concatf("SP%u advance_work_queue() returns: %d\n", adapterNumber(), advance_work_queue());
+      }
+      else if (0 == StringBuilder::strcasecmp(subcmd, "cb")) {
+        text_return->concatf("SP%u service_callback_queue() returns: %d\n", adapterNumber(), service_callback_queue());
+      }
+      else {
+        text_return->concatf("Usage: %s %s <work | cb>", cmd, subcmd);
+      }
+    }
     else if (0 == StringBuilder::strcasecmp(cmd, "init")) {
       text_return->concatf("SPI%u init() returns %d\n", adapterNumber(), init());
     }
