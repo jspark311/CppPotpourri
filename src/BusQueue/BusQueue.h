@@ -324,7 +324,7 @@ class BusOp {
 * Implemented as a template, with a BusOp-derived class that is specific to the
 *   bus. See examples for details.
 */
-template <class T> class BusAdapter : public BusOpCallback {
+template <class T> class BusAdapter : public BusOpCallback, public C3PPollable {
   public:
     StopWatch profiler_poll;    // Profiler for bureaucracy within BusAdapter.
 
@@ -358,11 +358,19 @@ template <class T> class BusAdapter : public BusOpCallback {
     * Call periodically to keep the bus moving.
     * Returns the number of operations cleared.
     */
-    int8_t poll() {
+    PollResult poll() {
       profiler_poll.markStart();
       int8_t ret = advance_work_queue();
-      if (ret > 0) {  profiler_poll.markStop();  }
-      return ret;
+      if (0 == ret) {
+        return PollResult::NO_ACTION;
+      }
+      else if (ret > 0) {
+        profiler_poll.markStop();
+        return (busIdle() ? PollResult::ACTION : PollResult::REPOLL);
+      }
+      else {
+        return PollResult::ERROR;
+      }
     };
 
 

@@ -65,17 +65,15 @@ typedef struct {
 * TODO: This should be a base class with pure-virtuals, rather than a
 *   hard-linked function provided by platform.
 */
-class UARTAdapter : public BufferAccepter {
+class UARTAdapter : public BufferAccepter, public C3PPollable {
   public:
-    UARTAdapter(const uint8_t adapter, const uint8_t txd_pin, const uint8_t rxd_pin, const uint8_t cts_pin, const uint8_t rts_pin, const uint16_t tx_buf_len, const uint16_t rx_buf_len);
-    virtual ~UARTAdapter();
-
     /* Implementation of BufferAccepter. */
     int8_t  pushBuffer(StringBuilder*);
     int32_t bufferAvailable();
 
     int8_t init(const UARTOpts*);
-    int8_t poll();    // Provided by the platform-specific code.
+    PollResult poll();
+
     inline int8_t deinit() {  return _pf_deinit();  };
 
     // Basic management and init,
@@ -96,7 +94,7 @@ class UARTAdapter : public BufferAccepter {
     uint32_t write(char c);
     uint32_t read(uint8_t* buf, uint32_t len);
     uint32_t read(StringBuilder*);
-    void irq_handler();
+    virtual void irq_handler() =0;
 
     inline uint32_t write(const char* str) {  return write((uint8_t*) str, strlen(str));  }
     inline void readCallback(BufferAccepter* cb) {   _read_cb_obj = cb;   };
@@ -127,11 +125,18 @@ class UARTAdapter : public BufferAccepter {
     RingBuffer<uint8_t> _tx_buffer;
     RingBuffer<uint8_t> _rx_buffer;
 
-    int _handle_rx_push();
+    UARTAdapter(
+      const uint8_t adapter,
+      const uint8_t txd_pin, const uint8_t rxd_pin,
+      const uint8_t cts_pin, const uint8_t rts_pin,
+      const uint16_t tx_buf_len, const uint16_t rx_buf_len
+    );
 
-    /* These functions are provided by the platform-specific code. */
-    int8_t _pf_init();
-    int8_t _pf_deinit();
+    /* Destructor. */
+    virtual ~UARTAdapter();
+
+
+    int _handle_rx_push();
 
     inline uint8_t _adapter_flags() {                 return _extnd_state;            };
     inline bool _adapter_flag(uint8_t _flag) {        return (_extnd_state & _flag);  };
@@ -141,6 +146,11 @@ class UARTAdapter : public BufferAccepter {
       if (nu) _extnd_state |= _flag;
       else    _extnd_state &= ~_flag;
     };
+
+    /* These functions are provided by the platform-specific code. */
+    virtual int8_t   _pf_init()   =0;
+    virtual int8_t   _pf_poll()   =0;
+    virtual int8_t   _pf_deinit() =0;
 };
 
 #endif  // __ABSTRACT_UART_QUEUE_TEMPLATE_H__

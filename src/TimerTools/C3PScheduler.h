@@ -128,14 +128,14 @@ class C3PSchedule {
 */
 class C3PScheduledPolling : public C3PSchedule {
   public:
-    C3PScheduledPolling(const char* HANDLE, const uint32_t PERIOD, const int32_t RECURRENCES, const bool ENABLED, PollableObj* obj) :
+    C3PScheduledPolling(const char* HANDLE, const uint32_t PERIOD, const int32_t RECURRENCES, const bool ENABLED, C3PPollable* obj) :
       C3PSchedule(HANDLE, PERIOD, RECURRENCES, ENABLED), _pollable_obj(obj) {};
 
     virtual ~C3PScheduledPolling() {};
 
 
   protected:
-    PollableObj* _pollable_obj;          // Pointer to the class to be polled.
+    C3PPollable* _pollable_obj;          // Pointer to the class to be polled.
 
     /* Obligate overrides from C3PSchedule... */
     int8_t _execute();

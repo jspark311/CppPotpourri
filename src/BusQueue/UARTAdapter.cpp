@@ -4,7 +4,7 @@ Author: J. Ian Lindsay
 Date:   2020.06.10
 */
 
-#include "AbstractPlatform.h"
+#include "../AbstractPlatform.h"
 #include "UARTAdapter.h"
 
 
@@ -23,9 +23,7 @@ UARTAdapter::UARTAdapter(
 /**
 * Destructor.
 */
-UARTAdapter::~UARTAdapter() {
-  _pf_deinit();
-}
+UARTAdapter::~UARTAdapter() {}
 
 
 int8_t UARTAdapter::init(const UARTOpts* o) {
@@ -37,6 +35,20 @@ int8_t UARTAdapter::init(const UARTOpts* o) {
     *((uint8_t*) &_opts + i) = *((uint8_t*) o + i);
   }
   return _pf_init();
+}
+
+
+PollResult UARTAdapter::poll() {
+  int8_t ret = _pf_poll();
+  if (0 == ret) {
+    return PollResult::NO_ACTION;
+  }
+  else if (ret > 0) {
+    return PollResult::ACTION;
+  }
+  else {
+    return PollResult::ERROR;
+  }
 }
 
 

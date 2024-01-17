@@ -117,7 +117,9 @@ void C3PSchedule::printProfiler(StringBuilder* output) {
 
 int8_t C3PScheduledPolling::_execute() {
   int8_t ret = 0;
-  _pollable_obj->poll();
+  if (nullptr != _pollable_obj) {
+    PollResult poll_ret = _pollable_obj->poll();
+  }
   return ret;
 }
 
