@@ -127,6 +127,16 @@ typedef struct __platform_thread_opts {
   void   unsetPinFxn(uint8_t pin);
   int8_t setPinFxn(uint8_t pin, IRQCondition condition, FxnPointer fxn);
 
+  /**
+  * An optional interface class for providing GPIO capabilities.
+  * NOTE: The platform is in no way obliged to use this.
+  */
+  class GPIOWrapper {
+    public:
+      virtual int8_t pinMode(uint8_t pin, GPIOMode m) =0;
+      virtual int8_t setPin(uint8_t pin, bool val)    =0;
+      virtual int8_t readPin(uint8_t pin)             =0;
+  };
 
 
 /*******************************************************************************

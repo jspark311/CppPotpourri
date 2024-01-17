@@ -36,6 +36,7 @@ class FlagContainer8 {
     FlagContainer8(const uint8_t RESET_VALUE = 0) : raw(RESET_VALUE) {};
 
     /* Flag manipulation inlines */
+    inline bool all_set(uint8_t _flag) {  return (_flag == (raw & _flag)); };
     inline bool value(uint8_t _flag) {    return (raw & _flag); };
     inline void flip(uint8_t _flag) {     raw ^= _flag;         };
     inline void clear(uint8_t _flag) {    raw &= ~_flag;        };
@@ -54,6 +55,7 @@ class FlagContainer16 {
     FlagContainer16(const uint16_t RESET_VALUE = 0) : raw(RESET_VALUE) {};
 
     /* Flag manipulation inlines */
+    inline bool all_set(uint16_t _flag) {  return (_flag == (raw & _flag)); };
     inline bool value(uint16_t _flag) {    return (raw & _flag); };
     inline void flip(uint16_t _flag) {     raw ^= _flag;         };
     inline void clear(uint16_t _flag) {    raw &= ~_flag;        };
@@ -72,6 +74,7 @@ class FlagContainer32 {
     FlagContainer32(const uint32_t RESET_VALUE = 0) : raw(RESET_VALUE) {};
 
     /* Flag manipulation inlines */
+    inline bool all_set(uint32_t _flag) {  return (_flag == (raw & _flag)); };
     inline bool value(uint32_t _flag) {    return (raw & _flag); };
     inline void flip(uint32_t _flag) {     raw ^= _flag;         };
     inline void clear(uint32_t _flag) {    raw &= ~_flag;        };
@@ -90,6 +93,7 @@ class FlagContainer64 {
     FlagContainer64(const uint64_t RESET_VALUE = 0) : raw(RESET_VALUE) {};
 
     /* Flag manipulation inlines */
+    inline bool all_set(uint64_t _flag) {  return (_flag == (raw & _flag)); };
     inline bool value(uint64_t _flag) {    return (raw & _flag); };
     inline void flip(uint64_t _flag) {     raw ^= _flag;         };
     inline void clear(uint64_t _flag) {    raw &= ~_flag;        };

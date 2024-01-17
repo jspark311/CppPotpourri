@@ -247,7 +247,7 @@ template <class T> int8_t StateMachine<T>::_fsm_append_state(T final) {
  if (_ENUM_DEFS->enumValid(final)) {
    ret--;
    // We need at least enough space for our one addition.
-   if (_waypoints.count() > _waypoints.capacity()) {
+   if (0 < _waypoints.vacancy()) {
      _waypoints.insert((uint8_t) final);
      ret = 0;
    }
