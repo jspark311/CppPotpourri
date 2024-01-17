@@ -159,14 +159,16 @@ typedef void (*PinCallback)(uint8_t pin, uint8_t level);
 
 
 /*******************************************************************************
+* Asynchronous polling interface
+*
 * For simplicity, many classes are writen in such a way as to benefit (or
 *   require) periodic polling for them to update their own states. The more
 *   complicated the class, the more likely it is to require this.
 * To keep that complexity bounded, it is advised that such classes implement the
-*   PollableObj interface to allow themselves to be recomposed into higher-level
+*   C3PPollable interface to allow themselves to be recomposed into higher-level
 *   logic without complicated APIs or "special treatment".
 *******************************************************************************/
-enum class PollingResult : int8_t {
+enum class PollResult : int8_t {
   /*
   Code       Value   Semantics
   ----------------------------------------------------------------------------*/
@@ -179,10 +181,9 @@ enum class PollingResult : int8_t {
 /**
 * An interface class for simple state polling.
 */
-class PollableObj {
+class C3PPollable {
   public:
-    virtual PollingResult poll() =0;
+    virtual PollResult poll() =0;
 };
-
 
 #endif // __CPPPOTPOURRI_H__
