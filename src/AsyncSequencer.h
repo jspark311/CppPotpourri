@@ -48,9 +48,11 @@ class AsyncSequencer {
     inline bool steps_running() {           return (0 != _steps_running.raw);  };
     inline bool request_fulfilled() {       return (_steps_requested.raw == (_steps_requested.raw & _steps_passed.raw & _steps_complete.raw));  };
     inline bool request_completed() {       return (_steps_requested.raw == (_steps_requested.raw & _steps_complete.raw));  };
-    inline bool all_steps_have_run() {      return (_steps_runnable.raw  == (_steps_runnable.raw & _steps_complete.raw));  };
-    inline bool all_steps_have_passed() {   return (_steps_runnable.raw  == (_steps_runnable.raw & _steps_passed.raw));    };
-    inline bool all_steps_have_passed(const uint32_t MASK) {    return (MASK  == (MASK & _steps_passed.raw));              };
+    inline bool all_steps_have_run() {      return (_steps_runnable.raw  == (_steps_runnable.raw & _steps_complete.raw));   };
+    inline bool all_steps_have_passed() {   return (_steps_runnable.raw  == (_steps_runnable.raw & _steps_passed.raw));     };
+    inline bool all_steps_have_passed(const uint32_t MASK) {    return (MASK == (MASK & _steps_passed.raw));                };
+    inline bool all_steps_still_running(const uint32_t MASK) {  return (MASK == (MASK & _steps_running.raw));               };
+    inline bool all_steps_dispatched(const uint32_t MASK) {     return (MASK == (MASK & _steps_requested.raw));             };
 
 
   private:
