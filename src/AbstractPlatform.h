@@ -133,9 +133,9 @@ typedef struct __platform_thread_opts {
   */
   class GPIOWrapper {
     public:
-      virtual int8_t pinMode(uint8_t pin, GPIOMode m) =0;
-      virtual int8_t setPin(uint8_t pin, bool val)    =0;
-      virtual int8_t readPin(uint8_t pin)             =0;
+      virtual int8_t gpioMode(uint8_t pin, GPIOMode m)    =0;
+      virtual int8_t digitalWrite(uint8_t pin, bool val)  =0;
+      virtual int8_t digitalRead(uint8_t pin)             =0;
   };
 
 
