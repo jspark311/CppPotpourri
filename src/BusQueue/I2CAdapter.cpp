@@ -58,24 +58,25 @@ const char I2CAdapter::_ping_state_chr[4] = {' ', '.', '*', ' '};
 
 I2CAdapter::I2CAdapter(const I2CAdapterOptions* o) : BusAdapter(o->adapter, I2CADAPTER_MAX_QUEUE_DEPTH), _bus_opts(o) {
   // Some platforms (linux) will ignore pin-assignment values completely.
-  _adapter_clear_flag(I2C_BUS_FLAG_BUS_ERROR | I2C_BUS_FLAG_BUS_ONLINE);
-  _adapter_clear_flag(I2C_BUS_FLAG_PING_RUN  | I2C_BUS_FLAG_PINGING);
+  _adapter_clear_flag(I2C_ADAPT_FLAG_PING_RUN  | I2C_ADAPT_FLAG_PINGING);
 }
 
 
 I2CAdapter::~I2CAdapter() {
   // TODO: The work_queue destructor will take care of its own cleanup, but
   //   we should abort any open transfers prior to deleting this list.
-  _adapter_clear_flag(I2C_BUS_FLAG_BUS_ERROR | I2C_BUS_FLAG_BUS_ONLINE);
-  _adapter_clear_flag(I2C_BUS_FLAG_PING_RUN  | I2C_BUS_FLAG_PINGING);
-  bus_deinit();
+  _adapter_clear_flag(I2C_ADAPT_FLAG_PING_RUN  | I2C_ADAPT_FLAG_PINGING);
+  _bus_deinit();
 }
 
 
 int8_t I2CAdapter::init() {
   _memory_init();
   for (uint16_t i = 0; i < 32; i++) ping_map[i] = 0;   // Zero the ping map.
-  return bus_init();
+  int8_t pf_ret = _bus_init();
+  _bus_online(0 == pf_ret);
+  _bus_error(0 != pf_ret);
+  return pf_ret;
 }
 
 
@@ -89,7 +90,7 @@ void I2CAdapter::ping_slave_addr(uint8_t addr) {
     nu->dev_addr = addr;
     nu->sub_addr = -1;
     nu->setBuffer(nullptr, 0);
-    _adapter_set_flag(I2C_BUS_FLAG_PINGING);
+    _adapter_set_flag(I2C_ADAPT_FLAG_PINGING);
     queue_io_job(nu);
   }
 }
@@ -132,7 +133,7 @@ int8_t I2CAdapter::io_op_callback(BusOp* _op) {
     // We only support 7-bit addressing for now.
     set_ping_state_by_addr(op->dev_addr, op->hasFault() ? I2CPingState::NEG : I2CPingState::POS);
 
-    if (_adapter_flag(I2C_BUS_FLAG_PINGING)) {
+    if (_adapter_flag(I2C_ADAPT_FLAG_PINGING)) {
       if ((op->dev_addr & 0x00FF) < 127) {
         // If the adapter is taking a census, and we haven't pinged all
         //   addresses, ping the next one.
@@ -140,16 +141,14 @@ int8_t I2CAdapter::io_op_callback(BusOp* _op) {
         ret = BUSOP_CALLBACK_RECYCLE;
       }
       else {
-        _adapter_clear_flag(I2C_BUS_FLAG_PINGING);
-        _adapter_set_flag(I2C_BUS_FLAG_PING_RUN);
+        _adapter_clear_flag(I2C_ADAPT_FLAG_PINGING);
+        _adapter_set_flag(I2C_ADAPT_FLAG_PING_RUN);
         #if defined(CONFIG_I2C_DEBUG)
           if (getVerbosity() >= LOG_LEV_INFO) c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "Concluded i2c ping sweep.");
         #endif
       }
     }
   }
-
-  //flushLocalLog();
   return ret;
 }
 
@@ -166,7 +165,7 @@ FAST_FUNC int8_t I2CAdapter::queue_io_job(BusOp* op) {
   //nu->setVerbosity(getVerbosity());
   nu->setAdapter(this);
 
-  if ((nullptr == current_job) && _adapter_flag(I2C_BUS_FLAG_PF_BEGIN_ASAP) && busOnline()) {
+  if ((nullptr == current_job) && _pf_dispatch_on_queue() && busOnline()) {
     // Bus is idle, and the platform has decided that we ought to start I/O
     //   immediately under this condition.
     // Put this work item in the active slot and start the bus operations.
@@ -201,7 +200,7 @@ FAST_FUNC int8_t I2CAdapter::queue_io_job(BusOp* op) {
 *
 * @return the number of bus operations proc'd.
 */
-FAST_FUNC int8_t I2CAdapter::advance_work_queue() {
+FAST_FUNC int8_t I2CAdapter::_bus_poll() {
   int8_t return_value = 0;
   bool recycle = busOnline();
   while (recycle) {

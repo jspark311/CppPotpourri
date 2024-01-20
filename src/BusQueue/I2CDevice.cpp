@@ -92,23 +92,6 @@ int8_t I2CDevice::io_op_callback(BusOp* op) {
 * Functions specific to this class....                                         *
 *******************************************************************************/
 
-// Needs to be called by the i2c class during insertion.
-bool I2CDevice::assignBusInstance(I2CAdapter *adapter) {
-  if (nullptr == _bus) {
-    _bus = adapter;
-    return true;
-  }
-  return false;
-};
-
-
-// This is to be called from the adapter's unassignment function.
-bool I2CDevice::disassignBusInstance() {
-  _bus = nullptr;
-  return true;
-};
-
-
 /* This is to become the only interface because of its non-reliance on malloc(). */
 bool I2CDevice::writeX(int sub_addr, uint16_t len, uint8_t *buf) {
   if (_bus == nullptr) {

@@ -26,14 +26,17 @@ SPIAdapter::SPIAdapter(
 */
 SPIAdapter::~SPIAdapter() {
   purge_queued_work();
-  bus_deinit();
+  _bus_deinit();
 }
 
 
 int8_t SPIAdapter::init() {
   _memory_init();
   _adapter_set_flag(SPI_FLAG_QUEUE_IDLE);
-  return bus_init();
+  int8_t pf_ret = _bus_init();
+  _bus_online(0 == pf_ret);
+  _bus_error(0 != pf_ret);
+  return pf_ret;
 }
 
 
@@ -129,7 +132,7 @@ FAST_FUNC int8_t SPIAdapter::queue_io_job(BusOp* _op, int priority) {
 *
 * @return the number of bus operations proc'd.
 */
-FAST_FUNC int8_t SPIAdapter::advance_work_queue() {
+FAST_FUNC int8_t SPIAdapter::_bus_poll() {
   int8_t return_value = 0;
 
   if (nullptr == current_job) {
@@ -202,8 +205,8 @@ FAST_FUNC int8_t SPIAdapter::advance_work_queue() {
 FAST_FUNC int8_t SPIAdapter::service_callback_queue() {
   int8_t return_value = 0;
   profiler_cb.markStart();
-  while ((return_value < _cb_per_event) && (0 < callback_queue.size())) {
-    SPIBusOp* temp_op = callback_queue.dequeue();
+  SPIBusOp* temp_op = callback_queue.dequeue();
+  if (nullptr != temp_op) {
     if (nullptr != temp_op->callback) {
       int8_t cb_code = temp_op->callback->io_op_callback(temp_op);
       switch (cb_code) {
@@ -274,26 +277,14 @@ int8_t SPIAdapter::console_handler(StringBuilder* text_return, StringBuilder* ar
   if (0 < args->count()) {
     char* cmd = args->position_trimmed(0);
     if (0 == StringBuilder::strcasecmp(cmd, "poll")) {
-      text_return->concatf("SP%u advance_work_queue() returns: %d\n", adapterNumber(), advance_work_queue());
+      text_return->concatf("SP%u _bus_poll() returns: %d\n", adapterNumber(), _bus_poll());
       text_return->concatf("SP%u service_callback_queue() returns: %d\n", adapterNumber(), service_callback_queue());
-    }
-    else if (0 == StringBuilder::strcasecmp(cmd, "advance")) {
-      char* subcmd = args->position_trimmed(1);
-      if (0 == StringBuilder::strcasecmp(subcmd, "work")) {
-        text_return->concatf("SP%u advance_work_queue() returns: %d\n", adapterNumber(), advance_work_queue());
-      }
-      else if (0 == StringBuilder::strcasecmp(subcmd, "cb")) {
-        text_return->concatf("SP%u service_callback_queue() returns: %d\n", adapterNumber(), service_callback_queue());
-      }
-      else {
-        text_return->concatf("Usage: %s %s <work | cb>", cmd, subcmd);
-      }
     }
     else if (0 == StringBuilder::strcasecmp(cmd, "init")) {
       text_return->concatf("SPI%u init() returns %d\n", adapterNumber(), init());
     }
     else if (0 == StringBuilder::strcasecmp(cmd, "deinit")) {
-      text_return->concatf("SPI%u deinit() returns %d\n", adapterNumber(), bus_deinit());
+      text_return->concatf("SPI%u deinit() returns %d\n", adapterNumber(), _bus_deinit());
     }
     else if (0 == StringBuilder::strcasecmp(cmd, "queue")) {
       uint8_t arg1 = (uint8_t) args->position_as_int(1);

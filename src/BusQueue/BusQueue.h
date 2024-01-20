@@ -27,29 +27,20 @@ TODO: Finish conversion to RingBuffer, and put constraints on BusAdapter's init
 
 #include "../Meta/Rationalizer.h"
 #include "../CppPotpourri.h"
+#include "../StringBuilder.h"
 #include "../PriorityQueue.h"
 #include "../RingBuffer.h"
 #include "../AbstractPlatform.h"
+#include "../FlagContainer.h"
 #include "../C3PLogger.h"
 #include "../TimerTools/TimerTools.h"
 
-// TODO: I suppose it is too late to enum this....
-#define BUSOP_CALLBACK_ERROR    -1
-#define BUSOP_CALLBACK_NOMINAL   0
-#define BUSOP_CALLBACK_RECYCLE   1
+/*******************************************************************************
+* Types and definitions
+*******************************************************************************/
+class BusOp;   // For-dec
 
-/*
-* Flags for memory management
-* These reside in the BusOp base class, and help automate treatment of memory.
-*/
-#define BUSOP_FLAG_PROFILE         0x20    // If set, this BusOp contributes to the Adapter's profiling data.
-#define BUSOP_FLAG_FREE_BUFFER     0x40    // If set in a transaction's flags field, the buffer will be free()'d, if present.
-#define BUSOP_FLAG_NO_FREE         0x80    // If set in a transaction's flags field, it will not be free()'d.
-
-
-/*
-* These are possible transfer states.
-*/
+/* Possible transfer states */
 enum class XferState : uint8_t {
   /* These are start states. */
   UNDEF    = 0,  // Freshly instanced (or wiped, if preallocated).
@@ -69,9 +60,7 @@ enum class XferState : uint8_t {
 };
 
 
-/*
-* These are the opcodes that we use to represent different bus operations.
-*/
+/* Possible bus operations. */
 enum class BusOpcode : uint8_t {
   UNDEF,          // Freshly instanced (or wiped, if preallocated).
   RX,             // We are receiving without having asked for it.
@@ -82,9 +71,7 @@ enum class BusOpcode : uint8_t {
 };
 
 
-/*
-* Possible fault conditions that might occur.
-*/
+/* Possible fault conditions that might occur */
 enum class XferFault : uint8_t {
   NONE,            // No error on this transfer.
   NO_REASON,       // No reason provided, but still errored.
@@ -103,17 +90,22 @@ enum class XferFault : uint8_t {
   QUEUE_FLUSH      // The work queue was flushed and this was a casualty.
 };
 
-/* Forward declarations. */
-class BusOp;
 
-
-/*
+/*******************************************************************************
+* BusOpCallback (the callback interface)
 * This is an interface class that implements a callback path for I/O operations.
 * If a class wants to put operations into an I/O queue, it must either implement
 *   this interface, or delegate its callback duties to a class that does.
 * Generally-speaking, this will be a device that transacts on the bus, but is
 *   not itself the bus adapter.
-*/
+*******************************************************************************/
+// When the BusOpCallback object is called at the end of a job, it can return one
+//   of these codes to instruct the BusAdpater what to do next regarding the job.
+// TODO: I suppose it is too late to enum this....
+#define BUSOP_CALLBACK_ERROR   -1  // Fail the transfer. Contributes to stats. Prints job.
+#define BUSOP_CALLBACK_NOMINAL  0  // Nominal callback return code.
+#define BUSOP_CALLBACK_RECYCLE  1  // Requeue the job for another transfer.
+
 class BusOpCallback {
   public:
     virtual int8_t io_op_callahead(BusOp*) =0;  // Called ahead of op.
@@ -122,15 +114,23 @@ class BusOpCallback {
 };
 
 
-/*
+/*******************************************************************************
+* BusOp
 * This class represents a single transaction on the bus, but is devoid of
 *   implementation details. This is an impure interface class that should be
 *   extended by classes that require hardware-level specificity.
 *
-* State-bearing members in this interface are ok, but there should be no
+* NOTE: State-bearing members in this interface are ok, but there should be no
 *   function members that are not pure virtuals or inlines.
-* TODO: Since we have local variables, we should try to keep alignment on MOD(4).
-*/
+*
+* TODO: Make this use the FSM template?
+*******************************************************************************/
+// Flags for BusOps. These reside in the BusOp base class, and help automate
+//   treatment of memory, profiling, etc.
+#define BUSOP_FLAG_PROFILE         0x20    // If set, this BusOp contributes to the Adapter's profiling data.
+#define BUSOP_FLAG_FREE_BUFFER     0x40    // If set in a transaction's flags field, the buffer will be free()'d, if present.
+#define BUSOP_FLAG_NO_FREE         0x80    // If set in a transaction's flags field, it will not be free()'d.
+
 class BusOp {
   public:
     BusOpCallback* callback;  // Which class gets pinged when we've finished?
@@ -318,20 +318,39 @@ class BusOp {
 };
 
 
-/*
+/*******************************************************************************
+* BusAdapter (the adapter interface)
 * This class represents a generic bus adapter. It has the queues, and the burden
 *   of memory-management.
 * Implemented as a template, with a BusOp-derived class that is specific to the
 *   bus. See examples for details.
-*/
+*******************************************************************************/
+// Flags for BusAdapters. These reside in the BusAdapter base class, and track
+//   flags that are common to all BusAdapters. There aren't many...
+// These occupy the top of the flag space. The lower 16-bits is exposed to any
+//  child class that wants to use them.
+#define BUSADAPTER_FLAG_PF_ADVANCE_OPS 0x01000000   // Adapter.poll() advances BusOps?
+#define BUSADAPTER_FLAG_PF_BEGIN_ASAP  0x02000000   // Synchronously dispatch BusOps?
+#define BUSADAPTER_FLAG_BUS_FAULT      0x04000000   // The adapter has an unrecoverable fault.
+#define BUSADAPTER_FLAG_BUS_ONLINE     0x08000000   // The adapter is online.
+#define BUSADAPTER_FLAG_PF_VERBOSITY   0xE0000000   // NOTE: This is a MASK. Not a single bit.
+
 template <class T> class BusAdapter : public BusOpCallback, public C3PPollable {
   public:
     StopWatch profiler_poll;    // Profiler for bureaucracy within BusAdapter.
 
-    inline T*      currentJob() {             return current_job;  };
-    inline uint8_t adapterNumber() {          return ADAPTER_NUM;  };
-    inline uint8_t getVerbosity() {           return _verbosity;   };
-    inline void    setVerbosity(uint8_t v) {  _verbosity = v;      };
+    /* Inline state accessors */
+    inline T*      currentJob() {     return current_job;  };
+    inline uint8_t adapterNumber() {  return ADAPTER_NUM;  };
+    inline bool    roomInQueue() {    return (work_queue.size() < MAX_Q_DEPTH);                    };
+    inline bool    busIdle() {        return !((nullptr != current_job) || work_queue.hasNext());  };
+    inline bool    busError() {       return (_flags.value(BUSADAPTER_FLAG_BUS_FAULT));            };
+    inline bool    busOnline() {      return (_flags.value(BUSADAPTER_FLAG_BUS_ONLINE));           };
+    inline uint8_t getVerbosity() {   return ((_flags.raw & BUSADAPTER_FLAG_PF_VERBOSITY) >> 29);  };
+    inline void    setVerbosity(uint8_t v) {
+      _flags.raw = ((((uint32_t) v) << 29) | (_flags.raw & ~BUSADAPTER_FLAG_PF_VERBOSITY));
+    };
+
 
     /**
     * Return a vacant BusOp to the caller, allocating if necessary.
@@ -360,7 +379,7 @@ template <class T> class BusAdapter : public BusOpCallback, public C3PPollable {
     */
     PollResult poll() {
       profiler_poll.markStart();
-      int8_t ret = advance_work_queue();
+      int8_t ret = _bus_poll();
       if (0 == ret) {
         return PollResult::NO_ACTION;
       }
@@ -371,11 +390,6 @@ template <class T> class BusAdapter : public BusOpCallback, public C3PPollable {
       else {
         return PollResult::ERROR;
       }
-    };
-
-
-    inline bool busIdle() {
-      return !((nullptr != current_job) || work_queue.hasNext());
     };
 
 
@@ -477,10 +491,6 @@ template <class T> class BusAdapter : public BusOpCallback, public C3PPollable {
     }
 
 
-    /* Convenience function for guarding against queue floods. */
-    inline bool roomInQueue() {    return (work_queue.size() < MAX_Q_DEPTH);  };
-
-
     // TODO: I hate that I'm doing this in a template.
     void printAdapter(StringBuilder* output) {
       output->concatf("-- Adapter #%u\n", ADAPTER_NUM);
@@ -522,15 +532,18 @@ template <class T> class BusAdapter : public BusOpCallback, public C3PPollable {
   protected:
     const uint8_t  ADAPTER_NUM;     // The platform-relatable index of the adapter.
     const uint8_t  MAX_Q_DEPTH;     // Maximum tolerable queue depth.
-    uint16_t _queue_floods    = 0;  // How many times has the queue rejected work?
-    uint16_t _prealloc_misses = 0;  // How many times have we starved the preallocation queue?
-    uint16_t _heap_frees      = 0;  // How many times have we freed a BusOp?
+    uint16_t _queue_floods;         // How many times has the queue rejected work?
+    uint16_t _prealloc_misses;      // How many times have we starved the preallocation queue?
+    uint16_t _heap_frees;           // How many times have we freed a BusOp?
     T*       current_job;
     PriorityQueue<T*> work_queue;   // A work queue to keep transactions in order.
     RingBuffer<T*> preallocated;    //
     T preallocated_bus_jobs[8];
 
-    BusAdapter(uint8_t anum, uint8_t maxq) : ADAPTER_NUM(anum), MAX_Q_DEPTH(maxq), current_job(nullptr), preallocated(8) {};
+    BusAdapter(uint8_t anum, uint8_t maxq) :
+      ADAPTER_NUM(anum), MAX_Q_DEPTH(maxq),
+      _queue_floods(0), _prealloc_misses(0), _heap_frees(0),
+      current_job(nullptr), preallocated(sizeof(preallocated_bus_jobs)) {};
 
     /*
     * Wipe all of our preallocated BusOps and pass them into the prealloc queue.
@@ -553,29 +566,40 @@ template <class T> class BusAdapter : public BusOpCallback, public C3PPollable {
       preallocated.insert(obj);
     };
 
-    /* Mandatory overrides for extending classes... */
-    virtual int8_t advance_work_queue() =0;  // The nature of the bus dictates this implementation.
-    virtual int8_t bus_init()           =0;  // Hardware-specifics.
-    virtual int8_t bus_deinit()         =0;  // Hardware-specifics.
-    //virtual int8_t io_op_callback(T*)   =0;  // From BusOpCallback
-    //virtual int8_t queue_io_job(T*)     =0;  // From BusOpCallback
+    /*
+    * These inlines are for convenience of extending classes.
+    * The exposure is 16-bit, and it will be stored in the low half of our
+    *   32-bit flags member. We do this to achieve good alignments, and prevent
+    *   the need of the child class doing the same thing. It WILL have flags.
+    */
+    inline uint16_t _adapter_flags() {                     return ((uint16_t) _flags.raw & 0xFFFF);   };
+    inline bool _adapter_flag(uint16_t x) {                return _flags.value((uint32_t) x);         };
+    inline void _adapter_clear_flag(uint16_t x) {          _flags.clear((uint32_t) x);                };
+    inline void _adapter_set_flag(uint16_t x) {            _flags.set((uint32_t) x);                  };
+    inline void _adapter_set_flag(uint16_t x, bool nu) {   _flags.set((uint32_t) x, nu);              };
 
-    // These inlines are for convenience of extending classes.
-    inline uint16_t _adapter_flags() {                 return _extnd_state;            };
-    inline bool _adapter_flag(uint16_t _flag) {        return (_extnd_state & _flag);  };
-    inline void _adapter_clear_flag(uint16_t _flag) {  _extnd_state &= ~_flag;         };
-    inline void _adapter_set_flag(uint16_t _flag) {    _extnd_state |= _flag;          };
-    inline void _adapter_set_flag(uint16_t _flag, bool nu) {
-      if (nu) _extnd_state |= _flag;
-      else    _extnd_state &= ~_flag;
-    };
+    /* BusAdapter's common flags occupy the high half of the flags. */
+    inline void _bus_error(bool x) {            _flags.set(BUSADAPTER_FLAG_BUS_FAULT, x);             };
+    inline void _bus_online(bool x) {           _flags.set(BUSADAPTER_FLAG_BUS_ONLINE, x);            };
+    inline void _pf_needs_op_advance(bool x) {  _flags.set(BUSADAPTER_FLAG_PF_ADVANCE_OPS, x);        };
+    inline bool _pf_needs_op_advance() {        return _flags.value(BUSADAPTER_FLAG_PF_ADVANCE_OPS);  };
+    inline void _pf_dispatch_on_queue(bool x) { _flags.set(BUSADAPTER_FLAG_PF_BEGIN_ASAP, x);         };
+    inline bool _pf_dispatch_on_queue() {       return _flags.value(BUSADAPTER_FLAG_PF_BEGIN_ASAP);   };
+
+    /*
+    * Mandatory overrides for extending classes. The nature of the bus dictates
+    *   how these are implementated.
+    */
+    virtual int8_t _bus_init()   =0;
+    virtual int8_t _bus_poll()   =0;
+    virtual int8_t _bus_deinit() =0;
 
 
   private:
     uint32_t _total_xfers   = 0;  // Transfer stats.
     uint32_t _failed_xfers  = 0;  // Transfer stats.
-    uint16_t _extnd_state   = 0;  // Flags for the concrete class to use.
-    uint8_t  _verbosity     = 0;  // How much log noise do we make?
+    FlagContainer32 _flags;
+    //uint16_t _extnd_state   = 0;  // Flags for the concrete class to use.
 };
 
 #endif  // __ABSTRACT_BUS_QUEUE_H__

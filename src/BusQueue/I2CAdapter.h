@@ -28,17 +28,10 @@ This file is the tortured result of growing pains since the beginning of
   apart into a more-portable platform-abstraction strategy.
 */
 
-#include <inttypes.h>
-#include <stdint.h>
-#include <stdarg.h>
-
-#include "BusQueue.h"
-#include "../StringBuilder.h"
-#include "../LightLinkedList.h"
-#include "../AbstractPlatform.h"
-
 #ifndef __I2C_ABSTRACTION_LAYER_H__
 #define __I2C_ABSTRACTION_LAYER_H__
+
+#include "BusQueue.h"
 
 // Forward declaration. Definition order in this file is very important.
 class I2CDevice;
@@ -59,19 +52,12 @@ class I2CAdapter;
   #endif
 
   /*
-  * These state flags are hosted by the superclass. This may change in the future.
-  * Might be too much convention surrounding their assignment across inherritence.
+  * These flags are hosted by BusAdapter, and relate specifically to I2CAdapter.
   */
-  #define I2C_BUS_FLAG_BUS_ERROR      0x0001    // The adapter has an unrecoverable fault.
-  #define I2C_BUS_FLAG_BUS_ONLINE     0x0002    // The adapter is online.
-  #define I2C_BUS_FLAG_PING_RUN       0x0004    // Have we run a full bus discovery?
-  #define I2C_BUS_FLAG_PINGING        0x0008    // Are we running a full ping?
-  #define I2C_BUS_FLAG_PF_ADVANCE_OPS 0x0010    // Optionally set by the platform.
-  #define I2C_BUS_FLAG_PF_BEGIN_ASAP  0x0020    // Optionally set by the platform.
-
-  // Flags passed in at construction that become BUS_FLAGS.
-  #define I2C_ADAPT_OPT_FLAG_SCL_PU   0x0400    // SCL pullup.
-  #define I2C_ADAPT_OPT_FLAG_SDA_PU   0x0800    // SDA pullup.
+  #define I2C_ADAPT_FLAG_PING_RUN     0x0001  // Have we run a full bus discovery?
+  #define I2C_ADAPT_FLAG_PINGING      0x0002  // Are we running a full ping?
+  #define I2C_ADAPT_OPT_FLAG_SCL_PU   0x0004  // SCL pullup.
+  #define I2C_ADAPT_OPT_FLAG_SDA_PU   0x0008  // SDA pullup.
 
 
   enum class I2CPingState : uint8_t {
@@ -119,23 +105,17 @@ class I2CAdapter;
       /**
       * @return true if either of the pullups are desired.
       */
-      inline bool usePullups() const {
-        return (def_flags & (I2C_ADAPT_OPT_FLAG_SDA_PU | I2C_ADAPT_OPT_FLAG_SCL_PU));
-      };
+      inline bool usePullups() const {  return (def_flags & (I2C_ADAPT_OPT_FLAG_SDA_PU | I2C_ADAPT_OPT_FLAG_SCL_PU));  };
 
       /**
       * @return true if SDA pullup is desired.
       */
-      inline bool sdaPullup() const {
-        return (def_flags & I2C_ADAPT_OPT_FLAG_SDA_PU);
-      };
+      inline bool sdaPullup() const {  return (def_flags & I2C_ADAPT_OPT_FLAG_SDA_PU);  };
 
       /**
       * @return true if SCL pullup is desired.
       */
-      inline bool sclPullup() const {
-        return (def_flags & I2C_ADAPT_OPT_FLAG_SCL_PU);
-      };
+      inline bool sclPullup() const {  return (def_flags & I2C_ADAPT_OPT_FLAG_SCL_PU);  };
 
       const uint8_t  adapter;
       const uint8_t  sda_pin;
@@ -214,31 +194,25 @@ class I2CAdapter;
       // Builds a special bus transaction that does nothing but test for the presence or absence of a slave device.
       void ping_slave_addr(uint8_t);
 
-      inline bool busError() {          return (_adapter_flag(I2C_BUS_FLAG_BUS_ERROR));  };
-      inline bool busOnline() {         return (_adapter_flag(I2C_BUS_FLAG_BUS_ONLINE)); };
-
       /* Built-in per-instance console handler. */
       int8_t console_handler(StringBuilder* text_return, StringBuilder* args);
 
 
     protected:
       /* Overrides from the BusAdapter interface */
-      int8_t advance_work_queue();
-      int8_t bus_init();      // This must be provided on a per-platform basis.
-      int8_t bus_deinit();    // This must be provided on a per-platform basis.
+      int8_t _bus_poll();
+      int8_t _bus_init();      // This must be provided on a per-platform basis.
+      int8_t _bus_deinit();    // This must be provided on a per-platform basis.
 
-      inline bool _pf_needs_op_advance() {        return _adapter_flag(I2C_BUS_FLAG_PF_ADVANCE_OPS);  };
-      inline void _pf_needs_op_advance(bool x) {  _adapter_set_flag(I2C_BUS_FLAG_PF_ADVANCE_OPS, x);  };
-      inline void _bus_error(bool nu) {           _adapter_set_flag(I2C_BUS_FLAG_BUS_ERROR, nu);      };
-      inline void _bus_online(bool nu) {          _adapter_set_flag(I2C_BUS_FLAG_BUS_ONLINE, nu);     };
+      /* A specific kind of I2CAdapter needs to provide these. */
+      //virtual int8_t _pf_init()   =0;
+      //virtual int8_t _pf_poll()   =0;
+      //virtual int8_t _pf_deinit() =0;
 
 
     private:
       const I2CAdapterOptions _bus_opts;
       int8_t  ping_map[32];
-      LinkedList<I2CDevice*> dev_list;    // A list of active slaves on this bus.
-
-      int get_slave_dev_by_addr(uint8_t search_addr);
 
       I2CPingState get_ping_state_by_addr(uint8_t addr);
       void set_ping_state_by_addr(uint8_t addr, I2CPingState nu);
@@ -270,9 +244,7 @@ class I2CAdapter;
       int8_t io_op_callback(BusOp*);
       int8_t queue_io_job(BusOp*);
 
-      bool assignBusInstance(I2CAdapter*);   // Needs to be called by the i2c class during insertion.
-      bool disassignBusInstance();           // This is to be called from the adapter's unassignment function.
-
+      void setAdapter(I2CAdapter* b) {   _bus = b;      };
       inline I2CAdapter* getAdapter() {  return _bus;   };
 
       /* Debug aides */

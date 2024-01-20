@@ -27,7 +27,6 @@ class SPIAdapter;
 /*
 * Adapter flag defs. The member that holds these is located in BusAdapter.
 */
-#define SPI_FLAG_SPI_READY    0x0001    // Is SPI1 initialized?
 #define SPI_FLAG_QUEUE_IDLE   0x0002    // Is the SPI queue idle?
 #define SPI_FLAG_QUEUE_GUARD  0x0004    // Prevent bus queue floods?
 #define SPI_FLAG_RESERVED_0   0x0008    // Reserved
@@ -35,8 +34,6 @@ class SPIAdapter;
 #define SPI_FLAG_CPOL         0x0020    // Bus configuration details.
 #define SPI_FLAG_CPHA         0x0040    // Bus configuration details.
 #define SPI_FLAG_MASTER       0x0080    // Bus configuration details.
-#define SPI_BUS_FLAG_PF_ADVANCE_OPS 0x4000    // Optionally set by the platform.
-#define SPI_BUS_FLAG_PF_BEGIN_ASAP  0x8000    // Optionally set by the platform.
 
 /*
 * These flags are hosted by the member in the BusOp class.
@@ -164,7 +161,6 @@ class SPIAdapter : public BusAdapter<SPIBusOp> {
     int8_t queue_io_job(BusOp*);
     int8_t queue_io_job(BusOp*, int);
 
-    int8_t advance_work_queue();
     int8_t service_callback_queue();
 
     int8_t setMode(const uint8_t);
@@ -185,16 +181,13 @@ class SPIAdapter : public BusAdapter<SPIBusOp> {
     const uint8_t _CLK_PIN;      // Pin assignments for SPI.
     const uint8_t _MOSI_PIN;     // Pin assignments for SPI.
     const uint8_t _MISO_PIN;     // Pin assignments for SPI.
-    uint8_t _cb_per_event  = 3;  // Limit the number of callbacks processed per event.
     uint32_t _current_freq = 0;  // The current frequency of the adapter.
     PriorityQueue<SPIBusOp*> callback_queue;  // List of pending callbacks for bus transactions.
 
     /* Overrides from the BusAdapter interface */
-    int8_t bus_init();
-    int8_t bus_deinit();
-
-    inline bool _pf_needs_op_advance() {        return _adapter_flag(SPI_BUS_FLAG_PF_ADVANCE_OPS);  };
-    inline void _pf_needs_op_advance(bool x) {  _adapter_set_flag(SPI_BUS_FLAG_PF_ADVANCE_OPS, x);  };
+    int8_t _bus_poll();
+    int8_t _bus_init();
+    int8_t _bus_deinit();
 };
 
 #endif  // __SPI_QUEUE_TEMPLATE_H__
