@@ -77,17 +77,17 @@ bool GfxUICryptoRNG::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, Pr
 }
 
 
-PollingResult GfxUICryptoRNG::poll() {
-  PollingResult ret = PollingResult::NO_ACTION;
+PollResult GfxUICryptoRNG::poll() {
+  PollResult ret = PollResult::NO_ACTION;
   if (_rng_buffer.windowSize() != internalWidth()) {
     if (0 != _rng_buffer.windowSize(internalWidth())) {
-      ret = PollingResult::ERROR;
+      ret = PollResult::ERROR;
     }
   }
-  if (_rng_buffer.initialized() & (PollingResult::NO_ACTION == ret)) {
+  if (_rng_buffer.initialized() & (PollResult::NO_ACTION == ret)) {
     random_fill((uint8_t*) _rng_buffer.memPtr(), _rng_buffer.memUsed());
     _rng_buffer.feedFilter();
-    ret = PollingResult::ACTION;
+    ret = PollResult::ACTION;
   }
   return ret;
 }

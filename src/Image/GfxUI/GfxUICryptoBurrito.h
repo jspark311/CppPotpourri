@@ -27,7 +27,7 @@ These classes are built on top of the GfxUI classes, and implement a toolkit
 * A pane that shows the RNG. This will be available from the platform with or
 *   without the rest of the cryptography classes.
 */
-class GfxUICryptoRNG : public GfxUIElement, public PollableObj {
+class GfxUICryptoRNG : public GfxUIElement, public C3PPollable {
   public:
     GfxUICryptoRNG(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
     ~GfxUICryptoRNG();
@@ -36,8 +36,8 @@ class GfxUICryptoRNG : public GfxUIElement, public PollableObj {
     virtual int  _render(UIGfxWrapper* ui_gfx);
     virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
-    /* Implementation of PollableObj. */
-    PollingResult poll();
+    /* Implementation of C3PPollable. */
+    PollResult poll();
 
 
   private:

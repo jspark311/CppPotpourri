@@ -38,6 +38,17 @@ int8_t UARTAdapter::init(const UARTOpts* o) {
 }
 
 
+int8_t UARTAdapter::reset() {
+  int8_t ret = -1;
+  if (0 == _pf_deinit()) {
+    if (0 == _pf_init()) {
+      ret = 0;
+    }
+  }
+  return ret;
+}
+
+
 PollResult UARTAdapter::poll() {
   int8_t ret = _pf_poll();
   if (0 == ret) {
