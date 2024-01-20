@@ -190,4 +190,30 @@ class SPIAdapter : public BusAdapter<SPIBusOp> {
     int8_t _bus_deinit();
 };
 
+
+/*
+* This class represents a slave device on the bus. It should be extended by any
+*   class representing an SPI device, and should implement the given virtuals.
+*/
+class SPIIDevice : public BusOpCallback {
+  public:
+    /* Overrides from the BusOpCallback interface */
+    virtual int8_t io_op_callahead(BusOp*) =0;  // Called ahead of op.
+    virtual int8_t io_op_callback(BusOp*)  =0;  // Called behind completed op.
+    virtual int8_t queue_io_job(BusOp*)    =0;  // Queue an I/O operation.
+
+    void setAdapter(SPIAdapter* b) {   _bus = b;     };
+    inline SPIAdapter* getAdapter() {  return _bus;  };
+
+
+  protected:
+    const uint8_t _CS_PIN;
+    SPIAdapter*   _bus;
+
+    /* Constructor */
+    SPIIDevice(const uint8_t CS_PIN) : _CS_PIN(CS_PIN), _bus(nullptr) {};
+    ~SPIIDevice() {};
+};
+
+
 #endif  // __SPI_QUEUE_TEMPLATE_H__

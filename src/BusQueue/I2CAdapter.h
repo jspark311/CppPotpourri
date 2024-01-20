@@ -225,9 +225,6 @@ class I2CAdapter;
   /*
   * This class represents a slave device on the bus. It should be extended by any class
   *   representing an i2c device, and should implement the given virtuals.
-  *
-  * Since the platform we are coding for uses an interrupt-driven i2c implementation,
-  *   we will need to have callbacks.
   */
   class I2CDevice : public BusOpCallback {
     public:
