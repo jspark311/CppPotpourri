@@ -21,6 +21,11 @@ limitations under the License.
 This set of classes aggregates many boolean flags (defined elsewhere) into a
   single class member that composes more cleanly, versus having this same code
   repeated in all classes that need flags.
+
+NOTE: Despite the strict storage requirements for these classes being very low,
+  the compiler and target will usually conspire to align classes on a modulus
+  of the target's pointer size (at minimum). So don't use the smaller classes
+  for storage reasons. Use them for API preservation reasons.
 */
 
 #include <inttypes.h>

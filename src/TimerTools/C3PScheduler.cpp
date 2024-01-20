@@ -21,7 +21,7 @@ limitations under the License.
 // Singleton instance
 volatile static C3PScheduler* SCHEDULER_INSTANCE_PTR = nullptr;
 
-C3PScheduler* C3PScheduler::getInstance() {
+FAST_FUNC C3PScheduler* C3PScheduler::getInstance() {
   if (nullptr == SCHEDULER_INSTANCE_PTR) {
     SCHEDULER_INSTANCE_PTR = new C3PScheduler(8);  // TODO: Arbitrary schedule limit.
   }
@@ -33,7 +33,7 @@ C3PScheduler* C3PScheduler::getInstance() {
 * C3PSchedule base class
 *******************************************************************************/
 
-int8_t C3PSchedule::execute() {
+FAST_FUNC int8_t C3PSchedule::execute() {
   _executing = true;
   const unsigned int NOW = micros();
   profiler.markStart();
@@ -61,7 +61,7 @@ int8_t C3PSchedule::execute() {
 }
 
 
-void C3PSchedule::delay(unsigned int by_us) {
+FAST_FUNC void C3PSchedule::delay(unsigned int by_us) {
   if (!_executing) {
     if (!_enabled) {
       _exec_at = (unsigned int) micros();
@@ -72,7 +72,7 @@ void C3PSchedule::delay(unsigned int by_us) {
 }
 
 
-void C3PSchedule::delay() {
+FAST_FUNC void C3PSchedule::delay() {
   if (!_executing) {
     _exec_at = ((unsigned int) micros() + _period);
     _enabled = true;
@@ -80,7 +80,7 @@ void C3PSchedule::delay() {
 }
 
 
-bool C3PSchedule::willRunAgain() {
+FAST_FUNC bool C3PSchedule::willRunAgain() {
   bool ret = (_enabled & (0 < _recurrences));
   ret |= (_enabled & (-1 == _recurrences));
   return ret;
@@ -115,7 +115,7 @@ void C3PSchedule::printProfiler(StringBuilder* output) {
 * Kinds of Schedules
 *******************************************************************************/
 
-int8_t C3PScheduledPolling::_execute() {
+FAST_FUNC int8_t C3PScheduledPolling::_execute() {
   int8_t ret = 0;
   if (nullptr != _pollable_obj) {
     PollResult poll_ret = _pollable_obj->poll();
@@ -131,7 +131,7 @@ void C3PScheduledPolling::_print_schedule(StringBuilder* output) {
 
 
 
-int8_t C3PScheduledLambda::_execute() {
+FAST_FUNC int8_t C3PScheduledLambda::_execute() {
   int8_t ret = 0;
   _fxn_lambda();
   return ret;
@@ -145,7 +145,7 @@ void C3PScheduledLambda::_print_schedule(StringBuilder* output) {
 
 
 
-int8_t C3PScheduledJitterProbe::_execute() {
+FAST_FUNC int8_t C3PScheduledJitterProbe::_execute() {
   int8_t ret = 0;
   if (jitter.initialized()) {
     const unsigned int NOW = micros();
@@ -219,7 +219,7 @@ bool C3PScheduler::containsSchedule(C3PSchedule* sched) {
 * This function should be called in the program's idle time, and will remove
 *   schedules from the execution queue.
 */
-void C3PScheduler::serviceSchedules() {
+FAST_FUNC void C3PScheduler::serviceSchedules() {
   if (_isr_count > 0) {
     profiler_deadband.markStop();
     profiler_service.markStart();
@@ -238,7 +238,7 @@ void C3PScheduler::serviceSchedules() {
 * This function should be called periodically from a timing source, and will add
 *   schedules to the execution queue.
 */
-void C3PScheduler::advanceScheduler() {
+FAST_FUNC void C3PScheduler::advanceScheduler() {
   for (uint32_t i = 0; i < _active.count(); i++) {
     C3PSchedule* current = _active.peek(i, false);
     if ((nullptr != current) && current->enabled()) {

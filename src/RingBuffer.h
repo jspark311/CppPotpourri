@@ -95,8 +95,12 @@ template <class T> bool RingBuffer<T>::allocated() {
   if (nullptr == _pool) {
     const unsigned int s = _E_SIZE * _CAPAC;
     _pool = (uint8_t*) malloc(s);
-    clear();
-    return (nullptr != _pool);
+    if (nullptr == _pool) {
+      return false;
+    }
+    for (unsigned int i = 0; i < s; i++) {
+      *((uint8_t*) _pool + i) = 0x00;
+    }
   }
   return true;
 }
