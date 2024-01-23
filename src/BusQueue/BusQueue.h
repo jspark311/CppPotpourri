@@ -29,7 +29,7 @@ TODO: Finish conversion to RingBuffer, and put constraints on BusAdapter's init
 #include "../CppPotpourri.h"
 #include "../StringBuilder.h"
 #include "../PriorityQueue.h"
-#include "../RingBuffer.h"
+#include "../ElementPool.h"
 #include "../AbstractPlatform.h"
 #include "../FlagContainer.h"
 #include "../C3PLogger.h"
