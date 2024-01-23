@@ -152,7 +152,14 @@ class SPIAdapter : public BusAdapter<SPIBusOp> {
   public:
     StopWatch profiler_cb;    // Profiler for bureaucracy within SPIBusOpCallback.
 
-    SPIAdapter(const uint8_t adapter, const uint8_t clk_pin, const uint8_t mosi_pin, const uint8_t miso_pin, const uint8_t max_queue);
+    SPIAdapter(
+      const uint8_t adapter,
+      const uint8_t clk_pin,
+      const uint8_t mosi_pin,
+      const uint8_t miso_pin,
+      const uint32_t prealloc_count,
+      const uint8_t max_queue
+    );
     ~SPIAdapter();
 
     /* Overrides from the BusAdapter interface */

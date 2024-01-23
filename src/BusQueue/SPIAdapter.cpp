@@ -16,8 +16,9 @@ SPIAdapter::SPIAdapter(
   const uint8_t clk_pin,
   const uint8_t mosi_pin,
   const uint8_t miso_pin,
+  const uint32_t prealloc_count,
   const uint8_t max_queue
-) : BusAdapter(adapter, max_queue), _CLK_PIN(clk_pin), _MOSI_PIN(mosi_pin), _MISO_PIN(miso_pin) {
+) : BusAdapter(adapter, prealloc_count, max_queue), _CLK_PIN(clk_pin), _MOSI_PIN(mosi_pin), _MISO_PIN(miso_pin) {
 }
 
 

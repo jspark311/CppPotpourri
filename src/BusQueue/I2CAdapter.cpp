@@ -56,7 +56,9 @@ const char I2CAdapter::_ping_state_chr[4] = {' ', '.', '*', ' '};
 * Constructors/destructors, class initialization functions and so-forth...
 *******************************************************************************/
 
-I2CAdapter::I2CAdapter(const I2CAdapterOptions* o) : BusAdapter(o->adapter, I2CADAPTER_MAX_QUEUE_DEPTH), _bus_opts(o) {
+I2CAdapter::I2CAdapter(const I2CAdapterOptions* o, const uint32_t PA_COUNT, const uint8_t MAX_Q) :
+  BusAdapter(o->adapter, PA_COUNT, MAX_Q), _bus_opts(o) 
+{
   // Some platforms (linux) will ignore pin-assignment values completely.
   _adapter_clear_flag(I2C_ADAPT_FLAG_PING_RUN  | I2C_ADAPT_FLAG_PINGING);
 }

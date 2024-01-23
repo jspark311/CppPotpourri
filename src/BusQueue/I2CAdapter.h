@@ -42,14 +42,6 @@ class I2CAdapter;
     // How many queue items should we print for debug?
     #define I2CADAPTER_MAX_QUEUE_PRINT 3
   #endif
-  #ifndef I2CADAPTER_MAX_QUEUE_DEPTH
-    // How deep should the queue be allowed to become before rejecting work?
-    #define I2CADAPTER_MAX_QUEUE_DEPTH 12
-  #endif
-  #ifndef I2CADAPTER_PREALLOC_COUNT
-    // How many queue items should we have on-tap?
-    #define I2CADAPTER_PREALLOC_COUNT 4
-  #endif
 
   /*
   * These flags are hosted by BusAdapter, and relate specifically to I2CAdapter.
@@ -176,7 +168,7 @@ class I2CAdapter;
   */
   class I2CAdapter : public BusAdapter<I2CBusOp> {
     public:
-      I2CAdapter(const I2CAdapterOptions*);  // Constructor takes a bus ID and pins as arguments.
+      I2CAdapter(const I2CAdapterOptions*, const uint32_t PA_COUNT, const uint8_t MAX_Q);  // Constructor takes a bus ID and pins as arguments.
       ~I2CAdapter();           // Destructor
 
       /* Overrides from the BusAdapter interface */

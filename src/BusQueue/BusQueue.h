@@ -499,9 +499,9 @@ template <class T> class BusAdapter : public BusOpCallback, public C3PPollable {
     PriorityQueue<T*> work_queue;   // A work queue to keep transactions in order.
     ElementPool<T> preallocated;    //
 
-    BusAdapter(uint8_t anum, uint8_t maxq) :
+    BusAdapter(uint8_t anum, uint32_t PA_COUNT, uint8_t maxq) :
       ADAPTER_NUM(anum), MAX_Q_DEPTH(maxq), _queue_floods(0),
-      current_job(nullptr), preallocated(8, MAX_Q_DEPTH) {};
+      current_job(nullptr), preallocated(PA_COUNT, MAX_Q_DEPTH) {};
 
 
     /*
