@@ -23,8 +23,8 @@ limitations under the License.
 
 #include <inttypes.h>
 #include <stdint.h>
-#include "../StringBuilder.h"
 #include "../CppPotpourri.h"
+#include "../StringBuilder.h"
 #include "../Pipes/BufferAccepter/BufferAccepter.h"
 #include "../LightLinkedList.h"
 #include "../EnumeratedTypeCodes.h"
@@ -46,16 +46,6 @@ limitations under the License.
 *   Tokenized list of arguments, as strings.
 */
 typedef int (*consoleCallback)(StringBuilder* log, StringBuilder* args);
-
-/* Error conditions that this class might report. */
-enum class ConsoleErr : uint8_t {
-  NONE          = 0x00,    // Reserved. Denotes end-of-list.
-  NO_MEM        = 0x01,    // Class ran out of memory.
-  MISSING_ARG   = 0x02,    // Command recognized, but an argument was missing.
-  INVALID_ARG   = 0x03,    // Command recognized, but an argument was wrong.
-  CMD_NOT_FOUND = 0x04,    // Command not found.
-  RESERVED      = 0xFF     // Reserved for custom extension.
-};
 
 
 /*
@@ -89,17 +79,6 @@ class ConsoleCommand {
 };
 
 
-/*
-* This is the callback fxn signature for commands. It will only be
-*   called if a command is parsed successfully.
-* Parameters are...
-*   Log reference
-*   ConsoleErr (what went wrong)
-*   ConsoleCommand, if applicable
-*   Original input
-*/
-typedef int (*consoleErrCallback)(StringBuilder*, const ConsoleErr, const ConsoleCommand*, StringBuilder*);
-
 
 /*
 * This is the base for a console class.
@@ -119,10 +98,10 @@ class C3PConsole : public BufferAccepter {
   protected:
     LinkedList<StringBuilder*>  _history;   // Stores a list of prior commands.
     LinkedList<ConsoleCommand*> _cmd_list;  // Stores a list of command definitions.
-    BufferAccepter* _output_target = nullptr;
-    uint8_t _max_cmd_len = 0;
+    BufferAccepter* _output_target;
+    uint8_t _max_cmd_len;                   // Tracks the longest command defined.
 
-    C3PConsole() {};
+    C3PConsole() : _output_target(nullptr), _max_cmd_len(0) {};
     ~C3PConsole();
 
     ConsoleCommand* _cmd_def_lookup(char*);     // Get a command from our list by its name.
@@ -156,8 +135,6 @@ class ParsingConsole : public C3PConsole {
     inline LineTerm getTXTerminator() {   return _tx_terminator;   };
     inline LineTerm getRXTerminator() {   return _rx_terminator;   };
 
-    inline void errorCallback(consoleErrCallback ecb) {  errCB = ecb;           };
-
     // History management...
     void clearHistory();
     void maxHistoryDepth(uint8_t);
@@ -181,8 +158,6 @@ class ParsingConsole : public C3PConsole {
     inline bool printHelpOnFail() {        return _console_flag(CONSOLE_FLAG_PRINT_HELP_ON_FAIL);         };
     inline void printHelpOnFail(bool x) {  return _console_set_flag(CONSOLE_FLAG_PRINT_HELP_ON_FAIL, x);  };
 
-    static const char* const errToStr(ConsoleErr);
-
     /* Built-in per-instance console handlers. */
     int8_t console_handler_help(StringBuilder* text_return, StringBuilder* args);
     int8_t console_handler_conf(StringBuilder* text_return, StringBuilder* args);
@@ -196,7 +171,6 @@ class ParsingConsole : public C3PConsole {
     LineTerm _tx_terminator  = LineTerm::CRLF;
     LineTerm _rx_terminator  = LineTerm::LF;   // Default should also support the CRLF case.
     char*    _prompt_string  = nullptr;    // Pointer to the optional prompt string.
-    consoleErrCallback errCB = nullptr;    // Optional function pointer for failed commands.
     StringBuilder _buffer;     // Unused input is accumulated here.
     StringBuilder _log;        // Stores a log for retreival.
 

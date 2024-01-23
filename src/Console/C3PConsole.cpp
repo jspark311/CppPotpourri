@@ -21,35 +21,6 @@ limitations under the License.
 #include "C3PConsole.h"
 #include "../CppPotpourri.h"
 
-/*******************************************************************************
-*      _______.___________.    ___   .___________. __    ______     _______.
-*     /       |           |   /   \  |           ||  |  /      |   /       |
-*    |   (----`---|  |----`  /  ^  \ `---|  |----`|  | |  ,----'  |   (----`
-*     \   \       |  |      /  /_\  \    |  |     |  | |  |        \   \
-* .----)   |      |  |     /  _____  \   |  |     |  | |  `----.----)   |
-* |_______/       |__|    /__/     \__\  |__|     |__|  \______|_______/
-*
-* Static members and initializers should be located here.
-*******************************************************************************/
-
-static const uint8_t DPAD_ESCAPE_SEQUENCE_U[4] = {27, 91, 65, 0};
-static const uint8_t DPAD_ESCAPE_SEQUENCE_D[4] = {27, 91, 66, 0};
-static const uint8_t DPAD_ESCAPE_SEQUENCE_R[4] = {27, 91, 67, 0};
-static const uint8_t DPAD_ESCAPE_SEQUENCE_L[4] = {27, 91, 68, 0};
-
-
-const char* const ParsingConsole::errToStr(ConsoleErr err) {
-  switch (err) {
-    case ConsoleErr::NONE:          return "NONE";
-    case ConsoleErr::NO_MEM:        return "Out of memory";
-    case ConsoleErr::MISSING_ARG:   return "Missing argument";
-    case ConsoleErr::INVALID_ARG:   return "Invalid argument";
-    case ConsoleErr::CMD_NOT_FOUND: return "Invalid command";
-    case ConsoleErr::RESERVED:      return "Reserved err code";
-  }
-  return "UNKNOWN";
-}
-
 
 /*******************************************************************************
 * C3PConsole base implementation
@@ -344,19 +315,11 @@ int8_t ParsingConsole::_exec_line(StringBuilder* line) {
       }
       ret = 0;
     }
-    else if (nullptr != errCB) {
-      // Call the error callback with a report of the user's sins.
-      errCB(&_log, ConsoleErr::MISSING_ARG, cmd, &tmp_line);
-    }
     else {
       // Report to the log.
       _log.concatf("Command '%s' requires %d arguments. Only %d provided.\n", cmd->cmd, cmd->req_count, tmp_line.count());
       cmd->printDetailedHelp(&_log);
     }
-  }
-  else if (nullptr != errCB) {
-    // If we have an error callback pointer, ping it with CMD_NOT_FOUND.
-    errCB(&_log, ConsoleErr::CMD_NOT_FOUND, nullptr, &tmp_line);
   }
   else {
     _log.concatf("Command '%s' not supported.\n", cmd_str);
@@ -497,14 +460,7 @@ void ConsoleCommand::printDetailedHelp(StringBuilder* output) {
   StringBuilder tmp("Help: ");
   tmp.concat(cmd);
   StringBuilder::styleHeader2(output, (const char*) tmp.string());
-  output->concatf("%s\nUsage: ", help_text);
-  // for (int i = 0; i < maxArgumentCount(); i++) {
-  //   output->concatf(
-  //     ((i < req_count) ? "%s " : "[%s] "),
-  //     typecodeToStr(*(fmt + i))
-  //   );
-  // }
-  output->concatf("\n%s\n", param_text);
+  output->concatf("%s\nUsage: \n%s\n", help_text, param_text);
 }
 
 
