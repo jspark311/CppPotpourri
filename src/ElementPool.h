@@ -37,11 +37,11 @@ Constraints:
 
 #include "RingBuffer.h"
 #include "StringBuilder.h"
-
+#include <new>
 
 template <class T> class ElementPool {
   public:
-    ElementPool(const uint32_t COUNT, const uint32_t OD_LIMIT = 0, const T* POOL_PTR = nullptr);
+    ElementPool(const uint32_t COUNT, const uint32_t OD_LIMIT = 0, T* POOL_PTR = nullptr);
     ~ElementPool();
 
     bool    allocated();
@@ -51,12 +51,14 @@ template <class T> class ElementPool {
 
     inline void     overdrawLimit(uint32_t x) {  _overdraw_limit = x;      };
     inline uint32_t overdrawLimit() {            return _overdraw_limit;   };
-    inline uint32_t starves() {                  return _overdraws;        };
-    inline uint32_t heapFrees() {                return _overdraws_freed;  };
+    inline uint32_t overdraws() {                return _overdraws;        };
+    inline uint32_t overdrawsFreed() {           return _overdraws_freed;  };
     inline uint32_t lowWaterMark() {             return _low_watermark;    };
+    inline uint32_t capacity() {                 return _list.capacity();  };
+    inline uint32_t available() {                return _list.count();     };
 
     void printDebug(StringBuilder* output) {
-      output->concatf("ElementPool (%sReady)\n", ready() ? "" : "Not ");
+      output->concatf("ElementPool (%sReady)\n", allocated() ? "" : "Not ");
       output->concatf("\tPool(%p): %u bytes\n", (uintptr_t) _pool, (_list.capacity() * sizeof(T)));
       output->concatf("\tCapacity:       %u/%u\n\tLow Watermark:  %u\n", _list.count(), _list.capacity(), _low_watermark);
       if (_overdraw_limit > 0) {
@@ -87,7 +89,7 @@ template <class T> class ElementPool {
 /**
 * Constructor
 */
-template <class T> ElementPool<T>::ElementPool(const uint32_t COUNT, const uint32_t OD_LIMIT, const T* _mem) :
+template <class T> ElementPool<T>::ElementPool(const uint32_t COUNT, const uint32_t OD_LIMIT, T* _mem) :
   _list(COUNT), _pool(_mem),
   _overdraw_limit(OD_LIMIT), _overdraws(0), _overdraws_freed(0),
   _low_watermark(COUNT), _we_own_the_pool(false), _list_populated(false) {}
@@ -128,8 +130,7 @@ template <class T> bool ElementPool<T>::allocated() {
     for (uint32_t i = 0; i < _list.capacity(); i++) {
       // Whatever the type is, we should initialize the memory by doing an
       //   in-place constructor call, and insert the pointer into our list.
-      T* current = (_pool + (i * sizeof(T)));
-      //current();
+      T* current = new (_pool + i) T();
       _list.insert(current);
     }
     _list_populated = true;
@@ -142,26 +143,11 @@ template <class T> bool ElementPool<T>::allocated() {
 /**
 * Reclaims the given object so its memory can be re-used.
 *
-* At present, our criteria for preallocation is if the pointer address passed in
-*   falls within the range of our _pool array. I see nothing "non-portable"
-*   about this, it doesn't require a flag or class member, and it is fast to check.
-* However, this strategy only works for types that are never used in DMA or code
-*   execution on the STM32F4. It may work for other architectures (PIC32, x86?).
-*   I also feel like it ought to be somewhat slower than a flag or member, but not
-*   by such an amount that the memory savings are not worth the CPU trade-off.
-* Consider writing all new cyclical queues with preallocated members to use this
-*   strategy. Also, consider converting the most time-critical types to this strategy
-*   up until we hit the boundaries of the STM32 CCM.
-*                                 ---J. Ian Lindsay   Mon Apr 13 10:51:54 MST 2015
-*
 * @param T* obj is the pointer to the object to be reclaimed.
+* @return 1 if the object was returned to the pool, or 0 if it was free()'d.
 */
 template <class T> int8_t ElementPool<T>::give(T* e) {
-  const uintptr_t obj_addr = ((uintptr_t) e);
-  const uintptr_t pre_min  = ((uintptr_t) _pool);
-  const uintptr_t pre_max  = pre_min + (uintptr_t) (_list.capacity() * sizeof(T));
-
-  if ((obj_addr < pre_max) && (obj_addr >= pre_min)) {
+  if (inPool(e)) {
     // If we are in this block, it means obj was preallocated. reclaim it.
     // Note that the object is not zeroed, or otherwise informed that it has
     //   been put on the shelf. It is the responsibility of the software using
@@ -179,16 +165,25 @@ template <class T> int8_t ElementPool<T>::give(T* e) {
 
 
 /**
+* At present, our criteria for preallocation is if the pointer address passed in
+*   falls within the range of our _pool array. I see nothing "non-portable"
+*   about this, it doesn't require a flag or class member, and it is fast to check.
+* However, this strategy only works for types that are never used in DMA or code
+*   execution on the STM32F4. It may work for other architectures (PIC32, x86?).
+*   I also feel like it ought to be somewhat slower than a flag or member, but not
+*   by such an amount that the memory savings are not worth the CPU trade-off.
+* Consider writing all new cyclical queues with preallocated members to use this
+*   strategy. Also, consider converting the most time-critical types to this strategy
+*   up until we hit the boundaries of the STM32 CCM.
+*                                 ---J. Ian Lindsay   Mon Apr 13 10:51:54 MST 2015
+*
 * @return true if the given element is part of this preallocation pool.
 */
 template <class T> bool ElementPool<T>::inPool(T* e) {
   const uintptr_t obj_addr = ((uintptr_t) e);
   const uintptr_t pre_min  = ((uintptr_t) _pool);
   const uintptr_t pre_max  = pre_min + (uintptr_t) (_list.capacity() * sizeof(T));
-
-  // If we are in this block, it means obj was preallocated. reclaim it.
-  // Note that we are not wiping.
-  return ((obj_addr < pre_max) && (obj_addr >= pre_min));
+  return ((obj_addr < pre_max) & (obj_addr >= pre_min));
 }
 
 

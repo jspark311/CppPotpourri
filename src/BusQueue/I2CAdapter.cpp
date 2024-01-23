@@ -251,7 +251,7 @@ FAST_FUNC int8_t I2CAdapter::_bus_poll() {
             case BUSOP_CALLBACK_ERROR:
             case BUSOP_CALLBACK_NOMINAL:
             default:
-              reclaim_queue_item(current_job);
+              _reclaim_queue_item(current_job);
               break;
           }
           return_value++;

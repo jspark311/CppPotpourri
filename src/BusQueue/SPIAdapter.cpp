@@ -225,13 +225,13 @@ FAST_FUNC int8_t SPIAdapter::service_callback_queue() {
           }
         case BUSOP_CALLBACK_NOMINAL:
         default:
-          reclaim_queue_item(temp_op);
+          _reclaim_queue_item(temp_op);
           break;
       }
     }
     else {
       // We are the responsible party.
-      reclaim_queue_item(temp_op);
+      _reclaim_queue_item(temp_op);
     }
     return_value++;
   }

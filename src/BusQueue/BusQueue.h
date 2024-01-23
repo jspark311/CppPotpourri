@@ -360,12 +360,9 @@ template <class T> class BusAdapter : public BusOpCallback, public C3PPollable {
     * @return an BusOp to be used. Only NULL if out-of-mem.
     */
     T* new_op(BusOpcode _op, BusOpCallback* _req) {
-      T* ret = preallocated.get();
-      if (nullptr == ret) {
-        _prealloc_misses++;
-        ret = new T();
-      }
+      T* ret = preallocated.take();
       if (nullptr != ret) {
+        ret->shouldReap(!preallocated.inPool(ret));
         ret->set_opcode(_op);
         ret->callback = _req;
       }
@@ -402,7 +399,7 @@ template <class T> class BusAdapter : public BusOpCallback, public C3PPollable {
         if (current_job->callback) {
           current_job->callback->io_op_callback(current_job);
         }
-        reclaim_queue_item(current_job);
+        _reclaim_queue_item(current_job);
         current_job = nullptr;
       }
     };
@@ -417,7 +414,7 @@ template <class T> class BusAdapter : public BusOpCallback, public C3PPollable {
         if (current->callback) {
           current->callback->io_op_callback(current);
         }
-        reclaim_queue_item(current);
+        _reclaim_queue_item(current);
         current = work_queue.dequeue();
       }
     };
@@ -441,79 +438,43 @@ template <class T> class BusAdapter : public BusOpCallback, public C3PPollable {
           if (current->callback) {
             current->callback->io_op_callback(current);
           }
-          reclaim_queue_item(current);   // Delete the queued work AND its buffer.
+          _reclaim_queue_item(current);   // Delete the queued work AND its buffer.
         }
       }
       return ret;
     };
 
 
-    /**
-    * This fxn will either free() the memory associated with the BusOp object, or it
-    *   will return it to the preallocation queue.
-    *
-    * @param item The BusOp to be reclaimed.
-    */
-    void reclaim_queue_item(T* op) {
-      _total_xfers++;
-      if (op->hasFault()) {
-        _failed_xfers++;
-      }
-
-      uintptr_t obj_addr = ((uintptr_t) op);
-      uintptr_t pre_min  = ((uintptr_t) preallocated_bus_jobs);
-      uintptr_t pre_max  = pre_min + sizeof(preallocated_bus_jobs);
-      if (op->shouldFreeBuffer() && (nullptr != op->buffer())) {
-        // Independently of the BusOp's mem management, if the I/O buffer is
-        //   marked for reap, do so at this point.
-        free(op->buffer());
-        op->setBuffer(nullptr, 0);
-        op->shouldFreeBuffer(false);
-      }
-
-      if ((obj_addr < pre_max) && (obj_addr >= pre_min)) {
-        // If we are in this block, it means obj was preallocated. wipe and reclaim it.
-        return_op_to_pool(op);
-      }
-      else if (op->shouldReap()) {
-        // We were created because our prealloc was starved. we are therefore a transient heap object.
-        if (getVerbosity() >= LOG_LEV_DEBUG) c3p_log(LOG_LEV_DEBUG, __PRETTY_FUNCTION__, "About to reap.");
-        delete op;
-        _heap_frees++;
-      }
-      else {
-        /* If we are here, it must mean that some other class fed us a const BusOp
-        and wants us to ignore the memory cleanup. But we should at least set it
-        back to IDLE.*/
-        if (getVerbosity() >= LOG_LEV_DEBUG) { c3p_log(LOG_LEV_DEBUG, "BusAdapter", "BusAdapter::reclaim_queue_item(): \t Dropping...."); }
-        op->set_state(XferState::IDLE);
-      }
-    }
-
-
     // TODO: I hate that I'm doing this in a template.
     void printAdapter(StringBuilder* output) {
-      output->concatf("-- Adapter #%u\n", ADAPTER_NUM);
-      output->concatf("-- Xfers (fail/total)  %u/%u\n", _failed_xfers, _total_xfers);
-      output->concat("-- Prealloc:\n");
-      output->concatf("--\tavailable        %d/%d\n",  preallocated.count(), preallocated.capacity());
-      output->concatf("--\tmisses/frees     %u/%u\n", _prealloc_misses, _heap_frees);
-      output->concat("-- Work queue:\n");
-      output->concatf("--\tdepth/max        %u/%u\n", work_queue.size(), MAX_Q_DEPTH);
-      output->concatf("--\tfloods           %u\n",  _queue_floods);
+      StringBuilder tmp_str;
+      tmp_str.concatf("Adapter #%u (%sline)", ADAPTER_NUM, (busOnline() ? "on" : "off"));
+      StringBuilder::styleHeader2(output, (char*) tmp_str.string());
 
+      output->concatf("\tXfers (fail/total)  %u/%u\n", _failed_xfers, _total_xfers);
+      output->concat("\tPrealloc:\n");
+      output->concatf("\t  available        %d/%d\n", preallocated.available(), preallocated.capacity());
+      output->concatf("\t  misses/frees     %u/%u\n", preallocated.overdraws(), preallocated.overdrawsFreed());
+      output->concat("\tWork queue:\n");
+      output->concatf("\t  depth/max        %u/%u\n", work_queue.size(), MAX_Q_DEPTH);
+      output->concatf("\t  floods           %u\n",  _queue_floods);
       StopWatch::printDebugHeader(output);
       profiler_poll.printDebug("poll()", output);
     };
 
+
     // TODO: I hate that I'm doing this in a template.
     void printWorkQueue(StringBuilder* output, int8_t max_print) {
+      StringBuilder tmp_str;
+      tmp_str.concatf("Adapter #%u Queue", ADAPTER_NUM);
+      StringBuilder::styleHeader2(output, (char*) tmp_str.string());
+
       if (current_job) {
-        output->concat("--\n- Current active job:\n");
+        output->concat("-- Current active job:\n");
         current_job->printDebug(output);
       }
       else {
-        output->concat("--\n-- No active job.\n--\n");
+        output->concat("-- No active job.\n--\n");
       }
       int wqs = work_queue.size();
       if (wqs > 0) {
@@ -529,42 +490,71 @@ template <class T> class BusAdapter : public BusOpCallback, public C3PPollable {
     };
 
 
+
   protected:
     const uint8_t  ADAPTER_NUM;     // The platform-relatable index of the adapter.
     const uint8_t  MAX_Q_DEPTH;     // Maximum tolerable queue depth.
     uint16_t _queue_floods;         // How many times has the queue rejected work?
-    uint16_t _prealloc_misses;      // How many times have we starved the preallocation queue?
-    uint16_t _heap_frees;           // How many times have we freed a BusOp?
     T*       current_job;
     PriorityQueue<T*> work_queue;   // A work queue to keep transactions in order.
-    RingBuffer<T*> preallocated;    //
-    T preallocated_bus_jobs[8];
+    ElementPool<T> preallocated;    //
 
     BusAdapter(uint8_t anum, uint8_t maxq) :
-      ADAPTER_NUM(anum), MAX_Q_DEPTH(maxq),
-      _queue_floods(0), _prealloc_misses(0), _heap_frees(0),
-      current_job(nullptr), preallocated(sizeof(preallocated_bus_jobs)) {};
+      ADAPTER_NUM(anum), MAX_Q_DEPTH(maxq), _queue_floods(0),
+      current_job(nullptr), preallocated(8, MAX_Q_DEPTH) {};
+
 
     /*
     * Wipe all of our preallocated BusOps and pass them into the prealloc queue.
     */
-    void _memory_init() {
+    int8_t _memory_init() {
+      int8_t ret = -1;
       if (preallocated.allocated()) {
-        for (uint8_t i = 0; i < (sizeof(preallocated_bus_jobs) / sizeof(preallocated_bus_jobs[0])); i++) {
-          preallocated_bus_jobs[i] = T();
-          preallocated_bus_jobs[i].shouldReap(false);
-          preallocated.insert(&preallocated_bus_jobs[i]);
+        for (uint8_t i = 0; i < preallocated.capacity(); i++) {
+          T* pa_busop = preallocated.take();
+          pa_busop->shouldReap(false);
+          preallocated.give(pa_busop);
         }
+        ret = 0;
       }
+      return ret;
     };
 
-    /*
-    * Returns a BusOp to the preallocation pool.
+
+    /**
+    * This fxn will either free() the memory associated with the BusOp object, or it
+    *   will return it to the preallocation queue.
+    *
+    * @param item The BusOp to be reclaimed.
     */
-    inline void return_op_to_pool(T* obj) {
-      obj->wipe();
-      preallocated.insert(obj);
-    };
+    void _reclaim_queue_item(T* op) {
+      _total_xfers++;
+      if (op->hasFault()) {
+        _failed_xfers++;
+      }
+
+      if (op->shouldFreeBuffer() && (nullptr != op->buffer())) {
+        // Independently of the BusOp's mem management, if the I/O buffer is
+        //   marked for reap, do so at this point.
+        free(op->buffer());
+        op->setBuffer(nullptr, 0);
+        op->shouldFreeBuffer(false);
+      }
+
+      if (op->shouldReap() || preallocated.inPool(op)) {
+        // If we are in this block, it means obj was preallocated. wipe and reclaim it.
+        op->wipe();
+        preallocated.give(op);
+      }
+      else {
+        /* If we are here, it must mean that some other class fed us a const BusOp
+        and wants us to ignore the memory cleanup. But we should at least set it
+        back to IDLE.*/
+        if (getVerbosity() >= LOG_LEV_DEBUG) { c3p_log(LOG_LEV_DEBUG, "BusAdapter", "BusAdapter::reclaim_queue_item(): \t Dropping...."); }
+        op->set_state(XferState::IDLE);
+      }
+    }
+
 
     /*
     * These inlines are for convenience of extending classes.
@@ -599,7 +589,6 @@ template <class T> class BusAdapter : public BusOpCallback, public C3PPollable {
     uint32_t _total_xfers   = 0;  // Transfer stats.
     uint32_t _failed_xfers  = 0;  // Transfer stats.
     FlagContainer32 _flags;
-    //uint16_t _extnd_state   = 0;  // Flags for the concrete class to use.
 };
 
 #endif  // __ABSTRACT_BUS_QUEUE_H__
