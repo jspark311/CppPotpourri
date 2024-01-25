@@ -26,21 +26,43 @@ UARTAdapter::UARTAdapter(
 UARTAdapter::~UARTAdapter() {}
 
 
-int8_t UARTAdapter::init(const UARTOpts* o) {
+int8_t UARTAdapter::init(const UARTOpts* OPTS) {
   _extnd_state = 0;
   _tx_buffer.allocated();    // Enforce ring allocation.
   _rx_buffer.allocated();    // Enforce ring allocation.
   _adapter_set_flag(UART_FLAG_PENDING_CONF);
-  for (uint32_t i = 0; i < sizeof(UARTOpts); i++) {
-    *((uint8_t*) &_opts + i) = *((uint8_t*) o + i);
+  if (nullptr != OPTS) {
+    for (uint32_t i = 0; i < sizeof(UARTOpts); i++) {
+      *((uint8_t*) &_opts + i) = *((uint8_t*) OPTS + i);
+    }
   }
-  return _pf_init();
+  // The hardware will clobber this value with the true bitrate for the
+  //   platform. But in case it doesn't want to do so, we set it equal to the
+  //   requested value.
+  _bitrate_real = _opts.bitrate;
+  const int8_t PF_RETURN = _pf_init();
+  return PF_RETURN;
+}
+
+
+int8_t UARTAdapter::deinit() {
+  const int8_t PF_RETURN = _pf_deinit();
+  if (0 == PF_RETURN) {
+    // Flush the buffers...
+    _tx_buffer.clear();
+    _rx_buffer.clear();
+    // Reset the flags...
+    _extnd_state = 0;
+    _bitrate_real = 0;
+    _flushed = true;
+  }
+  return PF_RETURN;
 }
 
 
 int8_t UARTAdapter::reset() {
   int8_t ret = -1;
-  if (0 == _pf_deinit()) {
+  if (0 == deinit()) {
     if (0 == _pf_init()) {
       ret = 0;
     }
@@ -67,7 +89,7 @@ void UARTAdapter::printDebug(StringBuilder* output) {
   StringBuilder temp("UART");
   temp.concatf("%u (%sinitialized", ADAPTER_NUM, (initialized() ? "":"un"));
   if (initialized()) {
-    temp.concatf(", %u bps)", _opts.bitrate);
+    temp.concatf(", %u bps)", _bitrate_real);
   }
   else {
     temp.concat(")");

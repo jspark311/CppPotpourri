@@ -68,7 +68,7 @@ int8_t I2CBusOp::abort(XferFault er) {
 /*
 *
 */
-void I2CBusOp::markComplete() {
+FAST_FUNC void I2CBusOp::markComplete() {
   set_state(XferState::COMPLETE);
 }
 

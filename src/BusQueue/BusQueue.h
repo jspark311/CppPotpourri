@@ -27,7 +27,6 @@ TODO: Finish conversion to RingBuffer, and put constraints on BusAdapter's init
 
 #include "../Meta/Rationalizer.h"
 #include "../CppPotpourri.h"
-#include "../StringBuilder.h"
 #include "../PriorityQueue.h"
 #include "../ElementPool.h"
 #include "../AbstractPlatform.h"

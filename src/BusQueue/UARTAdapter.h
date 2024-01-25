@@ -1,12 +1,18 @@
+/*
+File:   UARTAdapter.h
+Author: J. Ian Lindsay
+
+*/
+
+#ifndef __ABSTRACT_UART_QUEUE_TEMPLATE_H__
+#define __ABSTRACT_UART_QUEUE_TEMPLATE_H__
+
 #include <inttypes.h>
 #include <stdint.h>
 #include "../Pipes/BufferAccepter/BufferAccepter.h"
 #include "../StringBuilder.h"
 #include "../RingBuffer.h"
 #include "../AbstractPlatform.h"
-
-#ifndef __ABSTRACT_UART_QUEUE_TEMPLATE_H__
-#define __ABSTRACT_UART_QUEUE_TEMPLATE_H__
 
 /*
 * Adapter flag defs.
@@ -74,7 +80,7 @@ class UARTAdapter : public BufferAccepter, public C3PPollable {
     int8_t init(const UARTOpts*);
     PollResult poll();
 
-    inline int8_t deinit() {  return _pf_deinit();  };
+    int8_t deinit();
 
     // Basic management and init,
     int8_t reset();
@@ -82,7 +88,7 @@ class UARTAdapter : public BufferAccepter, public C3PPollable {
 
     // On-the-fly conf accessors...
     inline UARTOpts* uartOpts() {   return &_opts;         };
-    inline uint32_t bitrate() {     return _opts.bitrate;  };
+    inline uint32_t bitrate() {     return _bitrate_real;  };
 
     inline bool initialized() {  return _adapter_flag(UART_FLAG_UART_READY); };
     inline bool flushed() {      return _flushed;                            };
@@ -121,6 +127,7 @@ class UARTAdapter : public BufferAccepter, public C3PPollable {
     UARTOpts        _opts;
     uint32_t        bus_timeout_millis = 50;  // How long is a temporal break;
     uint32_t        last_byte_rx_time  = 0;   // Time of last character RX.
+    uint32_t        _bitrate_real      = 0;   // The hardware's report of the true bitrate.
     BufferAccepter* _read_cb_obj       = nullptr;
     RingBuffer<uint8_t> _tx_buffer;
     RingBuffer<uint8_t> _rx_buffer;

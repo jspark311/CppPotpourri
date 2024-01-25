@@ -168,7 +168,7 @@ class I2CAdapter;
   */
   class I2CAdapter : public BusAdapter<I2CBusOp> {
     public:
-      I2CAdapter(const I2CAdapterOptions*, const uint32_t PA_COUNT, const uint8_t MAX_Q);  // Constructor takes a bus ID and pins as arguments.
+      I2CAdapter(const I2CAdapterOptions*, const uint32_t PA_COUNT, const uint8_t MAX_Q); 
       ~I2CAdapter();           // Destructor
 
       /* Overrides from the BusAdapter interface */
