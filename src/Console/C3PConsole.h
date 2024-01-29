@@ -140,7 +140,7 @@ class ParsingConsole : public C3PConsole {
     void maxHistoryDepth(uint8_t);
     inline uint8_t maxHistoryDepth() {    return _max_history;       };
     inline uint8_t historyDepth() {       return _history.size();    };
-    inline uint8_t logLength() {          return _log.length();      };
+    inline uint8_t logLength() {          return _response.length(); };
 
     // Console features...
     inline bool localEcho() {          return _console_flag(CONSOLE_FLAG_LOCAL_ECHO);           };
@@ -172,7 +172,7 @@ class ParsingConsole : public C3PConsole {
     LineTerm _rx_terminator  = LineTerm::LF;   // Default should also support the CRLF case.
     char*    _prompt_string  = nullptr;    // Pointer to the optional prompt string.
     StringBuilder _buffer;     // Unused input is accumulated here.
-    StringBuilder _log;        // Stores a log for retreival.
+    StringBuilder _response;   // Stores responses to input.
 
     int8_t _relay_to_output_target();
 

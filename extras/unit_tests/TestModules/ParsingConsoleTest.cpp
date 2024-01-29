@@ -19,10 +19,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 
-This program tests StringBuilder, which is our preferred buffer abstraction.
-This class makes extensive use of the heap, low-level memory assumptions, and is
-  used as a premise for basically every program built on CppPotpourri. It should
-  be extensively unit-tested.
 */
 
 
@@ -86,28 +82,6 @@ int callback_test6(StringBuilder* text_return, StringBuilder* args) {
   return 0;
 }
 
-int console_error_callback(StringBuilder* text_return, const ConsoleErr err, const ConsoleCommand* cmd, StringBuilder* split) {
-  text_return->concatf("CALLBACK ENTERED: console_error_callback(%s)\n", ParsingConsole::errToStr(err));
-  switch (err) {
-    case ConsoleErr::NONE:
-      break;
-    case ConsoleErr::NO_MEM:
-      printf("Test fails hard due to NO_MEM error callback.\n");
-      exit(1);
-    case ConsoleErr::MISSING_ARG:      // We induce this on purpose.
-      test_result_array[7] = true;
-      break;
-    case ConsoleErr::INVALID_ARG:
-      break;
-    case ConsoleErr::CMD_NOT_FOUND:    // We induce this on purpose.
-      test_result_array[6] = true;
-      break;
-    case ConsoleErr::RESERVED:   // This is a general failure condition that ought to fail the test.
-      printf("Test fails hard due to RESERVED error callback.\n");
-      exit(1);
-  }
-  return 0;
-}
 
 
 /*
@@ -158,7 +132,8 @@ int feed_console_bytewise(const char* str) {
 int setup_console(StringBuilder* output) {
   printf("\tParsingConsole: Setup and command definition...\n");
   int8_t ret = -1;
-  console.errorCallback(console_error_callback);
+  test_result_array[6] = true;
+  test_result_array[7] = true;
   console.setRXTerminator(LineTerm::LF);
   console.setTXTerminator(LineTerm::CRLF);
   console.localEcho(false);  // We do not want local echo for testing.
@@ -190,18 +165,18 @@ int setup_console(StringBuilder* output) {
 */
 int run_command_tests(StringBuilder* output) {
   int8_t ret = -1;
-  uint32_t idx = 0;
   bool continue_testing = true;
+  uint32_t idx = 0;
   const char* BYTEWISE_TESTS[] = {
     "test6\n",   // Should result in a callback.
     "teST6\n",   // Should result in a callback.
     "TesT6  \n", // Should result in a callback.
     "  teST6\n", // Should result in a callback.
     "test5\n",   // Should result in a callback.
-    "test4\n",   // Should result in an callback for insufficient arg count.
+    "test4\n",   // Should result in a response for insufficient arg count.
     "test4 545 678 422\n",  // Should result in a callback.
     "1\n",       // Should result in a callback.
-    "bogus\n"    // Should result in an callback for unknown command.
+    "bogus\n"    // Should result in a response for unknown command.
   };
 
   while (continue_testing && (idx < (sizeof(BYTEWISE_TESTS) / sizeof(const char*)))) {

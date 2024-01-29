@@ -131,7 +131,7 @@ ConsoleCommand* C3PConsole::_cmd_def_lookup(char* str) {
 */
 ParsingConsole::~ParsingConsole() {
   _buffer.clear();
-  _log.clear();
+  _response.clear();
   clearHistory();
 }
 
@@ -161,11 +161,11 @@ int8_t ParsingConsole::pushBuffer(StringBuilder* incoming) {
   //   L: 0x1b, 0x5b, 0x44   R: 0x1b, 0x5b, 0x43
   uint8_t first_byte = *(incoming->string());
   if (localEcho()) {
-    _log.concat(incoming);  // We do it this way to copy the buffer. printToLog() will take it.
-    //incoming->printDebug(&_log); Uncomment to hex dump received characters.
+    _response.concat(incoming);  // We do it this way to copy the buffer. printToLog() will take it.
+    //incoming->printDebug(&_response); Uncomment to hex dump received characters.
     if (0x08 == first_byte) {
       uint8_t last_chr_erase[] = {0x20, 0x08};
-      _log.concat(last_chr_erase, 2);
+      _response.concat(last_chr_erase, 2);
     }
     printToLog(nullptr);   // Flush the log out of the console.
   }
@@ -232,7 +232,7 @@ int8_t ParsingConsole::_process_buffer() {
             // TODO: Change to prompt color.
           }
           // Write the prompt to the log.
-          _log.concatf("\n%s", _prompt_string);
+          _response.concatf("\n%s", _prompt_string);
         }
       }
     }
@@ -244,13 +244,12 @@ int8_t ParsingConsole::_process_buffer() {
 
 int8_t ParsingConsole::_relay_to_output_target() {
   int8_t ret = -1;
-  if ((!_log.isEmpty()) && (nullptr != _output_target)) {
+  if ((!_response.isEmpty()) & (nullptr != _output_target)) {
     if (LineTerm::LF != _tx_terminator) {
-      _log.replace("\n", lineTerminatorLiteralStr(_tx_terminator));
+      _response.replace("\n", lineTerminatorLiteralStr(_tx_terminator));
     }
-    _log.string();
-    switch (_output_target->pushBuffer(&_log)) {
-      case 0:   _log.clear();  // Be sure to discard the log if the downstream BufferAcceptor didn't entirely claim it.
+    switch (_output_target->pushBuffer(&_response)) {
+      case 0:   _response.clear();  // Be sure to discard the log if the downstream BufferAcceptor didn't entirely claim it.
       case 1:   ret = 0;
       default:  break;
     }
@@ -264,7 +263,7 @@ int8_t ParsingConsole::_relay_to_output_target() {
 */
 void ParsingConsole::printToLog(StringBuilder* l) {
   if (nullptr != l) {
-    _log.concatHandoff(l);
+    _response.concatHandoff(l);
   }
   _relay_to_output_target();
 }
@@ -272,7 +271,7 @@ void ParsingConsole::printToLog(StringBuilder* l) {
 
 void ParsingConsole::printPrompt() {
   if (nullptr != _prompt_string) {
-    _log.concat(_prompt_string);
+    _response.concat(_prompt_string);
     _relay_to_output_target();
   }
 };
@@ -284,7 +283,7 @@ void ParsingConsole::printPrompt() {
 */
 void ParsingConsole::fetchLog(StringBuilder* l) {
   if (nullptr != l) {
-    l->concatHandoff(&_log);
+    l->concatHandoff(&_response);
   }
 }
 
@@ -307,9 +306,9 @@ int8_t ParsingConsole::_exec_line(StringBuilder* line) {
     ret--;
     if ((tmp_line.count() >= cmd->req_count)) {
       // If we have enough arguments to be plausibly valid....
-      if (0 != cmd->ccb(&_log, &tmp_line)) {
+      if (0 != cmd->ccb(&_response, &tmp_line)) {
         if (printHelpOnFail()) {
-          cmd->printDetailedHelp(&_log);
+          cmd->printDetailedHelp(&_response);
           printToLog(nullptr);   // Flush the log out of the console.
         }
       }
@@ -317,12 +316,19 @@ int8_t ParsingConsole::_exec_line(StringBuilder* line) {
     }
     else {
       // Report to the log.
-      _log.concatf("Command '%s' requires %d arguments. Only %d provided.\n", cmd->cmd, cmd->req_count, tmp_line.count());
-      cmd->printDetailedHelp(&_log);
+      _response.concatf("Command '%s' requires %d arguments. Only %d provided.\n", cmd->cmd, cmd->req_count, tmp_line.count());
+      cmd->printDetailedHelp(&_response);
     }
   }
+  else if (strlen(cmd_str) > 0) {
+    // TODO: Why does this crash following removal of errCB?
+    //_response.concatf("Command '%s' not supported.\n", cmd_str);
+    _response.concat("Command '");
+    _response.concat(cmd_str);
+    _response.concat("' not supported.\n");
+  }
   else {
-    _log.concatf("Command '%s' not supported.\n", cmd_str);
+    // Dead string.
   }
   return ret;
 }
