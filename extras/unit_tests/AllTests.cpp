@@ -186,6 +186,7 @@ void printTestFailure(const char* module, const char* test) {
 #include "TestModules/LinkedListTests.cpp"
 #include "TestModules/EnumWrapperTests.cpp"
 #include "TestModules/FSMTests.cpp"
+#include "TestModules/TimeSeriesTests.cpp"
 #include "TestModules/SchedulerTests.cpp"
 #include "TestModules/TimerUtilityTests.cpp"
 #include "TestModules/BufferAccepterTests.cpp"
@@ -236,10 +237,11 @@ void printTypeSizes() {
   print_types_conf_record();
   print_types_parsing_console();
   print_types_sensorfilter();
+  print_types_timeseries();
   print_types_m2mlink();
 }
 
-
+//timeseries_tests_main()
 
 /*******************************************************************************
 * Top-level tests are managed using AsyncSequencer.
@@ -272,11 +274,12 @@ void printTypeSizes() {
 #define CHKLST_ENUM_WRAPPER_TESTS     0x00400000  // EnumWrapper
 #define CHKLST_CONF_RECORD            0x00800000  // ConfRecord
 #define CHKLST_TYPE_CONTAINER_TESTS   0x01000000  // C3PType. C3PValue
+#define CHKLST_TIMESERIES_TESTS       0x02000000  // TimeSeries
 
-#define CHKLST_GPS_PARSING_TESTS      0x02000000  // TODO:
 #define CHKLST_ELEMENT_POOL_TESTS     0x04000000  // TODO: ElementPool<T>
 #define CHKLST_BUS_QUEUE_TESTS        0x08000000  // TODO:
 #define CHKLST_UNIT_HANDLING_TESTS    0x10000000  // TODO:
+#define CHKLST_GPS_PARSING_TESTS      0x20000000  // TODO:
 #define CHKLST_3_AXIS_PIPE_TESTS      0x40000000  // TODO:
 #define CHKLST_LOGGER_TESTS           0x80000000  // TODO: The logging abstraction.
 
@@ -315,7 +318,8 @@ void printTypeSizes() {
   CHKLST_TYPE_CONTAINER_TESTS | CHKLST_KEY_VALUE_PAIR_TESTS)
 
 #define CHKLST_ALL_TIER_3_TESTS ( \
-  CHKLST_PARSINGCONSOLE_TESTS | CHKLST_SENSORFILTER_TESTS | \
+  CHKLST_TIMESERIES_TESTS | CHKLST_SENSORFILTER_TESTS | \
+  CHKLST_PARSINGCONSOLE_TESTS | \
   CHKLST_LOGGER_TESTS | CHKLST_M2MLINK_TESTS | CHKLST_CONF_RECORD)
 
 #define CHKLST_ALL_TESTS ( \
@@ -641,6 +645,15 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .DEP_MASK     = (CHKLST_CODEC_LINE_TERM_TESTS | CHKLST_SCHEDULER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == parsing_console_main()) ? 1:-1);  }
+  },
+
+  // TimeSeries is intended to provide a re-usable means of handling timeseries
+  //   data.
+  { .FLAG         = CHKLST_TIMESERIES_TESTS,
+    .LABEL        = "TimeSeries<T>",
+    .DEP_MASK     = (CHKLST_KEY_VALUE_PAIR_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == timeseries_tests_main()) ? 1:-1);  }
   },
 
   // TODO: SensorFilter is under tremendous strain right now. It's API and

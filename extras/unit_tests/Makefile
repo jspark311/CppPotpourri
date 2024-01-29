@@ -70,6 +70,7 @@ SOURCES_CPP += ../../src/Pipes/BufferAccepter/TestFixtures/*.cpp
 SOURCES_CPP += ../../src/TimerTools/*.cpp
 SOURCES_CPP += ../../src/C3PValue/*.cpp
 SOURCES_CPP += ../../src/Image/*.cpp
+SOURCES_CPP += ../../src/TimeSeries/*.cpp
 SOURCES_CPP += ../../src/Console/*.cpp
 SOURCES_CPP += ../../src/cbor-cpp/*.cpp
 SOURCES_CPP += ../../src/Pipes/TripleAxisPipe/*.cpp
