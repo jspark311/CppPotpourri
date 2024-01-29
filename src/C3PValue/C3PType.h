@@ -34,11 +34,19 @@ TODO: Add cross-type support for TCode::STR. atoi(), toString(), etc...
 
 #include <inttypes.h>
 #include <stddef.h>
+#include "../Vector3.h"
+
+// For-dec of class types to avoid including them.
 class StringBuilder;
 class C3PType;
+class Identity;
+class StopWatch;
+class Image;
+class KeyValuePair;
+
 
 /*******************************************************************************
-* Type codes, flags, and other surrounding fixed values.                       *
+* Type codes, flags, and surrounding fixed values.                             *
 *******************************************************************************/
 /**
 * These are the different flags that might apply to a type. They are constants.
@@ -144,13 +152,46 @@ C3PType* getTypeHelper(const TCode);
 
 
 /*
+* Inlines that return a TCode the represents that type in the argument.
+* These are useful for greasing template-escape elsewhere.
+*/
+inline const TCode tcodeForType(int8_t) {              return TCode::INT8;           };
+inline const TCode tcodeForType(int16_t) {             return TCode::INT16;          };
+inline const TCode tcodeForType(int32_t) {             return TCode::INT32;          };
+inline const TCode tcodeForType(int64_t) {             return TCode::INT64;          };
+inline const TCode tcodeForType(uint8_t) {             return TCode::UINT8;          };
+inline const TCode tcodeForType(uint16_t) {            return TCode::UINT16;         };
+inline const TCode tcodeForType(uint32_t) {            return TCode::UINT32;         };
+inline const TCode tcodeForType(uint64_t) {            return TCode::UINT64;         };
+inline const TCode tcodeForType(bool) {                return TCode::BOOLEAN;        };
+inline const TCode tcodeForType(float) {               return TCode::FLOAT;          };
+inline const TCode tcodeForType(double) {              return TCode::DOUBLE;         };
+inline const TCode tcodeForType(char*) {               return TCode::STR;            };
+inline const TCode tcodeForType(const char*) {         return TCode::STR;            };
+inline const TCode tcodeForType(Vector3<int8_t>*) {    return TCode::VECT_3_INT8;    };
+inline const TCode tcodeForType(Vector3<int16_t>*) {   return TCode::VECT_3_INT16;   };
+inline const TCode tcodeForType(Vector3<int32_t>*) {   return TCode::VECT_3_INT32;   };
+inline const TCode tcodeForType(Vector3<uint8_t>*) {   return TCode::VECT_3_UINT8;   };
+inline const TCode tcodeForType(Vector3<uint16_t>*) {  return TCode::VECT_3_UINT16;  };
+inline const TCode tcodeForType(Vector3<uint32_t>*) {  return TCode::VECT_3_UINT32;  };
+inline const TCode tcodeForType(Vector3<float>*) {     return TCode::VECT_3_FLOAT;   };
+inline const TCode tcodeForType(Vector3<double>*) {    return TCode::VECT_3_DOUBLE;  };
+inline const TCode tcodeForType(KeyValuePair*) {       return TCode::KVP;            };
+inline const TCode tcodeForType(StringBuilder*) {      return TCode::STR_BUILDER;    };
+inline const TCode tcodeForType(Identity*) {           return TCode::IDENTITY;       };
+inline const TCode tcodeForType(Image*) {              return TCode::IMAGE;          };
+inline const TCode tcodeForType(StopWatch*) {          return TCode::STOPWATCH;      };
+
+
+
+/*******************************************************************************
 * This is a binder object for consolidating pointer-length parameters into a
 *   single object. Some binary types need this for ease of handling.
 * Objects of this type are mainly internal to C3PType and
 *   C3PValue, and will always be heap-allocated (and free'd) by those classes
 *   when necessary.
 * Buffer write-through semantics are abstracted by C3PType's API.
-*/
+*******************************************************************************/
 typedef struct c3p_bin_binder_t {
   uint8_t*  buf;    // TCode::BINARY implies a second parameter (length). This
   uint32_t  len;    //   shim holds pointer and length as a single object.

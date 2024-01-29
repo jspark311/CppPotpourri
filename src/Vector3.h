@@ -42,13 +42,12 @@ Thank you, Bill and Michael!
  *
  ****************************************/
 
-#ifndef __MANUVR_DS_VECTOR3_H
-#define __MANUVR_DS_VECTOR3_H
+#ifndef __C3P_VECTOR3_H
+#define __C3P_VECTOR3_H
 
 #include <inttypes.h>
 #include <stdint.h>
 #include <math.h>
-
 
 /*
 * If used in the context of gravity, means: "Which axis is up?"
@@ -210,14 +209,19 @@ template <class T> class Vector3 {
     Vector3<T> projected(const Vector3<T> &v) {  return v * (*this * v)/(v*v); }
 
     // computes the angle between 2 arbitrary vectors
-    static inline T angle(const Vector3<T> &v1, const Vector3<T> &v2)
-    {   return (T)acosf((v1*v2) / (v1.length()*v2.length()));  }
+    static float angle(const Vector3<T> &v1, const Vector3<T> &v2) {
+      const float V_DOT    = (float) (v1*v2);
+      const float LEN_PROD = (float) (v1.length()*v2.length());
+      return ((0 != LEN_PROD) ? acosf(V_DOT / LEN_PROD) : 0.0f);
+    };
 
     // computes the angle between 2 arbitrary normalized vectors
     // NOTE: The minimum check is to prevent floating point rounding from
     //   causing a domain error in acosf().
-    static inline T angle_normalized(const Vector3<T> &v1, const Vector3<T> &v2)
-    {   return (T)acosf(strict_min(1.0, v1*v2));  }
+    static float angle_normalized(const Vector3<T> &v1, const Vector3<T> &v2) {
+      const float V_DOT = (float) (v1*v2);
+      return acosf(((V_DOT <= 1.0f) ? V_DOT : 1.0f));
+    };
 
 };
 
@@ -230,4 +234,4 @@ typedef Vector3<uint8_t>       Vector3u8;
 typedef Vector3<float>         Vector3f;
 typedef Vector3<double>        Vector3f64;
 
-#endif // __MANUVR_DS_VECTOR3_H
+#endif // __C3P_VECTOR3_H
