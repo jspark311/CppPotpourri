@@ -143,4 +143,19 @@ class C3PRegShadows {
 };
 
 
+
+/*******************************************************************************
+* Interfaces for common driver features.
+*******************************************************************************/
+
+/* An interface for PWM drivers to implement. */
+class C3PInterfacePWM {
+  public:
+    virtual int8_t   frequency(uint32_t HZ) =0;
+    virtual uint32_t frequency()            =0;
+    virtual int8_t   dutyRatio(const float) =0;
+    virtual float    dutyRatio()            =0;
+};
+
+
 #endif __HARDWARE_DEVICE_PATTERNS_H__

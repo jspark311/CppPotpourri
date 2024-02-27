@@ -187,8 +187,8 @@ int8_t ParsingConsole::pushBuffer(StringBuilder* incoming) {
 // TODO: For minimum confusion, we need a bi-directional analog of BufferAccepter.
 int32_t ParsingConsole::bufferAvailable() {
   int32_t  ret = -1;
-  if (nullptr != _output_target) {
-    ret = _output_target->bufferAvailable();
+  if (nullptr != _efferant) {
+    ret = _efferant->bufferAvailable();
   }
   return ret;
 }
@@ -244,11 +244,11 @@ int8_t ParsingConsole::_process_buffer() {
 
 int8_t ParsingConsole::_relay_to_output_target() {
   int8_t ret = -1;
-  if ((!_response.isEmpty()) & (nullptr != _output_target)) {
+  if ((!_response.isEmpty()) & (nullptr != _efferant)) {
     if (LineTerm::LF != _tx_terminator) {
       _response.replace("\n", lineTerminatorLiteralStr(_tx_terminator));
     }
-    switch (_output_target->pushBuffer(&_response)) {
+    switch (_efferant->pushBuffer(&_response)) {
       case 0:   _response.clear();  // Be sure to discard the log if the downstream BufferAcceptor didn't entirely claim it.
       case 1:   ret = 0;
       default:  break;

@@ -83,25 +83,19 @@ class ConsoleCommand {
 /*
 * This is the base for a console class.
 */
-class C3PConsole : public BufferAccepter {
+class C3PConsole {
   public:
-    /* Implementation of BufferAccepter is done by the child class. */
-    virtual int8_t  pushBuffer(StringBuilder*) =0;
-    virtual int32_t bufferAvailable()          =0;
-
     int8_t defineCommand(const char* c, const char* h, const char* p, const uint8_t r, const consoleCallback);
     int8_t defineCommand(const char* c, const char sc, const char* h, const char* p, const uint8_t r, const consoleCallback);
     int8_t defineCommand(const ConsoleCommand* cmd);
     int8_t defineCommands(const ConsoleCommand* cmds, const int cmd_count);
-    inline void setOutputTarget(BufferAccepter* obj) {   _output_target = obj;  };
 
   protected:
     LinkedList<StringBuilder*>  _history;   // Stores a list of prior commands.
     LinkedList<ConsoleCommand*> _cmd_list;  // Stores a list of command definitions.
-    BufferAccepter* _output_target;
     uint8_t _max_cmd_len;                   // Tracks the longest command defined.
 
-    C3PConsole() : _output_target(nullptr), _max_cmd_len(0) {};
+    C3PConsole() : _max_cmd_len(0) {};
     ~C3PConsole();
 
     ConsoleCommand* _cmd_def_lookup(char*);     // Get a command from our list by its name.
@@ -112,7 +106,7 @@ class C3PConsole : public BufferAccepter {
 /*
 * This is the console class.
 */
-class ParsingConsole : public C3PConsole {
+class ParsingConsole : public C3PConsole, public BufferCoDec {
   public:
     ParsingConsole(const uint16_t max_len) : _MAX_LEN(max_len) {};
     ~ParsingConsole();
@@ -193,5 +187,11 @@ class ParsingConsole : public C3PConsole {
       else    _flags &= ~_flag;
     };
 };
+
+
+
+#if defined(CONFIG_C3P_M2M_SUPPORT)
+  // Defines a
+#endif  // CONFIG_C3P_M2M_SUPPORT
 
 #endif  // __PARSING_CONSOLE_H__

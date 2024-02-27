@@ -57,19 +57,19 @@ NOTE: This has been a mad binge to port over all this work from ManuvrOS. Five
                                            ---J. Ian Lindsay 2021.10.16 20:27:54
 */
 
+#ifndef __C3P_XENOSESSION_H
+#define __C3P_XENOSESSION_H
 
+#include "../Meta/Rationalizer.h"     // Include build options checking.
 #include "../StringBuilder.h"
 #include "../CppPotpourri.h"
+#include "../AbstractPlatform.h"
 #include "../C3PValue/KeyValuePair.h"
 #include "../BusQueue/BusQueue.h"
 #include "../FlagContainer.h"
 #include "../PriorityQueue.h"
 #include "../ElementPool.h"
 #include "../Identity/Identity.h"
-#include "../AbstractPlatform.h"
-
-#ifndef __C3P_XENOSESSION_H
-#define __C3P_XENOSESSION_H
 
 
 /*******************************************************************************
@@ -388,6 +388,39 @@ class M2MMsg {
       if (nu) _flags |= _flag;
       else    _flags &= ~_flag;
     };
+};
+
+
+
+/*
+* This is the interface class that should be implemented by any class that wants
+*   to transact over an M2MLink. Such classes are typically purpose-specific
+*   modules that respond on a key, and handle the nuances of the message layer.
+* Examples of such classes can be found in the LinkUtils folder.
+*/
+class M2MService {
+  public:
+    void printM2MService(StringBuilder*);
+
+
+  protected:
+    M2MLink*     _link;
+
+    M2MService(M2MLink* l, const uint8_t OBQ_LEN = 2) : _link(l), _svc_tag(0), _outbound(OBQ_LEN) {};
+    ~M2MService();
+
+
+    virtual int8_t _handle_msg(uint32_t tag, M2MMsg*) =0;
+    virtual int8_t _poll_for_link(M2MLink*) =0;
+
+    inline uint32_t _service_tag() {        return _svc_tag;           };
+    inline uint32_t _messages_waiting() {   return _outbound.count();  };
+    inline M2MMsg*  _take_msg() {           return _outbound.get();    };
+
+
+  private:
+    uint32_t _svc_tag;
+    RingBuffer<M2MMsg*> _outbound;
 };
 
 

@@ -32,7 +32,14 @@ limitations under the License.
 * @page tripleaxispipe
 * @section overview Overview
 *
+* TripleAxisPipe (or 3AP, for short) is a vector processing pipeline with
+*   semantic tagging and optional error propagation. It's purpose is to
+*   facilitate use of common sensors for practical problems in 3-space.
 *
+* Many of the mid-level problems involving spatial modeling from sensors are
+*   general cases of filtering and transform, and are applicatble to vectors
+*   from any real-world source. Such pieces should be parameterized and
+*   collected under this interface.
 */
 
 

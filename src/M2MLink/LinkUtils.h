@@ -19,26 +19,40 @@ This header contains classes which sit on top of a link, and add some high-level
 * The host is typically an embedded system that maintains time-series data that
 *   it wants to annotate and make avaiable to other systems.
 */
-class LinkDataHost {
+class LinkDataHost : public M2MService {
   public:
     LinkDataHost(M2MLink* l);
-    ~LinkDataHost() {};
+    ~LinkDataHost();
+
+    int8_t listData(C3PValue*);
+    int8_t unlistData(C3PValue*);
+    int8_t listData(KeyValuePair*);
+    int8_t unlistData(KeyValuePair*);
+
+    /* Implementation of M2MService. Trades messages with a link. */
+    int8_t _handle_msg(uint32_t tag, M2MMsg*);
+    int8_t _poll_for_link(M2MLink*);
+
 
   private:
-    M2MLink* _link;
+    uint16_t _seq_mark;
 };
 
 
 /*
-* The client is instantiated on a system that wants to replicate offboard data.
+* The client is instantiated on a system that wants to read offboard data.
 */
-class LinkDataClient {
+class LinkDataClient : public M2MService {
   public:
     LinkDataClient(M2MLink* l);
-    ~LinkDataClient() {};
+    ~LinkDataClient();
+
+    /* Implementation of M2MService. Trades messages with a link. */
+    virtual int8_t _handle_msg(uint32_t tag, M2MMsg*) =0;
+    virtual int8_t _poll_for_link(M2MLink*) =0;
 
   private:
-    M2MLink* _link;
+    C3PValue* _mirror_val;
 };
 
 
@@ -47,24 +61,29 @@ class LinkDataClient {
 * A pair of classes for remote console.
 *******************************************************************************/
 /*
+* This class does what ParsingConsole does. But for machines.
 */
-class LinkConsoleHost {
+class M2MLinkConsoleHost : public C3PConsole, public M2MService {
   public:
-    LinkConsoleHost(M2MLink* l, ParsingConsole*);
-    ~LinkConsoleHost() {};
+    M2MLinkConsoleHost(M2MLink*, ParsingConsole*);
+    ~M2MLinkConsoleHost() {};
+
+    /* Implementation of M2MService. Trades messages with a link. */
+    virtual int8_t _handle_msg(uint32_t tag, M2MMsg*) =0;
+    virtual int8_t _poll_for_link(M2MLink*) =0;
+
 
   private:
-    M2MLink*     _link;
     ParsingConsole* _console;
 };
 
 
 /*
 */
-class LinkConsoleClient {
+class M2MLinkConsoleClient {
   public:
-    LinkConsoleClient(M2MLink* l);
-    ~LinkConsoleClient() {};
+    M2MLinkConsoleClient(M2MLink*);
+    ~M2MLinkConsoleClient() {};
 
   private:
     M2MLink* _link;
