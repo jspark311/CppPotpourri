@@ -350,8 +350,8 @@ int link_tests_build_and_connect(M2MLink* vlad, M2MLink* carl) {
   int ret = -1;
   if ((nullptr != vlad) & (nullptr != carl)) {
     // Connect Vlad's output to Carl's input, and Carl's output to Vlad's input.
-    vlad->setOutputTarget(carl);
-    carl->setOutputTarget(vlad);
+    vlad->setEfferant(carl);
+    carl->setEfferant(vlad);
     // Now connect each of them to their respective application callbacks.
     vlad->setCallback(callback_vlad);
     carl->setCallback(callback_carl);
@@ -670,8 +670,8 @@ int manuvrlink_main() {
     printf("*  M2MLink tests all pass     *\n");
     printf("**********************************\n");
   }
-  vlad->setOutputTarget(nullptr);
-  carl->setOutputTarget(nullptr);
+  vlad->setEfferant(nullptr);
+  carl->setEfferant(nullptr);
   delete vlad;
   delete carl;
   return ret;

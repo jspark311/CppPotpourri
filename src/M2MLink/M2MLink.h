@@ -428,7 +428,7 @@ class M2MService {
 * This class represents an open comm session with a foreign device via an
 *   unspecified transport. All we care about is the byte stream.
 */
-class M2MLink : public BufferAccepter {
+class M2MLink : public BufferCoDec {
   public:
     M2MLink(const M2MLinkOpts* opts);
     virtual ~M2MLink();
@@ -458,11 +458,13 @@ class M2MLink : public BufferAccepter {
     void printQueues(StringBuilder*);
     void printFSM(StringBuilder*);
 
-    /* Inline accessors. */
+    /* Functions for planning message handling. */
     inline M2MLinkState getState() {                  return _fsm_pos;      };
     inline void setCallback(M2MLinkCB cb) {           _lnk_callback = cb;   };
     inline void setCallback(M2MMsgCB cb) {            _msg_callback = cb;   };
-    inline void setOutputTarget(BufferAccepter* o) {  _output_target = o;   };
+    void setCallback(M2MService*);
+
+    /* Inline accessors. */
     inline uint32_t  linkTag() {                      return _session_tag;  };
     inline uint16_t  replyTimeouts() {                return _unackd_sends; };
     inline void      verbosity(uint8_t x) {           _verbosity = x;       };
@@ -470,6 +472,7 @@ class M2MLink : public BufferAccepter {
     inline void      localIdentity(Identity* id) {    _id_loc = id;         };
     inline Identity* localIdentity() {                return _id_loc;       };
     inline Identity* remoteIdentity() {               return _id_remote;    };
+
 
     /* Built-in per-instance console handlers. */
     int8_t console_handler(StringBuilder* text_return, StringBuilder* args);
@@ -486,6 +489,7 @@ class M2MLink : public BufferAccepter {
     //ElementPool<M2MMsg*>   _preallocd(4, &_msg_pool);
     PriorityQueue<M2MMsg*> _outbound_messages;   // Messages that are bound for the counterparty.
     PriorityQueue<M2MMsg*> _inbound_messages;    // Messages that came from the counterparty.
+    PriorityQueue<M2MService*> _svc_list;        // A list of modules that transact on the link.
     FlagContainer32 _flags;
     M2MLinkState    _fsm_waypoints[M2MLINK_FSM_WAYPOINT_DEPTH] = {M2MLinkState::UNINIT, };
     uint32_t        _fsm_lockout_ms = 0;        // Used to enforce a delay between state transitions.
@@ -502,7 +506,6 @@ class M2MLink : public BufferAccepter {
     M2MMsg*         _working        = nullptr;  // If we are in the middle of receiving a message,
     Identity*       _id_loc         = nullptr;
     Identity*       _id_remote      = nullptr;
-    BufferAccepter* _output_target  = nullptr;  // A pointer to the transport for outbound bytes.
     M2MLinkCB       _lnk_callback   = nullptr;  // The application-provided callback for state changes.
     M2MMsgCB        _msg_callback   = nullptr;  // The application-provided callback for incoming messages.
     StringBuilder   _inbound_buf;   // TODO: Replace with a RingBuffer<uint8_t> and finally resolve the MTU feature.

@@ -36,6 +36,8 @@ class LinkDataHost : public M2MService {
 
   private:
     uint16_t _seq_mark;
+
+    //int8_t _build_message();
 };
 
 
@@ -53,6 +55,8 @@ class LinkDataClient : public M2MService {
 
   private:
     C3PValue* _mirror_val;
+
+    //int8_t _refresh_list();
 };
 
 

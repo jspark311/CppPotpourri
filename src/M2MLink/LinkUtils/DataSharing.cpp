@@ -29,9 +29,11 @@ VAL:
   Requests or delivers a value. Values may be automatically sent (change notice)
   or polled, depending on configuration.
 
+CONF:
+  Establishes a mutual behavioral agreement on how to handle value updates and
+  make best-use of the link.
 
 */
-
 
 #include "../M2MLink.h"
 #include "../../SensorFilter.h"

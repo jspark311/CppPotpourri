@@ -188,10 +188,4 @@ class ParsingConsole : public C3PConsole, public BufferCoDec {
     };
 };
 
-
-
-#if defined(CONFIG_C3P_M2M_SUPPORT)
-  // Defines a
-#endif  // CONFIG_C3P_M2M_SUPPORT
-
 #endif  // __PARSING_CONSOLE_H__

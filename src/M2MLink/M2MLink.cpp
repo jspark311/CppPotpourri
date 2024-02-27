@@ -53,7 +53,7 @@ const char* M2MLink::sessionStateStr(const M2MLinkState CODE) {
     case M2MLinkState::LIVE:             return "LIVE";
     case M2MLinkState::PENDING_HANGUP:   return "PENDING_HANGUP";
     case M2MLinkState::HUNGUP:           return "HUNGUP";
-    default:                                return "<UNKNOWN>";
+    default:                             return "<UNKNOWN>";
   }
 }
 
@@ -71,7 +71,7 @@ const char* M2MLink::manuvMsgCodeStr(const M2MMsgCode CODE) {
     case M2MMsgCode::WHO:                return "WHO";
     case M2MMsgCode::DHT_FXN:            return "DHT_FXN";
     case M2MMsgCode::APPLICATION:        return "APPLICATION";
-    default:                                return "<UNKNOWN>";
+    default:                             return "<UNKNOWN>";
   }
 }
 
@@ -1033,7 +1033,7 @@ void M2MLink::_reset_class() {
 */
 int8_t M2MLink::_relay_to_output_target(StringBuilder* buf) {
   int8_t ret = -1;
-  if (nullptr != _output_target) {
+  if (nullptr != _efferant) {
     if (_verbosity >= LOG_LEV_DEBUG) {
       StringBuilder tmp_log;
       tmp_log.concatf("\n\n__________Emitting (%u)\t", buf->length());
@@ -1042,7 +1042,7 @@ int8_t M2MLink::_relay_to_output_target(StringBuilder* buf) {
       c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, &tmp_log);
     }
 
-    switch (_output_target->pushBuffer(buf)) {
+    switch (_efferant->pushBuffer(buf)) {
       case 0:
         buf->clear();  // If the BufferPipe didn't claim the buffer, clear it.
         // NOTE: No break;
@@ -1464,7 +1464,7 @@ int8_t M2MLink::_poll_fsm() {
     // Exit conditions: Class config is valid, and we have all the pointers we
     //   need.
     case M2MLinkState::UNINIT:
-      fsm_advance = ((nullptr != _output_target) & (nullptr != _msg_callback));
+      fsm_advance = ((nullptr != _efferant) & (nullptr != _msg_callback));
       if (fsm_advance) {   // Make sure we have somewhere to advance INTO.
         _set_fsm_route(3, M2MLinkState::PENDING_SETUP, M2MLinkState::SYNC_RESYNC, M2MLinkState::SYNC_TENTATIVE);
       }
@@ -1790,7 +1790,7 @@ int8_t M2MLink::_fsm_insert_sync_states() {
 
 
 /*******************************************************************************
-* M2MMsg memory lifecycle functions                                         *
+* M2MMsg memory lifecycle functions                                            *
 *******************************************************************************/
 
 /**
