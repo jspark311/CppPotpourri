@@ -7,10 +7,17 @@ This header contains classes which sit on top of a link, and add some high-level
   capability.
 */
 
+#ifndef __M2MLINK_UTILS_H_
+#define __M2MLINK_UTILS_H_
+
 #include "M2MLink.h"
 #include "../Console/C3PConsole.h"
 #include "../SensorFilter.h"
 
+
+// These are specific M2MService classes that have been isolated into their own
+//   subdirectories.
+#include "LinkUtils/M2MLinkRPC.h"
 
 /*******************************************************************************
 * A pair of classes for unidirectional data-sharing.
@@ -90,7 +97,6 @@ class M2MLinkConsoleClient {
     ~M2MLinkConsoleClient() {};
 
   private:
-    M2MLink* _link;
 };
 
 
@@ -103,3 +109,5 @@ class M2MLinkConsoleClient {
 /*******************************************************************************
 * A pair of classes to expose device configuration for remote manipulation.
 *******************************************************************************/
+
+#endif  // __M2MLINK_UTILS_H_

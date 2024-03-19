@@ -52,7 +52,6 @@ TODO: About that... This program is presumably being run under linux, and so we
 #include "Image/Image.h"
 #include "Identity/IdentityUUID.h"
 #include "Identity/Identity.h"
-#include "M2MLink/M2MLink.h"
 
 
 /*******************************************************************************
@@ -677,7 +676,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .LABEL        = "M2MLink",
     .DEP_MASK     = (CHKLST_ALL_TIER_2_TESTS | CHKLST_PARSINGCONSOLE_TESTS | CHKLST_LOGGER_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == manuvrlink_main()) ? 1:-1);  }
+    .POLL_FXN     = []() { return ((0 == m2mlink_test_main()) ? 1:-1);  }
   },
 };
 

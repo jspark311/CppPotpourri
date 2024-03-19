@@ -1367,14 +1367,12 @@ AsyncSequencer sb_test_plan(TOP_LEVEL_SB_TEST_LIST, (sizeof(TOP_LEVEL_SB_TEST_LI
 *******************************************************************************/
 
 int stringbuilder_main() {
-  int ret = 0;   // Failure is the default result.
   const char* const MODULE_NAME = "StringBuilder";
-
   sb_test_plan.requestSteps(CHKLST_SB_TESTS_ALL);
   while (!sb_test_plan.request_completed() && (0 == sb_test_plan.failed_steps(false))) {
     sb_test_plan.poll();
   }
-  ret = (sb_test_plan.request_fulfilled() ? 0 : 1);
+  int ret = (sb_test_plan.request_fulfilled() ? 0 : 1);
 
   StringBuilder report_output;
   sb_test_plan.printDebug(&report_output, "StringBuilder test report");
