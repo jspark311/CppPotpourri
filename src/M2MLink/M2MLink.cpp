@@ -32,6 +32,7 @@ limitations under the License.
 #define M2MLINK_PRIORITY_INTERNAL         20  // Classes own messages have highest priority.
 
 
+
 /*******************************************************************************
 *      _______.___________.    ___   .___________. __    ______     _______.
 *     /       |           |   /   \  |           ||  |  /      |   /       |
@@ -43,21 +44,26 @@ limitations under the License.
 * Static members and initializers should be located here.
 *******************************************************************************/
 
-const char* M2MLink::sessionStateStr(const M2MLinkState CODE) {
-  switch (CODE) {
-    case M2MLinkState::UNINIT:           return "UNINIT";
-    case M2MLinkState::PENDING_SETUP:    return "PENDING_SETUP";
-    case M2MLinkState::SYNC_RESYNC:      return "SYNC_RESYNC";
-    case M2MLinkState::SYNC_TENTATIVE:   return "SYNC_TENTATIVE";
-    case M2MLinkState::PENDING_AUTH:     return "PENDING_AUTH";
-    case M2MLinkState::LIVE:             return "LIVE";
-    case M2MLinkState::PENDING_HANGUP:   return "PENDING_HANGUP";
-    case M2MLinkState::HUNGUP:           return "HUNGUP";
-    default:                             return "<UNKNOWN>";
-  }
+
+const EnumDef<M2MLinkState> _STATE_LIST[] = {
+  { M2MLinkState::UNINIT,         "UNINIT"},           //
+  { M2MLinkState::PENDING_SETUP,  "PENDING_SETUP"},    //
+  { M2MLinkState::SYNC_RESYNC,    "SYNC_RESYNC"},      //
+  { M2MLinkState::SYNC_TENTATIVE, "SYNC_TENTATIVE"},   //
+  { M2MLinkState::PENDING_AUTH,   "PENDING_AUTH"},     //
+  { M2MLinkState::LIVE,           "LIVE"},             //
+  { M2MLinkState::PENDING_HANGUP, "PENDING_HANGUP"},   //
+  { M2MLinkState::HUNGUP,         "HUNGUP"},           //
+  { M2MLinkState::INVALID,        "INVALID", (ENUM_WRAPPER_FLAG_CATCHALL)}
+};
+const EnumDefList<M2MLinkState> M2MLink::_FSM_STATES(&_STATE_LIST[0], (sizeof(_STATE_LIST) / sizeof(_STATE_LIST[0])), "M2MLinkState");
+
+const char* const M2MLink::sessionStateStr(const M2MLinkState CODE) {
+  return _FSM_STATES.enumStr(CODE);
 }
 
-const char* M2MLink::manuvMsgCodeStr(const M2MMsgCode CODE) {
+
+const char* const M2MLink::manuvMsgCodeStr(const M2MMsgCode CODE) {
   switch (CODE) {
     case M2MMsgCode::UNDEFINED:          return "UNDEFINED";
     case M2MMsgCode::SYNC_KEEPALIVE:     return "SYNC_KEEPALIVE";
@@ -94,28 +100,6 @@ const bool M2MLink::msgCodeValid(const M2MMsgCode CODE) {
     case M2MMsgCode::WHO:
     case M2MMsgCode::DHT_FXN:
     case M2MMsgCode::APPLICATION:
-      return true;
-    default:
-      return false;
-  }
-}
-
-/**
-* Is the given FSM code valid? Used to do safe enum conversion.
-*
-* @param The FSM code to test.
-* @return true if so. False otherwise.
-*/
-static const bool _link_fsm_code_valid(const M2MLinkState CODE) {
-  switch (CODE) {
-    case M2MLinkState::UNINIT:
-    case M2MLinkState::PENDING_SETUP:
-    case M2MLinkState::SYNC_RESYNC:
-    case M2MLinkState::SYNC_TENTATIVE:
-    case M2MLinkState::PENDING_AUTH:
-    case M2MLinkState::LIVE:
-    case M2MLinkState::PENDING_HANGUP:
-    case M2MLinkState::HUNGUP:
       return true;
     default:
       return false;
@@ -169,8 +153,9 @@ static int _contains_sync_pattern(StringBuilder* dat_in) {
 /**
 * Constructor
 */
-M2MLink::M2MLink(const M2MLinkOpts* opts) : _opts(opts), _flags(opts->default_flags) {
-}
+M2MLink::M2MLink(const M2MLinkOpts* opts) :
+  StateMachine<M2MLinkState>("M2MLink-FSM", &M2MLink::_FSM_STATES, M2MLinkState::UNINIT, M2MLINK_FSM_WAYPOINT_DEPTH),
+  _opts(opts), _flags(opts->default_flags) {}
 
 
 /**
@@ -207,7 +192,7 @@ int8_t M2MLink::pushBuffer(StringBuilder* buf) {
   int8_t ret = 1;
   _ms_last_rec = millis();
 
-  switch (_fsm_pos) {   // Consider the session state.
+  switch (currentState()) {   // Consider the session state.
     case M2MLinkState::SYNC_RESYNC:
     case M2MLinkState::SYNC_TENTATIVE:  // We have exchanged sync packets with the counterparty.
     case M2MLinkState::PENDING_AUTH:
@@ -255,7 +240,7 @@ int32_t M2MLink::bufferAvailable() {
 *        -1 on error
 */
 int8_t M2MLink::poll(StringBuilder* log_ret) {
-  switch (_fsm_pos) {
+  switch (currentState()) {
     case M2MLinkState::PENDING_SETUP:
     case M2MLinkState::HUNGUP:
       break;
@@ -271,7 +256,7 @@ int8_t M2MLink::poll(StringBuilder* log_ret) {
       }
       break;
   }
-  int8_t ret = _poll_fsm();                 // Poll the link's FSM.
+  int8_t ret = _fsm_poll();                 // Poll the link's FSM.
   if (_remote_log.length() > 0) {           // If the link generated logs...
     if (nullptr != log_ret)                 // ...and the caller wants them...
       log_ret->concatHandoff(&_remote_log); // ...relay them to the caller.
@@ -292,14 +277,14 @@ int8_t M2MLink::poll(StringBuilder* log_ret) {
 int8_t M2MLink::hangup(bool graceful) {
   int8_t ret = -1;
   bool forced_hangup = false;
-  switch (_fsm_pos) {
+  switch (currentState()) {
     case M2MLinkState::SYNC_RESYNC:
     case M2MLinkState::SYNC_TENTATIVE:
     case M2MLinkState::PENDING_AUTH:
     case M2MLinkState::LIVE:
       forced_hangup = !graceful;
       if (graceful) {
-        ret = _append_fsm_route(2, M2MLinkState::PENDING_HANGUP, M2MLinkState::HUNGUP);
+        ret = _fsm_append_route(2, M2MLinkState::PENDING_HANGUP, M2MLinkState::HUNGUP);
       }
       break;
 
@@ -321,7 +306,7 @@ int8_t M2MLink::hangup(bool graceful) {
     //   with the PENDING_HANGUP state. Obliterate the existing dialogs.
     _purge_inbound();
     _purge_outbound();
-    ret = _set_fsm_route(1, M2MLinkState::HUNGUP);
+    ret = _fsm_set_route(1, M2MLinkState::HUNGUP);
   }
   return ret;
 }
@@ -339,7 +324,7 @@ int8_t M2MLink::hangup(bool graceful) {
 */
 int8_t M2MLink::reset() {
   int8_t ret = -1;
-  if (M2MLinkState::HUNGUP == _fsm_pos) {
+  if (M2MLinkState::HUNGUP == currentState()) {
     // Clearing this flag will allow the polling loop to start re-using the
     //   class instance for another connection.
     _flags.clear(M2MLINK_FLAG_ON_HOOK);
@@ -402,7 +387,7 @@ int8_t M2MLink::writeRemoteLog(StringBuilder* outbound_log, bool need_reply) {
 * @return true if so. False otherwise.
 */
 bool M2MLink::linkIdle() {
-  if (M2MLinkState::LIVE == _fsm_pos) {
+  if (M2MLinkState::LIVE == currentState()) {
     if (0 == _outbound_messages.size()) {
       if (0 == _inbound_messages.size()) {
         if (nullptr == _working) {
@@ -451,7 +436,6 @@ void M2MLink::printDebug(StringBuilder* output) {
   if (isConnected()) {
     output->concat("\n-- Counterparty:\n");
     if (nullptr != remoteIdentity()) {
-
       output->concatf("\t[%s]:\t", remoteIdentity()->getHandle());
       remoteIdentity()->toString(output);
       output->concat('\n');
@@ -496,33 +480,6 @@ void M2MLink::printQueues(StringBuilder* output) {
 }
 
 
-/**
-* Debug support method.
-*
-* @param   StringBuilder* The buffer into which this fxn should write its output.
-*/
-void M2MLink::printFSM(StringBuilder* output) {
-  bool keep_looping = true;
-  int i = 0;
-  output->concatf("\tPrior state:   %s\n", sessionStateStr(_fsm_pos_prior));
-  output->concatf("\tCurrent state: %s%s\n\tNext states:   ", sessionStateStr(_fsm_pos), _fsm_is_waiting() ? " (LOCKED)":" ");
-  while (keep_looping & (i < M2MLINK_FSM_WAYPOINT_DEPTH)) {
-    if (M2MLinkState::UNINIT == _fsm_waypoints[i]) {
-      output->concat("<STABLE>");
-      keep_looping = false;
-    }
-    else {
-      output->concatf("%s, ", sessionStateStr(_fsm_waypoints[i]));
-    }
-    i++;
-  }
-  if (_fsm_is_waiting()) {
-    output->concatf("\tFSM locked for another %ums\n", _fsm_lockout_ms - millis());
-  }
-  output->concat('\n');
-}
-
-
 
 /*******************************************************************************
 * Functions for managing dialogs and message queues.                           *
@@ -543,7 +500,7 @@ int M2MLink::send(KeyValuePair* kvp, bool need_reply) {
   int ret = -1;
 
   // Early abort tests.
-  switch (_fsm_pos) {
+  switch (currentState()) {
     case M2MLinkState::PENDING_SETUP:
     case M2MLinkState::SYNC_RESYNC:
     case M2MLinkState::SYNC_TENTATIVE:
@@ -703,15 +660,15 @@ int8_t M2MLink::_churn_inbound() {
           if (!_flags.value(M2MLINK_FLAG_ESTABLISHED)) {
             if (_fsm_is_stable()) {   // Ensures we are in SYNC_TENTATIVE.
               if (_flags.value(M2MLINK_FLAG_AUTH_REQUIRED)) {
-                _append_fsm_route(2, M2MLinkState::PENDING_AUTH, M2MLinkState::LIVE);
+                _fsm_append_route(2, M2MLinkState::PENDING_AUTH, M2MLinkState::LIVE);
               }
               else {
-                _append_fsm_route(1, M2MLinkState::LIVE);
+                _fsm_append_route(1, M2MLinkState::LIVE);
               }
             }
           }
           else {
-            _append_fsm_route(1, M2MLinkState::LIVE);
+            _fsm_append_route(1, M2MLinkState::LIVE);
           }
           _flags.set(M2MLINK_FLAG_ESTABLISHED);
         }
@@ -747,7 +704,7 @@ int8_t M2MLink::_churn_inbound() {
           if (0 == temp->ack()) {
             if (0 == _send_msg(temp)) {
               gc_message = false;
-              _append_fsm_route(2, M2MLinkState::PENDING_HANGUP, M2MLinkState::HUNGUP);
+              _fsm_append_route(2, M2MLinkState::PENDING_HANGUP, M2MLinkState::HUNGUP);
             }
           }
           if (gc_message & (_verbosity >= LOG_LEV_ERROR)) {
@@ -1112,7 +1069,7 @@ int8_t M2MLink::_process_input_buffer() {
   int8_t ret = 0;
   bool proc_fallthru = false;
 
-  switch (_fsm_pos) {
+  switch (currentState()) {
     // If the link is actively trying to attain sync...
     case M2MLinkState::SYNC_RESYNC:
       switch (_process_for_sync()) {
@@ -1457,16 +1414,16 @@ int8_t M2MLink::_send_who_message() {
 *          0 on no action
 *         -1 on error
 */
-int8_t M2MLink::_poll_fsm() {
+int8_t M2MLink::_fsm_poll() {
   int8_t ret = 0;
   bool fsm_advance = false;
-  switch (_fsm_pos) {
+  switch (currentState()) {
     // Exit conditions: Class config is valid, and we have all the pointers we
     //   need.
     case M2MLinkState::UNINIT:
       fsm_advance = ((nullptr != _efferant) & (nullptr != _msg_callback));
       if (fsm_advance) {   // Make sure we have somewhere to advance INTO.
-        _set_fsm_route(3, M2MLinkState::PENDING_SETUP, M2MLinkState::SYNC_RESYNC, M2MLinkState::SYNC_TENTATIVE);
+        _fsm_set_route(3, M2MLinkState::PENDING_SETUP, M2MLinkState::SYNC_RESYNC, M2MLinkState::SYNC_TENTATIVE);
       }
       break;
 
@@ -1512,7 +1469,7 @@ int8_t M2MLink::_poll_fsm() {
     case M2MLinkState::HUNGUP:
       fsm_advance = !_flags.value(M2MLINK_FLAG_ON_HOOK);
       if (fsm_advance) {   // Make sure we have somewhere to advance INTO.
-        _set_fsm_route(3, M2MLinkState::PENDING_SETUP, M2MLinkState::SYNC_RESYNC, M2MLinkState::SYNC_TENTATIVE);
+        _fsm_set_route(3, M2MLinkState::PENDING_SETUP, M2MLinkState::SYNC_RESYNC, M2MLinkState::SYNC_TENTATIVE);
       }
       break;
 
@@ -1523,7 +1480,7 @@ int8_t M2MLink::_poll_fsm() {
 
   // If the current state's exit criteria is met, we advance the FSM.
   if (fsm_advance & (-1 != ret)) {
-    ret = (0 == _advance_state_machine()) ? 1 : 0;
+    ret = (0 == _fsm_advance()) ? 1 : 0;
   }
   return ret;
 }
@@ -1534,12 +1491,12 @@ int8_t M2MLink::_poll_fsm() {
 *   FSM position if successful. Records the existing state as having been the
 *   prior state.
 * NOTE: Except in edge-cases, this function should ONLY be
-*   called by _advance_state_machine().
+*   called by _fsm_advance().
 *
 * @param The FSM code to test.
 * @return 0 on success, -1 otherwise.
 */
-int8_t M2MLink::_set_fsm_position(M2MLinkState new_state) {
+int8_t M2MLink::_fsm_set_position(M2MLinkState new_state) {
   int8_t fxn_ret = -1;
   bool state_entry_success = false;   // Fail by default.
   if (!_fsm_is_waiting()) {
@@ -1616,10 +1573,10 @@ int8_t M2MLink::_set_fsm_position(M2MLinkState new_state) {
     }
 
     if (state_entry_success) {
-      if (_verbosity >= LOG_LEV_INFO) c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "Link 0x%08x moved %s ---> %s\n", _session_tag, sessionStateStr(_fsm_pos), sessionStateStr(new_state));
+      if (_verbosity >= LOG_LEV_INFO) c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "Link 0x%08x moved %s ---> %s\n", _session_tag, sessionStateStr(currentState()), sessionStateStr(new_state));
 
-      _fsm_pos_prior = _fsm_pos;
-      _fsm_pos       = new_state;
+      // _fsm_pos_prior = _fsm_pos;
+      // _fsm_pos       = new_state;
       switch (new_state) {
         case M2MLinkState::HUNGUP:        // Entry into these states might
         case M2MLinkState::PENDING_AUTH:  // be an event worth passing to
@@ -1635,153 +1592,10 @@ int8_t M2MLink::_set_fsm_position(M2MLinkState new_state) {
 }
 
 
-/**
-* Internal function responsible for advancing the state machine.
-* NOTE: This function does no checks for IF the FSM should move forward. It only
-*   performs the actions required to do it.
-* Although this function is sometimes called directly by function other than
-*   _poll_fsm(), the comprehensibility of the code requires that we keep this
-*   to a minimum.
-*
-* @return 0 on state change, -1 otherwise.
-*/
-int8_t M2MLink::_advance_state_machine() {
-  int8_t ret = -1;
-  if (M2MLinkState::UNINIT != _fsm_waypoints[0]) {
-    if (0 == _set_fsm_position(_fsm_waypoints[0])) {
-      ret = 0;
-      for (int i = 0; i < (M2MLINK_FSM_WAYPOINT_DEPTH-1); i++) {
-        _fsm_waypoints[i] = _fsm_waypoints[i+1];
-      }
-      _fsm_waypoints[M2MLINK_FSM_WAYPOINT_DEPTH-1] = M2MLinkState::UNINIT;
-    }
-  }
-  return ret;
-}
-
-
-/*
-* This function checks each state code for validity, but does not error-check
-*   the validity of the FSM traversal route specified in the arguments. It just
-*   adds them to the list if they all correspond to valid state codes.
-* This function will accept a maximum of sizeof(_fsm_waypoints) arguments, and
-*   will clobber the contents of that member if the call succeeds. Arguments
-*   provided in excess of the limit will be truncated with no error.
-*
-* @return 0 on success, -1 on no params, -2 on invalid FSM code.
-*/
-int8_t M2MLink::_set_fsm_route(int arg_count, ...) {
-  int8_t ret = -1;
-  const int PARAM_COUNT = strict_min((int8_t) arg_count, (int8_t) M2MLINK_FSM_WAYPOINT_DEPTH);
-  if (PARAM_COUNT > 0) {
-    va_list args;
-    va_start(args, arg_count);
-    M2MLinkState test_values[PARAM_COUNT] = {M2MLinkState::UNINIT, };
-    ret = 0;
-    for (int i = 0; i < PARAM_COUNT; i++) {
-      test_values[i] = (M2MLinkState) va_arg(args, int);
-    }
-    va_end(args);   // Close out the va_args, and error-check each value.
-    for (int i = 0; i < PARAM_COUNT; i++) {
-      if (!_link_fsm_code_valid(test_values[i])) {
-        ret = -2;
-      }
-    }
-    if (0 == ret) {
-      // If everything looks good, add items to the state traversal list, and
-      //   zero the remainder.
-      for (int i = 0; i < M2MLINK_FSM_WAYPOINT_DEPTH; i++) {
-        _fsm_waypoints[i] = (i < PARAM_COUNT) ? test_values[i] : M2MLinkState::UNINIT;
-      }
-    }
-  }
-  return ret;
-}
-
-
-/*
-* This function checks each state code for validity, but does not error-check
-*   the validity of the FSM traversal route specified in the arguments. It just
-*   adds them to the list if they all correspond to valid state codes.
-* This function will accept a maximum of sizeof(_fsm_waypoints) arguments, and
-*   will append to the contents of that member if the call succeeds. Arguments
-*   provided in excess of the limit will be truncated with no error.
-*
-* @return 0 on success, -1 on no params, -2 on invalid FSM code.
-*/
-int8_t M2MLink::_append_fsm_route(int arg_count, ...) {
-  int8_t ret = -1;
-  const int PARAM_COUNT = strict_min((int8_t) arg_count, (int8_t) M2MLINK_FSM_WAYPOINT_DEPTH);
-  if (PARAM_COUNT > 0) {
-    va_list args;
-    va_start(args, arg_count);
-    M2MLinkState test_values[PARAM_COUNT] = {M2MLinkState::UNINIT, };
-    ret = 0;
-    for (int i = 0; i < PARAM_COUNT; i++) {
-      test_values[i] = (M2MLinkState) va_arg(args, int);
-    }
-    va_end(args);   // Close out the va_args, and error-check each value.
-    for (int i = 0; i < PARAM_COUNT; i++) {
-      if (!_link_fsm_code_valid(test_values[i])) {
-        ret = -2;
-      }
-    }
-    if (0 == ret) {
-      // If everything looks good, seek to the end of the state traversal list,
-      //   and append.
-      uint8_t fidx = 0;
-      while ((fidx < M2MLINK_FSM_WAYPOINT_DEPTH) && (M2MLinkState::UNINIT != _fsm_waypoints[fidx])) {
-        fidx++;
-      }
-      const uint8_t PARAMS_TO_COPY = strict_min((uint8_t)(M2MLINK_FSM_WAYPOINT_DEPTH - fidx), (uint8_t) PARAM_COUNT);
-      for (int i = 0; i < PARAMS_TO_COPY; i++) {
-        _fsm_waypoints[i + fidx] = test_values[i];
-      }
-    }
-  }
-  return ret;
-}
-
-
-int8_t M2MLink::_prepend_fsm_state(M2MLinkState nxt) {
-  int8_t ret = -1;
-  if (_link_fsm_code_valid(nxt)) {
-    ret--;
-    // If everything looks good, seek to the end of the state traversal list,
-    //   and append.
-    uint8_t fidx = 0;
-    M2MLinkState last = _fsm_waypoints[0];
-    while ((fidx < M2MLINK_FSM_WAYPOINT_DEPTH) && (M2MLinkState::UNINIT != _fsm_waypoints[fidx])) {
-      last = _fsm_waypoints[fidx];
-      _fsm_waypoints[fidx] = nxt;
-      nxt = last;
-      fidx++;
-    }
-    if (fidx < M2MLINK_FSM_WAYPOINT_DEPTH) {
-      _fsm_waypoints[fidx] = nxt;
-      ret = 0;
-    }
-  }
-  return ret;
-}
-
-
-bool M2MLink::_fsm_is_waiting() {
-  bool ret = false;
-  if (0 != _fsm_lockout_ms) {
-    ret = !(millis() >= _fsm_lockout_ms);
-    if (!ret) {
-      _fsm_lockout_ms = 0;
-    }
-  }
-  return ret;
-}
-
-
 int8_t M2MLink::_fsm_insert_sync_states() {
   int8_t ret = -1;
-  if (0 == _prepend_fsm_state(M2MLinkState::SYNC_TENTATIVE)) {
-    if (0 == _prepend_fsm_state(M2MLinkState::SYNC_RESYNC)) {
+  if (0 == _fsm_prepend_state(M2MLinkState::SYNC_TENTATIVE)) {
+    if (0 == _fsm_prepend_state(M2MLinkState::SYNC_RESYNC)) {
       ret = 0;
     }
   }
@@ -1836,7 +1650,9 @@ int8_t M2MLink::console_handler(StringBuilder* text_return, StringBuilder* args)
     printQueues(text_return);
   }
   else if (0 == StringBuilder::strcasecmp(cmd, "fsm")) {
-    printFSM(text_return);
+    // Shunt into the FSM object's console handler.
+    args->drop_position(0);
+    ret = fsm_console_handler(text_return, args);
   }
   else if (0 == StringBuilder::strcasecmp(cmd, "local")) {
     // Local identity and policy can be edited.

@@ -67,6 +67,7 @@ NOTE: This has been a mad binge to port over all this work from ManuvrOS. Five
 #include "../C3PValue/KeyValuePair.h"
 #include "../BusQueue/BusQueue.h"
 #include "../FlagContainer.h"
+#include "../FiniteStateMachine.h"
 #include "../PriorityQueue.h"
 #include "../ElementPool.h"
 #include "../Identity/Identity.h"
@@ -87,7 +88,7 @@ NOTE: This has been a mad binge to port over all this work from ManuvrOS. Five
 *   of our counterparty's good behavior.
 */
 #ifndef CONFIG_C3PLINK_MAX_QUEUE_DEPTH
-  #define CONFIG_C3PLINK_MAX_QUEUE_DEPTH   12
+  #define CONFIG_C3PLINK_MAX_QUEUE_DEPTH   4
 #endif
 
 
@@ -170,7 +171,8 @@ enum class M2MLinkState : uint8_t {
   PENDING_AUTH   = 0x04,  // Waiting on optional authentication.
   LIVE           = 0x05,  // Session is in the sync'd and connected state.
   PENDING_HANGUP = 0x06,  // Session hangup is imminent.
-  HUNGUP         = 0x07   // Session is hungup and pending cleanup for re-use.
+  HUNGUP         = 0x07,  // Session is hungup and pending cleanup for re-use.
+  INVALID
 };
 
 /*
@@ -388,6 +390,8 @@ class M2MMsg {
       if (nu) _flags |= _flag;
       else    _flags &= ~_flag;
     };
+
+    //static const EnumDefList<M2MMsgCode> _MSG_CODES;
 };
 
 
@@ -428,7 +432,7 @@ class M2MService {
 * This class represents an open comm session with a foreign device via an
 *   unspecified transport. All we care about is the byte stream.
 */
-class M2MLink : public BufferCoDec {
+class M2MLink : public StateMachine<M2MLinkState>, public BufferCoDec {
   public:
     M2MLink(const M2MLinkOpts* opts);
     virtual ~M2MLink();
@@ -456,10 +460,8 @@ class M2MLink : public BufferCoDec {
     /* Debugging */
     void printDebug(StringBuilder*);
     void printQueues(StringBuilder*);
-    void printFSM(StringBuilder*);
 
     /* Functions for planning message handling. */
-    inline M2MLinkState getState() {                  return _fsm_pos;      };
     inline void setCallback(M2MLinkCB cb) {           _lnk_callback = cb;   };
     inline void setCallback(M2MMsgCB cb) {            _msg_callback = cb;   };
     void setCallback(M2MService*);
@@ -473,13 +475,12 @@ class M2MLink : public BufferCoDec {
     inline Identity* localIdentity() {                return _id_loc;       };
     inline Identity* remoteIdentity() {               return _id_remote;    };
 
-
     /* Built-in per-instance console handlers. */
     int8_t console_handler(StringBuilder* text_return, StringBuilder* args);
 
     /* Static support fxns for enums */
-    static const char* sessionStateStr(const M2MLinkState);
-    static const char* manuvMsgCodeStr(const M2MMsgCode);
+    static const char* const sessionStateStr(const M2MLinkState);
+    static const char* const manuvMsgCodeStr(const M2MMsgCode);
     static const bool  msgCodeValid(const M2MMsgCode);
 
 
@@ -491,10 +492,6 @@ class M2MLink : public BufferCoDec {
     PriorityQueue<M2MMsg*> _inbound_messages;    // Messages that came from the counterparty.
     PriorityQueue<M2MService*> _svc_list;        // A list of modules that transact on the link.
     FlagContainer32 _flags;
-    M2MLinkState    _fsm_waypoints[M2MLINK_FSM_WAYPOINT_DEPTH] = {M2MLinkState::UNINIT, };
-    uint32_t        _fsm_lockout_ms = 0;        // Used to enforce a delay between state transitions.
-    M2MLinkState    _fsm_pos        = M2MLinkState::UNINIT;  // TODO: Optimize this away.
-    M2MLinkState    _fsm_pos_prior  = M2MLinkState::UNINIT;  // TODO: Remove? Never used in logic.
     uint8_t         _verbosity      = 0;        // By default, this class won't generate logs.
     uint8_t         _seq_parse_errs = 0;
     uint8_t         _seq_ack_fails  = 0;
@@ -536,21 +533,17 @@ class M2MLink : public BufferCoDec {
     int8_t _send_hangup_message(bool graceful);
     int8_t _send_who_message();
 
-    /* State machine functions */
-    int8_t _poll_fsm();
-    int8_t _set_fsm_position(M2MLinkState);
-    int8_t _set_fsm_route(int count, ...);
-    int8_t _append_fsm_route(int count, ...);
-    int8_t _prepend_fsm_state(M2MLinkState);
-    int8_t _advance_state_machine();
-    bool   _fsm_is_waiting();
+    /* Mandatory overrides from StateMachine. */
+    int8_t _fsm_poll();
+    int8_t _fsm_set_position(M2MLinkState);
     int8_t _fsm_insert_sync_states();
-    inline M2MLinkState _fsm_pos_next() {   return _fsm_waypoints[0];   };
-    inline bool _fsm_is_stable() {   return (M2MLinkState::UNINIT == _fsm_waypoints[0]);   };
 
     /* Message lifecycle */
     M2MMsg* _allocate_m2mmsg(M2MMsgHdr*, BusOpcode);
     void    _reclaim_m2mmsg(M2MMsg*);
+
+
+    static const EnumDefList<M2MLinkState> _FSM_STATES;
 };
 
 #endif   // __C3P_XENOSESSION_H

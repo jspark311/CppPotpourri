@@ -473,7 +473,7 @@ class M2ML_Test_Vehicle {
 *   like to collapse this role into the M2MMsg callback..
 */
 void callback_link_state(M2MLink* cb_link) {
-  printf("Link (0x%x) entered state %s\n", cb_link->linkTag(), M2MLink::sessionStateStr(cb_link->getState()));
+  printf("Link (0x%x) entered state %s\n", cb_link->linkTag(), M2MLink::sessionStateStr(cb_link->currentState()));
 }
 
 /*
