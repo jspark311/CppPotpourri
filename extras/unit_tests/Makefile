@@ -75,6 +75,7 @@ SOURCES_CPP += ../../src/Console/*.cpp
 SOURCES_CPP += ../../src/cbor-cpp/*.cpp
 SOURCES_CPP += ../../src/Pipes/TripleAxisPipe/*.cpp
 SOURCES_CPP += ../../src/M2MLink/*.cpp
+SOURCES_CPP += ../../src/M2MLink/LinkUtils/M2MLinkRPC/*.cpp
 SOURCES_CPP += ../../src/Identity/*.cpp
 
 # TODO: These things are not yet under unit tests, but we build them anyway so

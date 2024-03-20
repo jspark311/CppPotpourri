@@ -37,6 +37,35 @@ M2ML_Test_Vehicle* m2ml_test_current;
 M2ML_Test_Vehicle* rpc_test_current;
 
 
+const TCode ARGSET_N[] = {TCode::NONE};
+const TCode ARGSET_0[] = {TCode::INT8, TCode::INT8, TCode::NONE};
+const TCode ARGSET_1[] = {TCode::INT16, TCode::INT16, TCode::NONE};
+
+const C3PDefinedRPC RPC_TEST_HOST_DEFS[] = {
+  { .RP_NAME  = "client_test",
+    .RP_ARGS  = ARGSET_N,
+    .POLL_FXN = [](C3PRPCContext* cntxt) {
+      return 1;
+    }
+  },
+  { .RP_NAME  = "add8",
+    .RP_ARGS  = ARGSET_0,
+    .POLL_FXN = [](C3PRPCContext* cntxt) {
+      return 1;
+    }
+  },
+  { .RP_NAME  = "add16",
+    .RP_ARGS  = ARGSET_1,
+    .POLL_FXN = [](C3PRPCContext* cntxt) {
+      return 1;
+    }
+  },
+};
+
+M2MLinkRPC_Host* svc_host = nullptr;
+
+
+
 
 /*******************************************************************************
 * Types to support the testing...
@@ -720,8 +749,10 @@ int link_tests_message_battery_1() {
   CHKLST_M2ML_TEST_CONCURRENCY_1 | CHKLST_M2ML_TEST_AUTH_ONE_WAY | \
   CHKLST_M2ML_TEST_AUTH_NOMINAL | CHKLST_M2ML_TEST_AUTH_FAIL)
 
-  // CHKLST_M2ML_TEST_CORRUPT_XPORT | CHKLST_M2ML_TEST_GENTLE_HANGUP | \
-  // CHKLST_M2ML_TEST_REESTABLISH | CHKLST_M2ML_TEST_REMOTE_LOG | \
+  /*
+  CHKLST_M2ML_TEST_CORRUPT_XPORT | CHKLST_M2ML_TEST_GENTLE_HANGUP | \
+  CHKLST_M2ML_TEST_REESTABLISH | CHKLST_M2ML_TEST_REMOTE_LOG | \
+  */
 
 
 const StepSequenceList TOP_LEVEL_M2ML_TEST_LIST[] = {
@@ -946,7 +977,8 @@ const StepSequenceList TOP_LEVEL_M2ML_TEST_LIST[] = {
       );
       if (nullptr != rpc_test_current) {             // If allocation worked...
         if (0 == rpc_test_current->prepareTest()) {  // ...and the peers are setup...
-          ret = 1;                                   // ...dispatch succeeds.
+          svc_host = new M2MLinkRPC_Host(&rpc_test_current->peer0, RPC_TEST_HOST_DEFS);
+          ret = (nullptr == svc_host) ? -1 : 1;
         }
       }
       return ret;

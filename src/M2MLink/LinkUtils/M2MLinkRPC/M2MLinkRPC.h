@@ -56,9 +56,9 @@ class C3PRPCContext {
   private:
     M2MMsg*       _msg;                           // Single-slot queue
     KeyValuePair* _response;                      // Single-slot queue
-    uint16_t      _mtu;                           // Maximum content length per-message.
     uint16_t      _poll_count;                    // Increments on every poll().
-    uint16_t      _msg_id;                        // Increments on every message.
+    uint16_t      _msg_count;                     // Increments on every message.
+    //uint16_t      _mtu;                           // Maximum content length per-message.
     uint8_t       _cbytes[C3PRPC_CONTEXT_BYTES];  // General scratchpad.
 };
 
@@ -91,11 +91,11 @@ typedef struct {
 class M2MLinkRPC_Host : public M2MService {
   public:
     M2MLinkRPC_Host(M2MLink*, const C3PDefinedRPC* const);
-    ~M2MLinkRPC_Host() {};
+    ~M2MLinkRPC_Host();
 
     /* Implementation of M2MService. Trades messages with a link. */
-    virtual int8_t _handle_msg(uint32_t tag, M2MMsg*) =0;
-    virtual int8_t _poll_for_link(M2MLink*) =0;
+    int8_t _handle_msg(uint32_t tag, M2MMsg*);
+    int8_t _poll_for_link(M2MLink*);
 
 
   private:
@@ -112,6 +112,10 @@ class M2MLinkRPC_Client {
   public:
     M2MLinkRPC_Client(M2MLink*);
     ~M2MLinkRPC_Client() {};
+
+    /* Implementation of M2MService. Trades messages with a link. */
+    int8_t _handle_msg(uint32_t tag, M2MMsg*);
+    int8_t _poll_for_link(M2MLink*);
 
 
   private:
