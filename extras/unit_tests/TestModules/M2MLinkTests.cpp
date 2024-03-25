@@ -42,21 +42,21 @@ const TCode ARGSET_0[] = {TCode::INT8, TCode::INT8, TCode::NONE};
 const TCode ARGSET_1[] = {TCode::INT16, TCode::INT16, TCode::NONE};
 
 const C3PDefinedRPC RPC_TEST_HOST_DEFS[] = {
-  { .RP_NAME  = "client_test",
-    .RP_ARGS  = ARGSET_N,
-    .POLL_FXN = [](C3PRPCContext* cntxt) {
+  { .RP_NAME   = "client_test",
+    .RP_ARGS   = ARGSET_N,
+    .PROCEDURE = [](C3PRPCContext* cntxt) {
       return 1;
     }
   },
-  { .RP_NAME  = "add8",
-    .RP_ARGS  = ARGSET_0,
-    .POLL_FXN = [](C3PRPCContext* cntxt) {
+  { .RP_NAME   = "add8",
+    .RP_ARGS   = ARGSET_0,
+    .PROCEDURE = [](C3PRPCContext* cntxt) {
       return 1;
     }
   },
-  { .RP_NAME  = "add16",
-    .RP_ARGS  = ARGSET_1,
-    .POLL_FXN = [](C3PRPCContext* cntxt) {
+  { .RP_NAME   = "add16",
+    .RP_ARGS   = ARGSET_1,
+    .PROCEDURE = [](C3PRPCContext* cntxt) {
       return 1;
     }
   },

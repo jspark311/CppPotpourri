@@ -91,6 +91,17 @@ NOTE: This has been a mad binge to port over all this work from ManuvrOS. Five
   #define CONFIG_C3PLINK_MAX_QUEUE_DEPTH   4
 #endif
 
+/*
+* How many service slots should a link support? Most firmware isn't anticipated
+*   to need more than a few, if any.
+*/
+#ifndef CONFIG_C3PLINK_SERVICE_SLOTS
+  #define CONFIG_C3PLINK_SERVICE_SLOTS     2
+#endif
+
+#if (CONFIG_C3PLINK_SERVICE_SLOTS > 16)
+  #error The value of CONFIG_C3PLINK_SERVICE_SLOTS cannot exceed 16.
+#endif
 
 /*******************************************************************************
 * Fixed definitions for the M2MLink subsystem                               *
@@ -190,8 +201,25 @@ enum class M2MMsgCode : uint8_t {
   MSG_FORWARD    = 0x07,   // A request for relay to a 3rd party.
   LOG            = 0x08,   // Write a string to the counterparty's log.
   WHO            = 0x09,   // An announcement of Identity.
+  SERVICE_LIST   = 0x0A,   // A listing of services.
   DHT_FXN        = 0x0E,   // TODO: Future expansion for Link-mediated DHTs.
-  APPLICATION    = 0x0F    // This message carries all interchange with the app.
+  APPLICATION    = 0x0F,   // This message carries all interchange with the app.
+  SERVICE_SLOT_0 = 0x10,   // A block of 16 codes is reserved for direct-to-service.
+  SERVICE_SLOT_1 = 0x11,   //
+  SERVICE_SLOT_2 = 0x12,   //
+  SERVICE_SLOT_3 = 0x13,   //
+  SERVICE_SLOT_4 = 0x14,   //
+  SERVICE_SLOT_5 = 0x15,   //
+  SERVICE_SLOT_6 = 0x16,   //
+  SERVICE_SLOT_7 = 0x17,   //
+  SERVICE_SLOT_8 = 0x18,   //
+  SERVICE_SLOT_9 = 0x19,   //
+  SERVICE_SLOT_A = 0x1A,   //
+  SERVICE_SLOT_B = 0x1B,   //
+  SERVICE_SLOT_C = 0x1C,   //
+  SERVICE_SLOT_D = 0x1D,   //
+  SERVICE_SLOT_E = 0x1E,   //
+  SERVICE_SLOT_F = 0x1F    //
 };
 
 /*
@@ -404,26 +432,27 @@ class M2MMsg {
 */
 class M2MService {
   public:
+    const char* const SVC_TAG;
+
     void printM2MService(StringBuilder*);
 
 
   protected:
+    friend class M2MLink;
     M2MLink*     _link;
 
-    M2MService(M2MLink* l, const uint8_t OBQ_LEN = 2) : _link(l), _svc_tag(0), _outbound(OBQ_LEN) {};
+    M2MService(const char* const ST, M2MLink* l, const uint8_t OBQ_LEN = 2) :
+      SVC_TAG(ST), _link(l), _outbound(OBQ_LEN) {};
+
     ~M2MService();
 
+    inline uint32_t _messages_waiting() {      return _outbound.count();  };
+    inline M2MMsg*  _take_msg() {              return _outbound.get();    };
 
     virtual int8_t _handle_msg(uint32_t tag, M2MMsg*) =0;
-    virtual int8_t _poll_for_link(M2MLink*) =0;
-
-    inline uint32_t _service_tag() {        return _svc_tag;           };
-    inline uint32_t _messages_waiting() {   return _outbound.count();  };
-    inline M2MMsg*  _take_msg() {           return _outbound.get();    };
 
 
   private:
-    uint32_t _svc_tag;
     RingBuffer<M2MMsg*> _outbound;
 };
 
@@ -455,8 +484,6 @@ class M2MLink : public StateMachine<M2MLinkState>, public BufferCoDec {
     inline bool syncCast() {           return _flags.value(M2MLINK_FLAG_SYNC_CASTING);   };
     inline void syncCast(bool x) {     _flags.set(M2MLINK_FLAG_SYNC_CASTING, x);         };
 
-    //int8_t ping();
-
     /* Debugging */
     void printDebug(StringBuilder*);
     void printQueues(StringBuilder*);
@@ -464,7 +491,7 @@ class M2MLink : public StateMachine<M2MLinkState>, public BufferCoDec {
     /* Functions for planning message handling. */
     inline void setCallback(M2MLinkCB cb) {           _lnk_callback = cb;   };
     inline void setCallback(M2MMsgCB cb) {            _msg_callback = cb;   };
-    void setCallback(M2MService*);
+    int8_t setCallback(M2MService*);
 
     /* Inline accessors. */
     inline uint32_t  linkTag() {                      return _session_tag;  };
@@ -480,7 +507,7 @@ class M2MLink : public StateMachine<M2MLinkState>, public BufferCoDec {
 
     /* Static support fxns for enums */
     static const char* const sessionStateStr(const M2MLinkState);
-    static const char* const manuvMsgCodeStr(const M2MMsgCode);
+    static const char* const msgCodeStr(const M2MMsgCode);
     static const bool  msgCodeValid(const M2MMsgCode);
 
 
@@ -490,7 +517,7 @@ class M2MLink : public StateMachine<M2MLinkState>, public BufferCoDec {
     //ElementPool<M2MMsg*>   _preallocd(4, &_msg_pool);
     PriorityQueue<M2MMsg*> _outbound_messages;   // Messages that are bound for the counterparty.
     PriorityQueue<M2MMsg*> _inbound_messages;    // Messages that came from the counterparty.
-    PriorityQueue<M2MService*> _svc_list;        // A list of modules that transact on the link.
+    M2MService*     _svc_list[CONFIG_C3PLINK_SERVICE_SLOTS];  // A list of modules that transact on the link.
     FlagContainer32 _flags;
     uint8_t         _verbosity      = 0;        // By default, this class won't generate logs.
     uint8_t         _seq_parse_errs = 0;
@@ -523,6 +550,7 @@ class M2MLink : public StateMachine<M2MLinkState>, public BufferCoDec {
     void   _reset_class();
     int8_t _relay_to_output_target(StringBuilder*);
     int8_t _invoke_msg_callback(M2MMsg*);
+    int8_t _offer_msg_to_service(uint8_t slot, M2MMsg*);
     void   _invoke_state_callback();
     int8_t _process_input_buffer();
     int8_t _process_for_sync();

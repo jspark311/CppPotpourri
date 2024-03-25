@@ -43,7 +43,7 @@ M2MService::~M2MService() {
 * @param   StringBuilder* The buffer into which this fxn should write its output.
 */
 void M2MService::printM2MService(StringBuilder* output) {
-  output->concatf("M2MService (0x%08x)\n", _svc_tag);
+  output->concatf("M2MService (0x%08x)\n", SVC_TAG);
 }
 
 #endif   // CONFIG_C3P_M2M_SUPPORT

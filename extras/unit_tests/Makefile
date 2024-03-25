@@ -3,7 +3,7 @@
 # Author: J. Ian Lindsay
 # Date:   2020.06.26
 ###########################################################################
-OPTIMIZATION       = -O0 -g -fprofile-arcs -ftest-coverage --coverage -fno-omit-frame-pointer
+OPTIMIZATION       = -O0 -g --coverage -fno-omit-frame-pointer
 C_STANDARD         = gnu99
 CPP_STANDARD       = c++17
 
@@ -41,7 +41,7 @@ export MAKE    = $(shell which make)
 export GCOV    = $(shell which gcov)
 
 # This is where we will store compiled libs and the final output.
-export BUILD_ROOT    = $(shell pwd)
+export BUILD_ROOT    = .
 export OUTPUT_PATH   = $(BUILD_ROOT)/build
 export COVERAGE_PATH = $(OUTPUT_PATH)/coverage
 export ANALYZER_PATH = $(OUTPUT_PATH)/static-analysis
@@ -58,25 +58,33 @@ INCLUDES    = -I$(BUILD_ROOT)/../../src
 #SOURCES_TESTS_CPP  = StringBuilderTest.cpp TestDataStructures.cpp ParsingConsoleTest.cpp IdentityTest.cpp
 SOURCES_TESTS_CPP  = AllTests.cpp
 
-SOURCES_CPP  = ../../src/*.cpp
-SOURCES_CPP += ../../src/BusQueue/BusQueue.cpp
-SOURCES_CPP += ../../src/Storage/SimpleDataRecord.cpp
-SOURCES_CPP += ../../src/Storage/RecordTypes/*.cpp
-SOURCES_CPP += ../../src/Pipes/BufferAccepter/GPSWrapper/GPSWrapper.cpp
-SOURCES_CPP += ../../src/Pipes/BufferAccepter/*.cpp
-SOURCES_CPP += ../../src/Pipes/BufferAccepter/Base64/*.cpp
-SOURCES_CPP += ../../src/Pipes/BufferAccepter/LineCoDec/*.cpp
-SOURCES_CPP += ../../src/Pipes/BufferAccepter/TestFixtures/*.cpp
-SOURCES_CPP += ../../src/TimerTools/*.cpp
-SOURCES_CPP += ../../src/C3PValue/*.cpp
-SOURCES_CPP += ../../src/Image/*.cpp
-SOURCES_CPP += ../../src/TimeSeries/*.cpp
-SOURCES_CPP += ../../src/Console/*.cpp
-SOURCES_CPP += ../../src/cbor-cpp/*.cpp
-SOURCES_CPP += ../../src/Pipes/TripleAxisPipe/*.cpp
-SOURCES_CPP += ../../src/M2MLink/*.cpp
-SOURCES_CPP += ../../src/M2MLink/LinkUtils/M2MLinkRPC/*.cpp
-SOURCES_CPP += ../../src/Identity/*.cpp
+SOURCES_CPP  = $(wildcard ../../src/AbstractPlatform.cpp)
+SOURCES_CPP += $(wildcard ../../src/AsyncSequencer.cpp)
+SOURCES_CPP += $(wildcard ../../src/CppPotpourri.cpp)
+SOURCES_CPP += $(wildcard ../../src/EnumeratedTypeCodes.cpp)
+SOURCES_CPP += $(wildcard ../../src/MultiStringSearch.cpp)
+SOURCES_CPP += $(wildcard ../../src/SensorFilter.cpp)
+SOURCES_CPP += $(wildcard ../../src/StringBuilder.cpp)
+SOURCES_CPP += $(wildcard ../../src/uuid.cpp)
+SOURCES_CPP += $(wildcard ../../src/BusQueue/BusQueue.cpp)
+SOURCES_CPP += $(wildcard ../../src/Storage/SimpleDataRecord.cpp)
+SOURCES_CPP += $(wildcard ../../src/Storage/RecordTypes/*.cpp)
+SOURCES_CPP += $(wildcard ../../src/Pipes/BufferAccepter/GPSWrapper/GPSWrapper.cpp)
+SOURCES_CPP += $(wildcard ../../src/Pipes/BufferAccepter/*.cpp)
+SOURCES_CPP += $(wildcard ../../src/Pipes/BufferAccepter/Base64/*.cpp)
+SOURCES_CPP += $(wildcard ../../src/Pipes/BufferAccepter/LineCoDec/*.cpp)
+SOURCES_CPP += $(wildcard ../../src/Pipes/BufferAccepter/TestFixtures/*.cpp)
+SOURCES_CPP += $(wildcard ../../src/TimerTools/*.cpp)
+SOURCES_CPP += $(wildcard ../../src/C3PValue/*.cpp)
+SOURCES_CPP += $(wildcard ../../src/Image/*.cpp)
+SOURCES_CPP += $(wildcard ../../src/TimeSeries/*.cpp)
+SOURCES_CPP += $(wildcard ../../src/Console/*.cpp)
+SOURCES_CPP += $(wildcard ../../src/cbor-cpp/*.cpp)
+SOURCES_CPP += $(wildcard ../../src/Pipes/TripleAxisPipe/*.cpp)
+SOURCES_CPP += $(wildcard ../../src/M2MLink/*.cpp)
+SOURCES_CPP += $(wildcard ../../src/M2MLink/LinkUtils/M2MLinkRPC/*.cpp)
+SOURCES_CPP += $(wildcard ../../src/Identity/*.cpp)
+
 
 # TODO: These things are not yet under unit tests, but we build them anyway so
 #   we can at least get the benefit of basic compilability checking.
@@ -88,11 +96,12 @@ SOURCES_CPP += ../../src/Identity/*.cpp
 
 CXXFLAGS  = $(WARNING_BEHAVIOR) -D_GNU_SOURCE -fprofile-dir=$(COVERAGE_PATH)
 CXXFLAGS += -fsingle-precision-constant -Wdouble-promotion -fno-rtti -fno-exceptions
+CXXFLAGS += -static
 CXXFLAGS += -DCONFIG_C3P_CBOR -DCONFIG_C3P_M2M_SUPPORT
 CXXFLAGS += -DCONFIG_C3P_IMG_SUPPORT
 CXXFLAGS += -DCONFIG_C3P_TRACE_ENABLED
 
-LIBS  = -L$(OUTPUT_PATH) -lstdc++ -lm
+LIBS  = -L. -lCppPotpourri -lstdc++ -lm
 
 
 ###########################################################################
@@ -100,9 +109,9 @@ LIBS  = -L$(OUTPUT_PATH) -lstdc++ -lm
 ###########################################################################
 # Merge our choices and export them to the downstream Makefiles...
 OBJS   = $(SOURCES_CPP:.cpp=.o)
+DEPS   = $(SOURCES_CPP:.cpp=.d)
 TESTS  = $(SOURCES_TESTS_CPP:.cpp=)
-COV_FILES = $(SOURCES_CPP:.cpp=.gcda) $(SOURCES_CPP:.cpp=.gcno)
-CXXFLAGS += $(INCLUDES) $(OPTIMIZATION) -std=$(CPP_STANDARD)
+CXXFLAGS += $(INCLUDES) $(OPTIMIZATION)
 ANALYZER_FLAGS  = $(INCLUDES)
 ANALYZER_FLAGS += --std=$(CPP_STANDARD) -j6 --cppcheck-build-dir=$(ANALYZER_PATH)
 ANALYZER_FLAGS += --enable=all --report-progress --force
@@ -141,8 +150,25 @@ export CXXFLAGS
 
 all: alltests coverage check
 
-alltests: outputpath
-	@$(foreach test,$(TESTS),$(CXX) -Wl,--gc-sections -static $(CXXFLAGS) $(LIBS) $(SOURCES_CPP) $(test).cpp -o $(OUTPUT_PATH)/$(test);)
+%.o : %.cpp
+	$(CXX) -std=$(CPP_STANDARD) $(CXXFLAGS) -c -o $@ $^
+
+%.o : %.c
+	$(CC) -std=$(C_STANDARD) $(CFLAGS) -c -o $(OUTPUT_PATH)/$(@F) $^
+
+%.o : %.S
+	$(CC) -std=$(C_STANDARD) -x assembler-with-cpp $(CFLAGS) -c -o $(OUTPUT_PATH)/$(@F) $^
+
+outputpath:
+	mkdir -p $(OUTPUT_PATH)
+	mkdir -p $(COVERAGE_PATH)
+	mkdir -p $(ANALYZER_PATH)
+
+lib: outputpath $(OBJS)
+	$(AR) -rvs libCppPotpourri.a $(wildcard $(OUTPUT_PATH)/*.o)
+
+alltests: lib
+	@$(foreach test,$(TESTS),$(CXX) -Wl,--gc-sections $(CXXFLAGS) $(LIBS) $(OBJS) $(test).cpp -o $(OUTPUT_PATH)/$(test);)
 	@echo 'Built tests:  $(TESTS)'
 	@echo 'Beginning test execution...'
 	@$(foreach test,$(TESTS),$(OUTPUT_PATH)/$(test);)
@@ -150,20 +176,13 @@ alltests: outputpath
 	#cat $(OUTPUT_PATH)/unit_test.log
 	@echo 'Unit testing complete.'
 
-coverage: outputpath
-	$(GCOV) --object-directory $(COVERAGE_PATH) -m --preserve-paths --demangled-names $(SOURCES_CPP)
+coverage: alltests
+	$(GCOV) --object-directory $(COVERAGE_PATH) -f -d -r -m --demangled-names $(SOURCES_CPP)
 	mv *.gcno $(COVERAGE_PATH)
+	mv *.gcna $(COVERAGE_PATH)
 	lcov --capture --directory $(COVERAGE_PATH) --output-file $(COVERAGE_PATH)/coverage.info
 	genhtml $(COVERAGE_PATH)/coverage.info --output-directory $(COVERAGE_PATH)
 	@echo 'Coverage measurement complete.'
-
-lib: $(OBJS)
-	$(AR) -rvs $(OUTPUT_PATH)/CppPotpourri.a $(OBJS)
-
-outputpath:
-	mkdir -p $(OUTPUT_PATH)
-	mkdir -p $(COVERAGE_PATH)
-	mkdir -p $(ANALYZER_PATH)
 
 check: outputpath
 	@echo 'Doing static analysis...'
@@ -172,4 +191,4 @@ check: outputpath
 	@echo 'Static analysis complete.'
 
 clean:
-	rm -rf $(OUTPUT_PATH) $(OBJS) *.gcno *.gcda *.gcov *.o
+	rm -rf $(OUTPUT_PATH) $(DEPS) $(OBJS) *.gcno *.gcda *.gcov *.o

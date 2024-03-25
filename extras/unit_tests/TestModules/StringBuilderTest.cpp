@@ -1172,8 +1172,8 @@ int test_misuse_cases() {
 #define CHKLST_SB_TEST_PRINTBUFFER    0x00800000  // printBuffer(StringBuilder* output, uint8_t* buf, uint32_t len, const char* indent)
 #define CHKLST_SB_TEST_MEM_MUTATION   0x01000000  // Memory layout non-mutation assurances.
 #define CHKLST_SB_TEST_VIVISECTION    0x02000000  // Sectional copy with layout non-mutation assurances.
-#define CHKLST_SB_TEST_MISUSE         0x40000000  // Foreseeable misuse tests.
-#define CHKLST_SB_TEST_MISCELLANEOUS  0x80000000  // Scattered small tests.
+#define CHKLST_SB_TEST_MISUSE         0x04000000  // Foreseeable misuse tests.
+#define CHKLST_SB_TEST_MISCELLANEOUS  0x08000000  // Scattered small tests.
 
 #define CHKLST_SB_TESTS_ALL ( \
   CHKLST_SB_TEST_STRCASESTR | CHKLST_SB_TEST_STRCASECMP | CHKLST_SB_TEST_BASICS | \

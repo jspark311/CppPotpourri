@@ -85,6 +85,7 @@ For now, just know what the costs are, and don't expend the overhead unless you
 class StringBuilder;
 class KeyValuePair;
 class Identity;
+class C3PValueDecoder;
 #include "../Vector3.h"  // Templates are more onerous...
 
 /* Image support costs code size. Don't support it unless requested. */
@@ -238,8 +239,10 @@ class C3PValue {
     /* Parsing/Packing */
     void     toString(StringBuilder*, bool include_type = false);
     uint32_t length();
-    int8_t   serialize(StringBuilder*, TCode);
-    int8_t   deserialize(StringBuilder*, TCode);
+    int8_t   serialize(StringBuilder*, const TCode FORMAT);
+    //int8_t   deserialize(StringBuilder*, const TCode FORMAT);
+
+    static C3PValue* deserialize(StringBuilder*, const TCode FORMAT);
 
 
   protected:
@@ -258,6 +261,7 @@ class C3PValue {
     *        ---J. Ian Lindsay   Sat Sep 25 01:05:52 MST 2021
     *        ---J. Ian Lindsay   Tue Nov 14 23:55:39 MST 2023
     */
+    friend class C3PValueDecoder;
     const TCode _TCODE;        // The hard-declared type of this Value.
     bool        _val_by_ref;   // If true, _target_mem's native type is a pointer to something.
     bool        _punned_ptr;   // If true, _target_mem contains the value itself.
@@ -270,6 +274,35 @@ class C3PValue {
     void _reap_existing_value();
 
     inline void* _type_pun() {  return (_punned_ptr ? &_target_mem : _target_mem);  };
+};
+
+
+/*
+* This is a decoder class that prefers to rely on heap allocation of a
+*   complicated type-wrapper object to support usage that doesn't rely on
+*   object definition.
+* This pattern was added by CppPotpourri, and is probably the best choice for
+*   types covered by CppPotpourri's type-wrapping.
+*/
+class C3PValueDecoder {
+  public:
+    C3PValueDecoder(StringBuilder* in) : _in(in) {};
+    ~C3PValueDecoder() {};   // This class itself holds no heap-related state.
+
+    C3PValue* next(bool consume_unparsable = false);
+
+
+  private:
+    StringBuilder* _in;
+
+    float    _get_float(uint32_t* offset);
+    double   _get_double(uint32_t* offset);
+    uint64_t _get_long(uint32_t* offset);
+    bool     _get_length_field(uint32_t* offset, uint32_t* val_ret, uint8_t minorType);
+
+    C3PValue* _handle_array(uint32_t* offset, uint32_t);
+    C3PValue* _handle_map(uint32_t* offset, uint32_t);
+    C3PValue* _handle_tag(uint32_t* offset, uint32_t);
 };
 
 #endif  // __C3P_VALUE_WRAPPER_H

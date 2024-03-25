@@ -566,56 +566,141 @@ int c3p_value_test_type_conversion() {
 }
 
 
-int c3p_value_test_packing() {
+int c3p_value_test_packing(const TCode FORMAT) {
   int ret = 0;
   return ret;
 }
 
 
-int c3p_value_test_parsing() {
+int c3p_value_test_parsing(const TCode FORMAT) {
   int ret = 0;
   return ret;
 }
 
+
+
+/*******************************************************************************
+* C3PValue test plan
+*******************************************************************************/
+#define CHKLST_C3PVAL_TEST_NUMERICS        0x00000001  //
+#define CHKLST_C3PVAL_TEST_VECTORS         0x00000002  //
+#define CHKLST_C3PVAL_TEST_STRINGS         0x00000004  //
+#define CHKLST_C3PVAL_TEST_BLOBS           0x00000008  //
+#define CHKLST_C3PVAL_TEST_ALIGNMENT       0x00000010  //
+#define CHKLST_C3PVAL_TEST_CONVERSION      0x00000020  //
+#define CHKLST_C3PVAL_TEST_PACKING_NATIVE  0x00000040  //
+#define CHKLST_C3PVAL_TEST_PARSING_NATIVE  0x00000080  //
+#define CHKLST_C3PVAL_TEST_PACKING_CBOR    0x00000100  //
+#define CHKLST_C3PVAL_TEST_PARSING_CBOR    0x00000200  //
+
+#define CHKLST_C3PVAL_TESTS_BASICS ( \
+  CHKLST_C3PVAL_TEST_NUMERICS | CHKLST_C3PVAL_TEST_VECTORS | \
+  CHKLST_C3PVAL_TEST_STRINGS | CHKLST_C3PVAL_TEST_BLOBS | \
+  CHKLST_C3PVAL_TEST_ALIGNMENT)
+
+#define CHKLST_C3PVAL_TESTS_ALL ( \
+  CHKLST_C3PVAL_TESTS_BASICS | CHKLST_C3PVAL_TEST_CONVERSION | \
+  CHKLST_C3PVAL_TEST_PACKING_CBOR | CHKLST_C3PVAL_TEST_PARSING_CBOR | \
+  CHKLST_C3PVAL_TEST_PACKING_NATIVE | CHKLST_C3PVAL_TEST_PARSING_NATIVE)
+
+const StepSequenceList TOP_LEVEL_C3PVALUE_TEST_LIST[] = {
+  { .FLAG         = CHKLST_C3PVAL_TEST_NUMERICS,
+    .LABEL        = "Basic numerics",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_numerics()) ? 1:-1);  }
+  },
+
+  { .FLAG         = CHKLST_C3PVAL_TEST_VECTORS,
+    .LABEL        = "Vectors",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_vectors()) ? 1:-1);  }
+  },
+
+  { .FLAG         = CHKLST_C3PVAL_TEST_STRINGS,
+    .LABEL        = "Strings",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_strings()) ? 1:-1);  }
+  },
+
+  { .FLAG         = CHKLST_C3PVAL_TEST_BLOBS,
+    .LABEL        = "BLOBs",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_blobs()) ? 1:-1);  }
+  },
+
+  { .FLAG         = CHKLST_C3PVAL_TEST_ALIGNMENT,
+    .LABEL        = "Alignment nightmare case",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_alignment()) ? 1:-1);  }
+  },
+
+  { .FLAG         = CHKLST_C3PVAL_TEST_CONVERSION,
+    .LABEL        = "Type conversion",
+    .DEP_MASK     = (CHKLST_C3PVAL_TESTS_BASICS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_type_conversion()) ? 1:-1);  }
+  },
+
+  { .FLAG         = CHKLST_C3PVAL_TEST_PACKING_NATIVE,
+    .LABEL        = "Packing (Native)",
+    .DEP_MASK     = (CHKLST_C3PVAL_TESTS_BASICS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_packing(TCode::BINARY)) ? 1:-1);  }
+  },
+
+  { .FLAG         = CHKLST_C3PVAL_TEST_PARSING_NATIVE,
+    .LABEL        = "Parsing (Native)",
+    .DEP_MASK     = (CHKLST_C3PVAL_TEST_PACKING_NATIVE),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_parsing(TCode::BINARY)) ? 1:-1);  }
+  },
+
+  { .FLAG         = CHKLST_C3PVAL_TEST_PACKING_CBOR,
+    .LABEL        = "Packing (CBOR)",
+    .DEP_MASK     = (CHKLST_C3PVAL_TESTS_BASICS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_packing(TCode::CBOR)) ? 1:-1);  }
+  },
+
+  // Auth rejection flows.
+  { .FLAG         = CHKLST_C3PVAL_TEST_PARSING_CBOR,
+    .LABEL        = "Parsing (CBOR)",
+    .DEP_MASK     = (CHKLST_C3PVAL_TEST_PACKING_CBOR),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_parsing(TCode::CBOR)) ? 1:-1);  }
+  },
+};
+
+AsyncSequencer c3pvalue_test_plan(TOP_LEVEL_C3PVALUE_TEST_LIST, (sizeof(TOP_LEVEL_C3PVALUE_TEST_LIST) / sizeof(TOP_LEVEL_C3PVALUE_TEST_LIST[0])));
+
+
+
+/*******************************************************************************
+* The main function.
+*******************************************************************************/
 
 void print_types_c3p_value() {
   printf("\tC3PValue              %u\t%u\n", sizeof(C3PValue),  alignof(C3PValue));
 }
 
 
-/*******************************************************************************
-* The main function.
-*******************************************************************************/
 int c3p_value_test_main() {
-  int ret = -1;   // Failure is the default result.
   const char* const MODULE_NAME = "C3PValue";
   printf("===< %s >=======================================\n", MODULE_NAME);
 
-  if (0 == c3p_value_test_numerics()) {
-    if (0 == c3p_value_test_vectors()) {
-      if (0 == c3p_value_test_strings()) {
-        if (0 == c3p_value_test_blobs()) {
-          if (0 == c3p_value_test_alignment()) {
-            if (0 == c3p_value_test_type_conversion()) {
-              if (0 == c3p_value_test_packing()) {
-                if (0 == c3p_value_test_parsing()) {
-                  ret = 0;
-                }
-                else printTestFailure(MODULE_NAME, "Type parsing");
-              }
-              else printTestFailure(MODULE_NAME, "Type packing");
-            }
-            else printTestFailure(MODULE_NAME, "Type conversion");
-          }
-          else printTestFailure(MODULE_NAME, "Alignment nightmare case");
-        }
-        else printTestFailure(MODULE_NAME, "BLOBs");
-      }
-      else printTestFailure(MODULE_NAME, "Strings");
-    }
-    else printTestFailure(MODULE_NAME, "Vectors");
+  c3pvalue_test_plan.requestSteps(CHKLST_C3PVAL_TESTS_ALL);
+  while (!c3pvalue_test_plan.request_completed() && (0 == c3pvalue_test_plan.failed_steps(false))) {
+    c3pvalue_test_plan.poll();
   }
-  else printTestFailure(MODULE_NAME, "Numerics");
+  int ret = (c3pvalue_test_plan.request_fulfilled() ? 0 : 1);
 
+  StringBuilder report_output;
+  c3pvalue_test_plan.printDebug(&report_output, "C3PValue test report");
+  printf("%s\n", (char*) report_output.string());
   return ret;
 }

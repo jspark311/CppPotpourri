@@ -228,6 +228,7 @@ class C3PType {
     const bool is_punned_ptr() {       return _all_flags_set(TCODE_FLAG_VALUE_IS_PUNNED_PTR); };
     const bool is_ptr() {              return _all_flags_set(TCODE_FLAG_VALUE_IS_POINTER);    };
     const bool is_ptr_len() {          return _all_flags_set(TCODE_FLAG_PTR_LEN_TYPE);        };
+    const bool is_fixed_length() {     return (FIXED_LEN > 0);    };
 
     static int8_t conversionRisk(const TCode, const TCode);
     static int8_t exportTypeMap(StringBuilder*, const TCode);

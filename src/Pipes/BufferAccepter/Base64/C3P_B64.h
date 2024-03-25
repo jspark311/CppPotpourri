@@ -65,7 +65,7 @@ I have reproduced his original commentary, where it still applies. And may have
 */
 
 /*******************************************************************************
-* Half-duplex BufferAccepters on need one of these wwo separate objects.
+* Half-duplex BufferAccepters will need one of these two separate objects.
 * A bi-directional transport will probably want one of each.
 *******************************************************************************/
 

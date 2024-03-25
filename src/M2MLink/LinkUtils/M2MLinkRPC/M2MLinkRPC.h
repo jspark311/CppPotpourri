@@ -24,7 +24,7 @@ RPCs may be split across polling cycles. This is sometimes required to handle
 #include <functional>
 #include "../../M2MLink.h"
 
-#define C3PRPC_CONTEXT_BYTES   32
+#define C3PRPC_CONTEXT_BYTES   24
 
 
 /*
@@ -42,11 +42,13 @@ class C3PRPCContext {
     ~C3PRPCContext();
 
     int8_t init(M2MMsg*);
+    int8_t init(KeyValuePair*, uint32_t);
+
     void wipe();
 
     // Accessors to data structures
-    inline bool messageHeld() {         return (nullptr != _msg);       };
-    inline M2MMsg* message() {          return _msg;                    };
+    inline bool requestHeld() {         return (nullptr != _msg);       };
+    inline KeyValuePair* request() {    return _request;                };
     inline bool hasResponse() {         return (nullptr != _response);  };
     inline KeyValuePair* response() {   return _response;               };
 
@@ -54,11 +56,12 @@ class C3PRPCContext {
 
 
   private:
-    M2MMsg*       _msg;                           // Single-slot queue
+    M2MMsg*       _msg;                           //
+    uint32_t      _req_id;                        // ID for the request.
+    KeyValuePair* _request;                       // Single-slot queue
     KeyValuePair* _response;                      // Single-slot queue
     uint16_t      _poll_count;                    // Increments on every poll().
-    uint16_t      _msg_count;                     // Increments on every message.
-    //uint16_t      _mtu;                           // Maximum content length per-message.
+    uint16_t      _response_count;                // Increments on every message.
     uint8_t       _cbytes[C3PRPC_CONTEXT_BYTES];  // General scratchpad.
 };
 
@@ -74,7 +77,7 @@ typedef struct {
   //   C3PRPCContext is passed in by argument to grease time-slicing.
   // Returns the usual [1, 0, -1] triad to indicate the states ["complete",
   //   "retry", "fail"] (respectively).
-  std::function<int8_t(C3PRPCContext*)> POLL_FXN;
+  std::function<int8_t(C3PRPCContext*)> PROCEDURE;
 } C3PDefinedRPC;
 
 
@@ -95,7 +98,6 @@ class M2MLinkRPC_Host : public M2MService {
 
     /* Implementation of M2MService. Trades messages with a link. */
     int8_t _handle_msg(uint32_t tag, M2MMsg*);
-    int8_t _poll_for_link(M2MLink*);
 
 
   private:
@@ -115,7 +117,6 @@ class M2MLinkRPC_Client {
 
     /* Implementation of M2MService. Trades messages with a link. */
     int8_t _handle_msg(uint32_t tag, M2MMsg*);
-    int8_t _poll_for_link(M2MLink*);
 
 
   private:

@@ -22,7 +22,7 @@ limitations under the License.
 
 
 M2MLinkRPC_Host::M2MLinkRPC_Host(M2MLink* l, const C3PDefinedRPC* const RPC_DEFS) :
-  M2MService(l), _RPC_LISTING(RPC_DEFS), _rpc_context(), _rpc_running(nullptr) {}
+  M2MService("RPC", l), _RPC_LISTING(RPC_DEFS), _rpc_context(), _rpc_running(nullptr) {}
 
 
 M2MLinkRPC_Host::~M2MLinkRPC_Host() {}
@@ -30,12 +30,6 @@ M2MLinkRPC_Host::~M2MLinkRPC_Host() {}
 
 /* Implementation of M2MService. Trades messages with a link. */
 int8_t M2MLinkRPC_Host::_handle_msg(uint32_t tag, M2MMsg*) {
-  int8_t ret = 0;
-  return ret;
-}
-
-
-int8_t M2MLinkRPC_Host::_poll_for_link(M2MLink*) {
   int8_t ret = 0;
   return ret;
 }

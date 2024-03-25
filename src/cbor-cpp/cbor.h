@@ -219,6 +219,7 @@ namespace cbor {
   };
 
 
+
   /*****************************************************************************
   * Fundamental operational classes
   *****************************************************************************/
@@ -285,30 +286,6 @@ namespace cbor {
       void write_type_value_signed64(int64_t value);
       void write_type_value64(int major_type, uint64_t value);
   };
-
-
-  /*
-  * This is a decoder class that prefers to rely on heap allocation of a
-  *   complicated type-wrapper object to support usage that doesn't rely on
-  *   object definition.
-  * This pattern was added by CppPotpourri, and is probably the best choice for
-  *   types covered by CppPotpourri's type-wrapping.
-  */
-  class decoder_c3pvalue {
-    public:
-      decoder_c3pvalue(input &in) : _in(&in), _working_value(nullptr), _currentLength(0), _state(STATE_TYPE) {};
-      ~decoder_c3pvalue();
-
-      C3PValue* next();
-      inline bool finished() {  return ((STATE_ERROR == _state) | (END_OF_BYTES == _state));  };
-
-    private:
-      input*     _in;
-      C3PValue*  _working_value;
-      int           _currentLength;
-      decoder_state _state;
-  };
-
 }
 
 #endif // CBOR_CPP_CBOR_H

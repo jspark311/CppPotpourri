@@ -396,7 +396,7 @@ void M2MMsg::printDebug(StringBuilder* output) {
   output->concatf(
     "    --- M2MMsg [%s: %s], %sid: %u %s\n",
     BusOp::getOpcodeString(_op),
-    M2MLink::manuvMsgCodeStr(_header.msg_code),
+    M2MLink::msgCodeStr(_header.msg_code),
     (_header.isReply() ? "reply to " : ""),
     _header.msg_id,
     (_header.expectsReply() ? "(need reply)" : "")

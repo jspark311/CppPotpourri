@@ -48,9 +48,9 @@ void C3PRPCContext::wipe() {
   if (nullptr != safe) {
     delete safe;
   }
-  _response   = nullptr;
-  _msg        = nullptr;
-  _poll_count = 0;
-  _msg_count  = 0;
+  _response       = nullptr;
+  _msg            = nullptr;
+  _poll_count     = 0;
+  _response_count = 0;
   memset(_cbytes, 0, C3PRPC_CONTEXT_BYTES);
 }

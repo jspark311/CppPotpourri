@@ -63,7 +63,7 @@ const char* const M2MLink::sessionStateStr(const M2MLinkState CODE) {
 }
 
 
-const char* const M2MLink::manuvMsgCodeStr(const M2MMsgCode CODE) {
+const char* const M2MLink::msgCodeStr(const M2MMsgCode CODE) {
   switch (CODE) {
     case M2MMsgCode::UNDEFINED:          return "UNDEFINED";
     case M2MMsgCode::SYNC_KEEPALIVE:     return "SYNC_KEEPALIVE";
@@ -77,6 +77,15 @@ const char* const M2MLink::manuvMsgCodeStr(const M2MMsgCode CODE) {
     case M2MMsgCode::WHO:                return "WHO";
     case M2MMsgCode::DHT_FXN:            return "DHT_FXN";
     case M2MMsgCode::APPLICATION:        return "APPLICATION";
+    case M2MMsgCode::SERVICE_SLOT_0:  case M2MMsgCode::SERVICE_SLOT_1:
+    case M2MMsgCode::SERVICE_SLOT_2:  case M2MMsgCode::SERVICE_SLOT_3:
+    case M2MMsgCode::SERVICE_SLOT_4:  case M2MMsgCode::SERVICE_SLOT_5:
+    case M2MMsgCode::SERVICE_SLOT_6:  case M2MMsgCode::SERVICE_SLOT_7:
+    case M2MMsgCode::SERVICE_SLOT_8:  case M2MMsgCode::SERVICE_SLOT_9:
+    case M2MMsgCode::SERVICE_SLOT_A:  case M2MMsgCode::SERVICE_SLOT_B:
+    case M2MMsgCode::SERVICE_SLOT_C:  case M2MMsgCode::SERVICE_SLOT_D:
+    case M2MMsgCode::SERVICE_SLOT_E:  case M2MMsgCode::SERVICE_SLOT_F:
+      return "SERVICE_SLOT";
     default:                             return "<UNKNOWN>";
   }
 }
@@ -100,6 +109,14 @@ const bool M2MLink::msgCodeValid(const M2MMsgCode CODE) {
     case M2MMsgCode::WHO:
     case M2MMsgCode::DHT_FXN:
     case M2MMsgCode::APPLICATION:
+    case M2MMsgCode::SERVICE_SLOT_0:  case M2MMsgCode::SERVICE_SLOT_1:
+    case M2MMsgCode::SERVICE_SLOT_2:  case M2MMsgCode::SERVICE_SLOT_3:
+    case M2MMsgCode::SERVICE_SLOT_4:  case M2MMsgCode::SERVICE_SLOT_5:
+    case M2MMsgCode::SERVICE_SLOT_6:  case M2MMsgCode::SERVICE_SLOT_7:
+    case M2MMsgCode::SERVICE_SLOT_8:  case M2MMsgCode::SERVICE_SLOT_9:
+    case M2MMsgCode::SERVICE_SLOT_A:  case M2MMsgCode::SERVICE_SLOT_B:
+    case M2MMsgCode::SERVICE_SLOT_C:  case M2MMsgCode::SERVICE_SLOT_D:
+    case M2MMsgCode::SERVICE_SLOT_E:  case M2MMsgCode::SERVICE_SLOT_F:
       return true;
     default:
       return false;
@@ -155,7 +172,10 @@ static int _contains_sync_pattern(StringBuilder* dat_in) {
 */
 M2MLink::M2MLink(const M2MLinkOpts* opts) :
   StateMachine<M2MLinkState>("M2MLink-FSM", &M2MLink::_FSM_STATES, M2MLinkState::UNINIT, M2MLINK_FSM_WAYPOINT_DEPTH),
-  _opts(opts), _flags(opts->default_flags) {}
+  _opts(opts), _flags(opts->default_flags)
+{
+  for (int i = 0; i < CONFIG_C3PLINK_SERVICE_SLOTS; i++) {  _svc_list[i] = nullptr;  }
+}
 
 
 /**
@@ -400,6 +420,20 @@ bool M2MLink::linkIdle() {
 }
 
 
+/*
+* TODO: It would be nice if this did duplicate-checking.
+*/
+int8_t M2MLink::setCallback(M2MService* svc) {
+  for (int i = 0; i < CONFIG_C3PLINK_SERVICE_SLOTS; i++) {
+    if (nullptr == _svc_list[i]) {
+      _svc_list[i] = svc;
+      return 0;
+    }
+  }
+  return -1;
+}
+
+
 
 /*******************************************************************************
 * Debugging                                                                    *
@@ -630,6 +664,7 @@ int8_t M2MLink::_churn_inbound() {
   int8_t ret = 0;
   while (_inbound_messages.hasNext()) {
     bool gc_message = true;
+    int8_t app_msg_ret = 127;
     M2MMsg* temp = _inbound_messages.dequeue();
     KeyValuePair* kvps_rxd = nullptr;
 
@@ -783,24 +818,46 @@ int8_t M2MLink::_churn_inbound() {
         break;
 
       case M2MMsgCode::APPLICATION:
-        switch (_invoke_msg_callback(temp)) {
-          case 2:   // Requeue the message as a reply. Don't GC it.
-            c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "Requeue as a reply");
-            gc_message = (0 != _send_msg(temp));
-            if (gc_message & (_verbosity >= LOG_LEV_ERROR)) {
-              c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Link 0x%08x failed to insert an APPLICATION reply message into our queue.\n", _session_tag);
-            }
-            break;
-          case 1:   // Drop the message.
-            c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "DROPPED");
-            break;
-          case 0:   // No callback. TODO: Might choose to retain in the queue?
-            c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "NO CALLBACK");
-            break;
-        }
+        app_msg_ret = _invoke_msg_callback(temp);
+        break;
+
+      case M2MMsgCode::SERVICE_SLOT_0:  case M2MMsgCode::SERVICE_SLOT_1:
+      case M2MMsgCode::SERVICE_SLOT_2:  case M2MMsgCode::SERVICE_SLOT_3:
+      case M2MMsgCode::SERVICE_SLOT_4:  case M2MMsgCode::SERVICE_SLOT_5:
+      case M2MMsgCode::SERVICE_SLOT_6:  case M2MMsgCode::SERVICE_SLOT_7:
+      case M2MMsgCode::SERVICE_SLOT_8:  case M2MMsgCode::SERVICE_SLOT_9:
+      case M2MMsgCode::SERVICE_SLOT_A:  case M2MMsgCode::SERVICE_SLOT_B:
+      case M2MMsgCode::SERVICE_SLOT_C:  case M2MMsgCode::SERVICE_SLOT_D:
+      case M2MMsgCode::SERVICE_SLOT_E:  case M2MMsgCode::SERVICE_SLOT_F:
+        app_msg_ret = _offer_msg_to_service(
+          ((uint8_t)temp->msgCode() - (uint8_t)M2MMsgCode::SERVICE_SLOT_0),
+          temp
+        );
         break;
 
       default:   // This should never happen.
+        break;
+    }
+
+    switch (app_msg_ret) {
+      case 2:   // Requeue the message as a reply. Don't GC it.
+        c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "Requeue as a reply");
+        gc_message = (0 != _send_msg(temp));
+        if (gc_message & (_verbosity >= LOG_LEV_ERROR)) {
+          c3p_log(LOG_LEV_ERROR, __PRETTY_FUNCTION__, "Link 0x%08x failed to insert an APPLICATION reply message into our queue.\n", _session_tag);
+        }
+        break;
+      case 1:   // Drop the message.
+        c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "DROPPED");
+        break;
+      case 0:   // No callback. TODO: Might choose to retain in the queue?
+        c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "NO CALLBACK");
+        break;
+      case -1:  // Requested service slot was missing.
+        c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "INVALID SVC SLOT");
+        break;
+      default:  // Requested service slot was missing.
+        c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "Bad return from handler: %d", app_msg_ret);
         break;
     }
 
@@ -1035,9 +1092,11 @@ void M2MLink::_invoke_state_callback() {
 * Internal function to invoke the application-provided callback for messages
 *   received. During this stack frame, the application will be able to reply
 *   to the message.
+* "The application", in this case, might also be M2MService modules that the
+*   application has stacked in.
 *
 * @return 0 if no callback invoked.
-*         1 if the message is to be dropped.
+*         1 if the message is to be dropped with no reply.
 *         2 if the message was converted into a reply.
 */
 int8_t M2MLink::_invoke_msg_callback(M2MMsg* msg) {
@@ -1047,7 +1106,38 @@ int8_t M2MLink::_invoke_msg_callback(M2MMsg* msg) {
     _msg_callback(_session_tag, msg);
     if (BusOpcode::TX == msg->direction()) {
       // If the message is now marked as TX, it means the application wants to
-      //   reply.
+      //   reply. This might just be an ACK, or it may be the next step in dialog,
+      //   itself demanding a reply.
+      ret++;
+    }
+  }
+  return ret;
+}
+
+/**
+* Internal function to invoke the application-provided callback for messages
+*   received. During this stack frame, the application will be able to reply
+*   to the message.
+* "The application", in this case, might also be M2MService modules that the
+*   application has stacked in.
+*
+* @return -1 if the selected slot is invalid or unoccupied.
+*         0 if no service claimed the message.
+*         1 if the message is to be dropped with no reply.
+*         2 if the message was converted into a reply.
+*/
+int8_t M2MLink::_offer_msg_to_service(uint8_t slot, M2MMsg* msg) {
+  int8_t ret = -1;
+  if (CONFIG_C3PLINK_SERVICE_SLOTS > slot) {
+    ret++;
+  }
+  if (nullptr != _svc_list[slot]) {   // Call the callback, if it is set.
+    ret++;
+    _svc_list[slot]->_handle_msg(_session_tag, msg);
+    if (BusOpcode::TX == msg->direction()) {
+      // If the message is now marked as TX, it means the application wants to
+      //   reply. This might just be an ACK, or it may be the next step in dialog,
+      //   itself demanding a reply.
       ret++;
     }
   }
@@ -1399,7 +1489,6 @@ int8_t M2MLink::_send_who_message() {
 
 
 
-
 /*******************************************************************************
 * FSM functions
 *******************************************************************************/
@@ -1574,7 +1663,6 @@ int8_t M2MLink::_fsm_set_position(M2MLinkState new_state) {
 
     if (state_entry_success) {
       if (_verbosity >= LOG_LEV_INFO) c3p_log(LOG_LEV_INFO, __PRETTY_FUNCTION__, "Link 0x%08x moved %s ---> %s\n", _session_tag, sessionStateStr(currentState()), sessionStateStr(new_state));
-
       // _fsm_pos_prior = _fsm_pos;
       // _fsm_pos       = new_state;
       switch (new_state) {
@@ -1633,6 +1721,7 @@ void M2MLink::_reclaim_m2mmsg(M2MMsg* msg) {
     delete msg;
   }
 }
+
 
 
 /*******************************************************************************
