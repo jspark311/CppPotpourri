@@ -567,9 +567,10 @@ int c3p_value_test_type_conversion() {
 
 
 int c3p_value_test_packing_parsing(const TCode FORMAT) {
-  int ret = 0;   // Success means complete fall-through.
+  const uint32_t TEST_BUF_LEN    = (13 + (randomUInt32() % 12));
   uint32_t len_expected = 0;
-  printf("Testing packing and parsing (%s)...\n", typecodeToStr(FORMAT));
+  int ret = 0;   // Success means complete fall-through.
+  printf("Testing packing and parsing with format %s...\n", typecodeToStr(FORMAT));
   printf("\tPreparing test cases... ");
   StringBuilder buffer;
 
@@ -584,18 +585,27 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
   const int64_t  TEST_VAL_INT64  = generate_random_int64();
   const float    TEST_VAL_FLOAT  = generate_random_float();
   const double   TEST_VAL_DOUBLE = generate_random_double();
+  StringBuilder  TEST_VAL_STRING;   // NOTE: Not a const. Keeping with the lexical pattern.
+  StringBuilder  TEST_VAL_STRBLDR;  // NOTE: Not a const. Keeping with the lexical pattern.
+  // Generate a test string of (TEST_BUF_LEN-1), because the wrapper will
+  //   report the binary length of the contained data. Which includes the
+  //   null-terminator for a C-style string.
+  generate_random_text_buffer(&TEST_VAL_STRING,  (TEST_BUF_LEN-1));
+  generate_random_text_buffer(&TEST_VAL_STRBLDR, (TEST_BUF_LEN-1));
 
-  bool     parsed_val_bool   = !TEST_VAL_BOOL;
-  uint8_t  parsed_val_uint8  = 0;
-  int8_t   parsed_val_int8   = 0;
-  uint16_t parsed_val_uint16 = 0;
-  int16_t  parsed_val_int16  = 0;
-  uint32_t parsed_val_uint32 = 0;
-  int32_t  parsed_val_int32  = 0;
-  uint64_t parsed_val_uint64 = 0;
-  int64_t  parsed_val_int64  = 0;
-  float    parsed_val_float  = 0.0;
-  double   parsed_val_double = 0.0;
+  bool     parsed_val_bool    = !TEST_VAL_BOOL;
+  uint8_t  parsed_val_uint8   = 0;
+  int8_t   parsed_val_int8    = 0;
+  uint16_t parsed_val_uint16  = 0;
+  int16_t  parsed_val_int16   = 0;
+  uint32_t parsed_val_uint32  = 0;
+  int32_t  parsed_val_int32   = 0;
+  uint64_t parsed_val_uint64  = 0;
+  int64_t  parsed_val_int64   = 0;
+  float    parsed_val_float   = 0.0;
+  double   parsed_val_double  = 0.0;
+  char*    parsed_val_string  = nullptr;
+  StringBuilder* parsed_val_strbldr = nullptr;
 
   C3PValue test_val_bool(TEST_VAL_BOOL);
   C3PValue test_val_uint8(TEST_VAL_UINT8);
@@ -608,32 +618,38 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
   C3PValue test_val_int64(TEST_VAL_INT64);
   C3PValue test_val_float(TEST_VAL_FLOAT);
   C3PValue test_val_double(TEST_VAL_DOUBLE);
+  C3PValue test_val_string((char*) TEST_VAL_STRING.string());
+  //C3PValue test_val_strbldr(&TEST_VAL_STRBLDR);
 
-  C3PValue* deser_container_bool   = nullptr;
-  C3PValue* deser_container_uint8  = nullptr;
-  C3PValue* deser_container_int8   = nullptr;
-  C3PValue* deser_container_uint16 = nullptr;
-  C3PValue* deser_container_int16  = nullptr;
-  C3PValue* deser_container_uint32 = nullptr;
-  C3PValue* deser_container_int32  = nullptr;
-  C3PValue* deser_container_uint64 = nullptr;
-  C3PValue* deser_container_int64  = nullptr;
-  C3PValue* deser_container_float  = nullptr;
-  C3PValue* deser_container_double = nullptr;
+  C3PValue* deser_container_bool    = nullptr;
+  C3PValue* deser_container_uint8   = nullptr;
+  C3PValue* deser_container_int8    = nullptr;
+  C3PValue* deser_container_uint16  = nullptr;
+  C3PValue* deser_container_int16   = nullptr;
+  C3PValue* deser_container_uint32  = nullptr;
+  C3PValue* deser_container_int32   = nullptr;
+  C3PValue* deser_container_uint64  = nullptr;
+  C3PValue* deser_container_int64   = nullptr;
+  C3PValue* deser_container_float   = nullptr;
+  C3PValue* deser_container_double  = nullptr;
+  C3PValue* deser_container_string  = nullptr;
+  C3PValue* deser_container_strbldr = nullptr;
 
   // len_expected += sizeOfType(test_val_bool.tcode());
-  // len_expected += sizeOfType(test_val_float.tcode());
-  // len_expected += sizeOfType(test_val_double.tcode());
-  // len_expected += sizeOfType(test_val_uint64.tcode());
-  // len_expected += sizeOfType(test_val_int64.tcode());
-  // len_expected += sizeOfType(test_val_uint32.tcode());
-  // len_expected += sizeOfType(test_val_int32.tcode());
-  // len_expected += sizeOfType(test_val_uint16.tcode());
-  // len_expected += sizeOfType(test_val_int16.tcode());
   // len_expected += sizeOfType(test_val_uint8.tcode());
   // len_expected += sizeOfType(test_val_int8.tcode());
+  // len_expected += sizeOfType(test_val_uint16.tcode());
+  // len_expected += sizeOfType(test_val_int16.tcode());
+  // len_expected += sizeOfType(test_val_uint32.tcode());
+  // len_expected += sizeOfType(test_val_int32.tcode());
+  // len_expected += sizeOfType(test_val_uint64.tcode());
+  // len_expected += sizeOfType(test_val_int64.tcode());
+  // len_expected += sizeOfType(test_val_float.tcode());
+  // len_expected += sizeOfType(test_val_double.tcode());
+  // len_expected += TEST_VAL_STRING.length();
+  // len_expected += TEST_VAL_STRBLDR.length();
 
-  printf("Pass\n\tSerializing numerics... ");
+  printf("Pass\n\tSerializing... ");
   ret += test_val_bool.serialize(&buffer, FORMAT);
   ret += test_val_uint8.serialize(&buffer, FORMAT);
   ret += test_val_int8.serialize(&buffer, FORMAT);
@@ -645,64 +661,80 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
   ret += test_val_int64.serialize(&buffer, FORMAT);
   ret += test_val_float.serialize(&buffer, FORMAT);
   ret += test_val_double.serialize(&buffer, FORMAT);
+  ret += test_val_string.serialize(&buffer, FORMAT);
+  //ret += deser_container_strbldr.serialize(&buffer, FORMAT);
   if (0 == ret) {
-    printf("Pass\n\tDeserializing numerics... ");
+    printf("Pass\n\tDeserializing... ");
     //printf("Pass\n\tLength is the expected value: %u\n", len_expected);
     //if (buffer.length() == len_expected) {
     //  printf("Pass\n\tLength is the expected value: %u\n", len_expected);
     //}
+    deser_container_bool    = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_uint8   = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_int8    = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_uint16  = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_int16   = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_uint32  = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_int32   = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_uint64  = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_int64   = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_float   = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_double  = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_string  = C3PValue::deserialize(&buffer, FORMAT);
+    //deser_container_strbldr = C3PValue::deserialize(&buffer, FORMAT);
 
-    deser_container_bool   = C3PValue::deserialize(&buffer, FORMAT);
-    deser_container_uint8  = C3PValue::deserialize(&buffer, FORMAT);
-    deser_container_int8   = C3PValue::deserialize(&buffer, FORMAT);
-    deser_container_uint16 = C3PValue::deserialize(&buffer, FORMAT);
-    deser_container_int16  = C3PValue::deserialize(&buffer, FORMAT);
-    deser_container_uint32 = C3PValue::deserialize(&buffer, FORMAT);
-    deser_container_int32  = C3PValue::deserialize(&buffer, FORMAT);
-    deser_container_uint64 = C3PValue::deserialize(&buffer, FORMAT);
-    deser_container_int64  = C3PValue::deserialize(&buffer, FORMAT);
-    deser_container_float  = C3PValue::deserialize(&buffer, FORMAT);
-    deser_container_double = C3PValue::deserialize(&buffer, FORMAT);
-
-    ret -= (nullptr != deser_container_bool)   ? 0 : 1;
-    ret -= (nullptr != deser_container_uint8)  ? 0 : 1;
-    ret -= (nullptr != deser_container_int8)   ? 0 : 1;
-    ret -= (nullptr != deser_container_uint16) ? 0 : 1;
-    ret -= (nullptr != deser_container_int16)  ? 0 : 1;
-    ret -= (nullptr != deser_container_uint32) ? 0 : 1;
-    ret -= (nullptr != deser_container_int32)  ? 0 : 1;
-    ret -= (nullptr != deser_container_uint64) ? 0 : 1;
-    ret -= (nullptr != deser_container_int64)  ? 0 : 1;
-    ret -= (nullptr != deser_container_float)  ? 0 : 1;
-    ret -= (nullptr != deser_container_double) ? 0 : 1;
+    ret -= (nullptr != deser_container_bool)    ? 0 : 1;
+    ret -= (nullptr != deser_container_uint8)   ? 0 : 1;
+    ret -= (nullptr != deser_container_int8)    ? 0 : 1;
+    ret -= (nullptr != deser_container_uint16)  ? 0 : 1;
+    ret -= (nullptr != deser_container_int16)   ? 0 : 1;
+    ret -= (nullptr != deser_container_uint32)  ? 0 : 1;
+    ret -= (nullptr != deser_container_int32)   ? 0 : 1;
+    ret -= (nullptr != deser_container_uint64)  ? 0 : 1;
+    ret -= (nullptr != deser_container_int64)   ? 0 : 1;
+    ret -= (nullptr != deser_container_float)   ? 0 : 1;
+    ret -= (nullptr != deser_container_double)  ? 0 : 1;
+    ret -= (nullptr != deser_container_string)  ? 0 : 1;
+    //ret -= (nullptr != deser_container_strbldr) ? 0 : 1;
     if (0 == ret) {
       printf("Pass\n\tFetching values from container... ");
-      ret -= (0 == deser_container_bool->get_as(&parsed_val_bool))     ? 0 : 1;
-      ret -= (0 == deser_container_uint8->get_as(&parsed_val_uint8))   ? 0 : 1;
-      ret -= (0 == deser_container_int8->get_as(&parsed_val_int8))     ? 0 : 1;
-      ret -= (0 == deser_container_uint16->get_as(&parsed_val_uint16)) ? 0 : 1;
-      ret -= (0 == deser_container_int16->get_as(&parsed_val_int16))   ? 0 : 1;
-      ret -= (0 == deser_container_uint32->get_as(&parsed_val_uint32)) ? 0 : 1;
-      ret -= (0 == deser_container_int32->get_as(&parsed_val_int32))   ? 0 : 1;
-      ret -= (0 == deser_container_uint64->get_as(&parsed_val_uint64)) ? 0 : 1;
-      ret -= (0 == deser_container_int64->get_as(&parsed_val_int64))   ? 0 : 1;
-      ret -= (0 == deser_container_float->get_as(&parsed_val_float))   ? 0 : 1;
-      ret -= (0 == deser_container_double->get_as(&parsed_val_double)) ? 0 : 1;
+      ret -= (0 == deser_container_bool->get_as(&parsed_val_bool))       ? 0 : 1;
+      ret -= (0 == deser_container_uint8->get_as(&parsed_val_uint8))     ? 0 : 1;
+      ret -= (0 == deser_container_int8->get_as(&parsed_val_int8))       ? 0 : 1;
+      ret -= (0 == deser_container_uint16->get_as(&parsed_val_uint16))   ? 0 : 1;
+      ret -= (0 == deser_container_int16->get_as(&parsed_val_int16))     ? 0 : 1;
+      ret -= (0 == deser_container_uint32->get_as(&parsed_val_uint32))   ? 0 : 1;
+      ret -= (0 == deser_container_int32->get_as(&parsed_val_int32))     ? 0 : 1;
+      ret -= (0 == deser_container_uint64->get_as(&parsed_val_uint64))   ? 0 : 1;
+      ret -= (0 == deser_container_int64->get_as(&parsed_val_int64))     ? 0 : 1;
+      ret -= (0 == deser_container_float->get_as(&parsed_val_float))     ? 0 : 1;
+      ret -= (0 == deser_container_double->get_as(&parsed_val_double))   ? 0 : 1;
+      ret -= (0 == deser_container_string->get_as(&parsed_val_string))   ? 0 : 1;
+      //ret -= (0 == deser_container_strbldr->get_as(&parsed_val_strbldr)) ? 0 : 1;
       if (0 == ret) {
         printf("Pass\n\tComparing values... ");
-        ret -= (TEST_VAL_BOOL   == parsed_val_bool   ) ? 0 : 1;
-        ret -= (TEST_VAL_UINT8  == parsed_val_uint8  ) ? 0 : 1;
-        ret -= (TEST_VAL_INT8   == parsed_val_int8   ) ? 0 : 1;
-        ret -= (TEST_VAL_UINT16 == parsed_val_uint16 ) ? 0 : 1;
-        ret -= (TEST_VAL_INT16  == parsed_val_int16  ) ? 0 : 1;
-        ret -= (TEST_VAL_UINT32 == parsed_val_uint32 ) ? 0 : 1;
-        ret -= (TEST_VAL_INT32  == parsed_val_int32  ) ? 0 : 1;
-        ret -= (TEST_VAL_UINT64 == parsed_val_uint64 ) ? 0 : 1;
-        ret -= (TEST_VAL_INT64  == parsed_val_int64  ) ? 0 : 1;
-        ret -= (TEST_VAL_FLOAT  == parsed_val_float  ) ? 0 : 1;
-        ret -= (TEST_VAL_DOUBLE == parsed_val_double ) ? 0 : 1;
+        ret -= (TEST_VAL_BOOL    == parsed_val_bool   ) ? 0 : 1;
+        ret -= (TEST_VAL_UINT8   == parsed_val_uint8  ) ? 0 : 1;
+        ret -= (TEST_VAL_INT8    == parsed_val_int8   ) ? 0 : 1;
+        ret -= (TEST_VAL_UINT16  == parsed_val_uint16 ) ? 0 : 1;
+        ret -= (TEST_VAL_INT16   == parsed_val_int16  ) ? 0 : 1;
+        ret -= (TEST_VAL_UINT32  == parsed_val_uint32 ) ? 0 : 1;
+        ret -= (TEST_VAL_INT32   == parsed_val_int32  ) ? 0 : 1;
+        ret -= (TEST_VAL_UINT64  == parsed_val_uint64 ) ? 0 : 1;
+        ret -= (TEST_VAL_INT64   == parsed_val_int64  ) ? 0 : 1;
+        ret -= (TEST_VAL_FLOAT   == parsed_val_float  ) ? 0 : 1;
+        ret -= (TEST_VAL_DOUBLE  == parsed_val_double ) ? 0 : 1;
+
+        printf("String lengths: %u, %u\n", TEST_VAL_STRING.length(), deser_container_string->length());
+
+        ret -= (0 == StringBuilder::strcasecmp(parsed_val_string,  (const char*) TEST_VAL_STRING.string()) ) ? 0 : 1;
+        //ret -= (0 == StringBuilder::strcasecmp(parsed_val_strbldr, (const char*) TEST_VAL_STRBLDR.string())) ? 0 : 1;
         if (0 == ret) {
-          printf("Pass\n");
+          printf("Pass\n\tString was fully consumed... ");
+          ret -= buffer.length();
+          if (0 == ret) {
+            printf("Pass\n");
+          }
         }
       }
     }
@@ -712,7 +744,7 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
     printf("Fail (%d).\n", ret);
     StringBuilder ascii_buf;
     buffer.printDebug(&ascii_buf);
-    printf("Produced buffer (%u bytes): %s\n", buffer.length(), (char*) ascii_buf.string());
+    printf("Uncomsumed buffer (%u bytes): %s\n", buffer.length(), (char*) ascii_buf.string());
     printf("Test value/Parsed value:\n");
     printf("\t%c / %c\n", (TEST_VAL_BOOL ? 't':'f'), (parsed_val_bool ? 't':'f'));
     printf("\t%u / %u\n", TEST_VAL_UINT8,  parsed_val_uint8);
@@ -725,19 +757,22 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
     printf("\t%lld / %lld\n", TEST_VAL_INT64,  parsed_val_int64);
     printf("\t%.3f / %.3f\n", TEST_VAL_FLOAT,  parsed_val_float);
     printf("\t%.6f / %.6f\n", TEST_VAL_DOUBLE, parsed_val_double);
+    printf("\t%s / %s\n", TEST_VAL_STRING.string(), (nullptr == parsed_val_string) ? "(null)" : parsed_val_string);
   }
 
-  if (nullptr != deser_container_bool)   {  delete deser_container_bool;    }
-  if (nullptr != deser_container_uint8)  {  delete deser_container_uint8;   }
-  if (nullptr != deser_container_int8)   {  delete deser_container_int8;    }
-  if (nullptr != deser_container_uint16) {  delete deser_container_uint16;  }
-  if (nullptr != deser_container_int16)  {  delete deser_container_int16;   }
-  if (nullptr != deser_container_uint32) {  delete deser_container_uint32;  }
-  if (nullptr != deser_container_int32)  {  delete deser_container_int32;   }
-  if (nullptr != deser_container_uint64) {  delete deser_container_uint64;  }
-  if (nullptr != deser_container_int64)  {  delete deser_container_int64;   }
-  if (nullptr != deser_container_float)  {  delete deser_container_float;   }
-  if (nullptr != deser_container_double) {  delete deser_container_double;  }
+  if (nullptr != deser_container_bool) {     delete deser_container_bool;     }
+  if (nullptr != deser_container_uint8) {    delete deser_container_uint8;    }
+  if (nullptr != deser_container_int8) {     delete deser_container_int8;     }
+  if (nullptr != deser_container_uint16) {   delete deser_container_uint16;   }
+  if (nullptr != deser_container_int16) {    delete deser_container_int16;    }
+  if (nullptr != deser_container_uint32) {   delete deser_container_uint32;   }
+  if (nullptr != deser_container_int32) {    delete deser_container_int32;    }
+  if (nullptr != deser_container_uint64) {   delete deser_container_uint64;   }
+  if (nullptr != deser_container_int64) {    delete deser_container_int64;    }
+  if (nullptr != deser_container_float) {    delete deser_container_float;    }
+  if (nullptr != deser_container_double) {   delete deser_container_double;   }
+  if (nullptr != deser_container_string) {   delete deser_container_string;   }
+  if (nullptr != deser_container_strbldr) {  delete deser_container_strbldr;  }
   return ret;
 }
 

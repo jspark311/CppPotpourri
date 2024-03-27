@@ -595,17 +595,12 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
       case 3:  // String
         if (HAVE_EXTRA_LEN) {
           // If there are enough bytes to satisfy the parse...
-          uint8_t* new_buf = (uint8_t*) malloc(_length_extra32+1);
-          if (nullptr != new_buf) {
-            *(new_buf + _length_extra32) = '\0';
+          uint8_t new_buf[_length_extra32+1];
+          *(new_buf + _length_extra32) = '\0';
+          if (_length_extra32 == _in->copyToBuffer(new_buf, _length_extra32, _length_taken)) {
             value = new C3PValue((char*) new_buf);
             if (nullptr != value) {
-              _in->copyToBuffer(new_buf, _length_extra32, _length_taken);
-              value->reapValue(true);
               _length_taken += _length_extra32;
-            }
-            else {
-              free(new_buf);
             }
           }
         }
