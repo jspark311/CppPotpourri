@@ -55,7 +55,7 @@ C3PValue* C3PValue::deserialize(StringBuilder* input, const TCode FORMAT) {
         C3PType* t_helper = getTypeHelper(TC);
         if (nullptr != t_helper) {
           if (t_helper->is_fixed_length()) {
-            if ((INPUT_LEN-1) >= input->length()) {
+            if ((INPUT_LEN-1) >= (uint32_t) input->length()) {
             }
             else {}  // We don't have enough bytes to parse this type.
           }
@@ -452,88 +452,36 @@ void C3PValue::toString(StringBuilder* out, bool include_type) {
 * C3PValueDecoder
 *******************************************************************************/
 
-bool C3PValueDecoder::_get_length_field(uint32_t* offset_ptr, uint32_t* val_ret, uint8_t minorType) {
-  uint32_t value = 0;
+bool C3PValueDecoder::_get_length_field(uint32_t* offset_ptr, uint64_t* val_ret, uint8_t minorType) {
+  uint64_t value = 0;
   uint32_t offset = *offset_ptr;
-  uint8_t buf[4] = {0, 0, 0, 0};
+  uint8_t buf[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   uint8_t len_len = (1 << (minorType - 24));
   switch (len_len) {
     case 1:
     case 2:
     case 4:
+    case 8:
       if (len_len == _in->copyToBuffer(buf, len_len, offset)) {
-        value |= ((uint32_t) buf[0] << 24);
-        value |= ((uint32_t) buf[1] << 16);
-        value |= ((uint32_t) buf[2] << 8);
-        value |= ((uint32_t) buf[3]);
-        *val_ret = (value >> ((4 - len_len) << 3));  // Shift the buffer into the right orientation.
+        value |= ((uint64_t) buf[0] << 56);
+        value |= ((uint64_t) buf[1] << 48);
+        value |= ((uint64_t) buf[2] << 40);
+        value |= ((uint64_t) buf[3] << 32);
+        value |= ((uint64_t) buf[4] << 24);
+        value |= ((uint64_t) buf[5] << 16);
+        value |= ((uint64_t) buf[6] << 8);
+        value |= ((uint64_t) buf[7]);
+        *val_ret = (value >> ((8 - len_len) << 3));  // Shift the buffer into the right orientation.
         *offset_ptr = (offset + len_len);
         return true;
       }
       break;
-    case 8:   // NOTE: Technically valid. But we will not allocate this much memory.
     default:
       c3p_log(LOG_LEV_ERROR, LOCAL_LOG_TAG, "Unsupported length field length (%u)", len_len);
       break;
   }
   return false;
 }
-
-
-float C3PValueDecoder::_get_float(uint32_t* offset_ptr) {
-  float value = 0.0f;
-  uint32_t offset = *(offset_ptr);
-  uint8_t buf[4] = {0, 0, 0, 0};
-  uint8_t* ptr = (uint8_t*)(void*) &value;
-  if (4 == _in->copyToBuffer(buf, 4, offset)) {
-    *(ptr + 3) = buf[0];
-    *(ptr + 2) = buf[1];
-    *(ptr + 1) = buf[2];
-    *(ptr + 0) = buf[3];
-    *offset_ptr = (offset + 4);
-  }
-  return value;
-}
-
-
-double C3PValueDecoder::_get_double(uint32_t* offset_ptr) {
-  double value = 0.0d;
-  uint32_t offset = *(offset_ptr);
-  uint8_t buf[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-  uint8_t* ptr = (uint8_t*)(void*) &value;
-  if (8 == _in->copyToBuffer(buf, 8, offset)) {
-    *(ptr + 7) = buf[0];
-    *(ptr + 6) = buf[1];
-    *(ptr + 5) = buf[2];
-    *(ptr + 4) = buf[3];
-    *(ptr + 3) = buf[4];
-    *(ptr + 2) = buf[5];
-    *(ptr + 1) = buf[6];
-    *(ptr + 0) = buf[7];
-    *offset_ptr = (offset + 8);
-  }
-  return value;
-}
-
-
-uint64_t C3PValueDecoder::_get_long(uint32_t* offset_ptr) {
-  uint64_t value = 0;
-  uint32_t offset = *(offset_ptr);
-  uint8_t buf[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-  if (8 == _in->copyToBuffer(buf, 8, offset)) {
-    value |= ((uint64_t) buf[0] << 56);
-    value |= ((uint64_t) buf[1] << 48);
-    value |= ((uint64_t) buf[2] << 40);
-    value |= ((uint64_t) buf[3] << 32);
-    value |= ((uint64_t) buf[4] << 24);
-    value |= ((uint64_t) buf[5] << 16);
-    value |= ((uint64_t) buf[6] << 8);
-    value |= ((uint64_t) buf[7]);
-    *offset_ptr = (offset + 8);
-  }
-  return value;
-}
-
 
 
 /*
@@ -550,7 +498,7 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
   bool cull_anyway = false;
 
   if (INPUT_LEN > 0) {
-    uint32_t _length_extra  = 0;   // Length of data specified by the length field above.
+    uint64_t _length_extra  = 0;   // Length of data specified by the length field above.
     const uint8_t C_TYPE    = _in->byteAt(_length_taken++);   // The first byte
     const uint8_t MAJORTYPE = (uint8_t) (C_TYPE >> 5);
     const uint8_t MINORTYPE = (uint8_t) (C_TYPE & 31);
@@ -575,24 +523,20 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
         }
         break;
     }
+    const uint32_t _length_extra32 = (uint32_t) _length_extra;  // If truly a length, it will be 32-bit.
 
     // For types that observe _length_extra, they will generally also want to
     //   know if there are enough bytes to satisfy the parse.
-    const bool HAVE_EXTRA_LEN = ((_length_extra > 0) & (INPUT_LEN >= (_length_taken + _length_extra)));
+    const bool HAVE_EXTRA_LEN = ((_length_extra > 0) & (INPUT_LEN >= (_length_taken + _length_extra32)));
 
     // Second pass. Form a return object, if possible.
     switch (MAJORTYPE) {
       case 0:  // positive integer
         switch (MINORTYPE) {
-          case 24:  value = new C3PValue((uint8_t)  _length_extra);  break;
-          case 25:  value = new C3PValue((uint16_t) _length_extra);  break;
-          case 26:  value = new C3PValue((uint32_t) _length_extra);  break;
-          case 27:
-            if (INPUT_LEN >= (_length_taken + 8)) {
-              uint64_t tmp = _get_long(&_length_taken);
-              value = new C3PValue(tmp);
-            }
-            break;
+          case 24:  value = new C3PValue((uint8_t)  _length_extra32);  break;
+          case 25:  value = new C3PValue((uint16_t) _length_extra32);  break;
+          case 26:  value = new C3PValue((uint32_t) _length_extra32);  break;
+          case 27:  value = new C3PValue((uint64_t) _length_extra);    break;
           default:
             if (MINORTYPE < 24) {
               value = new C3PValue((uint8_t) MINORTYPE);
@@ -605,23 +549,22 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
       case 1:   // negative integer
         switch (MINORTYPE) {
           case 24:
-            if (_length_extra < 128u) {  value = new C3PValue((int8_t)  -(_length_extra));  }
-            else {                       value = new C3PValue((int16_t) -(_length_extra));  }
+            if (_length_extra32 < INT8_MAX) {       value = new C3PValue((int8_t)  -(_length_extra32+1));  }
+            else if(_length_extra32 == INT8_MAX) {  value = new C3PValue((int8_t) INT8_MIN);           }
+            else {                                  value = new C3PValue((int16_t) -(_length_extra32+1));  }
             break;
           case 25:
-            if (_length_extra < 32768u) {  value = new C3PValue((int16_t) -(_length_extra));  }
-            else {                         value = new C3PValue((int32_t) -(_length_extra));  }
+            if (_length_extra32 < INT16_MAX) {       value = new C3PValue((int16_t) -(_length_extra32+1));  }
+            else if(_length_extra32 == INT16_MAX) {  value = new C3PValue((int32_t) INT16_MIN);           }
+            else {                                   value = new C3PValue((int32_t) -(_length_extra32+1));  }
             break;
           case 26:
-            if (_length_extra <= INT32_MAX) {        value = new C3PValue((int32_t) -(_length_extra+1));  }
-            else if(_length_extra == 2147483648u) {  value = new C3PValue((int32_t) INT32_MIN);           }
-            else {                                   value = new C3PValue((int64_t) -(_length_extra));    }   // TODO: Not correct.
+            if (_length_extra < INT32_MAX) {       value = new C3PValue((int32_t) -(_length_extra+1));  }
+            else if(_length_extra == INT32_MAX) {  value = new C3PValue((int32_t) INT32_MIN);           }
+            else {                                 value = new C3PValue((int64_t) -(_length_extra+1));  }
             break;
           case 27:
-            if (INPUT_LEN >= (_length_taken + 8)) {
-              uint64_t tmp = _get_long(&_length_taken);
-              value = new C3PValue((int64_t) tmp);
-            }
+            value = new C3PValue((int64_t) -(_length_extra+1));
             break;
           default:
             if (MINORTYPE < 24) {
@@ -634,13 +577,13 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
 
       case 2:  // Raw bytes
         if (HAVE_EXTRA_LEN) {
-          uint8_t* new_buf = (uint8_t*) malloc(_length_extra);
+          uint8_t* new_buf = (uint8_t*) malloc(_length_extra32);
           if (nullptr != new_buf) {
-            value = new C3PValue(new_buf, _length_extra);
+            value = new C3PValue(new_buf, _length_extra32);
             if (nullptr != value) {
-              _in->copyToBuffer(new_buf, _length_extra, _length_taken);
+              _in->copyToBuffer(new_buf, _length_extra32, _length_taken);
               value->reapValue(true);
-              _length_taken += _length_extra;
+              _length_taken += _length_extra32;
             }
             else {
               free(new_buf);
@@ -652,14 +595,14 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
       case 3:  // String
         if (HAVE_EXTRA_LEN) {
           // If there are enough bytes to satisfy the parse...
-          uint8_t* new_buf = (uint8_t*) malloc(_length_extra+1);
+          uint8_t* new_buf = (uint8_t*) malloc(_length_extra32+1);
           if (nullptr != new_buf) {
-            *(new_buf + _length_extra) = '\0';
+            *(new_buf + _length_extra32) = '\0';
             value = new C3PValue((char*) new_buf);
             if (nullptr != value) {
-              _in->copyToBuffer(new_buf, _length_extra, _length_taken);
+              _in->copyToBuffer(new_buf, _length_extra32, _length_taken);
               value->reapValue(true);
-              _length_taken += _length_extra;
+              _length_taken += _length_extra32;
             }
             else {
               free(new_buf);
@@ -668,11 +611,11 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
         }
         break;
 
-      case 4:  value = _handle_array(&_length_taken, _length_extra);  break;
-      case 5:  value = _handle_map(&_length_taken,   _length_extra);  break;
+      case 4:  value = _handle_array(&_length_taken, _length_extra32);  break;
+      case 5:  value = _handle_map(&_length_taken,   _length_extra32);  break;
       case 6:
-        if (C3P_CBOR_VENDOR_CODE == (_length_extra & 0xFFFFFF00)) {
-          const TCode TC = IntToTcode(_length_extra & 0x000000FF);
+        if (C3P_CBOR_VENDOR_CODE == (_length_extra32 & 0xFFFFFF00)) {
+          const TCode TC = IntToTcode(_length_extra32 & 0x000000FF);
           C3PType* t_helper = getTypeHelper(TC);
           if (nullptr != t_helper) {
             //value = new C3PValue(TC, _length_extra);
@@ -695,14 +638,8 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
               cull_anyway = true;  //_listener->on_special(_length_extra);
             }
             break;
-          case 26:
-            value = new C3PValue(*((float*)(void*) &_length_extra));
-            break;
-          case 27:
-            if (INPUT_LEN >= (_length_taken + 8)) {
-              value = new C3PValue(_get_double(&_length_taken));
-            }
-            break;
+          case 26:  value = new C3PValue(*((float*)(void*) &_length_extra32));  break;
+          case 27:  value = new C3PValue(*((double*)(void*) &_length_extra));   break;
           default:
             //if (MINORTYPE < 20) {
             //  _listener->on_special(MINORTYPE);

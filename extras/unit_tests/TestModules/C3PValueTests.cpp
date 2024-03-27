@@ -566,16 +566,181 @@ int c3p_value_test_type_conversion() {
 }
 
 
-int c3p_value_test_packing(const TCode FORMAT) {
-  int ret = 0;
+int c3p_value_test_packing_parsing(const TCode FORMAT) {
+  int ret = 0;   // Success means complete fall-through.
+  uint32_t len_expected = 0;
+  printf("Testing packing and parsing (%s)...\n", typecodeToStr(FORMAT));
+  printf("\tPreparing test cases... ");
+  StringBuilder buffer;
+
+  const bool     TEST_VAL_BOOL   = flip_coin();
+  const uint8_t  TEST_VAL_UINT8  = (uint8_t)  randomUInt32();
+  const int8_t   TEST_VAL_INT8   = (int8_t)   randomUInt32();
+  const uint16_t TEST_VAL_UINT16 = (uint16_t) randomUInt32();
+  const int16_t  TEST_VAL_INT16  = (int16_t)  randomUInt32();
+  const uint32_t TEST_VAL_UINT32 = randomUInt32();
+  const int32_t  TEST_VAL_INT32  = (int32_t)  randomUInt32();
+  const uint64_t TEST_VAL_UINT64 = generate_random_uint64();
+  const int64_t  TEST_VAL_INT64  = generate_random_int64();
+  const float    TEST_VAL_FLOAT  = generate_random_float();
+  const double   TEST_VAL_DOUBLE = generate_random_double();
+
+  bool     parsed_val_bool   = !TEST_VAL_BOOL;
+  uint8_t  parsed_val_uint8  = 0;
+  int8_t   parsed_val_int8   = 0;
+  uint16_t parsed_val_uint16 = 0;
+  int16_t  parsed_val_int16  = 0;
+  uint32_t parsed_val_uint32 = 0;
+  int32_t  parsed_val_int32  = 0;
+  uint64_t parsed_val_uint64 = 0;
+  int64_t  parsed_val_int64  = 0;
+  float    parsed_val_float  = 0.0;
+  double   parsed_val_double = 0.0;
+
+  C3PValue test_val_bool(TEST_VAL_BOOL);
+  C3PValue test_val_uint8(TEST_VAL_UINT8);
+  C3PValue test_val_int8(TEST_VAL_INT8);
+  C3PValue test_val_uint16(TEST_VAL_UINT16);
+  C3PValue test_val_int16(TEST_VAL_INT16);
+  C3PValue test_val_uint32(TEST_VAL_UINT32);
+  C3PValue test_val_int32(TEST_VAL_INT32);
+  C3PValue test_val_uint64(TEST_VAL_UINT64);
+  C3PValue test_val_int64(TEST_VAL_INT64);
+  C3PValue test_val_float(TEST_VAL_FLOAT);
+  C3PValue test_val_double(TEST_VAL_DOUBLE);
+
+  C3PValue* deser_container_bool   = nullptr;
+  C3PValue* deser_container_uint8  = nullptr;
+  C3PValue* deser_container_int8   = nullptr;
+  C3PValue* deser_container_uint16 = nullptr;
+  C3PValue* deser_container_int16  = nullptr;
+  C3PValue* deser_container_uint32 = nullptr;
+  C3PValue* deser_container_int32  = nullptr;
+  C3PValue* deser_container_uint64 = nullptr;
+  C3PValue* deser_container_int64  = nullptr;
+  C3PValue* deser_container_float  = nullptr;
+  C3PValue* deser_container_double = nullptr;
+
+  // len_expected += sizeOfType(test_val_bool.tcode());
+  // len_expected += sizeOfType(test_val_float.tcode());
+  // len_expected += sizeOfType(test_val_double.tcode());
+  // len_expected += sizeOfType(test_val_uint64.tcode());
+  // len_expected += sizeOfType(test_val_int64.tcode());
+  // len_expected += sizeOfType(test_val_uint32.tcode());
+  // len_expected += sizeOfType(test_val_int32.tcode());
+  // len_expected += sizeOfType(test_val_uint16.tcode());
+  // len_expected += sizeOfType(test_val_int16.tcode());
+  // len_expected += sizeOfType(test_val_uint8.tcode());
+  // len_expected += sizeOfType(test_val_int8.tcode());
+
+  printf("Pass\n\tSerializing numerics... ");
+  ret += test_val_bool.serialize(&buffer, FORMAT);
+  ret += test_val_uint8.serialize(&buffer, FORMAT);
+  ret += test_val_int8.serialize(&buffer, FORMAT);
+  ret += test_val_uint16.serialize(&buffer, FORMAT);
+  ret += test_val_int16.serialize(&buffer, FORMAT);
+  ret += test_val_uint32.serialize(&buffer, FORMAT);
+  ret += test_val_int32.serialize(&buffer, FORMAT);
+  ret += test_val_uint64.serialize(&buffer, FORMAT);
+  ret += test_val_int64.serialize(&buffer, FORMAT);
+  ret += test_val_float.serialize(&buffer, FORMAT);
+  ret += test_val_double.serialize(&buffer, FORMAT);
+  if (0 == ret) {
+    printf("Pass\n\tDeserializing numerics... ");
+    //printf("Pass\n\tLength is the expected value: %u\n", len_expected);
+    //if (buffer.length() == len_expected) {
+    //  printf("Pass\n\tLength is the expected value: %u\n", len_expected);
+    //}
+
+    deser_container_bool   = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_uint8  = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_int8   = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_uint16 = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_int16  = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_uint32 = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_int32  = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_uint64 = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_int64  = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_float  = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_double = C3PValue::deserialize(&buffer, FORMAT);
+
+    ret -= (nullptr != deser_container_bool)   ? 0 : 1;
+    ret -= (nullptr != deser_container_uint8)  ? 0 : 1;
+    ret -= (nullptr != deser_container_int8)   ? 0 : 1;
+    ret -= (nullptr != deser_container_uint16) ? 0 : 1;
+    ret -= (nullptr != deser_container_int16)  ? 0 : 1;
+    ret -= (nullptr != deser_container_uint32) ? 0 : 1;
+    ret -= (nullptr != deser_container_int32)  ? 0 : 1;
+    ret -= (nullptr != deser_container_uint64) ? 0 : 1;
+    ret -= (nullptr != deser_container_int64)  ? 0 : 1;
+    ret -= (nullptr != deser_container_float)  ? 0 : 1;
+    ret -= (nullptr != deser_container_double) ? 0 : 1;
+    if (0 == ret) {
+      printf("Pass\n\tFetching values from container... ");
+      ret -= (0 == deser_container_bool->get_as(&parsed_val_bool))     ? 0 : 1;
+      ret -= (0 == deser_container_uint8->get_as(&parsed_val_uint8))   ? 0 : 1;
+      ret -= (0 == deser_container_int8->get_as(&parsed_val_int8))     ? 0 : 1;
+      ret -= (0 == deser_container_uint16->get_as(&parsed_val_uint16)) ? 0 : 1;
+      ret -= (0 == deser_container_int16->get_as(&parsed_val_int16))   ? 0 : 1;
+      ret -= (0 == deser_container_uint32->get_as(&parsed_val_uint32)) ? 0 : 1;
+      ret -= (0 == deser_container_int32->get_as(&parsed_val_int32))   ? 0 : 1;
+      ret -= (0 == deser_container_uint64->get_as(&parsed_val_uint64)) ? 0 : 1;
+      ret -= (0 == deser_container_int64->get_as(&parsed_val_int64))   ? 0 : 1;
+      ret -= (0 == deser_container_float->get_as(&parsed_val_float))   ? 0 : 1;
+      ret -= (0 == deser_container_double->get_as(&parsed_val_double)) ? 0 : 1;
+      if (0 == ret) {
+        printf("Pass\n\tComparing values... ");
+        ret -= (TEST_VAL_BOOL   == parsed_val_bool   ) ? 0 : 1;
+        ret -= (TEST_VAL_UINT8  == parsed_val_uint8  ) ? 0 : 1;
+        ret -= (TEST_VAL_INT8   == parsed_val_int8   ) ? 0 : 1;
+        ret -= (TEST_VAL_UINT16 == parsed_val_uint16 ) ? 0 : 1;
+        ret -= (TEST_VAL_INT16  == parsed_val_int16  ) ? 0 : 1;
+        ret -= (TEST_VAL_UINT32 == parsed_val_uint32 ) ? 0 : 1;
+        ret -= (TEST_VAL_INT32  == parsed_val_int32  ) ? 0 : 1;
+        ret -= (TEST_VAL_UINT64 == parsed_val_uint64 ) ? 0 : 1;
+        ret -= (TEST_VAL_INT64  == parsed_val_int64  ) ? 0 : 1;
+        ret -= (TEST_VAL_FLOAT  == parsed_val_float  ) ? 0 : 1;
+        ret -= (TEST_VAL_DOUBLE == parsed_val_double ) ? 0 : 1;
+        if (0 == ret) {
+          printf("Pass\n");
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail (%d).\n", ret);
+    StringBuilder ascii_buf;
+    buffer.printDebug(&ascii_buf);
+    printf("Produced buffer (%u bytes): %s\n", buffer.length(), (char*) ascii_buf.string());
+    printf("Test value/Parsed value:\n");
+    printf("\t%c / %c\n", (TEST_VAL_BOOL ? 't':'f'), (parsed_val_bool ? 't':'f'));
+    printf("\t%u / %u\n", TEST_VAL_UINT8,  parsed_val_uint8);
+    printf("\t%d / %d\n", TEST_VAL_INT8,   parsed_val_int8);
+    printf("\t%u / %u\n", TEST_VAL_UINT16, parsed_val_uint16);
+    printf("\t%d / %d\n", TEST_VAL_INT16,  parsed_val_int16);
+    printf("\t%u / %u\n", TEST_VAL_UINT32, parsed_val_uint32);
+    printf("\t%d / %d\n", TEST_VAL_INT32,  parsed_val_int32);
+    printf("\t%llu / %llu\n", TEST_VAL_UINT64, parsed_val_uint64);
+    printf("\t%lld / %lld\n", TEST_VAL_INT64,  parsed_val_int64);
+    printf("\t%.3f / %.3f\n", TEST_VAL_FLOAT,  parsed_val_float);
+    printf("\t%.6f / %.6f\n", TEST_VAL_DOUBLE, parsed_val_double);
+  }
+
+  if (nullptr != deser_container_bool)   {  delete deser_container_bool;    }
+  if (nullptr != deser_container_uint8)  {  delete deser_container_uint8;   }
+  if (nullptr != deser_container_int8)   {  delete deser_container_int8;    }
+  if (nullptr != deser_container_uint16) {  delete deser_container_uint16;  }
+  if (nullptr != deser_container_int16)  {  delete deser_container_int16;   }
+  if (nullptr != deser_container_uint32) {  delete deser_container_uint32;  }
+  if (nullptr != deser_container_int32)  {  delete deser_container_int32;   }
+  if (nullptr != deser_container_uint64) {  delete deser_container_uint64;  }
+  if (nullptr != deser_container_int64)  {  delete deser_container_int64;   }
+  if (nullptr != deser_container_float)  {  delete deser_container_float;   }
+  if (nullptr != deser_container_double) {  delete deser_container_double;  }
   return ret;
 }
 
-
-int c3p_value_test_parsing(const TCode FORMAT) {
-  int ret = 0;
-  return ret;
-}
 
 
 
@@ -588,10 +753,8 @@ int c3p_value_test_parsing(const TCode FORMAT) {
 #define CHKLST_C3PVAL_TEST_BLOBS           0x00000008  //
 #define CHKLST_C3PVAL_TEST_ALIGNMENT       0x00000010  //
 #define CHKLST_C3PVAL_TEST_CONVERSION      0x00000020  //
-#define CHKLST_C3PVAL_TEST_PACKING_NATIVE  0x00000040  //
-#define CHKLST_C3PVAL_TEST_PARSING_NATIVE  0x00000080  //
-#define CHKLST_C3PVAL_TEST_PACKING_CBOR    0x00000100  //
-#define CHKLST_C3PVAL_TEST_PARSING_CBOR    0x00000200  //
+#define CHKLST_C3PVAL_TEST_PACK_PARSE_BIN  0x00000040  //
+#define CHKLST_C3PVAL_TEST_PACK_PARSE_CBOR 0x00000080  //
 
 #define CHKLST_C3PVAL_TESTS_BASICS ( \
   CHKLST_C3PVAL_TEST_NUMERICS | CHKLST_C3PVAL_TEST_VECTORS | \
@@ -600,8 +763,7 @@ int c3p_value_test_parsing(const TCode FORMAT) {
 
 #define CHKLST_C3PVAL_TESTS_ALL ( \
   CHKLST_C3PVAL_TESTS_BASICS | CHKLST_C3PVAL_TEST_CONVERSION | \
-  CHKLST_C3PVAL_TEST_PACKING_CBOR | CHKLST_C3PVAL_TEST_PARSING_CBOR | \
-  CHKLST_C3PVAL_TEST_PACKING_NATIVE | CHKLST_C3PVAL_TEST_PARSING_NATIVE)
+  CHKLST_C3PVAL_TEST_PACK_PARSE_CBOR)
 
 const StepSequenceList TOP_LEVEL_C3PVALUE_TEST_LIST[] = {
   { .FLAG         = CHKLST_C3PVAL_TEST_NUMERICS,
@@ -646,33 +808,20 @@ const StepSequenceList TOP_LEVEL_C3PVALUE_TEST_LIST[] = {
     .POLL_FXN     = []() { return ((0 == c3p_value_test_type_conversion()) ? 1:-1);  }
   },
 
-  { .FLAG         = CHKLST_C3PVAL_TEST_PACKING_NATIVE,
-    .LABEL        = "Packing (Native)",
+  { .FLAG         = CHKLST_C3PVAL_TEST_PACK_PARSE_BIN,
+    .LABEL        = "Packing and Parsing (BIN)",
     .DEP_MASK     = (CHKLST_C3PVAL_TESTS_BASICS),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == c3p_value_test_packing(TCode::BINARY)) ? 1:-1);  }
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_packing_parsing(TCode::BINARY)) ? 1:-1);  }
   },
 
-  { .FLAG         = CHKLST_C3PVAL_TEST_PARSING_NATIVE,
-    .LABEL        = "Parsing (Native)",
-    .DEP_MASK     = (CHKLST_C3PVAL_TEST_PACKING_NATIVE),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == c3p_value_test_parsing(TCode::BINARY)) ? 1:-1);  }
-  },
-
-  { .FLAG         = CHKLST_C3PVAL_TEST_PACKING_CBOR,
-    .LABEL        = "Packing (CBOR)",
-    .DEP_MASK     = (CHKLST_C3PVAL_TESTS_BASICS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == c3p_value_test_packing(TCode::CBOR)) ? 1:-1);  }
-  },
 
   // Auth rejection flows.
-  { .FLAG         = CHKLST_C3PVAL_TEST_PARSING_CBOR,
-    .LABEL        = "Parsing (CBOR)",
-    .DEP_MASK     = (CHKLST_C3PVAL_TEST_PACKING_CBOR),
+  { .FLAG         = CHKLST_C3PVAL_TEST_PACK_PARSE_CBOR,
+    .LABEL        = "Packing and Parsing (CBOR)",
+    .DEP_MASK     = (CHKLST_C3PVAL_TESTS_BASICS),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == c3p_value_test_parsing(TCode::CBOR)) ? 1:-1);  }
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_packing_parsing(TCode::CBOR)) ? 1:-1);  }
   },
 };
 

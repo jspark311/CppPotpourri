@@ -7,7 +7,6 @@ OPTIMIZATION       = -O0 -g --coverage -fno-omit-frame-pointer
 C_STANDARD         = gnu99
 CPP_STANDARD       = c++17
 
-
 ###########################################################################
 # This is the build policy for the behavior of warnings in the library,
 #   and should reflect the contractual assurances given at that level.
@@ -40,11 +39,10 @@ export SZ      = $(shell which size)
 export MAKE    = $(shell which make)
 export GCOV    = $(shell which gcov)
 
-# This is where we will store compiled libs and the final output.
-export BUILD_ROOT    = .
-export OUTPUT_PATH   = $(BUILD_ROOT)/build
-export COVERAGE_PATH = $(OUTPUT_PATH)/coverage
-export ANALYZER_PATH = $(OUTPUT_PATH)/static-analysis
+BUILD_ROOT    = .
+OUTPUT_PATH   = $(BUILD_ROOT)/build
+COVERAGE_PATH = $(OUTPUT_PATH)/coverage
+ANALYZER_PATH = $(OUTPUT_PATH)/static-analysis
 
 
 ###########################################################################
@@ -85,7 +83,6 @@ SOURCES_CPP += $(wildcard ../../src/M2MLink/*.cpp)
 SOURCES_CPP += $(wildcard ../../src/M2MLink/LinkUtils/M2MLinkRPC/*.cpp)
 SOURCES_CPP += $(wildcard ../../src/Identity/*.cpp)
 
-
 # TODO: These things are not yet under unit tests, but we build them anyway so
 #   we can at least get the benefit of basic compilability checking.
 # TODO: Need a bit of dep-injection before this is workable...
@@ -94,7 +91,8 @@ SOURCES_CPP += $(wildcard ../../src/Identity/*.cpp)
 #SOURCES_CPP += ../../src/BusQueue/SPIAdapter.cpp
 #SOURCES_CPP += ../../src/BusQueue/UARTAdapter.cpp
 
-CXXFLAGS  = $(WARNING_BEHAVIOR) -D_GNU_SOURCE -fprofile-dir=$(COVERAGE_PATH)
+CXXFLAGS  = $(INCLUDES) $(OPTIMIZATION)
+CXXFLAGS += $(WARNING_BEHAVIOR) -D_GNU_SOURCE -fprofile-dir=$(COVERAGE_PATH)
 CXXFLAGS += -fsingle-precision-constant -Wdouble-promotion -fno-rtti -fno-exceptions
 CXXFLAGS += -static
 CXXFLAGS += -DCONFIG_C3P_CBOR -DCONFIG_C3P_M2M_SUPPORT
@@ -102,19 +100,6 @@ CXXFLAGS += -DCONFIG_C3P_IMG_SUPPORT
 CXXFLAGS += -DCONFIG_C3P_TRACE_ENABLED
 
 LIBS  = -L. -lCppPotpourri -lstdc++ -lm
-
-
-###########################################################################
-# exports, consolidation....
-###########################################################################
-# Merge our choices and export them to the downstream Makefiles...
-OBJS   = $(SOURCES_CPP:.cpp=.o)
-DEPS   = $(SOURCES_CPP:.cpp=.d)
-TESTS  = $(SOURCES_TESTS_CPP:.cpp=)
-CXXFLAGS += $(INCLUDES) $(OPTIMIZATION)
-ANALYZER_FLAGS  = $(INCLUDES)
-ANALYZER_FLAGS += --std=$(CPP_STANDARD) -j6 --cppcheck-build-dir=$(ANALYZER_PATH)
-ANALYZER_FLAGS += --enable=all --report-progress --force
 
 ###########################################################################
 # Are we on a 64-bit system? If so, we'll need to specify
@@ -138,8 +123,30 @@ ifeq ($(LBITS),64)
   CXXFLAGS += -m32
 endif
 
-export ANALYZER_FLAGS
-export CXXFLAGS
+
+###########################################################################
+# exports, consolidation....
+###########################################################################
+# Merge our choices and export them to the downstream Makefiles...
+OBJS       = $(SOURCES_CPP:.cpp=.o)
+DEPS       = $(SOURCES_CPP:.cpp=.d)
+GCNO_FILES = $(OBJS:.o=.gcno)
+GCDA_FILES = $(OBJS:.o=.gcda)
+TESTS  = $(SOURCES_TESTS_CPP:.cpp=)
+
+GCOV_FLAGS  = --demangled-names
+GCOV_FLAGS += --object-directory $(COVERAGE_PATH)
+GCOV_FLAGS += --source-prefix $(COVERAGE_PATH)
+GCOV_FLAGS += --preserve-paths
+GCOV_FLAGS += --branch-probabilities
+GCOV_FLAGS += --branch-counts
+GCOV_FLAGS += --display-progress
+GCOV_FLAGS += --function-summaries
+GCOV_FLAGS += --relative-only
+
+ANALYZER_FLAGS  = $(INCLUDES)
+ANALYZER_FLAGS += --std=$(CPP_STANDARD) -j6 --cppcheck-build-dir=$(ANALYZER_PATH)
+ANALYZER_FLAGS += --enable=all --report-progress --force
 
 
 ###########################################################################
@@ -177,9 +184,9 @@ alltests: lib
 	@echo 'Unit testing complete.'
 
 coverage: alltests
-	$(GCOV) --object-directory $(COVERAGE_PATH) -f -d -r -m --demangled-names $(SOURCES_CPP)
-	mv *.gcno $(COVERAGE_PATH)
-	mv *.gcna $(COVERAGE_PATH)
+	#mv $(OUTPUT_PATH)/*.gcno $(GCNO_FILES) $(COVERAGE_PATH)
+	$(GCOV) $(GCOV_FLAGS) $(SOURCES_CPP)
+	#mv *.gcov $(COVERAGE_PATH)
 	lcov --capture --directory $(COVERAGE_PATH) --output-file $(COVERAGE_PATH)/coverage.info
 	genhtml $(COVERAGE_PATH)/coverage.info --output-directory $(COVERAGE_PATH)
 	@echo 'Coverage measurement complete.'
@@ -191,4 +198,4 @@ check: outputpath
 	@echo 'Static analysis complete.'
 
 clean:
-	rm -rf $(OUTPUT_PATH) $(DEPS) $(OBJS) *.gcno *.gcda *.gcov *.o
+	rm -rf $(OUTPUT_PATH) $(DEPS) $(OBJS) $(GCNO_FILES) $(GCDA_FILES) *.gcno *.gcda *.gcov *.o

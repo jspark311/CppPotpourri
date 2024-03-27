@@ -295,10 +295,7 @@ class C3PValueDecoder {
   private:
     StringBuilder* _in;
 
-    float    _get_float(uint32_t* offset);
-    double   _get_double(uint32_t* offset);
-    uint64_t _get_long(uint32_t* offset);
-    bool     _get_length_field(uint32_t* offset, uint32_t* val_ret, uint8_t minorType);
+    bool     _get_length_field(uint32_t* offset, uint64_t* val_ret, uint8_t minorType);
 
     C3PValue* _handle_array(uint32_t* offset, uint32_t);
     C3PValue* _handle_map(uint32_t* offset, uint32_t);

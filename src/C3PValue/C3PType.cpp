@@ -364,7 +364,7 @@ int C3PType::_type_blind_serialize(void* obj, StringBuilder* out, const TCode FO
           //   be portable. VECT_3_FLOAT ought to be an array of floats, for instance.
           encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(TCODE));
           encoder.write_bytes((uint8_t*) obj, length(obj));
-          ret = 0;
+          ret = 0;   // TODO: Safe SB API.
         }
         break;
       default:  break;
@@ -529,6 +529,7 @@ template <> int         C3PTypeConstraint<int8_t>::serialize(void* obj, StringBu
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
         encoder.write_int(*((int8_t*) obj));
+        ret = 0;   // TODO: Safe SB API.
       }
       break;
 
@@ -672,6 +673,7 @@ template <> int         C3PTypeConstraint<int16_t>::serialize(void* obj, StringB
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
         encoder.write_int(*((int16_t*) obj));
+        ret = 0;   // TODO: Safe SB API.
       }
       break;
 
@@ -817,6 +819,7 @@ template <> int         C3PTypeConstraint<int32_t>::serialize(void* obj, StringB
         cbor::encoder encoder(output);
         int32_t o = _load_from_mem(obj);
         encoder.write_int(o);
+        ret = 0;   // TODO: Safe SB API.
       }
       break;
 
@@ -960,6 +963,7 @@ template <> int         C3PTypeConstraint<int64_t>::serialize(void* obj, StringB
         cbor::encoder encoder(output);
         int64_t o = _load_from_mem(obj);
         encoder.write_int(o);
+        ret = 0;   // TODO: Safe SB API.
       }
       break;
 
@@ -1086,6 +1090,7 @@ template <> int         C3PTypeConstraint<uint8_t>::serialize(void* obj, StringB
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
         encoder.write_int(*((uint8_t*) obj));
+        ret = 0;   // TODO: Safe SB API.
       }
       break;
 
@@ -1219,6 +1224,7 @@ template <> int         C3PTypeConstraint<uint16_t>::serialize(void* obj, String
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
         encoder.write_int(*((uint16_t*) obj));
+        ret = 0;   // TODO: Safe SB API.
       }
       break;
 
@@ -1358,6 +1364,7 @@ template <> int         C3PTypeConstraint<uint32_t>::serialize(void* obj, String
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
         encoder.write_int(*((uint32_t*) obj));
+        ret = 0;   // TODO: Safe SB API.
       }
       break;
 
@@ -1510,6 +1517,7 @@ template <> int         C3PTypeConstraint<uint64_t>::serialize(void* obj, String
         cbor::encoder encoder(output);
         uint64_t o = _load_from_mem(obj);
         encoder.write_int(o);
+        ret = 0;   // TODO: Safe SB API.
       }
       break;
 
@@ -1609,6 +1617,7 @@ template <> int         C3PTypeConstraint<bool>::serialize(void* obj, StringBuil
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
         encoder.write_bool(*((bool*) obj));
+        ret = 0;   // TODO: Safe SB API.
       }
       break;
 
@@ -1697,6 +1706,7 @@ template <> int         C3PTypeConstraint<float>::serialize(void* obj, StringBui
         cbor::encoder encoder(output);
         float temp = _load_from_mem(obj);
         encoder.write_float(temp);
+        ret = 0;   // TODO: Safe SB API.
       }
       break;
 
@@ -1786,6 +1796,7 @@ template <> int         C3PTypeConstraint<double>::serialize(void* obj, StringBu
         cbor::encoder encoder(output);
         double temp = _load_from_mem(obj);
         encoder.write_double(temp);
+        ret = 0;   // TODO: Safe SB API.
       }
       break;
 
@@ -2127,6 +2138,7 @@ template <> int         C3PTypeConstraint<char*>::serialize(void* obj, StringBui
             cbor::output_stringbuilder output(out);
             cbor::encoder encoder(output);
             encoder.write_string(o);
+            ret = 0;   // TODO: Safe SB API.
           }
           break;
 
@@ -2229,6 +2241,7 @@ template <> int         C3PTypeConstraint<StringBuilder*>::serialize(void* obj, 
         StringBuilder* o = nullptr;
         memcpy((void*) &o, obj, sizeof(StringBuilder*));
         encoder.write_string((char*) o->string());
+        ret = 0;   // TODO: Safe SB API.
       }
       break;
 
@@ -2333,6 +2346,7 @@ template <> int         C3PTypeConstraint<Identity*>::serialize(void* obj, Strin
           cbor::encoder encoder(output);
           encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(TCODE));
           encoder.write_bytes(buf, i_len);
+          ret = 0;   // TODO: Safe SB API.
         }
       }
       break;
@@ -2446,6 +2460,7 @@ template <> int         C3PTypeConstraint<Image*>::serialize(void* obj, StringBu
             encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(TCODE));
             encoder.write_bytes(intermediary, nb_buf);   // TODO: This might cause two discrete CBOR objects.
             encoder.write_bytes(img->buffer(), sz_buf);
+            ret = 0;   // TODO: Safe SB API.
           }
         }
       }
