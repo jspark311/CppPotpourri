@@ -295,11 +295,11 @@ class C3PValueDecoder {
   private:
     StringBuilder* _in;
 
-    bool     _get_length_field(uint32_t* offset, uint64_t* val_ret, uint8_t minorType);
-
-    C3PValue* _handle_array(uint32_t* offset, uint32_t);
-    C3PValue* _handle_map(uint32_t* offset, uint32_t);
-    C3PValue* _handle_tag(uint32_t* offset, uint32_t);
+    bool       _get_length_field(uint32_t* offset, uint64_t* val_ret, uint8_t minorType);
+    C3PValue*  _next(uint32_t* offset);
+    C3PValue*  _handle_array(uint32_t* offset, uint32_t count);
+    C3PValue*  _handle_map(uint32_t* offset, uint32_t count);
+    C3PValue*  _handle_tag(uint32_t* offset, uint64_t);
 };
 
 #endif  // __C3P_VALUE_WRAPPER_H

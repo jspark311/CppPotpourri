@@ -606,6 +606,7 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
   double   parsed_val_double  = 0.0;
   char*    parsed_val_string  = nullptr;
   StringBuilder* parsed_val_strbldr = nullptr;
+  KeyValuePair*  parsed_val_kvp     = nullptr;
 
   C3PValue test_val_bool(TEST_VAL_BOOL);
   C3PValue test_val_uint8(TEST_VAL_UINT8);
@@ -621,6 +622,20 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
   C3PValue test_val_string((char*) TEST_VAL_STRING.string());
   //C3PValue test_val_strbldr(&TEST_VAL_STRBLDR);
 
+  KeyValuePair src_kvp("key_bool", TEST_VAL_BOOL);
+  src_kvp.link(new KeyValuePair("key_uint8",  TEST_VAL_UINT8),   true);
+  src_kvp.link(new KeyValuePair("key_int8",   TEST_VAL_INT8),    true);
+  src_kvp.link(new KeyValuePair("key_uint16", TEST_VAL_UINT16),  true);
+  src_kvp.link(new KeyValuePair("key_int16",  TEST_VAL_INT16),   true);
+  src_kvp.link(new KeyValuePair("key_uint32", TEST_VAL_UINT32),  true);
+  src_kvp.link(new KeyValuePair("key_int32",  TEST_VAL_INT32),   true);
+  src_kvp.link(new KeyValuePair("key_uint64", TEST_VAL_UINT64),  true);
+  src_kvp.link(new KeyValuePair("key_int64",  TEST_VAL_INT64),   true);
+  src_kvp.link(new KeyValuePair("key_float",  TEST_VAL_FLOAT),   true);
+  src_kvp.link(new KeyValuePair("key_double", TEST_VAL_DOUBLE),  true);
+  src_kvp.link(new KeyValuePair("key_string", (char*) TEST_VAL_STRING.string()),  true);
+  C3PValue test_val_kvp(&src_kvp);
+
   C3PValue* deser_container_bool    = nullptr;
   C3PValue* deser_container_uint8   = nullptr;
   C3PValue* deser_container_int8    = nullptr;
@@ -634,20 +649,7 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
   C3PValue* deser_container_double  = nullptr;
   C3PValue* deser_container_string  = nullptr;
   C3PValue* deser_container_strbldr = nullptr;
-
-  // len_expected += sizeOfType(test_val_bool.tcode());
-  // len_expected += sizeOfType(test_val_uint8.tcode());
-  // len_expected += sizeOfType(test_val_int8.tcode());
-  // len_expected += sizeOfType(test_val_uint16.tcode());
-  // len_expected += sizeOfType(test_val_int16.tcode());
-  // len_expected += sizeOfType(test_val_uint32.tcode());
-  // len_expected += sizeOfType(test_val_int32.tcode());
-  // len_expected += sizeOfType(test_val_uint64.tcode());
-  // len_expected += sizeOfType(test_val_int64.tcode());
-  // len_expected += sizeOfType(test_val_float.tcode());
-  // len_expected += sizeOfType(test_val_double.tcode());
-  // len_expected += TEST_VAL_STRING.length();
-  // len_expected += TEST_VAL_STRBLDR.length();
+  C3PValue* deser_container_kvp     = nullptr;
 
   printf("Pass\n\tSerializing... ");
   ret += test_val_bool.serialize(&buffer, FORMAT);
@@ -663,12 +665,9 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
   ret += test_val_double.serialize(&buffer, FORMAT);
   ret += test_val_string.serialize(&buffer, FORMAT);
   //ret += deser_container_strbldr.serialize(&buffer, FORMAT);
+  ret += test_val_kvp.serialize(&buffer, FORMAT);
   if (0 == ret) {
     printf("Pass\n\tDeserializing... ");
-    //printf("Pass\n\tLength is the expected value: %u\n", len_expected);
-    //if (buffer.length() == len_expected) {
-    //  printf("Pass\n\tLength is the expected value: %u\n", len_expected);
-    //}
     deser_container_bool    = C3PValue::deserialize(&buffer, FORMAT);
     deser_container_uint8   = C3PValue::deserialize(&buffer, FORMAT);
     deser_container_int8    = C3PValue::deserialize(&buffer, FORMAT);
@@ -682,6 +681,7 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
     deser_container_double  = C3PValue::deserialize(&buffer, FORMAT);
     deser_container_string  = C3PValue::deserialize(&buffer, FORMAT);
     //deser_container_strbldr = C3PValue::deserialize(&buffer, FORMAT);
+    deser_container_kvp     = C3PValue::deserialize(&buffer, FORMAT);
 
     ret -= (nullptr != deser_container_bool)    ? 0 : 1;
     ret -= (nullptr != deser_container_uint8)   ? 0 : 1;
@@ -696,6 +696,7 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
     ret -= (nullptr != deser_container_double)  ? 0 : 1;
     ret -= (nullptr != deser_container_string)  ? 0 : 1;
     //ret -= (nullptr != deser_container_strbldr) ? 0 : 1;
+    ret -= (nullptr != deser_container_kvp)      ? 0 : 1;
     if (0 == ret) {
       printf("Pass\n\tFetching values from container... ");
       ret -= (0 == deser_container_bool->get_as(&parsed_val_bool))       ? 0 : 1;
@@ -711,6 +712,7 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
       ret -= (0 == deser_container_double->get_as(&parsed_val_double))   ? 0 : 1;
       ret -= (0 == deser_container_string->get_as(&parsed_val_string))   ? 0 : 1;
       //ret -= (0 == deser_container_strbldr->get_as(&parsed_val_strbldr)) ? 0 : 1;
+      ret -= (0 == deser_container_kvp->get_as(&parsed_val_kvp))         ? 0 : 1;
       if (0 == ret) {
         printf("Pass\n\tComparing values... ");
         ret -= (TEST_VAL_BOOL    == parsed_val_bool   ) ? 0 : 1;
@@ -724,11 +726,16 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
         ret -= (TEST_VAL_INT64   == parsed_val_int64  ) ? 0 : 1;
         ret -= (TEST_VAL_FLOAT   == parsed_val_float  ) ? 0 : 1;
         ret -= (TEST_VAL_DOUBLE  == parsed_val_double ) ? 0 : 1;
-
-        printf("String lengths: %u, %u\n", TEST_VAL_STRING.length(), deser_container_string->length());
-
         ret -= (0 == StringBuilder::strcasecmp(parsed_val_string,  (const char*) TEST_VAL_STRING.string()) ) ? 0 : 1;
         //ret -= (0 == StringBuilder::strcasecmp(parsed_val_strbldr, (const char*) TEST_VAL_STRBLDR.string())) ? 0 : 1;
+
+        // TODO:
+        // parsed_val_kvp->containsStructure(&src_kvp);
+        // parsed_val_kvp->equals(&src_kvp);
+        if ((nullptr == parsed_val_kvp) || (src_kvp.count() != parsed_val_kvp->count())) {
+          ret--;
+        }
+
         if (0 == ret) {
           printf("Pass\n\tString was fully consumed... ");
           ret -= buffer.length();
@@ -742,22 +749,29 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
 
   if (0 != ret) {
     printf("Fail (%d).\n", ret);
-    StringBuilder ascii_buf;
-    buffer.printDebug(&ascii_buf);
-    printf("Uncomsumed buffer (%u bytes): %s\n", buffer.length(), (char*) ascii_buf.string());
-    printf("Test value/Parsed value:\n");
-    printf("\t%c / %c\n", (TEST_VAL_BOOL ? 't':'f'), (parsed_val_bool ? 't':'f'));
-    printf("\t%u / %u\n", TEST_VAL_UINT8,  parsed_val_uint8);
-    printf("\t%d / %d\n", TEST_VAL_INT8,   parsed_val_int8);
-    printf("\t%u / %u\n", TEST_VAL_UINT16, parsed_val_uint16);
-    printf("\t%d / %d\n", TEST_VAL_INT16,  parsed_val_int16);
-    printf("\t%u / %u\n", TEST_VAL_UINT32, parsed_val_uint32);
-    printf("\t%d / %d\n", TEST_VAL_INT32,  parsed_val_int32);
-    printf("\t%llu / %llu\n", TEST_VAL_UINT64, parsed_val_uint64);
-    printf("\t%lld / %lld\n", TEST_VAL_INT64,  parsed_val_int64);
-    printf("\t%.3f / %.3f\n", TEST_VAL_FLOAT,  parsed_val_float);
-    printf("\t%.6f / %.6f\n", TEST_VAL_DOUBLE, parsed_val_double);
-    printf("\t%s / %s\n", TEST_VAL_STRING.string(), (nullptr == parsed_val_string) ? "(null)" : parsed_val_string);
+  }
+
+  StringBuilder ascii_buf;
+  buffer.printDebug(&ascii_buf);
+  printf("Uncomsumed buffer (%u bytes): %s\n", buffer.length(), (char*) ascii_buf.string());
+  printf("Test value/Parsed value:\n");
+  printf("\t%c / %c\n", (TEST_VAL_BOOL ? 't':'f'), (parsed_val_bool ? 't':'f'));
+  printf("\t%u / %u\n", TEST_VAL_UINT8,  parsed_val_uint8);
+  printf("\t%d / %d\n", TEST_VAL_INT8,   parsed_val_int8);
+  printf("\t%u / %u\n", TEST_VAL_UINT16, parsed_val_uint16);
+  printf("\t%d / %d\n", TEST_VAL_INT16,  parsed_val_int16);
+  printf("\t%u / %u\n", TEST_VAL_UINT32, parsed_val_uint32);
+  printf("\t%d / %d\n", TEST_VAL_INT32,  parsed_val_int32);
+  printf("\t%llu / %llu\n", TEST_VAL_UINT64, parsed_val_uint64);
+  printf("\t%lld / %lld\n", TEST_VAL_INT64,  parsed_val_int64);
+  printf("\t%.3f / %.3f\n", TEST_VAL_FLOAT,  parsed_val_float);
+  printf("\t%.6f / %.6f\n", TEST_VAL_DOUBLE, parsed_val_double);
+  printf("\t%s / %s\n", TEST_VAL_STRING.string(), (nullptr == parsed_val_string) ? "(null)" : parsed_val_string);
+  printf("Source KVP contents: \n");
+  dump_kvp(&src_kvp);
+  if (nullptr != parsed_val_kvp) {
+    printf("Parsed KVP contents: \n");
+    dump_kvp(parsed_val_kvp);
   }
 
   if (nullptr != deser_container_bool) {     delete deser_container_bool;     }
@@ -773,6 +787,7 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
   if (nullptr != deser_container_double) {   delete deser_container_double;   }
   if (nullptr != deser_container_string) {   delete deser_container_string;   }
   if (nullptr != deser_container_strbldr) {  delete deser_container_strbldr;  }
+  if (nullptr != deser_container_kvp) {      delete deser_container_kvp;      }
   return ret;
 }
 
@@ -850,8 +865,6 @@ const StepSequenceList TOP_LEVEL_C3PVALUE_TEST_LIST[] = {
     .POLL_FXN     = []() { return ((0 == c3p_value_test_packing_parsing(TCode::BINARY)) ? 1:-1);  }
   },
 
-
-  // Auth rejection flows.
   { .FLAG         = CHKLST_C3PVAL_TEST_PACK_PARSE_CBOR,
     .LABEL        = "Packing and Parsing (CBOR)",
     .DEP_MASK     = (CHKLST_C3PVAL_TESTS_BASICS),

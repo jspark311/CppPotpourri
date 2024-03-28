@@ -2389,17 +2389,33 @@ template <> void        C3PTypeConstraint<KeyValuePair*>::to_string(void* obj, S
 //template <> void        C3PTypeConstraint<KeyValuePair*>::to_string(void* obj, StringBuilder* out) {  ((KeyValuePair*) obj)->toString(out);  }
 
 template <> int8_t      C3PTypeConstraint<KeyValuePair*>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
-  switch (SRC_TYPE) {
-    default:  break;
+  int8_t ret = -1;
+  if (nullptr != dest) {
+    switch (SRC_TYPE) {
+      //case TCode::STR:     d = *((char**) src);    return 0;
+      case TCode::KVP:
+        memcpy(dest, &src, sizeof(KeyValuePair*));
+        ret = 0;
+        break;
+      default:  break;
+    }
   }
-  return -1;
+  return ret;
 }
 
 template <> int8_t      C3PTypeConstraint<KeyValuePair*>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
-  switch (DEST_TYPE) {
-    default:  break;
+  int8_t ret = -1;
+  if (nullptr != dest) {
+    switch (DEST_TYPE) {
+      //case TCode::STR:     d = *((char**) src);    return 0;
+      case TCode::KVP:
+        memcpy(dest, &src, sizeof(KeyValuePair*));
+        ret = 0;
+        break;
+      default:  break;
+    }
   }
-  return -1;
+  return ret;
 }
 
 template <> int         C3PTypeConstraint<KeyValuePair*>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {

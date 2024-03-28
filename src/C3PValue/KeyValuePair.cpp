@@ -48,7 +48,6 @@ limitations under the License.
 * Constructors/destructors, class initialization functions and so-forth...
 *******************************************************************************/
 
-
 KeyValuePair::KeyValuePair(const char* key, C3PValue* v, uint8_t flags) {
   setKey(key);
   _set_new_value(v);
@@ -59,6 +58,7 @@ KeyValuePair::KeyValuePair(const char* key, C3PValue* v, uint8_t flags) {
 KeyValuePair::KeyValuePair(char* key, C3PValue* v, uint8_t flags) {
   setKey(key);
   _set_new_value(v);
+  _alter_flags(true, flags);
 }
 
 
@@ -555,19 +555,22 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
   //   objects on the same StringBuilder memory pool. This ought to be safe, as
   //   long as all downstream CBOR encoder arrangements also are children of
   //   output_stringbuilder (they ought to be).
+  // TODO: StringBuilder local_output;
   cbor::output_stringbuilder output(out);
   cbor::encoder encoder(output);
   KeyValuePair* src = this;
   int8_t ret = 0;
+  encoder.write_map(count());  // This is a map.
   while (nullptr != src) {
     C3PValue* val_container = src->getValue();
     if (nullptr != val_container) {
       if (nullptr != src->getKey()) {
-        // This is a map.
-        encoder.write_map(1);
         encoder.write_string(src->getKey());
+        val_container->serialize(out, TCode::CBOR);
       }
-      val_container->serialize(out, TCode::CBOR);
+      else {
+        // Peacefully ignore KVPs without keys.
+      }
     }
     else {
       // Peacefully ignore KVPs without value containers.

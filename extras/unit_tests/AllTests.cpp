@@ -160,6 +160,30 @@ double generate_random_double() {
 }
 
 
+void dump_kvp(KeyValuePair* a) {
+  if (a) {
+    StringBuilder log;
+    a->printDebug(&log);
+    printf("%s\n", (char*) log.string());
+  }
+  else {
+    printf("dump_kvp() was passed a nullptr.\n");
+  }
+}
+
+
+void dump_strbldr(StringBuilder* a) {
+  if (a) {
+    StringBuilder log;
+    a->printDebug(&log);
+    printf("%s\n", (char*) log.string());
+  }
+  else {
+    printf("dump_strbldr() was passed a nullptr.\n");
+  }
+}
+
+
 void printTestFailure(const char* module, const char* test) {
   printf("\n");
   printf("*********************************************\n");

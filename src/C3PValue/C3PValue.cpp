@@ -19,6 +19,7 @@ limitations under the License.
 */
 
 #include "C3PValue.h"
+#include "KeyValuePair.h"
 #include "../StringBuilder.h"
 #include "../Identity/Identity.h"
 #include "../StringBuilder.h"
@@ -453,6 +454,10 @@ void C3PValue::toString(StringBuilder* out, bool include_type) {
 *******************************************************************************/
 
 bool C3PValueDecoder::_get_length_field(uint32_t* offset_ptr, uint64_t* val_ret, uint8_t minorType) {
+  if (minorType < 24) {
+    *val_ret = minorType;
+    return true;
+  }
   uint64_t value = 0;
   uint32_t offset = *offset_ptr;
   uint8_t buf[8] = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -484,22 +489,33 @@ bool C3PValueDecoder::_get_length_field(uint32_t* offset_ptr, uint64_t* val_ret,
 }
 
 
+C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
+  if (nullptr == _in) {  return nullptr;  }   // Bailout
+  const uint32_t INPUT_LEN = _in->length();
+  uint32_t length_taken = 0;
+  C3PValue* value = _next(&length_taken);
+  const bool SHOULD_CULL = ((nullptr != value) | consume_unparsable);
+  if (SHOULD_CULL) {  _in->cull(length_taken);  }
+  return value;
+}
+
+
+
 /*
 * Calling this function will return the next complete C3PValue that can be
 *   parsed and consumed from the input.
 *
 * @param consume_unparsable will cause this function to consume bytes that it cannot parse.
 */
-C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
-  if (nullptr == _in) {  return nullptr;  }   // Bailout
+C3PValue* C3PValueDecoder::_next(uint32_t* offset) {
   const uint32_t INPUT_LEN = _in->length();
   C3PValue* value = nullptr;
-  uint32_t _length_taken  = 0;   // Total bytes consumed during parse.
-  bool cull_anyway = false;
+  uint32_t local_offset  = *offset;
+  bool consume_without_value = false;
 
   if (INPUT_LEN > 0) {
     uint64_t _length_extra  = 0;   // Length of data specified by the length field above.
-    const uint8_t C_TYPE    = _in->byteAt(_length_taken++);   // The first byte
+    const uint8_t C_TYPE    = _in->byteAt(local_offset++);   // The first byte
     const uint8_t MAJORTYPE = (uint8_t) (C_TYPE >> 5);
     const uint8_t MINORTYPE = (uint8_t) (C_TYPE & 31);
 
@@ -507,7 +523,7 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
     //   for multibyte types, we usually only get a secondary length field.
     switch (MINORTYPE) {
       case 24:  case 25:  case 26:  case 27:
-        if (!_get_length_field(&_length_taken, &_length_extra, MINORTYPE)) {
+        if (!_get_length_field(&local_offset, &_length_extra, MINORTYPE)) {
           // If we didn't have enough bytes to get the attached integer field,
           //   there is no hope, and for clarity's sake, we'll bail out here.
           return nullptr;
@@ -519,7 +535,6 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
         }
         else {
           c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "Invalid MAJ/MIN combination (0x%02x/0x%02x)", MAJORTYPE, MINORTYPE);
-          cull_anyway = consume_unparsable;
         }
         break;
     }
@@ -527,7 +542,7 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
 
     // For types that observe _length_extra, they will generally also want to
     //   know if there are enough bytes to satisfy the parse.
-    const bool HAVE_EXTRA_LEN = ((_length_extra > 0) & (INPUT_LEN >= (_length_taken + _length_extra32)));
+    const bool HAVE_EXTRA_LEN = ((_length_extra > 0) & (INPUT_LEN >= (local_offset + _length_extra32)));
 
     // Second pass. Form a return object, if possible.
     switch (MAJORTYPE) {
@@ -541,7 +556,7 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
             if (MINORTYPE < 24) {
               value = new C3PValue((uint8_t) MINORTYPE);
             }
-            else c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "Invalid PINT type (0x02x)", MINORTYPE);
+            else c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "Invalid PINT type (0x%02x)", MINORTYPE);
             break;
         }
         break;
@@ -570,7 +585,7 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
             if (MINORTYPE < 24) {
               value = new C3PValue((int8_t) (0xFF - MINORTYPE));
             }
-            else c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "Invalid NINT type (0x02x)", MINORTYPE);
+            else c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "Invalid NINT type (0x%02x)", MINORTYPE);
             break;
         }
         break;
@@ -579,14 +594,15 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
         if (HAVE_EXTRA_LEN) {
           uint8_t* new_buf = (uint8_t*) malloc(_length_extra32);
           if (nullptr != new_buf) {
-            value = new C3PValue(new_buf, _length_extra32);
-            if (nullptr != value) {
-              _in->copyToBuffer(new_buf, _length_extra32, _length_taken);
-              value->reapValue(true);
-              _length_taken += _length_extra32;
+            if ((int32_t) _length_extra32 == _in->copyToBuffer(new_buf, _length_extra32, local_offset)) {
+              value = new C3PValue(new_buf, _length_extra32);
+              if (nullptr != value) {
+                value->reapValue(true);
+                local_offset += _length_extra32;
+              }
             }
-            else {
-              free(new_buf);
+            if (nullptr == value) {
+              free(new_buf);  // Clean up any malloc() mess.
             }
           }
         }
@@ -597,26 +613,50 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
           // If there are enough bytes to satisfy the parse...
           uint8_t new_buf[_length_extra32+1];
           *(new_buf + _length_extra32) = '\0';
-          if (_length_extra32 == _in->copyToBuffer(new_buf, _length_extra32, _length_taken)) {
+          if ((int32_t) _length_extra32 == _in->copyToBuffer(new_buf, _length_extra32, local_offset)) {
             value = new C3PValue((char*) new_buf);
             if (nullptr != value) {
-              _length_taken += _length_extra32;
+              local_offset += _length_extra32;
             }
           }
         }
         break;
 
-      case 4:  value = _handle_array(&_length_taken, _length_extra32);  break;
-      case 5:  value = _handle_map(&_length_taken,   _length_extra32);  break;
+      case 4:  value = _handle_array(&local_offset, _length_extra32);  break;
+      case 5:
+        // Only bother parsing further if we have enough bytes to satisfy the
+        //   minimum length requirement for a map of the stated length, assuming
+        //   two bytes per map entry. TODO: Are 0-length string allowed here?
+        if (INPUT_LEN >= (local_offset + (_length_extra32 * 2))) {
+          value = _handle_map(&local_offset, _length_extra32);
+        }
+        break;
       case 6:
         if (C3P_CBOR_VENDOR_CODE == (_length_extra32 & 0xFFFFFF00)) {
           const TCode TC = IntToTcode(_length_extra32 & 0x000000FF);
           C3PType* t_helper = getTypeHelper(TC);
           if (nullptr != t_helper) {
-            //value = new C3PValue(TC, _length_extra);
+            if (t_helper->is_fixed_length()) {
+              if (INPUT_LEN < (local_offset + t_helper->FIXED_LEN)) {
+                // Attempt to inflate the value if it is of a fixed-length, and at
+                //   least as much is waiting in the buffer.
+                // Copy it out onto the stack.
+                uint8_t new_buf[t_helper->FIXED_LEN];
+                if (_length_extra32 == _in->copyToBuffer(new_buf, t_helper->FIXED_LEN, local_offset)) {
+                  value = new C3PValue(TC, (void*) new_buf);
+                  local_offset += t_helper->FIXED_LEN;
+                }
+              }
+            }
+            else {
+              // Things that are not fixed length will require us to recurse.
+              // TODO: This will cause grief with the cleanup operations at the
+              //   tail of this function. It might be rationalizable.
+              value = _next(&local_offset);
+            }
           }
           else {
-            c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "No C3PType for TCode (0x02x)", (uint8_t) TC);
+            c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "No C3PType for TCode (0x%02x)", (uint8_t) TC);
           }
         }
         break;
@@ -630,7 +670,7 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
 
           case 24:  case 25:
             if (HAVE_EXTRA_LEN) {
-              cull_anyway = true;  //_listener->on_special(_length_extra);
+              consume_without_value = true;  //_listener->on_special(_length_extra);
             }
             break;
           case 26:  value = new C3PValue(*((float*)(void*) &_length_extra32));  break;
@@ -639,18 +679,18 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
             //if (MINORTYPE < 20) {
             //  _listener->on_special(MINORTYPE);
             //}
-            cull_anyway = true;
-            c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "Unhandled MINOR for special (0x02x)", MINORTYPE);
+            consume_without_value = true;
+            c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "Unhandled MINOR for special (0x%02x)", MINORTYPE);
             break;
         }
         break;
     }
   }
 
-  if ((nullptr != value) | cull_anyway) {
-    // If we took content, consume the bytes from the input.
-    _in->cull(_length_taken, (INPUT_LEN-_length_taken));
+  if (consume_without_value | (nullptr != value)) {
+    *offset = local_offset;
   }
+
   return value;
 }
 
@@ -662,13 +702,87 @@ C3PValue* C3PValueDecoder::_handle_array(uint32_t* offset, uint32_t len) {
 }
 
 
-C3PValue* C3PValueDecoder::_handle_map(uint32_t* offset, uint32_t len) {
-  C3PValue* value = nullptr;
-  return value;
+/*
+* Extract the given number of string-key, and <?>-values.
+*/
+C3PValue* C3PValueDecoder::_handle_map(uint32_t* offset, uint32_t count) {
+  const uint32_t INPUT_LEN = _in->length();
+  C3PValue*     ret = nullptr;
+  KeyValuePair* kvp = nullptr;
+  uint32_t local_offset    = *offset;
+  uint32_t len_key         = 0;
+  bool bailout = false;
+
+  while (!bailout & (count > 0)) {
+    bailout = true;
+    const uint8_t  CTYPE = _in->byteAt(local_offset++);
+    const uint8_t  MAJOR = (CTYPE >> 5);
+    const uint8_t  MINOR = (CTYPE & 31);
+    if (3 == MAJOR) {  // The next byte must be a proper CBOR string.
+      uint64_t len_key64 = 0;
+      if (_get_length_field(&local_offset, &len_key64, MINOR)) {
+        len_key = (uint32_t) len_key64;
+        if (INPUT_LEN >= (local_offset + len_key + 1)) {  // +1 for the value byte.
+          uint8_t buf_key[len_key+1];
+          *(buf_key + len_key) = '\0';
+          if ((int32_t) len_key == _in->copyToBuffer(buf_key, len_key, local_offset)) {
+            local_offset += len_key;
+            // Now the dangerous part. Recurse into next(), and parse out the
+            //  next C3PValue. If it came back non-null, then it means the buffer
+            //  was consumed up-to the point where the object became fully-defined.
+            C3PValue* value = _next(&local_offset);
+            if (nullptr != value) {
+              KeyValuePair* new_kvp = new KeyValuePair(
+                (char*) buf_key, value,
+                (C3P_KVP_FLAG_REAP_KVP | C3P_KVP_FLAG_REAP_KEY | C3P_KVP_FLAG_REAP_CNTNR)
+              );
+
+              if (nullptr == new_kvp) {
+                delete value;      // A memory error forced removal.
+              }
+              else if (new_kvp->hasError()) {
+                delete new_kvp;  // NOTE: Careful... The KVP owned the value.
+              }
+              else if (nullptr != kvp) {
+                kvp->link(new_kvp, true);
+                bailout = false;
+              }
+              else {
+                kvp = new_kvp;
+                bailout = false;
+              }
+            }
+          }
+        }
+      }
+    }
+    count--;
+  }
+
+  if (bailout) {
+    if (nullptr != kvp) {  delete kvp;  }
+    kvp = nullptr;
+  }
+  else {
+    if (nullptr != kvp) {
+      ret = new C3PValue(kvp);
+      if (nullptr != ret) {
+        ret->reapValue(true);
+        *offset = local_offset;    // Indicate success by updating the offset.
+      }
+      else {
+        delete kvp;
+      }
+    }
+    else {
+      c3p_log(LOG_LEV_DEBUG, LOCAL_LOG_TAG, "_handle_map(%u, %u) didn't bail out, but also didn't return a KVP.", *offset, count);
+    }
+  }
+  return ret;
 }
 
 
-C3PValue* C3PValueDecoder::_handle_tag(uint32_t* offset, uint32_t len) {
+C3PValue* C3PValueDecoder::_handle_tag(uint32_t* offset, uint64_t len) {
   C3PValue* value = nullptr;
   return value;
 }
