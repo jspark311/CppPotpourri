@@ -87,17 +87,21 @@ static const C3PTypeConstraint<KeyValuePair*>   c3p_type_helper_kvp(          "K
 static const C3PTypeConstraint<StopWatch*>      c3p_type_helper_stopwatch(    "STOPWATCH",    sizeof(StopWatch),  TCode::STOPWATCH,      (TCODE_FLAG_VALUE_IS_POINTER));
 
 // Type-indirected handlers (parameter binders).
-static const C3PTypeConstraint<C3PBinBinder>    c3p_type_helper_ptrlen(       "BINARY",       0,  TCode::BINARY,         (TCODE_FLAG_PTR_LEN_TYPE | TCODE_FLAG_LEGAL_FOR_ENCODING));
+static const C3PTypeConstraint<C3PBinBinder>    c3p_type_helper_ptrlen(       "BINARY",       0,  TCode::BINARY,       (TCODE_FLAG_PTR_LEN_TYPE | TCODE_FLAG_LEGAL_FOR_ENCODING));
+
+#if defined(CONFIG_C3P_CBOR)
+  static const C3PTypeConstraint<C3PBinBinder>  c3p_type_helper_cbor(         "CBOR",         0,  TCode::CBOR,         (TCODE_FLAG_PTR_LEN_TYPE | TCODE_FLAG_LEGAL_FOR_ENCODING));
+#endif
 
 #if defined(CONFIG_C3P_IDENTITY_SUPPORT)
   #include "../Identity/Identity.h"
-  static const C3PTypeConstraint<Identity*>       c3p_type_helper_identity(     "IDENTITY",     0,  TCode::IDENTITY,       (TCODE_FLAG_VALUE_IS_POINTER));
+  static const C3PTypeConstraint<Identity*>     c3p_type_helper_identity(     "IDENTITY",     0,  TCode::IDENTITY,       (TCODE_FLAG_VALUE_IS_POINTER));
 #endif
 
 /* Image support costs code size. Don't support it unless requested. */
 #if defined(CONFIG_C3P_IMG_SUPPORT)
   #include "../Image/Image.h"
-  static const C3PTypeConstraint<Image*>          c3p_type_helper_image(        "IMAGE",        0,  TCode::IMAGE,          (TCODE_FLAG_VALUE_IS_POINTER));
+  static const C3PTypeConstraint<Image*>        c3p_type_helper_image(        "IMAGE",        0,  TCode::IMAGE,          (TCODE_FLAG_VALUE_IS_POINTER));
 #endif
 
 //{TCode::SI_UNIT,        (TCODE_FLAG_MASK_STRING_TYPE),                             0,  "SI_UNIT",       (C3PType*) &c3p_type_helper_str            },
@@ -108,7 +112,6 @@ static const C3PTypeConstraint<C3PBinBinder>    c3p_type_helper_ptrlen(       "B
 //{TCode::COLOR24,        (TCODE_FLAG_VALUE_IS_PUNNED_PTR),                          3,  "COLOR24",       nullptr },
 //{TCode::BASE64,         (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "BASE64",        nullptr },
 //{TCode::JSON,           (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "JSON",          nullptr },
-//{TCode::CBOR,           (TCODE_FLAG_VARIABLE_LEN | TCODE_FLAG_LEGAL_FOR_ENCODING), 0,  "CBOR",          nullptr },
 //{TCode::GEOLOCATION,    (TCODE_FLAG_VARIABLE_LEN),                                 0,  "GEOLOCATION",   nullptr},
 //{TCode::VECT_2_FLOAT,   (0),                                                       0,  "VEC2_FLOAT"};
 //{TCode::VECT_2_DOUBLE,  (0),                                                       0,  "VEC2_DOUBLE"};
@@ -157,6 +160,10 @@ static const C3PType* _get_type_def(const TCode TC) {
     case TCode::KVP:             return (const C3PType*) &c3p_type_helper_kvp;
     case TCode::STOPWATCH:       return (const C3PType*) &c3p_type_helper_stopwatch;
     case TCode::BINARY:          return (const C3PType*) &c3p_type_helper_ptrlen;
+
+    #if defined(CONFIG_C3P_CBOR)
+    case TCode::CBOR:            return (const C3PType*) &c3p_type_helper_cbor;
+    #endif
 
     #if defined(CONFIG_C3P_IDENTITY_SUPPORT)
     case TCode::IDENTITY:        return (const C3PType*) &c3p_type_helper_identity;

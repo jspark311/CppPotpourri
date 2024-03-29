@@ -568,7 +568,6 @@ int c3p_value_test_type_conversion() {
 
 int c3p_value_test_packing_parsing(const TCode FORMAT) {
   const uint32_t TEST_BUF_LEN    = (13 + (randomUInt32() % 12));
-  uint32_t len_expected = 0;
   int ret = 0;   // Success means complete fall-through.
   printf("Testing packing and parsing with format %s...\n", typecodeToStr(FORMAT));
   printf("\tPreparing test cases... ");

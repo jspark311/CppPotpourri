@@ -1,5 +1,5 @@
 /*
-File:   CBORWrapper.h
+File:   C3PTypePipe.h
 Author: J. Ian Lindsay
 Date:   2024.03.21
 
@@ -15,18 +15,22 @@ These classes should strive to be as stateless as possible, apart from hook-up,
 
 #include "../BufferAccepter.h"
 
+
+class C3PValue;
+
 /* Callbacks for value emission. */
 typedef void (*C3PValueDelivery)(C3PValue*);
+
 
 /*
 * Encoder
 */
-class C3PTypeSource : public BufferCoDec {
+class C3PTypePipeSource : public BufferCoDec {
   public:
-    C3PTypeSource(const TCode PACKING_FORMAT, BufferAccepter* eff = nullptr) :
-      BufferCoDec(eff), _FORMAT(PARSING_FORMAT), _byte_count(0) {};
+    C3PTypePipeSource(const TCode PACKING_FORMAT, BufferAccepter* eff = nullptr) :
+      BufferCoDec(eff), _FORMAT(PACKING_FORMAT), _byte_count(0) {};
 
-    ~C3PTypeSource() {};
+    ~C3PTypePipeSource() {};
 
     /*
     * Implementation of BufferAccepter.
@@ -56,15 +60,16 @@ class C3PTypeSource : public BufferCoDec {
     int8_t pushValue(double val) {               return _private_push(tcodeForType(val), &val);   };
     int8_t pushValue(float val) {                return _private_push(tcodeForType(val), &val);   };
     int8_t pushValue(bool val) {                 return _private_push(tcodeForType(val), &val);   };
-    int8_t pushValue(C3PValue* val) {            return _private_push(tcodeForType(val), val);    };
-    int8_t pushValue(const char* val) {          return _private_push(tcodeForType(val), val);    };
-    int8_t pushValue(char* val) {                return _private_push(tcodeForType(val), val);    };
+    int8_t pushValue(const char* val) {          return _private_push(tcodeForType(val), (void*) val);    };
+    int8_t pushValue(char* val) {                return _private_push(tcodeForType(val), (void*) val);    };
+    int8_t pushValue(C3PValue*);
+    int8_t pushValue(KeyValuePair*);
     //int8_t pushValue(uint8_t*, uint32_t val) {   return _private_push(tcodeForType(val), val);    };
 
 
   private:
-    const TCode    _FORMAT;
-    uint32_t _byte_count;   // How many bytes has the class generated?
+    const TCode _FORMAT;
+    uint32_t    _byte_count;   // How many bytes has the class generated?
 
     int8_t _private_push(const TCode, void*);
 };
@@ -73,17 +78,12 @@ class C3PTypeSource : public BufferCoDec {
 /*
 * Decoder
 */
-class C3PTypeSink : public BufferAccepter {
+class C3PTypePipeSink : public BufferAccepter {
   public:
-    C3PTypeSink(const TCode PARSING_FORMAT, const uint32_t MAX_BUF, C3PValueDelivery cb) :
-      _MAX_BUFFER(MAX_BUF), _FORMAT(PARSING_FORMAT), _value_cb(cb), _working(nullptr), _byte_count(0) {};
+    C3PTypePipeSink(const TCode PARSING_FORMAT, const uint32_t MAX_BUF, C3PValueDelivery cb) :
+      _FORMAT(PARSING_FORMAT), _MAX_BUFFER(MAX_BUF), _value_cb(cb), _working(nullptr), _byte_count(0) {};
 
-    ~C3PTypeSink() {
-      if (nullptr != _working) {
-        delete _working;
-        _working = nullptr;
-      }
-    };
+    ~C3PTypePipeSink();
 
     /* Implementation of BufferAccepter. */
     int8_t  pushBuffer(StringBuilder*);
@@ -94,8 +94,8 @@ class C3PTypeSink : public BufferAccepter {
 
 
   private:
-    const uint32_t   _MAX_BUFFER;
     const TCode      _FORMAT;
+    const uint32_t   _MAX_BUFFER;
     C3PValueDelivery _value_cb;
     C3PValue*        _working;
     uint32_t _byte_count;   // How many bytes has the class consumed?

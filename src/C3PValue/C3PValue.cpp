@@ -489,6 +489,12 @@ bool C3PValueDecoder::_get_length_field(uint32_t* offset_ptr, uint64_t* val_ret,
 }
 
 
+/*
+* Calling this function will return the next complete C3PValue that can be
+*   parsed and consumed from the input.
+*
+* @param consume_unparsable will cause this function to consume bytes that it cannot parse.
+*/
 C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
   if (nullptr == _in) {  return nullptr;  }   // Bailout
   const uint32_t INPUT_LEN = _in->length();
@@ -502,10 +508,7 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
 
 
 /*
-* Calling this function will return the next complete C3PValue that can be
-*   parsed and consumed from the input.
-*
-* @param consume_unparsable will cause this function to consume bytes that it cannot parse.
+* Private counterpart to next() that isolates our recursion concerns.
 */
 C3PValue* C3PValueDecoder::_next(uint32_t* offset) {
   const uint32_t INPUT_LEN = _in->length();
@@ -736,7 +739,6 @@ C3PValue* C3PValueDecoder::_handle_map(uint32_t* offset, uint32_t count) {
                 (char*) buf_key, value,
                 (C3P_KVP_FLAG_REAP_KVP | C3P_KVP_FLAG_REAP_KEY | C3P_KVP_FLAG_REAP_CNTNR)
               );
-
               if (nullptr == new_kvp) {
                 delete value;      // A memory error forced removal.
               }
