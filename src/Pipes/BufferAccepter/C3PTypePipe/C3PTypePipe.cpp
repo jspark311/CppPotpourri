@@ -6,7 +6,7 @@ Date:   2024.03.21
 A BufferCoDec for transparently piping raw typed values into and out of strings.
 
 These classes should strive to be as stateless as possible, apart from hook-up,
-  profiling. The encoder should not cache values fed to it, and the decoder
+  profiling, etc. The encoder should not cache values fed to it, and the decoder
   should not buffer resolved (that is: parsed) values.
 */
 
@@ -17,21 +17,21 @@ These classes should strive to be as stateless as possible, apart from hook-up,
 
 /*******************************************************************************
 * Encoder
+*
+* TODO: These should return an error code and not push if the full buffer was
+*   not accepted. Check the downstream vacancy prior to push, but after
+*   serializing.
 *******************************************************************************/
 
 int8_t C3PTypePipeSource::pushValue(C3PValue* val) {
   int8_t ret = -1;
-  if (nullptr != _efferant) {
+  if (_push_ok_locally(val)) {
     ret--;
-    if (nullptr != val) {
-      StringBuilder tmp;
-      if (0 == val->serialize(&tmp, _FORMAT)) {
-        const int32_t INITIAL_LENTH = tmp.length();
-        ret--;
-        if (1 == _efferant->pushBuffer(&tmp)) {
-          _byte_count += INITIAL_LENTH;
-          ret = 0;
-        }
+    StringBuilder tmp;
+    if (0 == val->serialize(&tmp, _FORMAT)) {
+      ret--;
+      if (0 == _private_push(&tmp)) {
+        ret = 0;
       }
     }
   }
@@ -41,17 +41,13 @@ int8_t C3PTypePipeSource::pushValue(C3PValue* val) {
 
 int8_t C3PTypePipeSource::pushValue(KeyValuePair* val) {
   int8_t ret = -1;
-  if (nullptr != _efferant) {
+  if (_push_ok_locally(val)) {
     ret--;
-    if (nullptr != val) {
-      StringBuilder tmp;
-      if (0 == val->serialize(&tmp, _FORMAT)) {
-        const int32_t INITIAL_LENTH = tmp.length();
-        ret--;
-        if (1 == _efferant->pushBuffer(&tmp)) {
-          _byte_count += INITIAL_LENTH;
-          ret = 0;
-        }
+    StringBuilder tmp;
+    if (0 == val->serialize(&tmp, _FORMAT)) {
+      ret--;
+      if (0 == _private_push(&tmp)) {
+        ret = 0;
       }
     }
   }
@@ -59,19 +55,22 @@ int8_t C3PTypePipeSource::pushValue(KeyValuePair* val) {
 }
 
 
+/*
+* Use this function for any direct-from-native types we want to push. Has the
+*   advantage of side-stepping what might be useless overhead associated with
+*   using C3PType.
+*/
 int8_t C3PTypePipeSource::_private_push(const TCode TC, void* val) {
   int8_t ret = -1;
-  if (nullptr != _efferant) {
+  if (_push_ok_locally(val)) {
     ret--;
     C3PType* t_helper = getTypeHelper(TC);
     if (nullptr != t_helper) {
       ret--;
       StringBuilder tmp;
-      const int SER_RET = t_helper->serialize(val, &tmp, _FORMAT);
-      if (0 == SER_RET) {
+      if (0 == t_helper->serialize(val, &tmp, _FORMAT)) {
         ret--;
-        if (1 == _efferant->pushBuffer(&tmp)) {
-          _byte_count += SER_RET;
+        if (0 == _private_push(&tmp)) {
           ret = 0;
         }
       }
@@ -79,6 +78,29 @@ int8_t C3PTypePipeSource::_private_push(const TCode TC, void* val) {
   }
   return ret;
 }
+
+
+/**
+* Push a serilaized string into the BufferAccepter pipeline.
+* It is very important that this call be all-or-nothing.
+*
+* @param str_data is the buffer to push into the pipeline.
+* @return 0 on success, -1 if the data won't fit, -2 if it wasn't fully-claimed.
+*/
+int8_t C3PTypePipeSource::_private_push(StringBuilder* str_data) {
+  int8_t ret = -1;
+  const int32_t INITIAL_LENTH = str_data->length();
+  if (INITIAL_LENTH <= _efferant->bufferAvailable()) {
+    ret--;
+    if (1 == _efferant->pushBuffer(str_data)) {
+      _byte_count += INITIAL_LENTH;
+      ret = 0;
+    }
+  }
+  return ret;
+}
+
+
 
 
 
@@ -97,6 +119,12 @@ C3PTypePipeSink::~C3PTypePipeSink() {
 }
 
 
+/*
+* Tries to inflate as many complete types as it can, and returns any unused
+*   buffer to the caller.
+* Will probably mutate the memory layout of incoming buffers, but not their
+*   content (unless claimed).
+*/
 int8_t C3PTypePipeSink::pushBuffer(StringBuilder* incoming) {
   int8_t ret = -1;
   C3PValue* val_to_emit = nullptr;

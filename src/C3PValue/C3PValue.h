@@ -27,6 +27,8 @@ NOTE: The TCode of a C3PValue is const for assurance reasons, and cannot be
   would see it allocated prior to the TCode being known.
 NOTE: This^ does NOT imply that C3PValue must do its value-containing allocation
   at construction time. But presently, it does.
+For cases where this is onerous (deserializing, espescially), use the static
+  factory function C3PValue::deserialize().
 
 NOTE: The length() member.
   If the type of the container is of a fixed length (integers, float, etc), that
@@ -67,6 +69,7 @@ For now, just know what the costs are, and don't expend the overhead unless you
   are going to reap a return. And if you end up scraping for memory to power
   this abstraction, it means the memory is worth expending, and you should
   optimize on that day.
+
 */
 
 #ifndef __C3P_VALUE_WRAPPER_H

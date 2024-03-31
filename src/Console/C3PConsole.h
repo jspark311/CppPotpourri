@@ -124,9 +124,7 @@ class ParsingConsole : public C3PConsole, public BufferCoDec {
     void   printHistory(StringBuilder*);
     void   printPrompt();
 
-    inline void setTXTerminator(LineTerm x) {  _tx_terminator = x; };
     inline void setRXTerminator(LineTerm x) {  _rx_terminator = x; };
-    inline LineTerm getTXTerminator() {   return _tx_terminator;   };
     inline LineTerm getRXTerminator() {   return _rx_terminator;   };
 
     // History management...
@@ -162,7 +160,6 @@ class ParsingConsole : public C3PConsole, public BufferCoDec {
     uint8_t _max_history = 8;
     uint8_t _history_idx = 0;
     uint8_t _flags       = 0;
-    LineTerm _tx_terminator  = LineTerm::CRLF;
     LineTerm _rx_terminator  = LineTerm::LF;   // Default should also support the CRLF case.
     char*    _prompt_string  = nullptr;    // Pointer to the optional prompt string.
     StringBuilder _buffer;     // Unused input is accumulated here.

@@ -112,6 +112,20 @@ void sleep_us(uint32_t us) {
 }
 
 
+
+/**
+* This function is declared in CppPotpourri (AbstractPlatform.h).
+* Shunt the message into the C3PLogger formatter.
+*
+* @param severity is the syslog-style importance of the message.
+* @param tag is the free-form source of the message.
+* @param msg contains the log content.
+*/
+void c3p_log(uint8_t severity, const char* tag, StringBuilder* msg) {
+  printf("%u %8s\t%s\n", severity, tag, (char*) msg->string());
+}
+
+
 /*******************************************************************************
 * Test reporting functions that are intended to be called from unit tests...
 *******************************************************************************/
@@ -586,6 +600,15 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .POLL_FXN     = []() { return ((0 == scheduler_tests_main()) ? 1:-1);  }
   },
 
+  // Programs can use C3PValuePipe to move arbitrary C3PTypes transparently via
+  //   any means that is reducible to a string.
+  { .FLAG         = CHKLST_CODEC_C3PPIPE_TESTS,
+    .LABEL        = "C3PTypePipe",
+    .DEP_MASK     = (CHKLST_BUFFER_ACCEPTER_TESTS | CHKLST_KEY_VALUE_PAIR_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3ptype_pipe_tests()) ? 1:-1);  }
+  },
+
   // Textual buffers are commonly imbued with a protocol meant for typewriters,
   //   for the benefit of brains. We call the atomic end-result of the protocol
   //   a "line".
@@ -624,16 +647,6 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return 1;  }   // TODO
   },
-
-  // Programs can use C3PValuePipe to move arbitrary C3PTypes transparently via
-  //   any means that is reducible to a string.
-  { .FLAG         = CHKLST_CODEC_C3PPIPE_TESTS,
-    .LABEL        = "C3PTypePipe",
-    .DEP_MASK     = (CHKLST_BUFFER_ACCEPTER_TESTS | CHKLST_KEY_VALUE_PAIR_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == c3ptype_pipe_tests()) ? 1:-1);  }
-  },
-
 
   // Not all programs want to store non-volatile KVP data in a type-safe,
   //   high-assurance manner. But those that do can do so with a minimum of

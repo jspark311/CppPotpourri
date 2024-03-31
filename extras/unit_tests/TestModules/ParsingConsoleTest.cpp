@@ -135,7 +135,6 @@ int setup_console(StringBuilder* output) {
   test_result_array[6] = true;
   test_result_array[7] = true;
   console.setRXTerminator(LineTerm::LF);
-  console.setTXTerminator(LineTerm::CRLF);
   console.localEcho(false);  // We do not want local echo for testing.
 
   printf("\t\tdefineCommands(*, length) accepts a block of many command definitions... ");

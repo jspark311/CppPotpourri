@@ -72,6 +72,8 @@ class C3PTypePipeSource : public BufferCoDec {
     uint32_t    _byte_count;   // How many bytes has the class generated?
 
     int8_t _private_push(const TCode, void*);
+    int8_t _private_push(StringBuilder*);
+    inline bool _push_ok_locally(void* ptr) {  return ((nullptr != ptr) & (nullptr != _efferant));  };
 };
 
 

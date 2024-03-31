@@ -22,6 +22,10 @@ limitations under the License.
 #include "Pipes/BufferAccepter/C3PTypePipe/C3PTypePipe.h"
 
 
+/*
+* This is a test class meant to generate a type rainbow for the sake of testing
+*   various pathways in the library.
+*/
 class TestValuePalette {
   public:
     const uint32_t TEST_BUF_LEN;

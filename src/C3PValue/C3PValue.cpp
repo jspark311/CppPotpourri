@@ -451,6 +451,12 @@ void C3PValue::toString(StringBuilder* out, bool include_type) {
 
 /*******************************************************************************
 * C3PValueDecoder
+*
+* TODO: This class should be purpose-merged with its sibling class
+*   CBORArgListener, which does the same thing for KeyValuePair.
+*   This will eventually lower the global complexity of making a tighter
+*   integration between C3PValue and KeyValuePair.
+*   Some of this might be promoted to C3PType during that effort.
 *******************************************************************************/
 
 bool C3PValueDecoder::_get_length_field(uint32_t* offset_ptr, uint64_t* val_ret, uint8_t minorType) {

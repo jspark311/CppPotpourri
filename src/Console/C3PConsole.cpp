@@ -245,9 +245,6 @@ int8_t ParsingConsole::_process_buffer() {
 int8_t ParsingConsole::_relay_to_output_target() {
   int8_t ret = -1;
   if ((!_response.isEmpty()) & (nullptr != _efferant)) {
-    if (LineTerm::LF != _tx_terminator) {
-      _response.replace("\n", lineTerminatorLiteralStr(_tx_terminator));
-    }
     switch (_efferant->pushBuffer(&_response)) {
       case 0:   _response.clear();  // Be sure to discard the log if the downstream BufferAcceptor didn't entirely claim it.
       case 1:   ret = 0;
@@ -306,6 +303,7 @@ int8_t ParsingConsole::_exec_line(StringBuilder* line) {
     ret--;
     if ((tmp_line.count() >= cmd->req_count)) {
       // If we have enough arguments to be plausibly valid....
+      _response.concat("\n");
       if (0 != cmd->ccb(&_response, &tmp_line)) {
         if (printHelpOnFail()) {
           cmd->printDetailedHelp(&_response);
@@ -579,19 +577,6 @@ int8_t ParsingConsole::console_handler_conf(StringBuilder* text_return, StringBu
       }
     }
     text_return->concatf("Console RX terminator: %s\n", lineTerminatorNameStr(getRXTerminator()));
-  }
-  else if (0 == StringBuilder::strcasecmp(cmd, "txterm")) {
-    if (1 < args->count()) {
-      switch (arg1) {
-        case 0:  case 1:  case 2:  case 3:
-          setTXTerminator((LineTerm) arg1);
-          break;
-        default:
-          print_term_enum = true;
-          break;
-      }
-    }
-    text_return->concatf("Console TX terminator: %s\n", lineTerminatorNameStr(getTXTerminator()));
   }
   else {
     ret = -1;
