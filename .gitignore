@@ -2,6 +2,8 @@
 .directory
 *.gch
 *.gcno
+*.gcda
+*.gcov
 *.o
 *.a
 *.d
