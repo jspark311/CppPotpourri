@@ -651,7 +651,7 @@ C3PValue* C3PValueDecoder::_next(uint32_t* offset) {
                 //   least as much is waiting in the buffer.
                 // Copy it out onto the stack.
                 uint8_t new_buf[t_helper->FIXED_LEN];
-                if (_length_extra32 == _in->copyToBuffer(new_buf, t_helper->FIXED_LEN, local_offset)) {
+                if ((int32_t) _length_extra32 == _in->copyToBuffer(new_buf, t_helper->FIXED_LEN, local_offset)) {
                   value = new C3PValue(TC, (void*) new_buf);
                   local_offset += t_helper->FIXED_LEN;
                 }
