@@ -67,6 +67,8 @@ KeyValuePair::KeyValuePair(char* key, C3PValue* v, uint8_t flags) {
 * Recursively calls the destructor of a referenced KeyValuePair, if present.
 */
 KeyValuePair::~KeyValuePair() {
+  _set_new_key(nullptr);
+  _set_new_value(nullptr);
   if (nullptr != _next) {
     // Wipe out any chain of siblings.
     KeyValuePair* a = _next;
@@ -75,9 +77,7 @@ KeyValuePair::~KeyValuePair() {
       delete a;
     }
   }
-  _set_new_key(nullptr);
-  _set_new_value(nullptr);
-  _flags     = 0;
+  _flags = 0;
 }
 
 
@@ -147,7 +147,7 @@ void KeyValuePair::_set_new_key(char* k) {
 * @param  v A replacement value.
 */
 void KeyValuePair::_set_new_value(C3PValue* v) {
-  if ((nullptr != _value) && reapValue()) {
+  if ((nullptr != _value) && reapContainer()) {
     C3PValue* tmp_value = _value;
     _value = nullptr;
     delete tmp_value;
@@ -466,11 +466,11 @@ int8_t KeyValuePair::serialize(StringBuilder* out, TCode TC) {
   int8_t ret = -1;
   switch (TC) {
     default:  break;
-    case TCode::BINARY:  ret = (0 == _encode_to_bin(out)) ? 0 : -2;     break;
-    //case TCode::STR:     ret = (0 == _encode_to_string(out)) ? 0 : -2;  break;
-    #if defined(CONFIG_C3P_CBOR)
-    case TCode::CBOR:    ret = (0 == _encode_to_cbor(out)) ? 0 : -2;    break;
-    #endif  // CONFIG_C3P_CBOR
+    case TCode::BINARY:  ret = (0 == _encode_to_bin(out)) ? 0 : -2;        break;
+    case TCode::STR:     ret = (0 == _encode_to_printable(out)) ? 0 : -2;  break;
+    #if defined(__BUILD_HAS_CBOR)
+    case TCode::CBOR:    ret = (0 == _encode_to_cbor(out)) ? 0 : -2;       break;
+    #endif  // __BUILD_HAS_CBOR
     #if defined(CONFIG_C3P_JSON)
     #endif  // CONFIG_C3P_JSON
     #if defined(CONFIG_C3P_BASE64)
@@ -484,9 +484,7 @@ KeyValuePair* KeyValuePair::unserialize(uint8_t* src, unsigned int len, const TC
   KeyValuePair* ret = nullptr;
   switch (TC) {
     default:  break;
-    //case TCode::BINARY:  ret = (0 == _encode_to_bin(out)) ? 0 : -2;     break;
-    //case TCode::STR:     ret = (0 == _encode_to_string(out)) ? 0 : -2;  break;
-    #if defined(CONFIG_C3P_CBOR)
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         CBORArgListener listener(&ret);
@@ -495,7 +493,7 @@ KeyValuePair* KeyValuePair::unserialize(uint8_t* src, unsigned int len, const TC
         decoder.run();
       }
       break;
-    #endif  // CONFIG_C3P_CBOR
+    #endif  // __BUILD_HAS_CBOR
     #if defined(CONFIG_C3P_JSON)
     #endif  // CONFIG_C3P_JSON
     #if defined(CONFIG_C3P_BASE64)
@@ -503,6 +501,74 @@ KeyValuePair* KeyValuePair::unserialize(uint8_t* src, unsigned int len, const TC
   }
   return ret;
 }
+
+
+/*******************************************************************************
+* Parse-Pack: String
+*******************************************************************************/
+
+/**
+* The purpose of this fxn is to pack up this KeyValuePair into something that
+*   can be rendered to a console. We write only the things that are important
+*   to a human wanting to see the content.
+*
+* @return 0 on success. Non-zero otherwise.
+*/
+int8_t KeyValuePair::_encode_to_printable(StringBuilder* out, const unsigned int LEVEL) {
+  KeyValuePair* src = this;
+  int8_t ret = 0;
+  // Decide if this is an array, or an object, or a singleton KVP.
+  StringBuilder indent;
+  for (unsigned int i = 0; i < LEVEL; i++) {  indent.concat("  ");  }
+
+  while (nullptr != src) {
+    C3PValue* val_container = src->getValue();
+    const unsigned int SIBS = src->count();  // Count the siblings.
+    if (nullptr != val_container) {
+      out->concat(&indent);
+      if (nullptr != src->getKey()) {
+        out->concatf("%s: ", src->getKey());
+      }
+      else if (SIBS > 0) {
+        // No key means that this is being used to store an array of values.
+        // TODO: Presently, there is no other way.
+        // Render them in a way that makes that clear.
+        out->concat("[");
+      }
+
+      switch (val_container->tcode()) {
+        case TCode::KVP:
+          {
+            KeyValuePair* tmp = nullptr;
+            val_container->get_as(&tmp);
+            if (nullptr != tmp) {
+              out->concat("{\n");
+              tmp->_encode_to_printable(out, (LEVEL+1));
+              out->concat("}");
+            }
+          }
+          break;
+
+        case TCode::STR:
+          out->concat("\"");
+          val_container->toString(out);
+          out->concat("\"");
+          break;
+
+        default:
+          val_container->toString(out);
+          break;
+      }
+      out->concat((nullptr != src->_next) ? ",\n" : "\n");
+    }
+    else {
+      // Peacefully ignore KVPs without value containers.
+    }
+    src = src->_next;
+  }
+  return ret;
+}
+
 
 
 /*******************************************************************************
@@ -548,7 +614,7 @@ int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
 * Parse-Pack: CBOR support
 *******************************************************************************/
 
-#if defined(CONFIG_C3P_CBOR)
+#if defined(__BUILD_HAS_CBOR)
 
 int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
   // NOTE: This function exhibits concurrent use of two seperate CBOR encoder
@@ -834,4 +900,4 @@ KeyValuePair* CBORArgListener::_inflate_c3p_type(uint8_t* data, int size, const 
   return ret;
 }
 
-#endif // CONFIG_C3P_CBOR
+#endif // __BUILD_HAS_CBOR

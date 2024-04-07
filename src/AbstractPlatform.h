@@ -251,83 +251,6 @@ typedef struct __platform_thread_opts {
 
 
 /*******************************************************************************
-*     ____  __      __  ____                        ____  ____      __
-*    / __ \/ /___ _/ /_/ __/___  _________ ___     / __ \/ __ )    / /
-*   / /_/ / / __ `/ __/ /_/ __ \/ ___/ __ `__ \   / / / / __  |_  / /
-*  / ____/ / /_/ / /_/ __/ /_/ / /  / / / / / /  / /_/ / /_/ / /_/ /
-* /_/   /_/\__,_/\__/_/  \____/_/  /_/ /_/ /_/   \____/_____/\____/
-*
-* This is base platform support. It is a pure virtual.
-* ManuvrPlatform provides examples of extending this class to support specific
-*   concrete platforms.
-*******************************************************************************/
-class AbstractPlatform {
-  public:
-    #if defined(__HAS_CRYPT_WRAPPER)
-      CryptoProcessor* crypto = nullptr;
-    #endif
-
-    /* Accessors for platform capability discovery. */
-    #if defined(__BUILD_HAS_THREADS)
-      inline bool hasThreads() const {        return true;     };
-    #else
-      inline bool hasThreads() const {        return false;    };
-    #endif
-    #if defined(__HAS_CRYPT_WRAPPER)
-      inline bool hasCryptography() const {   return true;     };
-    #else
-      inline bool hasCryptography() const {   return false;    };
-    #endif
-    inline bool hasSerialNumber() { return _check_flags(ABSTRACT_PF_FLAG_SERIALED);        };
-    inline bool hasLocation() {     return _check_flags(ABSTRACT_PF_FLAG_HAS_LOCATION);    };
-    inline bool hasTimeAndDate() {  return _check_flags(ABSTRACT_PF_FLAG_INNATE_DATETIME); };
-    inline bool rtcInitilized() {   return _check_flags(ABSTRACT_PF_FLAG_RTC_READY);       };
-    inline bool rtcAccurate() {     return _check_flags(ABSTRACT_PF_FLAG_RTC_SET);         };
-    inline bool hasStorage() {      return _check_flags(ABSTRACT_PF_FLAG_HAS_STORAGE);     };
-    inline bool bigEndian() {       return _check_flags(ABSTRACT_PF_FLAG_BIG_ENDIAN);      };
-    inline uint8_t aluWidth() {
-      // TODO: This is possible to do without the magic number 13... Figure out how.
-      return (8 << ((_pflags & ABSTRACT_PF_FLAG_ALU_WIDTH_MASK) >> 13));
-    };
-
-    /* These are bootstrap checkpoints. */
-    int8_t configureConsole(C3PConsole*);
-    inline uint8_t platformState() {   return (_pflags & ABSTRACT_PF_FLAG_P_STATE_MASK);  };
-
-    void printCryptoOverview(StringBuilder*);
-
-    virtual int8_t init()  =0;
-    virtual void printDebug(StringBuilder*)  =0;
-
-    /* Functions that don't return. */
-    virtual void firmware_reset(uint8_t)     =0;
-    virtual void firmware_shutdown(uint8_t)  =0;
-
-
-  protected:
-    const char* _board_name;
-    uint32_t    _pflags = 0;
-
-    AbstractPlatform(const char* n) : _board_name(n) {};
-
-    void _print_abstract_debug(StringBuilder* out);
-    void _discover_alu_params();
-
-    /* Inlines for altering and reading the flags. */
-    inline void _alter_flags(bool en, uint32_t mask) {
-      _pflags = (en) ? (_pflags | mask) : (_pflags & ~mask);
-    };
-    inline bool _check_flags(uint32_t mask) {
-      return (mask == (_pflags & mask));
-    };
-    inline void _set_init_state(uint8_t s) {
-      _pflags = ((_pflags & ~ABSTRACT_PF_FLAG_P_STATE_MASK) | s);
-    };
-};
-
-
-
-/*******************************************************************************
 *     __  ____
 *    /  |/  (_)_________
 *   / /|_/ / / ___/ ___/
@@ -343,8 +266,92 @@ class AbstractPlatform {
   int callback_reboot(StringBuilder* text_return, StringBuilder* args);
 
   /**
+  * @return the integer-code associated with the reason for the last restart.
+  */
+  uint8_t last_restart_reason();
+
+
+
+/*******************************************************************************
+*     ____  __      __  ____                        ____  ____      __
+*    / __ \/ /___ _/ /_/ __/___  _________ ___     / __ \/ __ )    / /
+*   / /_/ / / __ `/ __/ /_/ __ \/ ___/ __ `__ \   / / / / __  |_  / /
+*  / ____/ / /_/ / /_/ __/ /_/ / /  / / / / / /  / /_/ / /_/ / /_/ /
+* /_/   /_/\__,_/\__/_/  \____/_/  /_/ /_/ /_/   \____/_____/\____/
+*
+* This is base platform support. It is a pure virtual.
+* ManuvrPlatform provides examples of extending this class to support specific
+*   concrete platforms.
+*******************************************************************************/
+  class AbstractPlatform {
+    public:
+      #if defined(__HAS_CRYPT_WRAPPER)
+        CryptoProcessor* crypto = nullptr;
+      #endif
+  
+      /* Accessors for platform capability discovery. */
+      #if defined(__BUILD_HAS_THREADS)
+        inline bool hasThreads() const {        return true;     };
+      #else
+        inline bool hasThreads() const {        return false;    };
+      #endif
+      #if defined(__HAS_CRYPT_WRAPPER)
+        inline bool hasCryptography() const {   return true;     };
+      #else
+        inline bool hasCryptography() const {   return false;    };
+      #endif
+      inline bool hasSerialNumber() { return _check_flags(ABSTRACT_PF_FLAG_SERIALED);        };
+      inline bool hasLocation() {     return _check_flags(ABSTRACT_PF_FLAG_HAS_LOCATION);    };
+      inline bool hasTimeAndDate() {  return _check_flags(ABSTRACT_PF_FLAG_INNATE_DATETIME); };
+      inline bool rtcInitilized() {   return _check_flags(ABSTRACT_PF_FLAG_RTC_READY);       };
+      inline bool rtcAccurate() {     return _check_flags(ABSTRACT_PF_FLAG_RTC_SET);         };
+      inline bool hasStorage() {      return _check_flags(ABSTRACT_PF_FLAG_HAS_STORAGE);     };
+      inline bool bigEndian() {       return _check_flags(ABSTRACT_PF_FLAG_BIG_ENDIAN);      };
+      inline uint8_t aluWidth() {
+        // TODO: This is possible to do without the magic number 13... Figure out how.
+        return (8 << ((_pflags & ABSTRACT_PF_FLAG_ALU_WIDTH_MASK) >> 13));
+      };
+  
+      /* These are bootstrap checkpoints. */
+      int8_t configureConsole(C3PConsole*);
+      inline uint8_t platformState() {   return (_pflags & ABSTRACT_PF_FLAG_P_STATE_MASK);  };
+  
+      void printCryptoOverview(StringBuilder*);
+  
+      virtual int8_t init()  =0;
+      virtual void printDebug(StringBuilder*)  =0;
+  
+      /* Functions that don't return. */
+      virtual void firmware_reset(uint8_t)     =0;
+      virtual void firmware_shutdown(uint8_t)  =0;
+  
+  
+    protected:
+      const char* _board_name;
+      uint32_t    _pflags = 0;
+  
+      AbstractPlatform(const char* n) : _board_name(n) {};
+  
+      void _print_abstract_debug(StringBuilder* out);
+      void _discover_alu_params();
+  
+      /* Inlines for altering and reading the flags. */
+      inline void _alter_flags(bool en, uint32_t mask) {
+        _pflags = (en) ? (_pflags | mask) : (_pflags & ~mask);
+      };
+      inline bool _check_flags(uint32_t mask) {
+        return (mask == (_pflags & mask));
+      };
+      inline void _set_init_state(uint8_t s) {
+        _pflags = ((_pflags & ~ABSTRACT_PF_FLAG_P_STATE_MASK) | s);
+      };
+  };
+
+
+  /**
   * A convenience function for doing platform init from the application.
-  * NOTE: It might not be called by the application.
+  * NOTE: It might not be called by the application. Some platforms can call it
+  *   without help, and other platforms don't need it.
   *
   * @return 0 on success. Non-zero otherwise.
   */
@@ -358,9 +365,5 @@ class AbstractPlatform {
   */
   AbstractPlatform* platformObj();
 
-  /**
-  * @return the integer-code associated with the reason for the last restart.
-  */
-  uint8_t last_restart_reason();
 
 #endif  // __ABSTRACT_PLATFORM_TEMPLATE_H__

@@ -131,6 +131,7 @@ class C3PValue {
     C3PValue(Vector3f64* val)  : C3PValue(TCode::VECT_3_DOUBLE, (void*) val) {};
     C3PValue(Identity* val)    : C3PValue(TCode::IDENTITY,      (void*) val) {};
     C3PValue(KeyValuePair* val) : C3PValue(TCode::KVP,          (void*) val) {};
+    C3PValue(StopWatch* val)    : C3PValue(TCode::STOPWATCH,    (void*) val) {};
 
     // Conditional types.
     #if defined(CONFIG_C3P_IMG_SUPPORT)
@@ -174,6 +175,7 @@ class C3PValue {
     inline int8_t set(StringBuilder* x) {   return set_from(TCode::STR_BUILDER,   (void*) x);  };
     inline int8_t set(Identity* x) {        return set_from(TCode::IDENTITY,      (void*) x);  };
     inline int8_t set(KeyValuePair* x) {    return set_from(TCode::KVP,           (void*) x);  };
+    inline int8_t set(StopWatch* x) {       return set_from(TCode::STOPWATCH,     (void*) x);  };
 
     /*
     * Type-coercion convenience functions for getting values.
@@ -213,6 +215,7 @@ class C3PValue {
     inline int8_t get_as(Identity** x) {         return get_as(TCode::IDENTITY,       (void*) x);  };
     inline int8_t get_as(StringBuilder** x) {    return get_as(TCode::STR_BUILDER,    (void*) x);  };
     inline int8_t get_as(KeyValuePair** x) {     return get_as(TCode::KVP,            (void*) x);  };
+    inline int8_t get_as(StopWatch** x) {        return get_as(TCode::STOPWATCH,      (void*) x);  };
     int8_t get_as(uint8_t** v, uint32_t* l);
 
 

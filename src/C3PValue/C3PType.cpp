@@ -84,7 +84,7 @@ static const C3PTypeConstraint<Vector3u32>      c3p_type_helper_vect3_u32(    "V
 static const C3PTypeConstraint<Vector3f>        c3p_type_helper_vect3_float(  "VEC3_FLOAT",   12, TCode::VECT_3_FLOAT,   (TCODE_FLAG_VALUE_IS_POINTER));
 static const C3PTypeConstraint<Vector3f64>      c3p_type_helper_vect3_double( "VEC3_DOUBLE",  24, TCode::VECT_3_DOUBLE,  (TCODE_FLAG_VALUE_IS_POINTER));
 static const C3PTypeConstraint<KeyValuePair*>   c3p_type_helper_kvp(          "KVP",          0,  TCode::KVP,            (TCODE_FLAG_VALUE_IS_POINTER));
-static const C3PTypeConstraint<StopWatch*>      c3p_type_helper_stopwatch(    "STOPWATCH",    sizeof(StopWatch),  TCode::STOPWATCH,      (TCODE_FLAG_VALUE_IS_POINTER));
+static const C3PTypeConstraint<StopWatch*>      c3p_type_helper_stopwatch(    "STOPWATCH",    sizeof(StopWatch),  TCode::STOPWATCH,  (TCODE_FLAG_VALUE_IS_POINTER));
 
 // Type-indirected handlers (parameter binders).
 static const C3PTypeConstraint<C3PBinBinder>    c3p_type_helper_ptrlen(       "BINARY",       0,  TCode::BINARY,       (TCODE_FLAG_PTR_LEN_TYPE | TCODE_FLAG_LEGAL_FOR_ENCODING));
@@ -2376,10 +2376,37 @@ template <> void        C3PTypeConstraint<StopWatch*>::to_string(void* obj, Stri
   ((StopWatch*) obj)->serialize(out, TCode::STR);
 }
 
+template <> int8_t      C3PTypeConstraint<StopWatch*>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+  int8_t ret = -1;
+  if (nullptr != dest) {
+    switch (SRC_TYPE) {
+      case TCode::STOPWATCH:
+        memcpy(dest, &src, sizeof(StopWatch*));
+        ret = 0;
+        break;
+      default:  break;
+    }
+  }
+  return ret;
+}
+
+template <> int8_t      C3PTypeConstraint<StopWatch*>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+  int8_t ret = -1;
+  if (nullptr != dest) {
+    switch (DEST_TYPE) {
+      case TCode::STOPWATCH:
+        memcpy(dest, &src, sizeof(StopWatch*));
+        ret = 0;
+        break;
+      default:  break;
+    }
+  }
+  return ret;
+}
+
 template <> int         C3PTypeConstraint<StopWatch*>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   StopWatch* stopwatch = ((StopWatch*) obj);
-  int ret = stopwatch->serialize(out, FORMAT);
-  return ret;
+  return stopwatch->serialize(out, FORMAT);
 }
 
 template <> int8_t      C3PTypeConstraint<StopWatch*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {

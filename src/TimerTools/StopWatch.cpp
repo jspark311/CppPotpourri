@@ -107,7 +107,7 @@ int StopWatch::serialize(StringBuilder* out, const TCode FORMAT) {
       {
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
-        encoder.write_map(6);
+        encoder.write_map(7);
         //if (0 != _tag) {
           encoder.write_string("tag");    encoder.write_int(_tag);
         //}

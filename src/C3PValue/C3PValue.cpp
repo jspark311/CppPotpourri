@@ -21,8 +21,8 @@ limitations under the License.
 #include "C3PValue.h"
 #include "KeyValuePair.h"
 #include "../StringBuilder.h"
+#include "../TimerTools/TimerTools.h"
 #include "../Identity/Identity.h"
-#include "../StringBuilder.h"
 #include "../AbstractPlatform.h"   // Only needed for logging.
 
 /* CBOR support should probably be required to parse/pack. */
@@ -70,12 +70,14 @@ C3PValue* C3PValue::deserialize(StringBuilder* input, const TCode FORMAT) {
       }
       break;
 
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         C3PValueDecoder decoder(input);
         ret = decoder.next();
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -158,15 +160,26 @@ C3PValue::~C3PValue() {
     //   construe the reap member to refer to the data itself, and not the shim.
     //   We will always free the shim.
     // TODO: allocate() and deallocate() should be added to the type template.
-    if (_TCODE == TCode::BINARY) {
-      if (_reap_val) {
-        free(((C3PBinBinder*) _target_mem)->buf);
-      }
-      free(_target_mem);
-    }
-    //else if (_val_by_ref & _reap_val) {
-    else if (_reap_val) {
-      free(_target_mem);
+    switch (_TCODE) {
+      case TCode::BINARY:
+      case TCode::CBOR:
+        if (_reap_val) {
+          free(((C3PBinBinder*) _target_mem)->buf);
+        }
+        free(_target_mem);
+        break;
+
+      case TCode::STR_BUILDER:  if (_reap_val) {  delete ((StringBuilder*) _target_mem);  }  break;
+      case TCode::KVP:          if (_reap_val) {  delete ((KeyValuePair*)  _target_mem);  }  break;
+      case TCode::STOPWATCH:    if (_reap_val) {  delete ((StopWatch*)     _target_mem);  }  break;
+    #if defined(CONFIG_C3P_IDENTITY_SUPPORT)
+      case TCode::IDENTITY:     if (_reap_val) {  delete ((Identity*)      _target_mem);  }  break;
+    #endif
+    #if defined(CONFIG_C3P_IMG_SUPPORT)
+      case TCode::IMAGE:        if (_reap_val) {  delete ((Image*)         _target_mem);  }  break;
+    #endif
+      //default:  if (_val_by_ref & _reap_val) {  free(_target_mem);  }  break;
+      default:  if (_reap_val) {  free(_target_mem);  }  break;
     }
   }
   _target_mem = nullptr;
@@ -426,7 +439,7 @@ uint32_t C3PValue::length() {
 
 
 /**
-* This function prints the KVP's value to the provided buffer.
+* This function prints the value to the provided buffer.
 *
 * @param out is the buffer to receive the printed value.
 */
@@ -446,6 +459,23 @@ void C3PValue::toString(StringBuilder* out, bool include_type) {
     }
   }
 }
+
+
+
+/*
+* This function recursively-renders the vale to the given BufferAccepter.
+* NOTE: This is an experiment in memory control, and something that you might
+*   call a "stream". It might be a terrible idea.
+*
+* @return 0 on success, or -1 on incomplete render.
+*/
+int8_t C3PValue::renderToPipeline(BufferAccepter* buffer_pipe, unsigned int recursions) {
+  int8_t ret = 0;
+  if (0 < recursions) {
+  }
+  return ret;
+}
+
 
 
 
@@ -503,7 +533,6 @@ bool C3PValueDecoder::_get_length_field(uint32_t* offset_ptr, uint64_t* val_ret,
 */
 C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
   if (nullptr == _in) {  return nullptr;  }   // Bailout
-  const uint32_t INPUT_LEN = _in->length();
   uint32_t length_taken = 0;
   C3PValue* value = _next(&length_taken);
   const bool SHOULD_CULL = ((nullptr != value) | consume_unparsable);

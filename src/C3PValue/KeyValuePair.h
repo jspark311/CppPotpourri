@@ -84,6 +84,7 @@ class KeyValuePair {
     KeyValuePair(const char* key, Vector3f64*    val) : KeyValuePair(key, new C3PValue(val), C3P_KVP_FLAG_REAP_CNTNR) {};
     KeyValuePair(const char* key, Identity*      val) : KeyValuePair(key, new C3PValue(val), C3P_KVP_FLAG_REAP_CNTNR) {};
     KeyValuePair(const char* key, KeyValuePair*  val) : KeyValuePair(key, new C3PValue(val), C3P_KVP_FLAG_REAP_CNTNR) {};
+    KeyValuePair(const char* key, StopWatch*     val) : KeyValuePair(key, new C3PValue(val), C3P_KVP_FLAG_REAP_CNTNR) {};
     KeyValuePair(const char* key, uint8_t* v, uint32_t l) : KeyValuePair(key, new C3PValue(v, l), C3P_KVP_FLAG_REAP_CNTNR) {};
 
     KeyValuePair(char* key, uint8_t        val) : KeyValuePair(key, new C3PValue(val), C3P_KVP_FLAG_REAP_CNTNR) {};
@@ -110,6 +111,7 @@ class KeyValuePair {
     KeyValuePair(char* key, Vector3f64*    val) : KeyValuePair(key, new C3PValue(val), C3P_KVP_FLAG_REAP_CNTNR) {};
     KeyValuePair(char* key, Identity*      val) : KeyValuePair(key, new C3PValue(val), C3P_KVP_FLAG_REAP_CNTNR) {};
     KeyValuePair(char* key, KeyValuePair*  val) : KeyValuePair(key, new C3PValue(val), C3P_KVP_FLAG_REAP_CNTNR) {};
+    KeyValuePair(char* key, StopWatch*     val) : KeyValuePair(key, new C3PValue(val), C3P_KVP_FLAG_REAP_CNTNR) {};
     KeyValuePair(char* key, uint8_t* v, uint32_t l) : KeyValuePair(key, new C3PValue(v, l), C3P_KVP_FLAG_REAP_CNTNR) {};
 
     KeyValuePair(uint8_t            val) : KeyValuePair((const char*) nullptr, val) {};
@@ -136,6 +138,7 @@ class KeyValuePair {
     KeyValuePair(Vector3f64*        val) : KeyValuePair((const char*) nullptr, val) {};
     KeyValuePair(Identity*          val) : KeyValuePair((const char*) nullptr, val) {};
     KeyValuePair(KeyValuePair*      val) : KeyValuePair((const char*) nullptr, val) {};
+    KeyValuePair(StopWatch*         val) : KeyValuePair((const char*) nullptr, val) {};
     KeyValuePair(uint8_t* v, uint32_t l) : KeyValuePair((const char*) nullptr, v, l) {};
 
 
@@ -161,8 +164,9 @@ class KeyValuePair {
     inline KeyValuePair* append(Vector3i8* val, const char* key = nullptr) {        return link(new KeyValuePair(key, val));   };
     inline KeyValuePair* append(Vector3f* val, const char* key = nullptr) {         return link(new KeyValuePair(key, val));   };
     inline KeyValuePair* append(Vector3f64* val, const char* key = nullptr) {       return link(new KeyValuePair(key, val));   };
-    inline KeyValuePair* append(KeyValuePair* val, const char* key = nullptr) {     return link(new KeyValuePair(key, val));   };
     inline KeyValuePair* append(Identity* val, const char* key = nullptr) {         return link(new KeyValuePair(key, val));   };
+    inline KeyValuePair* append(KeyValuePair* val, const char* key = nullptr) {     return link(new KeyValuePair(key, val));   };
+    inline KeyValuePair* append(StopWatch* val, const char* key = nullptr) {        return link(new KeyValuePair(key, val));   };
     inline KeyValuePair* append(uint8_t* v, uint32_t l, const char* k = nullptr) {  return link(new KeyValuePair(k, v, l));    };
 
     inline KeyValuePair* append(uint8_t val, char* key) {           return link(new KeyValuePair(key, val));   };
@@ -187,8 +191,9 @@ class KeyValuePair {
     inline KeyValuePair* append(Vector3i8* val, char* key) {        return link(new KeyValuePair(key, val));   };
     inline KeyValuePair* append(Vector3f* val, char* key) {         return link(new KeyValuePair(key, val));   };
     inline KeyValuePair* append(Vector3f64* val, char* key) {       return link(new KeyValuePair(key, val));   };
-    inline KeyValuePair* append(KeyValuePair* val, char* key) {     return link(new KeyValuePair(key, val));   };
     inline KeyValuePair* append(Identity* val, char* key) {         return link(new KeyValuePair(key, val));   };
+    inline KeyValuePair* append(KeyValuePair* val, char* key) {     return link(new KeyValuePair(key, val));   };
+    inline KeyValuePair* append(StopWatch* val, char* key) {        return link(new KeyValuePair(key, val));   };
     inline KeyValuePair* append(uint8_t* v, uint32_t l, char* k) {  return link(new KeyValuePair(k, v, l));    };
 
     inline int8_t setValue(uint8_t val) {               return ((nullptr == _value) ? -1 : _value->set(val));     };
@@ -213,8 +218,9 @@ class KeyValuePair {
     inline int8_t setValue(Vector3i8* val) {            return ((nullptr == _value) ? -1 : _value->set(val));     };
     inline int8_t setValue(Vector3f* val) {             return ((nullptr == _value) ? -1 : _value->set(val));     };
     inline int8_t setValue(Vector3f64* val) {           return ((nullptr == _value) ? -1 : _value->set(val));     };
-    inline int8_t setValue(KeyValuePair* val) {         return ((nullptr == _value) ? -1 : _value->set(val));     };
     inline int8_t setValue(Identity* val) {             return ((nullptr == _value) ? -1 : _value->set(val));     };
+    inline int8_t setValue(KeyValuePair* val) {         return ((nullptr == _value) ? -1 : _value->set(val));     };
+    inline int8_t setValue(StopWatch* val) {            return ((nullptr == _value) ? -1 : _value->set(val));     };
     inline int8_t setValue(uint8_t* v, uint32_t l) {    return ((nullptr == _value) ? -1 : _value->set(v, l));    };
 
     inline int8_t getValue(uint8_t* val) {              return ((nullptr == _value) ? -1 : _value->get_as(val));  };
@@ -239,8 +245,9 @@ class KeyValuePair {
     inline int8_t getValue(Vector3i8* val) {            return ((nullptr == _value) ? -1 : _value->get_as(val));  };
     inline int8_t getValue(Vector3f* val) {             return ((nullptr == _value) ? -1 : _value->get_as(val));  };
     inline int8_t getValue(Vector3f64* val) {           return ((nullptr == _value) ? -1 : _value->get_as(val));  };
-    inline int8_t getValue(KeyValuePair** val) {        return ((nullptr == _value) ? -1 : _value->get_as(val));  };
     inline int8_t getValue(Identity** val) {            return ((nullptr == _value) ? -1 : _value->get_as(val));  };
+    inline int8_t getValue(KeyValuePair** val) {        return ((nullptr == _value) ? -1 : _value->get_as(val));  };
+    inline int8_t getValue(StopWatch** val) {           return ((nullptr == _value) ? -1 : _value->get_as(val));  };
     inline int8_t getValue(uint8_t** v, uint32_t* l) {  return ((nullptr == _value) ? -1 : _value->get_as(v, l)); };
 
 
@@ -284,15 +291,18 @@ class KeyValuePair {
     C3PValue* valueWithKey(const char*);
     int8_t    valueWithKey(const char*, void* trg_buf);
     int8_t    convertToType(const TCode);
-
     inline C3PValue* getValue() {   return _value;    };
     inline uint32_t  length() {     return ((nullptr != _value) ? _value->length() : 0);  };
     inline TCode     tcode() {      return ((nullptr != _value) ? _value->tcode()  : TCode::NONE);  };
-    void   valToString(StringBuilder*);
-    void   printDebug(StringBuilder*);
     int    memoryCost(bool deep = false);   // Get the memory use for this object.
 
+    // TODO: These are adding weight and confusion now the C3PType has taken
+    //   over their duties. Move their novel functionality into a new function,
+    //   and their redundancies can disappear.
+    void   valToString(StringBuilder*);
+    void   printDebug(StringBuilder*);
     int8_t serialize(StringBuilder*, TCode);
+
 
     /* Statics */
     static KeyValuePair* unserialize(uint8_t*, unsigned int, const TCode);
@@ -310,7 +320,10 @@ class KeyValuePair {
     void _set_new_key(char*);
     void _set_new_value(C3PValue*);
 
+    //uint32_t _count_unkeyed_values();
+
     /* Private parse/pack functions functions. */
+    int8_t _encode_to_printable(StringBuilder*, const unsigned int LEVEL = 0);
     int8_t _encode_to_bin(StringBuilder*);
     KeyValuePair* _decode_from_bin(uint8_t*, unsigned int);
     #if defined(CONFIG_C3P_CBOR)
