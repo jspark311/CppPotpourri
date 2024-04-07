@@ -212,7 +212,12 @@ int TracePath::serialize(StringBuilder* out, const TCode FORMAT) {
               TracePoint end_point(0, path_stopwatch->tag());  // Reconstruct a point from the StopWatch tag.
               encoder.write_map(2);
               encoder.write_string("pnt");    encoder.write_int(end_point.trace_word);
-              encoder.write_string("prof");   path_stopwatch->serialize(out, FORMAT);
+
+              C3PType* t_helper = getTypeHelper(TCode::STOPWATCH);
+              if (nullptr != t_helper) {  // TODO: Is mandatory. Enforce build-time check.
+                encoder.write_string("prof");
+                t_helper->serialize(path_stopwatch, out, FORMAT);
+              }
             }
           }
           ret = 0;

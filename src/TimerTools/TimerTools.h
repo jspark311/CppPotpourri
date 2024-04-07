@@ -47,11 +47,12 @@ class StopWatch {
     bool  addRuntime(const unsigned long START_TIME, const unsigned long STOP_TIME);
     void  reset();
     void printDebug(const char*, StringBuilder*);
-    int serialize(StringBuilder*, const TCode FORMAT);
 
     static void printDebugHeader(StringBuilder*);
 
   private:
+    friend int    C3PTypeConstraint<StopWatch*>::serialize(void*, StringBuilder*, const TCode);
+    friend int8_t C3PTypeConstraint<StopWatch*>::construct(void*, KeyValuePair*);
     uint32_t _tag;      // A slot for arbitrary application data.
     uint32_t _start_micros;
     uint32_t _run_time_last;

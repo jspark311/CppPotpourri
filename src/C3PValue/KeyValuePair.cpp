@@ -650,7 +650,11 @@ int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
 /*******************************************************************************
 * CBORArgListener
 *
-*
+* TODO: This has value for cases where memory should be consumed as it can be,
+*   and object creation can happen in steps. But that behavior should be an
+*   option in C3PValueDecoder, and this class should be entirely subsumed into
+*   it. Possibly the CBOR library will follow, since C3PValueDecoder contains
+*   its own parallel implementation that was derived from it.
 *******************************************************************************/
 
 CBORArgListener::CBORArgListener(KeyValuePair** target) {    built = target;    }

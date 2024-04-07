@@ -545,7 +545,7 @@ template <> int         C3PTypeConstraint<int8_t>::serialize(void* obj, StringBu
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<int8_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<int8_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -689,7 +689,7 @@ template <> int         C3PTypeConstraint<int16_t>::serialize(void* obj, StringB
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<int16_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<int16_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -835,7 +835,7 @@ template <> int         C3PTypeConstraint<int32_t>::serialize(void* obj, StringB
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<int32_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<int32_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -979,7 +979,7 @@ template <> int         C3PTypeConstraint<int64_t>::serialize(void* obj, StringB
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<int64_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<int64_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -1106,7 +1106,7 @@ template <> int         C3PTypeConstraint<uint8_t>::serialize(void* obj, StringB
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<uint8_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<uint8_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -1240,7 +1240,7 @@ template <> int         C3PTypeConstraint<uint16_t>::serialize(void* obj, String
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<uint16_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<uint16_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -1380,7 +1380,7 @@ template <> int         C3PTypeConstraint<uint32_t>::serialize(void* obj, String
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<uint32_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<uint32_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -1533,7 +1533,7 @@ template <> int         C3PTypeConstraint<uint64_t>::serialize(void* obj, String
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<uint64_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<uint64_t>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -1633,7 +1633,7 @@ template <> int         C3PTypeConstraint<bool>::serialize(void* obj, StringBuil
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<bool>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<bool>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -1722,7 +1722,7 @@ template <> int         C3PTypeConstraint<float>::serialize(void* obj, StringBui
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<float>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<float>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -1812,7 +1812,7 @@ template <> int         C3PTypeConstraint<double>::serialize(void* obj, StringBu
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<double>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<double>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -2156,7 +2156,7 @@ template <> int         C3PTypeConstraint<char*>::serialize(void* obj, StringBui
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<char*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<char*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -2257,7 +2257,7 @@ template <> int         C3PTypeConstraint<StringBuilder*>::serialize(void* obj, 
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<StringBuilder*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<StringBuilder*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -2363,7 +2363,7 @@ template <> int         C3PTypeConstraint<Identity*>::serialize(void* obj, Strin
   return ret;
 }
 
-template <> int8_t      C3PTypeConstraint<Identity*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<Identity*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -2373,7 +2373,7 @@ template <> int8_t      C3PTypeConstraint<Identity*>::deserialize(void* obj, Str
 /// StopWatch*
 ///
 template <> void        C3PTypeConstraint<StopWatch*>::to_string(void* obj, StringBuilder* out) {
-  ((StopWatch*) obj)->serialize(out, TCode::STR);
+  serialize(obj, out, TCode::STR);
 }
 
 template <> int8_t      C3PTypeConstraint<StopWatch*>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
@@ -2401,16 +2401,6 @@ template <> int8_t      C3PTypeConstraint<StopWatch*>::get_as(void* src, const T
       default:  break;
     }
   }
-  return ret;
-}
-
-template <> int         C3PTypeConstraint<StopWatch*>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
-  StopWatch* stopwatch = ((StopWatch*) obj);
-  return stopwatch->serialize(out, FORMAT);
-}
-
-template <> int8_t      C3PTypeConstraint<StopWatch*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
-  int8_t ret = -1;
   return ret;
 }
 
@@ -2459,7 +2449,7 @@ template <> int         C3PTypeConstraint<KeyValuePair*>::serialize(void* obj, S
   return ((0 == subj->serialize(out, FORMAT)) ? 0 : -1);
 }
 
-template <> int8_t      C3PTypeConstraint<KeyValuePair*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<KeyValuePair*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }
@@ -2522,7 +2512,7 @@ template <> int         C3PTypeConstraint<Image*>::serialize(void* obj, StringBu
 }
 
 
-template <> int8_t      C3PTypeConstraint<Image*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+template <> int         C3PTypeConstraint<Image*>::deserialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   return ret;
 }

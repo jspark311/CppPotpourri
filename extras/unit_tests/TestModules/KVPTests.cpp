@@ -124,7 +124,13 @@ int test_KeyValuePair_InternalTypes() {
   int ret = 1;
   printf("\tKeyValuePair: Internal Types...\n");
   StringBuilder val0("Some string");
+  StopWatch     val1(randomUInt32());
   KeyValuePair a(&val0);
+  KeyValuePair b(&val1);
+
+  val1.markStart();
+  sleep_us(randomUInt32() % 400);
+  val1.markStop();
 
   printf("\t\tStringBuilder* can be added as a native type... ");
   if (TCode::STR_BUILDER == a.tcode()) {
@@ -133,9 +139,48 @@ int test_KeyValuePair_InternalTypes() {
     if (0 == a.getValue(&ret_sb)) {
       printf("Pass.\n\t\tThe pointer that went in (%p) is the same one we get back... ", ret_sb);
       if (&val0 == ret_sb) {
-        printf("Pass.\n\tInternal Types tests all pass.\n");
-        dump_kvp(&a);
-        ret = 0;
+        printf("Pass.\n\t\tStopWatch* can be added as a native type... ");
+        if (TCode::STOPWATCH == b.tcode()) {
+          printf("Pass.\n\t\tStopWatch* can be retrieved correctly by native type... ");
+          StopWatch* ret1 = nullptr;
+          if (0 == b.getValue(&ret1)) {
+            printf("Pass.\n\t\tThe pointer that went in (%p) is the same one we get back... ", ret_sb);
+            if (&val1 == ret1) {
+              printf("Pass.\n\t\tStopWatch can be serialized... ");
+              StringBuilder packed;
+              C3PType* t_helper = getTypeHelper(TCode::STOPWATCH);
+              if (0 == t_helper->serialize(&val1, &packed, TCode::CBOR)) {
+                printf("Pass.\n\t\tStopWatch can be deserialized... ");
+                C3PValue* deser_val1 = C3PValue::deserialize(&packed, TCode::CBOR);
+                if (nullptr != deser_val1) {
+                  printf("Pass.\n\t\tDeserialized value is a StopWatch... ");
+                  deser_val1->get_as(&ret1);
+                  if (nullptr != ret1) {
+                    printf("Pass.\n\t\tDeserialized StopWatch matches input... ");
+                    bool pest_tasses = (ret1->tag() == val1.tag());
+                    pest_tasses &= (ret1->bestTime() == val1.bestTime());
+                    pest_tasses &= (ret1->lastTime() == val1.lastTime());
+                    pest_tasses &= (ret1->worstTime() == val1.worstTime());
+                    pest_tasses &= (ret1->meanTime() == val1.meanTime());
+                    pest_tasses &= (ret1->totalTime() == val1.totalTime());
+                    pest_tasses &= (ret1->executions() == val1.executions());
+                    if (pest_tasses) {
+                      printf("Pass.\n\tInternal Types tests all pass.\n");
+                      ret = 0;
+                    }
+                  }
+                  delete deser_val1;
+                }
+              }
+              if (0 != ret) {
+                dump_strbldr(&packed);
+                StringBuilder tmp_out;
+                ret1->printDebug("ret1", &tmp_out);
+                printf("%s\n", (char*) tmp_out.string());
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -143,6 +188,7 @@ int test_KeyValuePair_InternalTypes() {
   if (0 != ret) {
     printf("Fail.\n");
     dump_kvp(&a);
+    dump_kvp(&b);
   }
   return ret;
 }

@@ -21,7 +21,7 @@ limitations under the License.
 #include "../CppPotpourri.h"
 #include "../StringBuilder.h"
 #include "../Meta/Rationalizer.h"
-#include "../cbor-cpp/cbor.h"
+#include "../C3PValue/KeyValuePair.h"
 #include "TimerTools.h"
 
 
@@ -73,8 +73,11 @@ ISR_FUNC bool StopWatch::markStop() {
 
 
 void StopWatch::printDebug(const char* label, StringBuilder* out) {
-  out->concatf("%14s ", label);
-  serialize(out, TCode::STR);
+  C3PType* t_helper = getTypeHelper(TCode::STOPWATCH);
+  if (nullptr != t_helper) {
+    out->concatf("%14s ", label);
+    t_helper->serialize(this, out, TCode::STR);
+  }
 }
 
 
@@ -84,46 +87,89 @@ void StopWatch::printDebugHeader(StringBuilder* out) {
 }
 
 
-int StopWatch::serialize(StringBuilder* out, const TCode FORMAT) {
+
+
+
+template <> int C3PTypeConstraint<StopWatch*>::serialize(void* _obj, StringBuilder* out, const TCode FORMAT) {
   int ret = -1;
+  StopWatch* obj = ((StopWatch*) _obj);
+  if (nullptr == _obj) {  return ret;  }
+
   switch (FORMAT) {
     case TCode::STR:
-      if (_executions) {
+      if (obj->_executions) {
         out->concatf("%10u %10u %10u %10u %10u %10u\n",
-          _executions,
-          (unsigned long) _run_time_total,
-          (unsigned long) _run_time_average,
-          (unsigned long) _run_time_worst,
-          (unsigned long) _run_time_best,
-          (unsigned long) _run_time_last
+          obj->_executions,
+          (unsigned long) obj->_run_time_total,
+          (unsigned long) obj->_run_time_average,
+          (unsigned long) obj->_run_time_worst,
+          (unsigned long) obj->_run_time_best,
+          (unsigned long) obj->_run_time_last
         );
       }
       else {
         out->concat("<NO DATA>\n");
       }
+      ret = 0;
       break;
+
+    case TCode::BINARY:
+      break;
+
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
-      #if defined(__BUILD_HAS_CBOR)
       {
         cbor::output_stringbuilder output(out);
         cbor::encoder encoder(output);
-        encoder.write_map(7);
-        //if (0 != _tag) {
-          encoder.write_string("tag");    encoder.write_int(_tag);
-        //}
-        encoder.write_string("exec");   encoder.write_int(_executions);
-        encoder.write_string("tot");    encoder.write_int(_run_time_total);
-        encoder.write_string("avg");    encoder.write_int(_run_time_average);
-        encoder.write_string("worst");  encoder.write_int(_run_time_worst);
-        encoder.write_string("best");   encoder.write_int(_run_time_best);
-        encoder.write_string("last");   encoder.write_int(_run_time_last);
+        encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(TCODE));
+        if (0 != obj->_tag) {
+          encoder.write_map(7);
+          encoder.write_string("g");    encoder.write_int(obj->_tag);
+        }
+        else {
+          encoder.write_map(6);
+        }
+        encoder.write_string("e");   encoder.write_int(obj->_executions);
+        encoder.write_string("t");   encoder.write_int(obj->_run_time_total);
+        encoder.write_string("a");   encoder.write_int(obj->_run_time_average);
+        encoder.write_string("w");   encoder.write_int(obj->_run_time_worst);
+        encoder.write_string("b");   encoder.write_int(obj->_run_time_best);
+        encoder.write_string("l");   encoder.write_int(obj->_run_time_last);
         ret = 0;
       }
-      #endif
       break;
-    case TCode::BINARY:
-      break;
-    default:   break;
+      #endif  // __BUILD_HAS_CBOR
+
+    default:  break;
+  }
+  return ret;
+}
+
+
+template <> int8_t C3PTypeConstraint<StopWatch*>::construct(void* _obj, KeyValuePair* kvp) {
+  int8_t ret = -1;
+  if ((nullptr != _obj) & (nullptr != kvp)) {
+    ret--;
+    StopWatch* obj = *((StopWatch**) _obj);
+    if (nullptr == obj) {
+      obj = new StopWatch();       // Allocate, if necessary.
+      *((StopWatch**) _obj) = obj; // And assign.
+    }
+    if (nullptr != obj) {
+      const unsigned int KVP_COUNT = kvp->count();
+      for (unsigned int i = 0; i < KVP_COUNT; i++) {
+        KeyValuePair* current_kvp = kvp->retrieveByIdx(i);
+       char* current_key = current_kvp->getKey();
+       if (0 == StringBuilder::strcasecmp(current_key, "g")) {       current_kvp->getValue(&(obj->_tag));               }
+       else if (0 == StringBuilder::strcasecmp(current_key, "e")) {  current_kvp->getValue(&(obj->_executions));        }
+       else if (0 == StringBuilder::strcasecmp(current_key, "t")) {  current_kvp->getValue(&(obj->_run_time_total));    }
+       else if (0 == StringBuilder::strcasecmp(current_key, "a")) {  current_kvp->getValue(&(obj->_run_time_average));  }
+       else if (0 == StringBuilder::strcasecmp(current_key, "w")) {  current_kvp->getValue(&(obj->_run_time_worst));    }
+       else if (0 == StringBuilder::strcasecmp(current_key, "b")) {  current_kvp->getValue(&(obj->_run_time_best));     }
+       else if (0 == StringBuilder::strcasecmp(current_key, "l")) {  current_kvp->getValue(&(obj->_run_time_last));     }
+      }
+      ret = 0;   // StopWatch always succeeds. No required keys.
+    }
   }
   return ret;
 }

@@ -285,10 +285,7 @@ class C3PValue {
 
 /*
 * This is a decoder class that prefers to rely on heap allocation of a
-*   complicated type-wrapper object to support usage that doesn't rely on
-*   object definition.
-* This pattern was added by CppPotpourri, and is probably the best choice for
-*   types covered by CppPotpourri's type-wrapping.
+*   complicated type-wrapper object to support unknown type flows.
 */
 class C3PValueDecoder {
   public:
@@ -305,7 +302,7 @@ class C3PValueDecoder {
     C3PValue*  _next(uint32_t* offset);
     C3PValue*  _handle_array(uint32_t* offset, uint32_t count);
     C3PValue*  _handle_map(uint32_t* offset, uint32_t count);
-    C3PValue*  _handle_tag(uint32_t* offset, uint64_t);
+    C3PValue*  _handle_tag(uint32_t* offset, C3PType*);
 };
 
 #endif  // __C3P_VALUE_WRAPPER_H

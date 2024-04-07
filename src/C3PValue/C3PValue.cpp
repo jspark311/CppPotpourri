@@ -462,23 +462,6 @@ void C3PValue::toString(StringBuilder* out, bool include_type) {
 
 
 
-/*
-* This function recursively-renders the vale to the given BufferAccepter.
-* NOTE: This is an experiment in memory control, and something that you might
-*   call a "stream". It might be a terrible idea.
-*
-* @return 0 on success, or -1 on incomplete render.
-*/
-int8_t C3PValue::renderToPipeline(BufferAccepter* buffer_pipe, unsigned int recursions) {
-  int8_t ret = 0;
-  if (0 < recursions) {
-  }
-  return ret;
-}
-
-
-
-
 /*******************************************************************************
 * C3PValueDecoder
 *
@@ -671,27 +654,13 @@ C3PValue* C3PValueDecoder::_next(uint32_t* offset) {
         break;
       case 6:
         if (C3P_CBOR_VENDOR_CODE == (_length_extra32 & 0xFFFFFF00)) {
+          // We noticed our vendor code, mask it off and see if see have a type
+          //   helper for it.
           const TCode TC = IntToTcode(_length_extra32 & 0x000000FF);
           C3PType* t_helper = getTypeHelper(TC);
           if (nullptr != t_helper) {
-            if (t_helper->is_fixed_length()) {
-              if (INPUT_LEN < (local_offset + t_helper->FIXED_LEN)) {
-                // Attempt to inflate the value if it is of a fixed-length, and at
-                //   least as much is waiting in the buffer.
-                // Copy it out onto the stack.
-                uint8_t new_buf[t_helper->FIXED_LEN];
-                if ((int32_t) _length_extra32 == _in->copyToBuffer(new_buf, t_helper->FIXED_LEN, local_offset)) {
-                  value = new C3PValue(TC, (void*) new_buf);
-                  local_offset += t_helper->FIXED_LEN;
-                }
-              }
-            }
-            else {
-              // Things that are not fixed length will require us to recurse.
-              // TODO: This will cause grief with the cleanup operations at the
-              //   tail of this function. It might be rationalizable.
-              value = _next(&local_offset);
-            }
+            // We have a type that matches what was encoded. Try to deserialize.
+            value = _handle_tag(&local_offset, t_helper);
           }
           else {
             c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "No C3PType for TCode (0x%02x)", (uint8_t) TC);
@@ -819,7 +788,43 @@ C3PValue* C3PValueDecoder::_handle_map(uint32_t* offset, uint32_t count) {
 }
 
 
-C3PValue* C3PValueDecoder::_handle_tag(uint32_t* offset, uint64_t len) {
-  C3PValue* value = nullptr;
-  return value;
+C3PValue* C3PValueDecoder::_handle_tag(uint32_t* offset, C3PType* t_helper) {
+  const uint32_t INPUT_LEN = _in->length();
+  uint32_t local_offset    = *offset;
+  uint32_t len_key         = 0;
+  C3PValue* ret            = nullptr;
+
+  if ((INPUT_LEN - local_offset) > 1) {
+    const uint8_t  CTYPE = _in->byteAt(local_offset);  // The next byte must be CBOR map.
+    const uint8_t  MAJOR = (CTYPE >> 5);
+    if (5 == MAJOR) {  // If so, invest the time reading it.
+      C3PValue* kvp_val = _next(&local_offset);
+      if (nullptr != kvp_val) {
+        KeyValuePair* kvp = nullptr;
+        if (0 == kvp_val->get_as(&kvp)) {
+          // We got a KVP.
+          void* obj_ret = nullptr;
+          if (0 == t_helper->construct(&obj_ret, kvp)) {
+            ret = new C3PValue(t_helper->TCODE, obj_ret);
+          }
+          else {
+            c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "KVP construction failed for type (%s).", t_helper->NAME);
+          }
+        }
+        else {
+          c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "Unhandled encoding for %s (%s).", t_helper->NAME, typecodeToStr(kvp_val->tcode()));
+        }
+        delete kvp_val;
+      }
+      // Not enough bytes of input, presumably...
+    }
+    else {
+      c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "Unhandled encoding for %s (0x%02).", t_helper->NAME, CTYPE);
+    }
+  }
+
+  if (nullptr != ret) {
+    *offset = local_offset;  // Indicate success by updating the offset.
+  }
+  return ret;
 }
