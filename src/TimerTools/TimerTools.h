@@ -53,6 +53,7 @@ class StopWatch {
   private:
     friend int    C3PTypeConstraint<StopWatch*>::serialize(void*, StringBuilder*, const TCode);
     friend int8_t C3PTypeConstraint<StopWatch*>::construct(void*, KeyValuePair*);
+
     uint32_t _tag;      // A slot for arbitrary application data.
     uint32_t _start_micros;
     uint32_t _run_time_last;

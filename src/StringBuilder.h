@@ -167,6 +167,7 @@ class StringBuilder {
        StringBuilder instances. */
     void concatHandoff(StringBuilder* src);
     void concatHandoffLimit(StringBuilder* src, unsigned int len_limit);
+    int  concatHandoffPositions(StringBuilder* src, unsigned int pos, unsigned int count = 1);
     void prependHandoff(StringBuilder* src);
     void concatLimit(StringBuilder* src, unsigned int len_limit);
 

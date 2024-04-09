@@ -77,6 +77,7 @@ void StopWatch::printDebug(const char* label, StringBuilder* out) {
   if (nullptr != t_helper) {
     out->concatf("%14s ", label);
     t_helper->serialize(this, out, TCode::STR);
+    out->concat('\n');
   }
 }
 
@@ -88,7 +89,9 @@ void StopWatch::printDebugHeader(StringBuilder* out) {
 
 
 
-
+/*******************************************************************************
+* C3PTypeConstraint
+*******************************************************************************/
 
 template <> int C3PTypeConstraint<StopWatch*>::serialize(void* _obj, StringBuilder* out, const TCode FORMAT) {
   int ret = -1;
@@ -98,7 +101,7 @@ template <> int C3PTypeConstraint<StopWatch*>::serialize(void* _obj, StringBuild
   switch (FORMAT) {
     case TCode::STR:
       if (obj->_executions) {
-        out->concatf("%10u %10u %10u %10u %10u %10u\n",
+        out->concatf("%10u %10u %10u %10u %10u %10u",
           obj->_executions,
           (unsigned long) obj->_run_time_total,
           (unsigned long) obj->_run_time_average,
@@ -108,7 +111,7 @@ template <> int C3PTypeConstraint<StopWatch*>::serialize(void* _obj, StringBuild
         );
       }
       else {
-        out->concat("<NO DATA>\n");
+        out->concat("<NO DATA>");
       }
       ret = 0;
       break;
@@ -172,4 +175,9 @@ template <> int8_t C3PTypeConstraint<StopWatch*>::construct(void* _obj, KeyValue
     }
   }
   return ret;
+}
+
+
+template <> void C3PTypeConstraint<StopWatch*>::to_string(void* _obj, StringBuilder* out) {
+  C3PTypeConstraint<StopWatch*>::serialize(_obj, out, TCode::STR);
 }

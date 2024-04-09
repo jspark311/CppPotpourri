@@ -539,7 +539,11 @@ char* StringBuilder::position_trimmed(int pos){
 
 
 /**
-* Returns true on success, false on failure.
+* Dropping a fragment means freeing it. If the string is collapsed, this has the
+*   same effect as clear().
+*
+* @param pos is the fragment index to drop.
+* @returns true on success, false on failure.
 */
 bool StringBuilder::drop_position(unsigned int pos) {
   StrLL* current = _root;
@@ -565,6 +569,7 @@ bool StringBuilder::drop_position(unsigned int pos) {
   }
   return false;
 }
+
 
 
 /*******************************************************************************
@@ -593,6 +598,54 @@ void StringBuilder::concatHandoff(StringBuilder* donar) {
     pthread_mutex_unlock(&nu->_mutex);
     pthread_mutex_unlock(&_mutex);
   #endif
+}
+
+
+/**
+* Transfers ownership of a token to another buffer.
+*   same effect as clear().
+*
+* @param pos is the fragment index to drop.
+* @param pos is the fragment index to drop.
+* @param count is the number of fragments to transfer, and defaults to 1.
+* @returns The number of fragments moved to the recipient
+*/
+int StringBuilder::concatHandoffPositions(StringBuilder* donar, unsigned int pos, unsigned int count) {
+  int ret = 0;
+  #if defined(__BUILD_HAS_PTHREADS)
+    // TODO: Both this instance, as well as the argument instance must be locked.
+    pthread_mutex_lock(&_mutex);
+    pthread_mutex_lock(&donar->_mutex);
+  #endif
+  if (nullptr != donar) {
+    const uint32_t FRAG_COUNT = strict_min((uint32_t) count, ((uint32_t) donar->count() - pos));
+    if (0 < FRAG_COUNT) {
+      // Find the first frag to be moved and the donar frag that points to it.
+      StrLL*  current      = donar->_root;
+      StrLL*  move_first   = nullptr;
+      StrLL** donar_splice = &(donar->_root);
+      while ((pos-- > 0) & (nullptr != current)) {
+        donar_splice = &(current->next);
+        current = current->next;
+      }
+      if (nullptr != current) {
+        move_first = current;
+        // Find the final frag to be moved.
+        while ((++ret < FRAG_COUNT) & (nullptr != current->next)) {
+          current = current->next;
+        }
+        *donar_splice = current->next;  // Inform the donar instance...
+        current->next = nullptr    ;    // Sever the chain of fragments.
+        _stack_str_onto_list(move_first);
+      }
+    }
+  }
+  #if defined(__BUILD_HAS_PTHREADS)
+    // TODO: Both this instance, as well as the argument instance must be unlocked.
+    pthread_mutex_unlock(&donar->_mutex);
+    pthread_mutex_unlock(&_mutex);
+  #endif
+  return ret;
 }
 
 

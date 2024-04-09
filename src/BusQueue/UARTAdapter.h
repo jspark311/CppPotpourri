@@ -105,10 +105,11 @@ class UARTAdapter : public BufferAccepter, public C3PPollable {
     inline uint32_t write(const char* str) {  return write((uint8_t*) str, strlen(str));  }
     inline void readCallback(BufferAccepter* cb) {   _read_cb_obj = cb;   };
 
-    inline int pendingRxBytes() {   return _rx_buffer.count();    };
-    inline int pendingTxBytes() {   return _tx_buffer.count();    };
-    inline uint32_t rxTimeout() {   return bus_timeout_millis;    };
-    inline uint32_t lastRXTime() {  return last_byte_rx_time;     };
+    inline int pendingRxBytes() {     return _rx_buffer.count();    };
+    inline int pendingTxBytes() {     return _tx_buffer.count();    };
+    inline uint32_t rxTimeout() {     return bus_timeout_millis;    };
+    inline uint32_t lastRXTime() {    return last_byte_rx_time;     };
+    inline bool rxTimeoutExpired() {  return (millis_since(last_byte_rx_time) > bus_timeout_millis);  };
 
     inline const uint8_t txdPin() {   return _TXD_PIN;   };
     inline const uint8_t rxdPin() {   return _RXD_PIN;   };

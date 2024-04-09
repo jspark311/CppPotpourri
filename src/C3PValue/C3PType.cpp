@@ -2372,10 +2372,6 @@ template <> int         C3PTypeConstraint<Identity*>::deserialize(void* obj, Str
 ////////////////////////////////////////////////////////////////////////////////
 /// StopWatch*
 ///
-template <> void        C3PTypeConstraint<StopWatch*>::to_string(void* obj, StringBuilder* out) {
-  serialize(obj, out, TCode::STR);
-}
-
 template <> int8_t      C3PTypeConstraint<StopWatch*>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
   int8_t ret = -1;
   if (nullptr != dest) {
