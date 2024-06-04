@@ -174,7 +174,6 @@ template <> int8_t C3PTypeConstraint<StopWatch*>::construct(void* _obj, KeyValue
       ret = 0;   // StopWatch always succeeds. No required keys.
     }
   }
-
   return ret;
 }
 

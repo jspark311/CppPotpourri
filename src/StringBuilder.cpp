@@ -314,6 +314,17 @@ unsigned short StringBuilder::count() {
 }
 
 
+int StringBuilder::maximumFragmentLength() {
+  int return_value = 0;
+  StrLL* current = _root;
+  while (current != nullptr) {
+    return_value = strict_max(return_value, current->len);
+    current = current->next;
+  }
+  return return_value;
+}
+
+
 /**
 * Public fxn to retrieve the flattened string as an uint8_t*.
 * Will never return nullptr. Even for an empty string. Will return a

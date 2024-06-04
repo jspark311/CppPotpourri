@@ -201,6 +201,7 @@ class StringBuilder {
     uint64_t position_as_uint64(int);   // Same as position(int), but uses atoi() to return an integer.
     double   position_as_double(int);   // Same as position(int), but uses atof() to return a double.
     uint8_t* position(int, int*);       // ...or this, if you need the length and a binary string.
+    int      maximumFragmentLength();
     bool     drop_position(unsigned int pos);   // And use this to reap the tokens that you've used.
 
     /* Comparison and search. */
