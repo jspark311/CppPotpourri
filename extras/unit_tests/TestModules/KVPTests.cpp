@@ -125,56 +125,65 @@ int test_KeyValuePair_InternalTypes() {
   printf("\tKeyValuePair: Internal Types...\n");
   StringBuilder val0("Some string");
   StopWatch     val1(randomUInt32());
-  KeyValuePair a(&val0);
-  KeyValuePair b(&val1);
+  KeyValuePair a("sw_0", &val0);
+  KeyValuePair b("sw_1", &val1);
 
-  val1.markStart();
-  sleep_us(randomUInt32() % 400);
-  val1.markStop();
+  for (int i = 0; i < 10; i++) {
+    val1.markStart();
+    sleep_us(randomUInt32() % 400);
+    val1.markStop();
+  }
 
   printf("\t\tStringBuilder* can be added as a native type... ");
   if (TCode::STR_BUILDER == a.tcode()) {
     printf("Pass.\n\t\tStringBuilder* can be retrieved correctly by native type... ");
     StringBuilder* ret_sb = nullptr;
-    if (0 == a.getValue(&ret_sb)) {
+    if (0 == a.get_as(&ret_sb)) {
       printf("Pass.\n\t\tThe pointer that went in (%p) is the same one we get back... ", ret_sb);
       if (&val0 == ret_sb) {
         printf("Pass.\n\t\tStopWatch* can be added as a native type... ");
         if (TCode::STOPWATCH == b.tcode()) {
           printf("Pass.\n\t\tStopWatch* can be retrieved correctly by native type... ");
           StopWatch* ret1 = nullptr;
-          if (0 == b.getValue(&ret1)) {
+          if (0 == b.get_as(&ret1)) {
             printf("Pass.\n\t\tThe pointer that went in (%p) is the same one we get back... ", ret_sb);
             if (&val1 == ret1) {
               printf("Pass.\n\t\tStopWatch can be serialized... ");
               StringBuilder packed;
-              C3PType* t_helper = getTypeHelper(TCode::STOPWATCH);
-              if (0 == t_helper->serialize(&val1, &packed, TCode::CBOR)) {
+              int ser_ret = b.serialize(&packed, TCode::CBOR);
+              if (0 == ser_ret) {
                 printf("Pass.\n\t\tStopWatch can be deserialized... ");
                 C3PValue* deser_val1 = C3PValue::deserialize(&packed, TCode::CBOR);
                 if (nullptr != deser_val1) {
                   printf("Pass.\n\t\tDeserialized value is a StopWatch... ");
-                  deser_val1->get_as(&ret1);
-                  if (nullptr != ret1) {
-                    printf("Pass.\n\t\tDeserialized StopWatch matches input... ");
-                    bool pest_tasses = (ret1->tag() == val1.tag());
-                    pest_tasses &= (ret1->bestTime() == val1.bestTime());
-                    pest_tasses &= (ret1->lastTime() == val1.lastTime());
-                    pest_tasses &= (ret1->worstTime() == val1.worstTime());
-                    pest_tasses &= (ret1->meanTime() == val1.meanTime());
-                    pest_tasses &= (ret1->totalTime() == val1.totalTime());
-                    pest_tasses &= (ret1->executions() == val1.executions());
-                    if (pest_tasses) {
-                      printf("Pass.\n\tInternal Types tests all pass.\n");
-                      ret = 0;
+                  if (0 == deser_val1->get_as(&ret1)) {
+                    printf("Pass.\n\t\tDeserialized value is not nullptr %p... ", ret1);
+                    if (nullptr != ret1) {
+                      printf("Pass.\n\t\tDeserialized StopWatch matches input... ");
+                      bool pest_tasses = (ret1->tag() == val1.tag());
+                      pest_tasses &= (ret1->bestTime() == val1.bestTime());
+                      pest_tasses &= (ret1->lastTime() == val1.lastTime());
+                      pest_tasses &= (ret1->worstTime() == val1.worstTime());
+                      pest_tasses &= (ret1->meanTime() == val1.meanTime());
+                      pest_tasses &= (ret1->totalTime() == val1.totalTime());
+                      pest_tasses &= (ret1->executions() == val1.executions());
+                      if (pest_tasses) {
+                        printf("Pass.\n\tInternal Types tests all pass.\n");
+                        ret = 0;
+                      }
+                    }
+                    else {
+                      StringBuilder tmp_out;
+                      deser_val1->printDebug(&tmp_out);
+                      printf("deser_val1:    %s\n", (char*) tmp_out.string());
                     }
                   }
-                  delete deser_val1;
                 }
               }
               if (0 != ret) {
                 dump_strbldr(&packed);
                 StringBuilder tmp_out;
+                val1.printDebug("val1", &tmp_out);
                 ret1->printDebug("ret1", &tmp_out);
                 printf("%s\n", (char*) tmp_out.string());
               }
@@ -399,45 +408,45 @@ int test_KeyValuePair_Value_Placement() {
 
 
   printf("\t\tPlacement of TCode::%s... ", typecodeToStr(arg0.tcode()));
-  if (0 == arg0.setValue(val0)) {
+  if (0 == arg0.set(val0)) {
     printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg1.tcode()));
-    if (0 == arg1.setValue(val1)) {
+    if (0 == arg1.set(val1)) {
       printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg2.tcode()));
-      if (0 == arg2.setValue(val2)) {
+      if (0 == arg2.set(val2)) {
         printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg3.tcode()));
-        if (0 == arg3.setValue(val3)) {
+        if (0 == arg3.set(val3)) {
           printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg4.tcode()));
-          if (0 == arg4.setValue(val4)) {
+          if (0 == arg4.set(val4)) {
             printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg5.tcode()));
-            if (0 == arg5.setValue(val5)) {
+            if (0 == arg5.set(val5)) {
               printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg6.tcode()));
-              if (0 == arg6.setValue(val6)) {
+              if (0 == arg6.set(val6)) {
                 printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg7.tcode()));
-                if (0 == arg7.setValue(&val7_0)) {
+                if (0 == arg7.set(&val7_0)) {
                   printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg8.tcode()));
-                  if (0 == arg8.setValue(val8)) {
+                  if (0 == arg8.set(val8)) {
                     printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg9.tcode()));
-                    if (0 == arg9.setValue(val9)) {
+                    if (0 == arg9.set(val9)) {
                       printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg10.tcode()));
-                      if (0 == arg10.setValue(val10)) {
+                      if (0 == arg10.set(val10)) {
                         printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg12.tcode()));
-                        if (0 == arg12.setValue(val12)) {
+                        if (0 == arg12.set(val12)) {
                           printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg13.tcode()));
-                          if (0 == arg13.setValue(val13)) {
+                          if (0 == arg13.set(val13)) {
                             printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg30.tcode()));
-                            if (0 == arg30.setValue(&val30_0)) {
+                            if (0 == arg30.set(&val30_0)) {
                               printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg31.tcode()));
-                              if (0 == arg31.setValue(&val31_0)) {
+                              if (0 == arg31.set(&val31_0)) {
                                 printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg32.tcode()));
-                                if (0 == arg32.setValue(&val32_0)) {
+                                if (0 == arg32.set(&val32_0)) {
                                   printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg33.tcode()));
-                                  if (0 == arg33.setValue(&val33_0)) {
+                                  if (0 == arg33.set(&val33_0)) {
                                     printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg34.tcode()));
-                                    if (0 == arg34.setValue(&val34_0)) {
+                                    if (0 == arg34.set(&val34_0)) {
                                       printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg35.tcode()));
-                                      if (0 == arg35.setValue(&val35_0)) {
+                                      if (0 == arg35.set(&val35_0)) {
                                         printf("Pass.\n\t\tPlacement of TCode::%s... ", typecodeToStr(arg36.tcode()));
-                                        if (0 == arg36.setValue(&val36_0)) {
+                                        if (0 == arg36.set(&val36_0)) {
                                           return_value = 0;
                                         }
                                       }
@@ -463,45 +472,45 @@ int test_KeyValuePair_Value_Placement() {
   if (0 == return_value) {
     return_value = -1;
     printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg0.tcode()));
-    if ((0 == arg0.getValue(&ret0)) && (ret0 == val0)) {
+    if ((0 == arg0.get_as(&ret0)) && (ret0 == val0)) {
       printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg1.tcode()));
-      if ((0 == arg1.getValue(&ret1)) && (ret1 == val1)) {
+      if ((0 == arg1.get_as(&ret1)) && (ret1 == val1)) {
         printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg2.tcode()));
-        if ((0 == arg2.getValue(&ret2)) && (ret2 == val2)) {
+        if ((0 == arg2.get_as(&ret2)) && (ret2 == val2)) {
           printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg3.tcode()));
-          if ((0 == arg3.getValue(&ret3)) && (ret3 == val3)) {
+          if ((0 == arg3.get_as(&ret3)) && (ret3 == val3)) {
             printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg4.tcode()));
-            if ((0 == arg4.getValue(&ret4)) && (ret4 == val4)) {
+            if ((0 == arg4.get_as(&ret4)) && (ret4 == val4)) {
               printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg5.tcode()));
-              if ((0 == arg5.getValue(&ret5)) && (ret5 == val5)) {
+              if ((0 == arg5.get_as(&ret5)) && (ret5 == val5)) {
                 printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg6.tcode()));
-                if ((0 == arg6.getValue(&ret6)) && (ret6 == val6)) {
+                if ((0 == arg6.get_as(&ret6)) && (ret6 == val6)) {
                   printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg7.tcode()));
-                  if ((0 == arg7.getValue(&ret7)) && (ret7 == val7_0)) {
+                  if ((0 == arg7.get_as(&ret7)) && (ret7 == val7_0)) {
                     printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg8.tcode()));
-                    if ((0 == arg8.getValue(&ret8)) && (ret8 == val8)) {
+                    if ((0 == arg8.get_as(&ret8)) && (ret8 == val8)) {
                       printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg9.tcode()));
-                      if ((0 == arg9.getValue(&ret9)) && (ret9 == val9)) {
+                      if ((0 == arg9.get_as(&ret9)) && (ret9 == val9)) {
                         printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg10.tcode()));
-                        if ((0 == arg10.getValue(&ret10)) && (ret10 == val10)) {
+                        if ((0 == arg10.get_as(&ret10)) && (ret10 == val10)) {
                           printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg12.tcode()));
-                          if ((0 == arg12.getValue(&ret12)) && (ret12 == val12)) {
+                          if ((0 == arg12.get_as(&ret12)) && (ret12 == val12)) {
                             printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg13.tcode()));
-                            if ((0 == arg13.getValue(&ret13)) && (ret13 == val13)) {
+                            if ((0 == arg13.get_as(&ret13)) && (ret13 == val13)) {
                               printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg30.tcode()));
-                              if ((0 == arg30.getValue(&ret30)) && (ret30 == val30_0)) {
+                              if ((0 == arg30.get_as(&ret30)) && (ret30 == val30_0)) {
                                 printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg31.tcode()));
-                                if ((0 == arg31.getValue(&ret31)) && (ret31 == val31_0)) {
+                                if ((0 == arg31.get_as(&ret31)) && (ret31 == val31_0)) {
                                   printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg32.tcode()));
-                                  if ((0 == arg32.getValue(&ret32)) && (ret32 == val32_0)) {
+                                  if ((0 == arg32.get_as(&ret32)) && (ret32 == val32_0)) {
                                     printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg33.tcode()));
-                                    if ((0 == arg33.getValue(&ret33)) && (ret33 == val33_0)) {
+                                    if ((0 == arg33.get_as(&ret33)) && (ret33 == val33_0)) {
                                       printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg34.tcode()));
-                                      if ((0 == arg34.getValue(&ret34)) && (ret34 == val34_0)) {
+                                      if ((0 == arg34.get_as(&ret34)) && (ret34 == val34_0)) {
                                         printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg35.tcode()));
-                                        if ((0 == arg35.getValue(&ret35)) && (ret35 == val35_0)) {
+                                        if ((0 == arg35.get_as(&ret35)) && (ret35 == val35_0)) {
                                           printf("Pass.\n\t\tVerification of TCode::%s... ", typecodeToStr(arg36.tcode()));
-                                          if ((0 == arg36.getValue(&ret36)) && (ret36 == val36_0)) {
+                                          if ((0 == arg36.get_as(&ret36)) && (ret36 == val36_0)) {
                                             printf("Pass.\n\t\tValue placement tests all pass.\n");
                                             return_value = 0;
                                           }
@@ -524,6 +533,10 @@ int test_KeyValuePair_Value_Placement() {
         }
       }
     }
+  }
+
+  if (0 != return_value) {
+    printf("Fail.\n");
   }
 
   return return_value;

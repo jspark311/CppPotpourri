@@ -104,11 +104,15 @@ void GfxUIElement::reposition(PixUInt x, PixUInt y) {
 
 
 int GfxUIElement::_add_child(GfxUIElement* chld) {
-  return _children.insert(chld);
+  const int RET = ((-1 == _children.insert(chld)) ? -1 : 0);
+  if (0 == RET) {  _need_redraw(true);  }
+  return RET;
 }
 
 int GfxUIElement::_remove_child(GfxUIElement* chld) {
-  return (_children.remove(chld) ? 0 : -1);
+  const int RET = (_children.remove(chld) ? 0 : -1);
+  if (0 == RET) {  _need_redraw(true);  }
+  return RET;
 }
 
 

@@ -381,7 +381,7 @@ class GfxUIElement : public GfxUILayout {
 
     int _add_child(GfxUIElement*);
     int _remove_child(GfxUIElement*);
-    //int8_t _reflow(GfxUILayout);   // TODO: Now that laytouts are working well, automate their flows.
+    //int8_t _reflow(GfxUILayout);   // TODO: Now that layouts are working well, automate their flows.
 
     /* These are the obligate overrides. */
     virtual bool _notify(const GfxUIEvent, const PixUInt x, const PixUInt y, PriorityQueue<GfxUIElement*>* change_log) =0;

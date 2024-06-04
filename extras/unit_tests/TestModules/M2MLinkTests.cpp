@@ -510,7 +510,7 @@ void callback_rpc_client(uint32_t tag, M2MMsg* msg) {
 /* Header tests */
 int link_tests_message_battery_0() {
   int ret = -1;
-  StringBuilder log("===< M2MMsg battery 0 (Header) >==========================\n");
+  StringBuilder log("\tM2MMsg battery 0 (Header)\n");
   M2MMsgHdr msg_valid_with_reply(M2MMsgCode::SYNC_KEEPALIVE, 0, true);
   M2MMsgHdr msg_valid_without_reply(M2MMsgCode::SYNC_KEEPALIVE, 0, false);
   M2MMsgHdr msg_valid_reply_without_id(M2MMsgCode::CONNECT, 0, true);
@@ -612,80 +612,104 @@ int link_tests_message_battery_0() {
 /* Message pack-parse tests */
 int link_tests_message_battery_1() {
   int ret = -1;
-  StringBuilder log("===< M2MMsg battery 1 (Parse-pack) >=======================\n");
+  printf("\tM2MMsg battery 1 (Parse-pack)\n");
+  const uint32_t TEST_BUF_LEN    = (19 + (randomUInt32() % 9));
+  uint32_t now     = millis();
+  uint32_t rand    = randomUInt32();
+  StringBuilder test_string;
+  // Generate a test string of (TEST_BUF_LEN-1), because the wrapper will
+  //   report the binary length of the contained data. Which includes the
+  //   null-terminator for a C-style string.
+  generate_random_text_buffer(&test_string, (TEST_BUF_LEN-1));
+  const char* VAL_STR = (const char*) test_string.string();
+  float    val_flt = generate_random_float();
+  double   val_dbl = generate_random_double();
+  Vector3<float> vect(generate_random_float(), generate_random_float(), generate_random_float());
+  KeyValuePair a("time_ms", now);
+  a.append(rand, "rand");
+  a.append(val_flt, "val_flt");
+  a.append(val_dbl, "val_dbl");
+  a.append(VAL_STR, "my_key");
+  a.append(&vect, "vect");
+
   M2MMsgHdr hdr_parse_pack_0(M2MMsgCode::APPLICATION, 0, true);
   M2MMsg* msg_parse_pack_0 = new M2MMsg(&hdr_parse_pack_0, BusOpcode::TX);
+  printf("\t\tCan construct a TX message... ");
   if (msg_parse_pack_0) {
-    uint32_t now     = millis();
-    uint32_t rand    = randomUInt32();
-    const char* val_str = "my_value";
-    float    val_flt = (float) randomUInt32()/1000000.0f;
-    double   val_dbl = (double) randomUInt32() / (double) randomUInt32();
-    Vector3<float> vect(randomUInt32()/1000000.0f, randomUInt32()/1000000.0f, randomUInt32()/1000000.0f);
-
-    KeyValuePair a("time_ms", now);
-    a.append(rand, "rand");
-    a.append(val_str, "my_key");
-    a.append(val_flt, "val_flt");
-    a.append(val_dbl, "val_dbl");
-    a.append(&vect, "vect");
-    //a.printDebug(&log);
+    printf("Pass\n\t\tCan attach a payload... ");
     if (0 == msg_parse_pack_0->setPayload(&a)) {
       StringBuilder msg_0_serial;
+      printf("Pass\n\t\tCan serialize the message... ");
       if (0 == msg_parse_pack_0->serialize(&msg_0_serial)) {
-        msg_parse_pack_0->printDebug(&log);
+        printf("Pass\n\t\tCan serialize the message... ");
         if (!msg_0_serial.isEmpty()) {
-          msg_0_serial.printDebug(&log);
+          //msg_0_serial.printDebug(&log);
+          printf("Pass\n\t\tCan deserialize the message... ");
           M2MMsg* msg_parse_pack_1 = M2MMsg::unserialize(&msg_0_serial);
           if (nullptr != msg_parse_pack_1) {
+            printf("Pass\n\t\trxComplete() is set... ");
             if (msg_parse_pack_1->rxComplete()) {
               KeyValuePair* pl = nullptr;
               msg_parse_pack_1->getPayload(&pl);
+              printf("Pass\n\t\tPayload is retrievable... ");
               if (nullptr != pl) {
+                printf("Pass\n\t\tPayload contains all the keys with matching values...");
                 // Did all of the arguments come across unscathed?
                 uint32_t now_ret     = millis();
                 uint32_t rand_ret    = randomUInt32();
-                char* val_str_ret = nullptr;
-                float    val_flt_ret = (float) randomUInt32()/1000000.0f;
-                double   val_dbl_ret = (double) randomUInt32() / (double) randomUInt32();
-                Vector3<float> vect_ret(randomUInt32()/1000000.0f, randomUInt32()/1000000.0f, randomUInt32()/1000000.0f);
-                pl->printDebug(&log);
-                if ((0 == a.valueWithKey("time_ms", &now_ret)) && (now_ret == now)) {
-                  if ((0 == a.valueWithKey("rand", &rand_ret)) && (rand_ret == rand)) {
-                    if ((0 == a.valueWithKey("my_key", &val_str_ret)) && (0 == strcasecmp(val_str, val_str_ret))) {
-                      if ((0 == a.valueWithKey("val_flt", &val_flt_ret)) && (val_flt_ret == val_flt)) {
-                        if ((0 == a.valueWithKey("val_dbl", &val_dbl_ret)) && (val_dbl_ret == val_dbl)) {
-                          if ((0 == a.valueWithKey("vect", &vect_ret)) && (vect_ret == vect)) {
-                            log.concat("\tParse-pack tests pass.\n");
+                char*    val_str_ret = nullptr;
+                float    val_flt_ret = generate_random_float();
+                double   val_dbl_ret = generate_random_double();
+                Vector3<float> vect_ret(generate_random_float(), generate_random_float(), generate_random_float());
+                printf("\n\t\t\t\"time_ms\"... ");
+                int8_t fetch_ret    = pl->valueWithKey("time_ms", &now_ret);
+                bool   values_match = (now_ret == now);
+                if ((0 == fetch_ret) && values_match) {
+                  printf("Pass\n\t\t\t\"rand\"... ");
+                  fetch_ret    = pl->valueWithKey("rand", &rand_ret);
+                  values_match = (rand_ret == rand);
+                  if ((0 == fetch_ret) && values_match) {
+                    printf("Pass\n\t\t\t\"my_key\"... ");
+                    fetch_ret    = pl->valueWithKey("my_key", &val_str_ret);
+                    values_match = ((0 == fetch_ret) && (0 == StringBuilder::strcasecmp(VAL_STR, val_str_ret)));
+                    if ((0 == fetch_ret) && values_match) {
+                      printf("Pass\n\t\t\t\"val_flt\"... ");
+                      fetch_ret    = pl->valueWithKey("val_flt", &val_flt_ret);
+                      values_match = (val_flt_ret == val_flt);
+                      if ((0 == fetch_ret) && values_match) {
+                        printf("Pass\n\t\t\t\"val_dbl\"... ");
+                        fetch_ret    = pl->valueWithKey("val_dbl", &val_dbl_ret);
+                        values_match = (val_dbl_ret == val_dbl);
+                        if ((0 == fetch_ret) && values_match) {
+                          printf("Pass\n\t\t\t\"vect\"... ");
+                          fetch_ret    = pl->valueWithKey("vect", &vect_ret);
+                          values_match = (vect_ret == vect);
+                          if ((0 == fetch_ret) && values_match) {
+                            printf("\t\tParse-pack tests pass.\n");
                             ret = 0;
                           }
-                          else log.concat("Failed to vet vect\n");
                         }
-                        else log.concat("Failed to vet val_dbl\n");
                       }
-                      else log.concat("Failed to vet val_flt\n");
                     }
-                    else log.concat("Failed to vet my_key\n");
                   }
-                  else log.concat("Failed to vet rand\n");
                 }
-                else log.concat("Failed to vet time_ms.\n");
-              }
-              else log.concat("Failed to retrieve payload.\n");
-            }
-            else log.concat("M2MMsg::unserialize() returned an incomplete message.\n");
-          }
-          else log.concat("M2MMsg::unserialize() failed.\n");
-        }
-        else log.concat("Serializer produced an empty string.\n");
-      }
-      else log.concat("Failed to serialize message.\n");
-    }
-    else log.concat("Failed to set payload.\n");
-  }
-  else log.concat("Failed to allocate message.\n");
 
-  printf("%s\n\n", (const char*) log.string());
+                if (0 != ret) {
+                  if (0 != fetch_ret) {     printf("Fetch value (%d). ", fetch_ret);  }
+                  else if (values_match) {  printf("Values don't match. ");           }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\nInput payload:\n");
+    dump_kvp(&a);
+  }
   return ret;
 }
 

@@ -19,6 +19,7 @@ These classes are built on top of the GfxUI classes, and implement higher-level
 #define GFXUI_C3PVAL_FLAG_INHIBIT_REFRESH    0x02000000   //
 #define GFXUI_C3PVAL_FLAG_OWNS_OBJECT        0x04000000   //
 #define GFXUI_C3PVAL_FLAG_HOVER_RESPONSE     0x08000000   //
+#define GFXUI_C3PVAL_FLAG_RESIZE_ON_RENDER   0x10000000   // If set, the GfxGUIElement will resize to fit upon rendering.
 
 /*******************************************************************************
 * Graphical rendering of the core classes in C3P's type-abstraction machinery.
@@ -58,11 +59,15 @@ class GfxUIC3PValue : public GfxUIElement {
     inline bool hoverResponse() {         return _class_flag(GFXUI_C3PVAL_FLAG_HOVER_RESPONSE);   };
     inline void reapObject(bool x) {      _class_set_flag(GFXUI_C3PVAL_FLAG_OWNS_OBJECT, x);      };
     inline bool reapObject() {            return _class_flag(GFXUI_C3PVAL_FLAG_OWNS_OBJECT);      };
+    inline void resizeOnRender(bool x) {  _class_set_flag(GFXUI_C3PVAL_FLAG_RESIZE_ON_RENDER, x); };
+    inline bool resizeOnRender() {        return _class_flag(GFXUI_C3PVAL_FLAG_RESIZE_ON_RENDER); };
 
 
   private:
     //GfxUIC3PType _type_render;
     C3PValue* _value;
+    PixUInt _bounding_w;  // Area actually needed for last render. Accounts for border/margin.
+    PixUInt _bounding_h;  // Area actually needed for last render. Accounts for border/margin.
     uint16_t _last_trace;
     bool _stacked_ir;
     bool _stacked_sti;
@@ -71,10 +76,16 @@ class GfxUIC3PValue : public GfxUIElement {
 
 
 /* Graphical rendering of a KVP object. */
+// TODO: Merge down into GfxUIC3PValue.
 class GfxUIKeyValuePair : public GfxUIElement {
   public:
     GfxUIKeyValuePair(KeyValuePair* kvp, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
     ~GfxUIKeyValuePair() {};
+
+    inline void showTypeInfo(bool x) {    _class_set_flag(GFXUI_C3PVAL_FLAG_SHOW_TYPE_INFO, x);   };
+    inline bool showTypeInfo() {          return _class_flag(GFXUI_C3PVAL_FLAG_SHOW_TYPE_INFO);   };
+    inline void resizeOnRender(bool x) {  _class_set_flag(GFXUI_C3PVAL_FLAG_RESIZE_ON_RENDER, x); };
+    inline bool resizeOnRender() {        return _class_flag(GFXUI_C3PVAL_FLAG_RESIZE_ON_RENDER); };
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
@@ -84,7 +95,11 @@ class GfxUIKeyValuePair : public GfxUIElement {
 
   private:
     KeyValuePair* _kvp;
+    PixUInt _bounding_w;  // Area actually needed for last render. Accounts for border/margin.
+    PixUInt _bounding_h;  // Area actually needed for last render. Accounts for border/margin.
     bool _kvp_loaded;
+
+    //int8_t _calculate_bounding_box(PixUInt* w, PixUInt* h);
 };
 
 

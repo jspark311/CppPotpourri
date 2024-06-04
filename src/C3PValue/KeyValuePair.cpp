@@ -18,8 +18,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
-
 #include "KeyValuePair.h"
 
 #if defined(CONFIG_C3P_IMG_SUPPORT)
@@ -27,17 +25,6 @@ limitations under the License.
 #endif   // CONFIG_C3P_IMG_SUPPORT
 
 #include <Identity/Identity.h>
-
-/*******************************************************************************
-*      _______.___________.    ___   .___________. __    ______     _______.
-*     /       |           |   /   \  |           ||  |  /      |   /       |
-*    |   (----`---|  |----`  /  ^  \ `---|  |----`|  | |  ,----'  |   (----`
-*     \   \       |  |      /  /_\  \    |  |     |  | |  |        \   \
-* .----)   |      |  |     /  _____  \   |  |     |  | |  `----.----)   |
-* |_______/       |__|    /__/     \__\  |__|     |__|  \______|_______/
-*
-* Static members and initializers should be located here.
-*******************************************************************************/
 
 /*******************************************************************************
 *   ___ _              ___      _ _              _      _
@@ -48,38 +35,28 @@ limitations under the License.
 * Constructors/destructors, class initialization functions and so-forth...
 *******************************************************************************/
 
-KeyValuePair::KeyValuePair(const char* key, C3PValue* v, uint8_t flags) {
+KeyValuePair::KeyValuePair(const TCode TC, const char* key, uint8_t flags) : C3PValue(TC) {
   setKey(key);
-  _set_new_value(v);
-  _alter_flags(true, flags);
+  _set_flags(true, (flags | C3PVAL_MEM_FLAG_HAS_KEY));
 }
 
 
-KeyValuePair::KeyValuePair(char* key, C3PValue* v, uint8_t flags) {
+KeyValuePair::KeyValuePair(const TCode TC, char* key, uint8_t flags) : C3PValue(TC) {
   setKey(key);
-  _set_new_value(v);
-  _alter_flags(true, flags);
+  _set_flags(true, (flags | C3PVAL_MEM_FLAG_HAS_KEY));
 }
 
 
-/**
-* Destructor. Frees memory associated with this KeyValuePair.
-* Recursively calls the destructor of a referenced KeyValuePair, if present.
-*/
-KeyValuePair::~KeyValuePair() {
-  _set_new_key(nullptr);
-  _set_new_value(nullptr);
-  if (nullptr != _next) {
-    // Wipe out any chain of siblings.
-    KeyValuePair* a = _next;
-    _next       = nullptr;
-    if (a->reapKVP()) {
-      delete a;
-    }
-  }
-  _flags = 0;
+KeyValuePair::KeyValuePair(const char* key, uint8_t* v, uint32_t l, uint8_t flags) : C3PValue(v, l) {
+  setKey(key);
+  _set_flags(true, (flags | C3PVAL_MEM_FLAG_HAS_KEY));
 }
 
+
+KeyValuePair::KeyValuePair(char* key, uint8_t* v, uint32_t l, uint8_t flags) : C3PValue(v, l) {
+  setKey(key);
+  _set_flags(true, (flags | C3PVAL_MEM_FLAG_HAS_KEY));
+}
 
 
 /*******************************************************************************
@@ -113,7 +90,7 @@ int8_t KeyValuePair::setKey(char* k) {
       ret = 0;
     }
     else {
-      _alter_flags(true, C3P_KVP_FLAG_ERR_MEM);
+      _set_flags(true, C3PVAL_MEM_FLAG_ERR_MEM);
     }
   }
   else {
@@ -139,21 +116,21 @@ void KeyValuePair::_set_new_key(char* k) {
   _key = k;
 }
 
-/**
-* Conditionally handles any cleanup associated with replacing the value.
-* Passing nullptr will free any existing value without reassignment.
-* Calling this function will reset the reapValue flag.
-*
-* @param  v A replacement value.
-*/
-void KeyValuePair::_set_new_value(C3PValue* v) {
-  if ((nullptr != _value) && reapContainer()) {
-    C3PValue* tmp_value = _value;
-    _value = nullptr;
-    delete tmp_value;
-  }
-  _value = v;
-}
+// /**
+// * Conditionally handles any cleanup associated with replacing the value.
+// * Passing nullptr will free any existing value without reassignment.
+// * Calling this function will reset the reapValue flag.
+// *
+// * @param  v A replacement value.
+// */
+// void KeyValuePair::_set_new_value(C3PValue* v) {
+//   if ((nullptr != _value) && reapContainer()) {
+//     C3PValue* tmp_value = _value;
+//     _value = nullptr;
+//     delete tmp_value;
+//   }
+//   _value = v;
+// }
 
 
 /*******************************************************************************
@@ -173,29 +150,11 @@ int KeyValuePair::collectKeys(StringBuilder* key_set) {
     key_set->concat(_key);
     return_value++;
   }
-  if (nullptr != _next) {
-    return_value += _next->collectKeys(key_set);
+  KeyValuePair* nxt = _next_sib_with_key();
+  if (nullptr != nxt) {
+    return_value += nxt->collectKeys(key_set);
   }
   return return_value;
-}
-
-
-/**
-* @return [description]
-*/
-KeyValuePair* KeyValuePair::retrieveByIdx(unsigned int idx) {
-  switch (idx) {
-    case 0:
-      return this;   // Special case.
-    default:
-      if (nullptr != _next) {
-        return _next->retrieveByIdx(idx-1);
-      }
-      // NOTE: No break
-      // Fall-through if the index is greater than the list's cardinality.
-    case 1:
-      return _next;  // Terminus of recursion for all kvps but 0.
-  }
 }
 
 
@@ -204,7 +163,7 @@ KeyValuePair* KeyValuePair::retrieveByIdx(unsigned int idx) {
 *
 * Returns nullptr if the answer is 'no'. Otherwise, ptr to the first matching key.
 */
-KeyValuePair* KeyValuePair::retrieveByKey(const char* k) {
+KeyValuePair* KeyValuePair::valueWithKey(const char* k) {
   if (nullptr != k) {
     if (nullptr != _key) {
       if (0 == strcmp(_key, k)) {
@@ -212,118 +171,18 @@ KeyValuePair* KeyValuePair::retrieveByKey(const char* k) {
       }
     }
 
-    if (nullptr != _next) {
-      return _next->retrieveByKey(k);
+    KeyValuePair* nxt = _next_sib_with_key();
+    if (nullptr != nxt) {
+      return nxt->valueWithKey(k);
     }
   }
   return nullptr;
 }
 
 
-/**
-* Given an KeyValuePair pointer, finds that pointer and drops it from the list.
-*
-* @param  drop  The KeyValuePair to drop.
-* @return       0 on success. 1 on warning, -1 on "not found".
-*/
-int8_t KeyValuePair::drop(KeyValuePair** root, KeyValuePair* drop) {
-  if (*root == drop) {
-    // Re-write the root parameter.
-    root = &_next; // NOTE: may be null. Who cares.
-    return 0;
-  }
-  else if (_next && _next == drop) {
-    _next = _next->_next; // NOTE: may be null. Who cares.
-    return 0;
-  }
-  return (_next) ? _next->drop(root, drop) : -1;
-}
-
-
-/**
-* @param kvp is the KVP to link.
-*/
-KeyValuePair* KeyValuePair::link(KeyValuePair* kvp, bool reap_kvp) {
-  if (nullptr == _next) {
-    if (nullptr != kvp) {
-      kvp->reapKVP(reap_kvp);
-    }
-    _next = kvp;
-  }
-  else {
-    _next->link(kvp, reap_kvp);
-  }
-  return kvp;
-}
-
-/**
-* @return The number of KVPs in this list.
-*/
-uint32_t KeyValuePair::count() {
-  return (1 + ((nullptr == _next) ? 0 : _next->count()));
-}
-
-
 /*******************************************************************************
 * Accessors to type information and underpinnings.
 *******************************************************************************/
-
-/**
-* Get a value container by its index.
-*
-* @param  idx      The sibling position
-* @return The value container for the KVP at the given index.
-*/
-C3PValue* KeyValuePair::valueWithIdx(uint32_t idx) {
-  C3PValue* ret = nullptr;
-  if (0 < idx) {
-    if (nullptr != _next) {
-      ret = _next->valueWithIdx(--idx);
-    }
-  }
-  else {
-    ret = _value;
-  }
-  return ret;
-}
-
-/**
-* Get a value container by its key.
-*
-* @param  k        The desired key
-* @return The value container for the KVP with the given key.
-*/
-C3PValue* KeyValuePair::valueWithKey(const char* k) {
-  C3PValue* ret = nullptr;
-  if (nullptr != k) {
-    if (nullptr != _key) {
-      if (0 == strcmp(_key, k)) {
-        ret = _value;
-      }
-    }
-
-    if ((nullptr == ret) & (nullptr != _next)) {
-      return _next->valueWithKey(k);
-    }
-  }
-  return ret;
-}
-
-
-/**
-*
-* @param  idx      The KeyValuePair position
-* @param  trg_buf  A pointer to the place where we should write the result.
-* @return 0 on success or appropriate failure code.
-*/
-int8_t KeyValuePair::valueWithIdx(uint32_t idx, void* trg_buf) {
-  int8_t ret = -1;
-  C3PValue* val_container = valueWithIdx(idx);
-  if (nullptr != val_container) {
-    ret = val_container->get_as(val_container->tcode(), trg_buf);
-  }
-  return ret;
-}
 
 /**
 * Get a value by its key.
@@ -334,7 +193,7 @@ int8_t KeyValuePair::valueWithIdx(uint32_t idx, void* trg_buf) {
 */
 int8_t KeyValuePair::valueWithKey(const char* k, void* trg_buf) {
   int8_t ret = -1;
-  C3PValue* val_container = valueWithKey(k);
+  KeyValuePair* val_container = valueWithKey(k);
   if (nullptr != val_container) {
     ret = val_container->get_as(val_container->tcode(), trg_buf);
   }
@@ -342,118 +201,63 @@ int8_t KeyValuePair::valueWithKey(const char* k, void* trg_buf) {
 }
 
 
-int8_t KeyValuePair::convertToType(const TCode TC) {
-  int8_t ret = -1;
-  if (nullptr != _value) {
-    // We are experiencing a request to convert an existing value into a new
-    //   type. Sometimes this is done to upscale numeric types, or impart a
-    //   semantic alias to a more-basal type. In any case, the TCode in a
-    //   C3PValue, and is const. Thus, this will probably imply memory shuffle.
-    if (TC == _value->tcode()) {
-      ret = 0;
-    }
-    else {
-      if (reapContainer()) {
-        // TODO: Safe conversion.
-        C3PValue* replacement = new C3PValue(TC);
-        if (nullptr != replacement) {
-          if (0 == replacement->set(_value)) {
-            if (_value->reapValue()) {
-              // TODO: If this container was the owner of the data it held, and
-              //   it wasn't a deep-copy, we might need to take ownership of it?
-              //   Other assurances might make this check useless.
-            }
-            delete _value;
-            _value = replacement;
-            replacement = nullptr;
-            ret = 0;
-          }
-          else {
-            // Somehow we failed to set the value from our existing container.
-            // Don't leak memory...
-            delete replacement;
-          }
-        }
-      }
-      else {
-        // If the existing container needs to be replaced, but is not ours to
-        //   reap, we can't do anything about it. Not for leak reasons, but
-        //   because we have no means to update the pointers held by whatever
-        //   DOES has ownership.
-      }
-    }
-  }
-  else {
-    // This is a request to allocate a container for an (until now) unspecififed
-    //   type. Note that no value is imparted. So the container will initialize
-    //   to T(0) until set.
-    _set_new_value(new C3PValue(TC));
-    reapContainer(true);
-    ret = (nullptr != _value) ? 0 : -1;
-  }
-  return ret;
-}
+// int8_t KeyValuePair::convertToType(const TCode TC) {
+//   int8_t ret = -1;
+//   if (nullptr != _value) {
+//     // We are experiencing a request to convert an existing value into a new
+//     //   type. Sometimes this is done to upscale numeric types, or impart a
+//     //   semantic alias to a more-basal type. In any case, the TCode in a
+//     //   C3PValue, and is const. Thus, this will probably imply memory shuffle.
+//     if (TC == tcode()) {
+//       ret = 0;
+//     }
+//     else {
+//       if (reapContainer()) {
+//         // TODO: Safe conversion.
+//         C3PValue* replacement = new C3PValue(TC);
+//         if (nullptr != replacement) {
+//           if (0 == replacement->set(_value)) {
+//             if (reapValue()) {
+//               // TODO: If this container was the owner of the data it held, and
+//               //   it wasn't a deep-copy, we might need to take ownership of it?
+//               //   Other assurances might make this check useless.
+//             }
+//             delete _value;
+//             _value = replacement;
+//             replacement = nullptr;
+//             ret = 0;
+//           }
+//           else {
+//             // Somehow we failed to set the value from our existing container.
+//             // Don't leak memory...
+//             delete replacement;
+//           }
+//         }
+//       }
+//       else {
+//         // If the existing container needs to be replaced, but is not ours to
+//         //   reap, we can't do anything about it. Not for leak reasons, but
+//         //   because we have no means to update the pointers held by whatever
+//         //   DOES has ownership.
+//       }
+//     }
+//   }
+//   else {
+//     // This is a request to allocate a container for an (until now) unspecififed
+//     //   type. Note that no value is imparted. So the container will initialize
+//     //   to T(0) until set.
+//     _set_new_value(new C3PValue(TC));
+//     reapContainer(true);
+//     ret = (nullptr != _value) ? 0 : -1;
+//   }
+//   return ret;
+// }
 
 
 
 /*******************************************************************************
 * String processing and debug.
 *******************************************************************************/
-
-void KeyValuePair::valToString(StringBuilder* out) {
-  if (nullptr != _value) {  _value->toString(out);   }
-  else {                    out->concat("(nullptr)"); }
-}
-
-
-/*
-* Warning: call is propagated across entire list.
-*/
-void KeyValuePair::printDebug(StringBuilder* out) {
-  StringBuilder tmp;
-  tmp.concatf("\t%10s %5s %5s %5s %5s\t",
-    (nullptr == _key ? "" : _key),
-    (_reap_key()     ? "(key)" : ""),
-    (reapKVP()       ? "(kvp)" : ""),
-    (reapContainer() ? "(con)" : ""),
-    (reapValue()     ? "(val)" : "")
-  );
-  if (nullptr != _value) {
-    _value->toString(&tmp, true);
-  }
-  tmp.concat('\n');
-  tmp.string();
-  out->concatHandoff(&tmp);
-
-  if (nullptr != _next) _next->printDebug(out);
-}
-
-
-/**
-* Return the RAM use of this KVP.
-* By passing true to deep, the return value will also factor in concealed heap
-*   overhead of the containers themselves.
-* Return value accounts for padding due to alignment constraints.
-*
-* @param deep will also factor in heap overhead of the containers.
-* @return 0 on success, or negative on failure.
-*/
-int KeyValuePair::memoryCost(bool deep) {
-  // TODO: sizeof(intptr_t) for OVERHEAD_PER_MALLOC is an assumption based on a
-  //   specific build of newlib. Find a way to discover it from the build.
-  const uint32_t OVERHEAD_PER_CLASS  = (deep ? sizeof(KeyValuePair) : 0);
-  const uint32_t OVERHEAD_PER_MALLOC = (deep ? sizeof(intptr_t) : 0);
-
-  int32_t ret = OVERHEAD_PER_CLASS;
-  ret += OVERHEAD_PER_MALLOC;
-  ret += length();
-  if (nullptr != _next) {
-    ret += _next->memoryCost(deep);
-  }
-  return ret;
-}
-
-
 /**
 * This is a type-controlled branch-point for selecting the proper serializer for
 *   the given TCode.
@@ -462,19 +266,55 @@ int KeyValuePair::memoryCost(bool deep) {
 * @param TC is the desired encoding of the buffer.
 * @return 0 on success. -1 on bad target TCode. -2 on packer failure.
 */
-int8_t KeyValuePair::serialize(StringBuilder* out, TCode TC) {
+int8_t KeyValuePair::serialize(StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
-  switch (TC) {
-    default:  break;
-    case TCode::BINARY:  ret = (0 == _encode_to_bin(out)) ? 0 : -2;        break;
-    case TCode::STR:     ret = (0 == _encode_to_printable(out)) ? 0 : -2;  break;
+  // Use an intermediary StringBuilder so we can collapse the strings a
+  //   bit more neatly.
+  StringBuilder local_output;
+  KeyValuePair* src = this;
+  switch (FORMAT) {
+    case TCode::STR:
+      src->_encode_to_printable(&local_output);
+      break;
+    case TCode::BINARY:
+      break;
+
     #if defined(__BUILD_HAS_CBOR)
-    case TCode::CBOR:    ret = (0 == _encode_to_cbor(out)) ? 0 : -2;       break;
+    case TCode::CBOR:
+      {
+        uint32_t kvp_count = 0;
+        cbor::output_stringbuilder output(&local_output);
+        cbor::encoder local_encoder(output);
+        while (nullptr != src) {
+          C3PType* t_helper = getTypeHelper(src->tcode());
+          if (nullptr != t_helper) {
+            char* tmp_key = src->getKey();
+            if ((nullptr != tmp_key) && (strlen(tmp_key) > 0)) {
+              local_encoder.write_string(tmp_key);
+              ret = t_helper->serialize(src->_type_pun_get(), &local_output, FORMAT);
+              kvp_count++;
+            }
+            else {
+              // Peacefully ignore KVPs without keys.
+            }
+          }
+          src = src->_next_sib_with_key();
+        }
+        if (kvp_count > 0) {
+          cbor::output_stringbuilder top_output(out);
+          cbor::encoder top_encoder(top_output);
+          top_encoder.write_map(kvp_count);  // This is a map.
+        }
+      }
+      break;
     #endif  // __BUILD_HAS_CBOR
-    #if defined(CONFIG_C3P_JSON)
-    #endif  // CONFIG_C3P_JSON
-    #if defined(CONFIG_C3P_BASE64)
-    #endif  // CONFIG_C3P_BASE64
+
+    default:  break;
+  }
+
+  if (!local_output.isEmpty()) {
+    local_output.string();  // Consolidate the heap.
+    out->concatHandoff(&local_output);
   }
   return ret;
 }
@@ -522,92 +362,48 @@ int8_t KeyValuePair::_encode_to_printable(StringBuilder* out, const unsigned int
   for (unsigned int i = 0; i < LEVEL; i++) {  indent.concat("  ");  }
 
   while (nullptr != src) {
-    C3PValue* val_container = src->getValue();
     const unsigned int SIBS = src->count();  // Count the siblings.
-    if (nullptr != val_container) {
-      out->concat(&indent);
-      if (nullptr != src->getKey()) {
-        out->concatf("%s: ", src->getKey());
-      }
-      else if (SIBS > 0) {
-        // No key means that this is being used to store an array of values.
-        // TODO: Presently, there is no other way.
-        // Render them in a way that makes that clear.
-        out->concat("[");
-      }
+    out->concat(&indent);
+    if (nullptr != src->getKey()) {
+      out->concat(src->getKey());
+      out->concat(": ");
+    }
+    //else if (SIBS > 0) {
+    //  // No key means that this is being used to store an array of values.
+    //  // TODO: Presently, there is no other way.
+    //  // Render them in a way that makes that clear.
+    //  out->concat("[");
+    //}
 
-      switch (val_container->tcode()) {
-        case TCode::KVP:
-          {
-            KeyValuePair* tmp = nullptr;
-            val_container->get_as(&tmp);
-            if (nullptr != tmp) {
-              out->concat("{\n");
-              tmp->_encode_to_printable(out, (LEVEL+1));
-              out->concat("}");
-            }
+    switch (src->tcode()) {
+      case TCode::KVP:
+        {
+          // If the value is a KVP, recurse with a deeper indentation to
+          //   render it.
+          KeyValuePair* tmp = (KeyValuePair*) _type_pun_get();
+          if (nullptr != tmp) {
+            out->concat("{\n");
+            tmp->_encode_to_printable(out, (LEVEL+1));
+            out->concat("}");
           }
-          break;
+        }
+        break;
 
-        case TCode::STR:
-          out->concat("\"");
-          val_container->toString(out);
-          out->concat("\"");
-          break;
+      case TCode::STR:
+        out->concat("\"");
+        src->toString(out);
+        out->concat("\"");
+        break;
 
-        default:
-          val_container->toString(out);
-          break;
-      }
-      out->concat((nullptr != src->_next) ? ",\n" : "\n");
+      default:
+        src->toString(out);
+        break;
     }
-    else {
-      // Peacefully ignore KVPs without value containers.
-    }
-    src = src->_next;
+    src = src->_next_sib_with_key();
+    out->concat((nullptr != src) ? ",\n" : "\n");
   }
   return ret;
 }
-
-
-
-/*******************************************************************************
-* Parse-Pack: BIN
-*******************************************************************************/
-
-/**
-* The purpose of this fxn is to pack up this KeyValuePair into something that can sent over a wire
-*   with a minimum of overhead. We write only the bytes that *are* the data, and not the metadata
-*   because we are relying on the parser at the other side to know what the type is.
-* We still have to translate any pointer types into something concrete.
-*
-* @return 0 on success. Non-zero otherwise.
-*/
-int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
-  KeyValuePair* src = this;
-  int8_t ret = 0;
-  while (nullptr != src) {
-    C3PValue* val_container = src->getValue();
-    if (nullptr != val_container) {
-      if (nullptr != src->getKey()) {
-        // This is a map.
-        // TODO: Write TCode::KVP, followed by an optional string.
-      }
-      val_container->serialize(out, TCode::CBOR);
-    }
-    else {
-      // Peacefully ignore KVPs without value containers.
-    }
-    src = src->_next;
-  }
-
-  // TODO: I very much prefer recursion... Dig...
-  //if (_next) {
-  //  ret = _next->_encode_to_bin(out);
-  //}
-  return ret;
-}
-
 
 
 /*******************************************************************************
@@ -615,37 +411,6 @@ int8_t KeyValuePair::_encode_to_bin(StringBuilder *out) {
 *******************************************************************************/
 
 #if defined(__BUILD_HAS_CBOR)
-
-int8_t KeyValuePair::_encode_to_cbor(StringBuilder* out) {
-  // NOTE: This function exhibits concurrent use of two seperate CBOR encoder
-  //   objects on the same StringBuilder memory pool. This ought to be safe, as
-  //   long as all downstream CBOR encoder arrangements also are children of
-  //   output_stringbuilder (they ought to be).
-  // TODO: StringBuilder local_output;
-  cbor::output_stringbuilder output(out);
-  cbor::encoder encoder(output);
-  KeyValuePair* src = this;
-  int8_t ret = 0;
-  encoder.write_map(count());  // This is a map.
-  while (nullptr != src) {
-    C3PValue* val_container = src->getValue();
-    if (nullptr != val_container) {
-      if (nullptr != src->getKey()) {
-        encoder.write_string(src->getKey());
-        val_container->serialize(out, TCode::CBOR);
-      }
-      else {
-        // Peacefully ignore KVPs without keys.
-      }
-    }
-    else {
-      // Peacefully ignore KVPs without value containers.
-    }
-    src = src->_next;
-  }
-  return ret;
-}
-
 
 /*******************************************************************************
 * CBORArgListener
@@ -679,7 +444,7 @@ void CBORArgListener::_caaa(KeyValuePair* nu) {
     }
   }
   else {
-    nu->setValue(_wait);
+    nu->set(_wait);
   }
 
   if (0 < _wait_array) _wait_array--;
@@ -898,7 +663,7 @@ KeyValuePair* CBORArgListener::_inflate_c3p_type(uint8_t* data, int size, const 
 
   // If we can't fit the value into the KVP class, it means we new'd it.
   if (nullptr != ret) {
-    ret->reapKVP(true);
+    ret->reapContainer(true);
     ret->reapValue(!typeIsPointerPunned(TC));
   }
   return ret;

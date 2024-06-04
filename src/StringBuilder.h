@@ -222,6 +222,7 @@ class StringBuilder {
     static char* strcasestr(const char* haystack, const char* needle);
     static int   strcasecmp(const char*, const char*);
     static char* trim(char*);
+    static char* deep_copy(const char* src, const unsigned int MAX_COPY_LEN = 0);
 
     static void styleHeader1(StringBuilder*, const char*);
     static void styleHeader2(StringBuilder*, const char*);

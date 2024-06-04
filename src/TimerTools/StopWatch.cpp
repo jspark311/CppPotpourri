@@ -95,8 +95,8 @@ void StopWatch::printDebugHeader(StringBuilder* out) {
 
 template <> int C3PTypeConstraint<StopWatch*>::serialize(void* _obj, StringBuilder* out, const TCode FORMAT) {
   int ret = -1;
-  StopWatch* obj = ((StopWatch*) _obj);
   if (nullptr == _obj) {  return ret;  }
+  StopWatch* obj = (StopWatch*) _obj;
 
   switch (FORMAT) {
     case TCode::STR:
@@ -159,21 +159,22 @@ template <> int8_t C3PTypeConstraint<StopWatch*>::construct(void* _obj, KeyValue
       *((StopWatch**) _obj) = obj; // And assign.
     }
     if (nullptr != obj) {
-      const unsigned int KVP_COUNT = kvp->count();
-      for (unsigned int i = 0; i < KVP_COUNT; i++) {
-        KeyValuePair* current_kvp = kvp->retrieveByIdx(i);
-       char* current_key = current_kvp->getKey();
-       if (0 == StringBuilder::strcasecmp(current_key, "g")) {       current_kvp->getValue(&(obj->_tag));               }
-       else if (0 == StringBuilder::strcasecmp(current_key, "e")) {  current_kvp->getValue(&(obj->_executions));        }
-       else if (0 == StringBuilder::strcasecmp(current_key, "t")) {  current_kvp->getValue(&(obj->_run_time_total));    }
-       else if (0 == StringBuilder::strcasecmp(current_key, "a")) {  current_kvp->getValue(&(obj->_run_time_average));  }
-       else if (0 == StringBuilder::strcasecmp(current_key, "w")) {  current_kvp->getValue(&(obj->_run_time_worst));    }
-       else if (0 == StringBuilder::strcasecmp(current_key, "b")) {  current_kvp->getValue(&(obj->_run_time_best));     }
-       else if (0 == StringBuilder::strcasecmp(current_key, "l")) {  current_kvp->getValue(&(obj->_run_time_last));     }
+      KeyValuePair* current_kvp = kvp;
+      while (nullptr != current_kvp) {
+        char* current_key = current_kvp->getKey();
+        if (0 == StringBuilder::strcasecmp(current_key, "g")) {       current_kvp->get_as(&(obj->_tag));               }
+        else if (0 == StringBuilder::strcasecmp(current_key, "e")) {  current_kvp->get_as(&(obj->_executions));        }
+        else if (0 == StringBuilder::strcasecmp(current_key, "t")) {  current_kvp->get_as(&(obj->_run_time_total));    }
+        else if (0 == StringBuilder::strcasecmp(current_key, "a")) {  current_kvp->get_as(&(obj->_run_time_average));  }
+        else if (0 == StringBuilder::strcasecmp(current_key, "w")) {  current_kvp->get_as(&(obj->_run_time_worst));    }
+        else if (0 == StringBuilder::strcasecmp(current_key, "b")) {  current_kvp->get_as(&(obj->_run_time_best));     }
+        else if (0 == StringBuilder::strcasecmp(current_key, "l")) {  current_kvp->get_as(&(obj->_run_time_last));     }
+        current_kvp = current_kvp->nextKVP();
       }
       ret = 0;   // StopWatch always succeeds. No required keys.
     }
   }
+
   return ret;
 }
 

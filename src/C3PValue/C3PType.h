@@ -50,13 +50,15 @@ class KeyValuePair;
 *******************************************************************************/
 /**
 * These are the different flags that might apply to a type. They are constants.
+*
+* NOTE: TCODE_FLAG_VALUE_IS_PUNNED_PTR, TCODE_FLAG_VALUE_BY_COPY, TCODE_FLAG_PTR_LEN_TYPE
 */
-#define TCODE_FLAG_NON_EXPORTABLE      0x01  // This type is not exportable to other systems.
-#define TCODE_FLAG_VALUE_IS_PUNNED_PTR 0x02  // This type is small enough to fit inside a void* on this platform.
+#define TCODE_FLAG_VALUE_BY_COPY       0x01  // This type should be deep-copied for this platform.
+#define TCODE_FLAG_VALUE_IS_PUNNED_PTR 0x02  // This type is small enough to fit inside a void* on this platform. This includes other pointer types.
 #define TCODE_FLAG_PTR_LEN_TYPE        0x04  // Some types consist of a pointer and an element count.
 #define TCODE_FLAG_NULL_TERMIMNATED    0x08  // Various string types are variable-length, yet self-delimiting.
 #define TCODE_FLAG_LEGAL_FOR_ENCODING  0x10  // This type is a legal argument to (de)serializers.
-#define TCODE_FLAG_VALUE_IS_POINTER    0x20  // This type is always referenced by pointer.
+#define TCODE_FLAG_RESERVED_2          0x20  // Reserved for future use.
 #define TCODE_FLAG_RESERVED_1          0x40  // Reserved for future use.
 #define TCODE_FLAG_RESERVED_0          0x80  // Reserved for future use.
 
@@ -225,9 +227,9 @@ class C3PType {
 
     const bool legal_for_encoding() {  return _all_flags_set(TCODE_FLAG_LEGAL_FOR_ENCODING);  };
     const bool null_terminated() {     return _all_flags_set(TCODE_FLAG_NULL_TERMIMNATED);    };
-    const bool exportable() {          return _all_flags_set(TCODE_FLAG_NON_EXPORTABLE);      };
+    const bool value_by_copy() {       return _all_flags_set(TCODE_FLAG_VALUE_BY_COPY);       };
+    const bool is_ptr() {              return _all_flags_clear(TCODE_FLAG_VALUE_BY_COPY);     };
     const bool is_punned_ptr() {       return _all_flags_set(TCODE_FLAG_VALUE_IS_PUNNED_PTR); };
-    const bool is_ptr() {              return _all_flags_set(TCODE_FLAG_VALUE_IS_POINTER);    };
     const bool is_ptr_len() {          return _all_flags_set(TCODE_FLAG_PTR_LEN_TYPE);        };
     const bool is_fixed_length() {     return (FIXED_LEN > 0);    };
 

@@ -229,6 +229,47 @@ long unsigned __attribute__((weak)) micros_until(const long unsigned MARK) {
 * Console callbacks
 *******************************************************************************/
 
+/**
+* @page console-handlers
+* @section gpio-tools MCU GPIO tools
+*
+* This is the console command for directly dealing with MCU GPIO pins.
+*
+* @subsection cmd-actions Actions
+*
+* Action    | Description | Additional arguments
+* --------- | ----------- | --------------------
+* `mode`    | Set the pin mode. | <pin> <new-mode>
+* `val`     | Renders pin value to the console, or set the value. | <pin> [new-value]
+*
+* @subsection arguments Arguments
+* Argument  | Purpose   | Required
+* --------- | --------- | --------
+* pin       | Interger value of the refrenced pin | No
+* new-mode  | Interger value (0-8) indcating the mode to switch in to. | No
+* new-value | 1 = on, 0 = 0ff | No
+*
+* For the "mode" action, the pin adn new-mode arguments are not required.  \n
+*   If either are not proivided a full list of pins with names is printed to the console. \n
+*
+* For the "val" action, the new-value argument is optional, and can be either 0 or 1. \n
+*   If omitted, the pin will be read, and its state rendered to the console. \n
+*   If provided, the handler will try to set the pin to the given binary value. \n
+*
+* @subsection pin-modes Pin Modes
+* Enum Value      | Interger Value
+* --------------- | --------------
+* INPUT           | 0
+* OUTPUT          | 1
+* INPUT_PULLUP    | 2
+* INPUT_PULLDOWN  | 3
+* OUTPUT_OD       | 4
+* BIDIR_OD        | 5
+* BIDIR_OD_PULLUP | 6
+* ANALOG_OUT      | 7
+* ANALOG_IN       | 8
+*
+*/
 int callback_gpio_value(StringBuilder* text_return, StringBuilder* args) {
   int ret = 0;
   char* cmd = args->position_trimmed(0);

@@ -973,7 +973,7 @@ int buffer_accepter_main() {
   int ret = (bufferaccepter_test_plan.request_fulfilled() ? 0 : 1);
 
   StringBuilder report_output;
-  bufferaccepter_test_plan.printDebug(&report_output, "C3PValue test report");
+  bufferaccepter_test_plan.printDebug(&report_output, "BufferAccepter test report");
   printf("%s\n", (char*) report_output.string());
   return ret;
 }

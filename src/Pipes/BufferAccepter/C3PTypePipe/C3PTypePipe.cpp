@@ -131,23 +131,14 @@ int8_t C3PTypePipeSink::pushBuffer(StringBuilder* incoming) {
   if (nullptr != _value_cb) {
     const uint32_t INCOMING_LEN = incoming->length();
     const uint32_t SAFE_LEN     = strict_min(_MAX_BUFFER, INCOMING_LEN);
-    StringBuilder tmp_stbldr;
     do {
-      if (SAFE_LEN < INCOMING_LEN) {
-        tmp_stbldr.concatHandoffLimit(incoming, _MAX_BUFFER);
-        val_to_emit = C3PValue::deserialize(&tmp_stbldr, _FORMAT);
-        if (nullptr != val_to_emit) {
-          _value_cb(val_to_emit);
-        }
-      }
-      else {
-        // Use the buffer directly.
-        val_to_emit = C3PValue::deserialize(incoming, _FORMAT);
-      }
+      StringBuilder tmp_stbldr;
+      tmp_stbldr.concatHandoffLimit(incoming, SAFE_LEN);
+      val_to_emit = C3PValue::deserialize(&tmp_stbldr, _FORMAT);
       if (nullptr != val_to_emit) {
         _value_cb(val_to_emit);
       }
-      if (!tmp_stbldr.isEmpty()) {
+      if (!tmp_stbldr.isEmpty(true)) {
         incoming->prependHandoff(&tmp_stbldr);
       }
     } while (nullptr != val_to_emit);

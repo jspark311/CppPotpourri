@@ -23,20 +23,8 @@ TODO: About that... This program is presumably being run under linux, and so we
   everything that would happen in that context that C3P is concerned about.
 */
 
-#include <cstdio>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <ctype.h>
-#include <unistd.h>
-#include <math.h>
-#include <sys/time.h>
+#include "C3PUnitTesting.h"
 
-#include <fstream>
-#include <iostream>
-
-#include "CppPotpourri.h"
-#include "StringBuilder.h"
 #include "Console/C3PConsole.h"
 #include "ElementPool.h"
 #include "RingBuffer.h"
@@ -44,7 +32,6 @@ TODO: About that... This program is presumably being run under linux, and so we
 #include "C3PValue/KeyValuePair.h"
 #include "LightLinkedList.h"
 #include "SensorFilter.h"
-#include "AsyncSequencer.h"
 #include "Vector3.h"
 #include "TimerTools/TimerTools.h"
 #include "uuid.h"
@@ -52,7 +39,6 @@ TODO: About that... This program is presumably being run under linux, and so we
 #include "Image/Image.h"
 #include "Identity/IdentityUUID.h"
 #include "Identity/Identity.h"
-
 
 /*******************************************************************************
 * Support functions
@@ -174,6 +160,18 @@ double generate_random_double() {
 }
 
 
+void dump_c3pvalue(C3PValue* a) {
+  if (a) {
+    StringBuilder log;
+    a->printDebug(&log);
+    printf("%s\n", (char*) log.string());
+  }
+  else {
+    printf("dump_c3pvalue() was passed a nullptr.\n");
+  }
+}
+
+
 void dump_kvp(KeyValuePair* a) {
   if (a) {
     StringBuilder log;
@@ -184,7 +182,6 @@ void dump_kvp(KeyValuePair* a) {
     printf("dump_kvp() was passed a nullptr.\n");
   }
 }
-
 
 void dump_strbldr(StringBuilder* a) {
   if (a) {
@@ -722,7 +719,6 @@ AsyncSequencer checklist_unit_tests(TOP_LEVEL_TEST_LIST, (sizeof(TOP_LEVEL_TEST_
 * The top-level main function.                                                 *
 *******************************************************************************/
 int main(int argc, char *argv[]) {
-  int exit_value = 1;   // Failure is the default result.
   srand(time(NULL));
   printTypeSizes();
 
@@ -730,7 +726,7 @@ int main(int argc, char *argv[]) {
   while (!checklist_unit_tests.request_completed() && (0 == checklist_unit_tests.failed_steps(false))) {
     checklist_unit_tests.poll();
   }
-  exit_value = (checklist_unit_tests.request_fulfilled() ? 0 : 1);
+  int exit_value = (checklist_unit_tests.request_fulfilled() ? 0 : 1);
 
   StringBuilder report_output;
   checklist_unit_tests.printDebug(&report_output, "Final test report");

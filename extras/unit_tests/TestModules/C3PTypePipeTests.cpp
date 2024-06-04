@@ -275,17 +275,15 @@ void c3ptype_callback_oversize(C3PValue* val) {
 void c3ptype_callback_kvp(C3PValue* val) {
   bool cb_success = false;
   if (nullptr != val) {
-    if (TCode::KVP == val->tcode()) {
-      KeyValuePair* result_kvp = nullptr;
+    if (val->has_key()) {
+      KeyValuePair* result_kvp = (KeyValuePair*) val;
       if (nullptr != c3ptp_test_kvp) {
-        if (0 == val->get_as(&result_kvp)) {
-          if (result_kvp->count() == c3ptp_test_kvp->count()) {
-            // TODO: Break apart and test each element.
-            cb_success = true;
-          }
+        if (result_kvp->count() == c3ptp_test_kvp->count()) {
+          // TODO: Break apart and test each element.
+          cb_success = true;
         }
         else {
-          printf("\t\tFailed to get KVP from value.\n");
+          printf("\t\tMis-matched element counts.\n");
         }
       }
       else {
@@ -293,7 +291,7 @@ void c3ptype_callback_kvp(C3PValue* val) {
       }
     }
     else {
-      printf("\t\tValue delivered was (%s), which is not KVP.\n", typecodeToStr(val->tcode()));
+      printf("\t\tValue delivered was (%s), but is not KVP.\n", typecodeToStr(val->tcode()));
     }
     // It is the responsibility of the callback to handle memory cleanup.
     delete val;
@@ -467,7 +465,6 @@ int c3ptype_pipe_kvp_simple() {
   TestValuePalette test_values(61, 17);
 
   printf("\tGenerating test KVP... ");
-
   KeyValuePair a("key0", "A const test string");
     ret -= (nullptr != a.append(test_values.TEST_VAL_BOOL,   "key1"))  ? 0 : 1;
     ret -= (nullptr != a.append(test_values.TEST_VAL_UINT8,  "key2"))  ? 0 : 1;
@@ -528,6 +525,7 @@ int c3ptype_pipe_kvp_recursive() {
   ret -= (nullptr != c.append(&b,  "b_branch"))  ? 0 : 1;
   if (0 == ret) {
     printf("Pass.\n\tPushing KVP... ");
+    //dump_kvp(&c);
     c3ptp_test_kvp = &c;
     ret -= c3ptp_src.pushValue(&c);
     if (0 == ret) {

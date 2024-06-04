@@ -313,14 +313,11 @@ int UARTAdapter::_handle_rx_push() {
         StringBuilder  unpushed_rx;
         uint8_t* temp_buf = (uint8_t*) malloc(SAFE_RX_COUNT);
         if (nullptr != temp_buf) {
-          const uint32_t RX_BYTES_FROM_RB = _rx_buffer.get(temp_buf, SAFE_RX_COUNT);
+          const uint32_t RX_BYTES_FROM_RB = _rx_buffer.peek(temp_buf, SAFE_RX_COUNT);
           unpushed_rx.concatHandoff(temp_buf, RX_BYTES_FROM_RB);
-          if (1 != _read_cb_obj->pushBuffer(&unpushed_rx)) {
-            // TODO: There is a contract violation here. The pushed buffer might
-            //   be at least partially rejected, in which case, the data will
-            //   be dropped.
-          }
+          _read_cb_obj->pushBuffer(&unpushed_rx);
           ret = (RX_BYTES_FROM_RB - unpushed_rx.length());
+          _rx_buffer.cull(ret);
         }
       }
     }

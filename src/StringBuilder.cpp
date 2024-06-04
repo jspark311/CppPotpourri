@@ -109,6 +109,20 @@ int StringBuilder::strcasecmp(const char *a, const char *b) {
 }
 
 
+char* StringBuilder::deep_copy(const char* src, const unsigned int MAX_COPY_LEN) {
+  char* ret = nullptr;
+  if (nullptr != src) {
+    const uint32_t SAFE_COPY_LEN = (0 == MAX_COPY_LEN) ? strlen(src) : strict_min((uint32_t) MAX_COPY_LEN, (uint32_t) strlen(src));
+    ret = (char*) malloc(SAFE_COPY_LEN+1);
+    if (nullptr != ret) {
+      memcpy(ret, src, SAFE_COPY_LEN);
+      *(ret + SAFE_COPY_LEN) = 0;
+    }
+  }
+  return ret;
+}
+
+
 /**
 * Static utility function for dumping buffers for humans to read.
 *
@@ -631,7 +645,7 @@ int StringBuilder::concatHandoffPositions(StringBuilder* donar, unsigned int pos
       if (nullptr != current) {
         move_first = current;
         // Find the final frag to be moved.
-        while ((++ret < FRAG_COUNT) & (nullptr != current->next)) {
+        while ((++ret < (int) FRAG_COUNT) & (nullptr != current->next)) {
           current = current->next;
         }
         *donar_splice = current->next;  // Inform the donar instance...

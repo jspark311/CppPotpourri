@@ -106,13 +106,8 @@ LIBS  = -L. -lCppPotpourri -lstdc++ -lm
 # Are we on a 64-bit system? If so, we'll need to specify
 #   that we want a 32-bit build...
 #
-# TODO: we need to make both 32-bit and 64-bit builds. The library is used under both conditions.
-# Eventually, the Argument class and the aparatus surrounding it will need
-#   to be validated on a 64-bit build, but for now, we don't want to have
-#   to worry about it.
-# This is probably just a matter of having a platform-support macro to cast
-#   type-sizes to integers, but will also have implications for
-#   memory-management surrounding (say) 64-bit integers.
+# TODO: we need to make both 32-bit and 64-bit builds. The library is used under
+#   both conditions. It would be nice if this Makefile "just handled it".
 #
 # Thanks, estabroo...
 # http://www.linuxquestions.org/questions/programming-9/how-can-make-makefile-detect-64-bit-os-679513/
@@ -187,12 +182,12 @@ alltests: lib
 	@echo 'Unit testing complete.'
 
 coverage: alltests
-	mv $(OUTPUT_PATH)/AllTests-AllTests.gcno $(COVERAGE_PATH)/AllTests.gcno   # Stupid...
-	mv $(OUTPUT_PATH)/AllTests-AllTests.gcda $(COVERAGE_PATH)/AllTests.gcda   # Stupid...
-	mv *.gcov $(OUTPUT_PATH)/*.gcno  $(GCNO_FILES) $(GCDA_FILES) $(COVERAGE_PATH)
+	mv $(OUTPUT_PATH)/AllTests-AllTests.gcno $(COVERAGE_PATH)/AllTests.gcno
+	mv $(OUTPUT_PATH)/AllTests-AllTests.gcda $(COVERAGE_PATH)/AllTests.gcda
+	mv *.gcov $(OUTPUT_PATH)/*.gcno  $(GCNO_FILES) $(GCDA_FILES) $(COVERAGE_PATH) &2>/dev/null
 	$(GCOV) $(GCOV_FLAGS) $(SOURCES_CPP) AllTests.cpp
 
-	lcov --capture --directory $(COVERAGE_PATH) --output-file $(COVERAGE_PATH)/coverage.info
+	lcov --capture --ignore-errors gcov --directory $(COVERAGE_PATH) --output-file $(COVERAGE_PATH)/coverage.info
 	genhtml $(COVERAGE_PATH)/coverage.info --output-directory $(COVERAGE_PATH)
 	@echo 'Coverage measurement complete.'
 
@@ -203,4 +198,4 @@ check: outputpath
 	@echo 'Static analysis complete.'
 
 clean:
-	rm -rf $(OUTPUT_PATH) $(DEPS) $(OBJS) $(GCNO_FILES) $(GCDA_FILES) *.gcno *.gcda *.gcov *.o
+	rm -rf $(OUTPUT_PATH) $(DEPS) $(OBJS) $(GCNO_FILES) $(GCDA_FILES) *.gcno *.gcda *.gcov *.o *.a

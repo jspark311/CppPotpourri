@@ -177,6 +177,13 @@ C3P wants the following capabilities, which will probably implicate this file.
 * Feature map
 *******************************************************************************/
 /*
+* Any log less important than this will be dropped from the build.
+*/
+#ifndef CONFIG_LOG_LEV_MAX_COMPILED
+  #define CONFIG_LOG_LEV_MAX_COMPILED  7
+#endif
+
+/*
 * CppPotpourri is highly asynchronous. The optional C3PTrace feature makes
 *   debugging things built with it much easier.
 */
@@ -234,7 +241,6 @@ C3P wants the following capabilities, which will probably implicate this file.
     #error C3P_TRACE_WORD_TOTAL_BITS bit size exceeds the length of its storage type (32-bit).
   #endif
 #endif  // CONFIG_C3P_TRACE_ENABLED
-
 
 
 

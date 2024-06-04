@@ -127,13 +127,13 @@ int8_t ConfRecord::_set_conf(const char* KEY, const TCode TC_ARG, void* src) {
 void ConfRecord::printConfRecord(StringBuilder* output, const char* spec_key) {
   if (allocated()) {
     if (nullptr != spec_key) {
-      KeyValuePair* obj = _kvp->retrieveByKey(spec_key);
+      KeyValuePair* obj = _kvp->valueWithKey(spec_key);
       if (nullptr != obj) {
         char* current_key = obj->getKey();
         if (nullptr != current_key) {
           StringBuilder tmp;
           tmp.concatf("%24s (%s)\t= ", current_key, typecodeToStr(obj->tcode()));
-          obj->valToString(&tmp);
+          obj->toString(&tmp);
           tmp.concat("\n");
           output->concatHandoff(&tmp);
         }
@@ -214,24 +214,17 @@ int32_t ConfRecord::_allocate_kvp() {
     const TCode CONSTRAINED_TCODE = _key_tcode(key_str);
     if (nullptr == _kvp) {
       // First key, and the KVP doesn't exist. Create it...
-      C3PValue* tmp_container = new C3PValue(CONSTRAINED_TCODE);
-      if (nullptr != tmp_container) {
-        _kvp = new KeyValuePair("", tmp_container, (C3P_KVP_FLAG_REAP_KVP | C3P_KVP_FLAG_REAP_CNTNR));
-        if (nullptr != _kvp) {
-          _kvp->setKey(key_str);
-          alloc_count++;
-        }
-        else {
-          delete tmp_container;
-        }
+      _kvp = new KeyValuePair(CONSTRAINED_TCODE, key_str, C3PVAL_MEM_FLAG_REAP_CNTNR);
+      if (nullptr != _kvp) {
+        alloc_count++;
       }
     }
     else {
-      KeyValuePair* tmp = _kvp->retrieveByKey(key_str);
+      KeyValuePair* tmp = _kvp->valueWithKey(key_str);
       if (nullptr == tmp) {
-        tmp = new KeyValuePair(key_str, CONSTRAINED_TCODE, (C3P_KVP_FLAG_REAP_KVP));
+        tmp = new KeyValuePair(CONSTRAINED_TCODE, key_str, C3PVAL_MEM_FLAG_REAP_CNTNR);
         if (nullptr != tmp) {
-          tmp = _kvp->link(tmp);
+          tmp = (KeyValuePair*) _kvp->link(tmp);
           alloc_count++;
         }
       }
@@ -239,7 +232,9 @@ int32_t ConfRecord::_allocate_kvp() {
         // The key was already found in the data. Make sure that it is properly
         //   type-constrained. If the types match, this call will do nothing and
         //   return success.
-        if (0 == tmp->convertToType(CONSTRAINED_TCODE)) {
+        // TODO: Need to undergo a full re-alloc cycle to assure TCode change.
+        //if (0 == tmp->convertToType(CONSTRAINED_TCODE)) {
+        if (tmp->tcode() == CONSTRAINED_TCODE) {
           alloc_count++;
         }
       }

@@ -174,9 +174,21 @@ int platform_system_time_tests() {
     return -1;
   }
   printf("Pass. Execution rate was %d loops-per-us.\n\tVerifying that micros() and millis() evolve at the same rate... ", bailout_count);
+  unsigned long timer_rationalizer_us = micros();
+  unsigned long timer_rationalizer_ms = millis();
 
-  const unsigned long TEST_STOP_MICROS    = micros();
-  const unsigned long TEST_STOP_MILLIS    = millis();
+  //uint32_t tr_loops = 0;
+  //while ((timer_rationalizer_us != (timer_rationalizer_ms / 1000)) & (tr_loops++ < 1000)) {
+  //  // If the timer values can't be rationalized after 1000 tries, give up.
+  //  timer_rationalizer_us = micros();
+  //  timer_rationalizer_ms = millis();
+  //}
+  //if (tr_loops >= 1000) {
+  //  printf("Fail. millis() and micros() disagreed to often for their respective costs to be the cause. (%lu / %lu)\n", timer_rationalizer_ms, timer_rationalizer_us);
+  //  return -1;
+  //}
+  const unsigned long TEST_STOP_MICROS    = timer_rationalizer_us;
+  const unsigned long TEST_STOP_MILLIS    = timer_rationalizer_ms;
   const long MICROS_SPENT        = (TEST_STOP_MICROS - TEST_START_MICROS);
   const long MILLIS_SPENT        = (TEST_STOP_MILLIS - TEST_START_MILLIS);
   const long MS_SPENT_VIA_MICROS = (MICROS_SPENT / 1000);

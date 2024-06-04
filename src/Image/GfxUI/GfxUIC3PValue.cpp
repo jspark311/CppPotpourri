@@ -142,10 +142,13 @@ int GfxUIC3PValue::_render(UIGfxWrapper* ui_gfx) {
   int ret = 0;
   if (!inhibitRefresh() & (nullptr != _value)) {
     const bool SHOW_TYPE_INFO = ((isFocused() & hoverResponse()) | showTypeInfo());
-    PixUInt i_x = internalPosX();
-    PixUInt i_y = internalPosY();
-    PixUInt i_w = internalWidth();
-    PixUInt i_h = internalHeight();
+    const PixUInt i_x = internalPosX();
+    const PixUInt i_y = internalPosY();
+    const PixUInt i_w = internalWidth();
+    const PixUInt i_h = internalHeight();
+    PixUInt tracked_x = 0;
+    PixUInt tracked_y = 0;
+
     bool have_type_obj  = (0 < _children.size());
     bool flip_type_obj  = (have_type_obj ^ showTypeInfo());
     if (flip_type_obj) {
@@ -176,16 +179,17 @@ int GfxUIC3PValue::_render(UIGfxWrapper* ui_gfx) {
           have_type_obj = true;
         }
       }
+      _need_redraw(true);
       ret = 1;
     }
 
-    if (_value->dirty(&_last_trace)) {
+    if (_value->dirty(&_last_trace) | _need_redraw()) {
       if (SHOW_TYPE_INFO & have_type_obj) {
         // Offset the X-pos to avoid clobbering the type render.
-        i_x += _children.get(0)->elementWidth();
+        tracked_x += _children.get(0)->elementWidth();
       }
 
-      ui_gfx->img()->fillRect(i_x, i_y, i_w, i_h, _style.color_bg);
+      ui_gfx->img()->fillRect((i_x + tracked_x), i_y, (i_w - tracked_x), i_h, _style.color_bg);
       StringBuilder line;
       if (_value->is_ptr_len()) {
         // Graphical environments can handle doing things a bit smarter than
@@ -208,10 +212,13 @@ int GfxUIC3PValue::_render(UIGfxWrapper* ui_gfx) {
       else {
         // Unspecialized workflows (generally, anything that can sensibly be
         //   rendered to a string).
+        const PixUInt FONT_WIDTH  = ui_gfx->img()->getFontWidth();
+        const PixUInt FONT_HEIGHT = ui_gfx->img()->getFontHeight();
+
         _value->toString(&line, false);
         //if (line.length() > some_limit) {
         //}
-        ui_gfx->img()->setCursor(i_x, i_y);
+        ui_gfx->img()->setCursor((i_x + tracked_x), i_y);
         ui_gfx->img()->setTextSize(_style.text_size);
         ui_gfx->img()->setTextColor(_style.color_active, _style.color_bg);
         ui_gfx->img()->writeString(&line);

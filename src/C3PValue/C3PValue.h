@@ -77,6 +77,17 @@ For now, just know what the costs are, and don't expend the overhead unless you
 
 #include "C3PType.h"
 
+/* Flags that dictate memory treatment rules. */
+#define C3PVAL_MEM_FLAG_HAS_KEY        0x01  // Informs differentiation between KVP and Value.
+#define C3PVAL_MEM_FLAG_REAP_VALUE     0x02  // Should the memory holding the value be free'd? This may imply a destructor call.
+#define C3PVAL_MEM_FLAG_REAP_CNTNR     0x04  // Should the C3PValue itself be free'd (not its contained value)?
+#define C3PVAL_MEM_FLAG_REAP_KEY       0x08  // Should the key string be free'd?
+#define C3PVAL_MEM_FLAG_PUNNED_PTR     0x10  // If true, _target_mem contains the value itself.
+#define C3PVAL_MEM_FLAG_VALUE_BY_REF   0x20  // If true, _target_mem's native type is a pointer to something.
+#define C3PVAL_MEM_FLAG_IS_COMPOUND    0x40  // If true, appended data will be construed as an array or map.
+#define C3PVAL_MEM_FLAG_ERR_MEM        0x80  // A memory error occured during basic class operations. Usually an allocation.
+
+
 /*
 * Including within a header file costs build time and muddies static analysis.
 * Because this class handles many of our major types in C3P as pointers, we save
@@ -112,9 +123,16 @@ class C3PValue {
     C3PValue(int16_t  val) : C3PValue(TCode::INT16,    (void*)(uintptr_t) val) {};
     C3PValue(int32_t  val) : C3PValue(TCode::INT32,    (void*)(uintptr_t) val) {};
     C3PValue(bool     val) : C3PValue(TCode::BOOLEAN,  (void*)(uintptr_t) val) {};
-    C3PValue(uint64_t val) : C3PValue(TCode::UINT64,   (void*) &val) {};
-    C3PValue(int64_t  val) : C3PValue(TCode::INT64,    (void*) &val) {};
-    C3PValue(double   val) : C3PValue(TCode::DOUBLE,   (void*) &val) {};
+    #if (64 == __BUILD_ALU_WIDTH)
+      C3PValue(uint64_t val) : C3PValue(TCode::UINT64,   (void*)(uintptr_t) val) {};
+      C3PValue(int64_t  val) : C3PValue(TCode::INT64,    (void*)(uintptr_t) val) {};
+      C3PValue(double   val) : C3PValue(TCode::DOUBLE,   (void*)(uintptr_t) val) {};
+    #else
+      // Values like these will be passed on the stack, by value.
+      C3PValue(uint64_t val) : C3PValue(TCode::UINT64,   (void*) &val) {};
+      C3PValue(int64_t  val) : C3PValue(TCode::INT64,    (void*) &val) {};
+      C3PValue(double   val) : C3PValue(TCode::DOUBLE,   (void*) &val) {};
+    #endif  // 64-bit check.
     C3PValue(float    val);
     C3PValue(char* val);
     C3PValue(const char* val)  : C3PValue(TCode::STR,           (void*) val) {};
@@ -131,7 +149,7 @@ class C3PValue {
     C3PValue(Vector3f64* val)  : C3PValue(TCode::VECT_3_DOUBLE, (void*) val) {};
     C3PValue(Identity* val)    : C3PValue(TCode::IDENTITY,      (void*) val) {};
     C3PValue(KeyValuePair* val) : C3PValue(TCode::KVP,          (void*) val) {};
-    C3PValue(StopWatch* val)    : C3PValue(TCode::STOPWATCH,    (void*) val) {};
+    C3PValue(StopWatch* val)    : C3PValue(TCode::STOPWATCH,    (void*) val) { _target_mem = val; };
 
     // Conditional types.
     #if defined(CONFIG_C3P_IMG_SUPPORT)
@@ -139,7 +157,7 @@ class C3PValue {
       inline int8_t set(Image*   x) {    return set_from(TCode::IMAGE,  (void*) x);  };
       inline int8_t get_as(Image** x) {  return get_as(TCode::IMAGE,    (void*) x);  };
     #endif   // CONFIG_C3P_IMG_SUPPORT
-    ~C3PValue();
+    virtual ~C3PValue();
 
 
     /*
@@ -190,6 +208,7 @@ class C3PValue {
     float        get_as_float(int8_t* success = nullptr);
     double       get_as_double(int8_t* success = nullptr);
     C3PBinBinder get_as_ptr_len(int8_t* success = nullptr);
+    KeyValuePair* get_as_kvp();
 
     inline int8_t get_as(uint8_t* x) {      return get_as(TCode::UINT8,         (void*) x);  };
     inline int8_t get_as(uint16_t* x) {     return get_as(TCode::UINT16,        (void*) x);  };
@@ -225,6 +244,7 @@ class C3PValue {
     inline const TCode tcode() {            return _TCODE;                       };
     inline bool        is_fixed_length() {  return (0 != sizeOfType(_TCODE));    };
     inline bool        is_numeric() {       return C3PType::is_numeric(_TCODE);  };
+    inline bool        has_key() {          return _chk_flags(C3PVAL_MEM_FLAG_HAS_KEY);  };
     bool               is_ptr_len();
 
     // TODO: Very easy to become mired in your own bad definitions. Be careful.
@@ -235,18 +255,31 @@ class C3PValue {
     //   all. Such should also be specified in the type matrix.
     //int compare(C3PValue*);
 
+    /* Array treatment */
+    C3PValue* valueWithIdx(uint32_t idx);
+    int8_t    valueWithIdx(uint32_t idx, void* trg_buf);
+    int8_t    drop(C3PValue**, C3PValue*, bool destruct = false);
+    C3PValue* link(C3PValue*, bool reap_container = true);
+    uint32_t count();
+
     /* Memory handling options. */
-    inline void     reapValue(bool x) {  _reap_val = x;      };
-    inline bool     reapValue() {        return _reap_val;   };
-    inline uint16_t trace() {            return _set_trace;  };
-    inline void     markDirty() {        _set_trace++;       };
-    bool     dirty(uint16_t*);
+    inline void     reapValue(bool x) {      _set_flags(x, C3PVAL_MEM_FLAG_REAP_VALUE);      };
+    inline bool     reapValue() {            return _chk_flags(C3PVAL_MEM_FLAG_REAP_VALUE);  };
+    inline void     reapContainer(bool x) {  _set_flags(x, C3PVAL_MEM_FLAG_REAP_CNTNR);      };
+    inline bool     reapContainer() {        return _chk_flags(C3PVAL_MEM_FLAG_REAP_CNTNR);  };
+    inline void     isCompound(bool x) {     _set_flags(x, C3PVAL_MEM_FLAG_IS_COMPOUND);     };
+    inline bool     isCompound() {           return _chk_flags(C3PVAL_MEM_FLAG_IS_COMPOUND); };
+    inline bool     memError() {             return _chk_flags(C3PVAL_MEM_FLAG_ERR_MEM);     };
+    inline uint16_t trace() {                return _set_trace;  };
+    inline void     markDirty() {            _set_trace++;       };
+    bool dirty(uint16_t*);
+    int  memoryCost(bool deep = false);   // Get the memory use for this object.
+    void   printDebug(StringBuilder*);
 
     /* Parsing/Packing */
     void     toString(StringBuilder*, bool include_type = false);
     uint32_t length();
-    int8_t   serialize(StringBuilder*, const TCode FORMAT);
-    //int8_t   deserialize(StringBuilder*, const TCode FORMAT);
+    virtual int8_t serialize(StringBuilder*, const TCode FORMAT);
 
     static C3PValue* deserialize(StringBuilder*, const TCode FORMAT);
 
@@ -269,17 +302,27 @@ class C3PValue {
     */
     friend class C3PValueDecoder;
     const TCode _TCODE;        // The hard-declared type of this Value.
-    bool        _val_by_ref;   // If true, _target_mem's native type is a pointer to something.
-    bool        _punned_ptr;   // If true, _target_mem contains the value itself.
-    bool        _reap_val;     // If true, _target_mem is not only a pointer, but is our responsibility to free it.
+    uint8_t     _mem_flgs;     // Memory-management flags.
     uint16_t    _set_trace;    // This value is updated each time the set function is called, to allow dirty-tracing.
+    C3PValue*   _next;         // If this is an array, there will be additional objects in this linked-list.
     void*       _target_mem;   // Alignment invariant type-punned memory. Will be the same size as the arch's pointers.
 
-    C3PValue(const TCode, void*);
+    C3PValue(const TCode, void*, uint8_t mem_flgs = 0);
 
+
+    KeyValuePair* _next_sib_with_key();
     void _reap_existing_value();
 
-    inline void* _type_pun() {  return (_punned_ptr ? &_target_mem : _target_mem);  };
+    void* _type_pun_get();
+    void* _type_pun_set();
+
+    /* Inlines for altering and reading the flags. */
+    inline void _set_mem_fault() {  _set_flags(true, C3PVAL_MEM_FLAG_ERR_MEM);         };
+    inline bool _is_val_by_ref() {  return _chk_flags(C3PVAL_MEM_FLAG_VALUE_BY_REF);   };
+    inline bool _is_ptr_punned() {  return _chk_flags(C3PVAL_MEM_FLAG_PUNNED_PTR);     };
+
+    inline void _set_flags(bool x, const uint8_t MSK) {  _mem_flgs = x ? (_mem_flgs | MSK) : (_mem_flgs & ~MSK); };
+    inline bool _chk_flags(const uint8_t MSK) {          return (MSK == (_mem_flgs & MSK));                      };
 };
 
 

@@ -37,14 +37,24 @@ limitations under the License.
 
 const char* const LOCAL_LOG_TAG = "C3PValue";
 
-
 /*******************************************************************************
-* Statics
+*      _______.___________.    ___   .___________. __    ______     _______.
+*     /       |           |   /   \  |           ||  |  /      |   /       |
+*    |   (----`---|  |----`  /  ^  \ `---|  |----`|  | |  ,----'  |   (----`
+*     \   \       |  |      /  /_\  \    |  |     |  | |  |        \   \
+* .----)   |      |  |     /  _____  \   |  |     |  | |  `----.----)   |
+* |_______/       |__|    /__/     \__\  |__|     |__|  \______|_______/
+*
+* Static members and initializers should be located here.
 *******************************************************************************/
 
 /**
 * We are being asked to inflate a C3PValue object from an unknown string of a
 *   known format.
+*
+* @param input is the buffer to parse. It will be consumed on successful parsing.
+* @param FORMAT is the encoding format by which input will be parsed.
+* @return A heap-allocated C3PValue object on success, or nullptr otherwise.
 */
 C3PValue* C3PValue::deserialize(StringBuilder* input, const TCode FORMAT) {
   C3PValue* ret = nullptr;
@@ -103,37 +113,48 @@ C3PValue* C3PValue::deserialize(StringBuilder* input, const TCode FORMAT) {
 * If _val_by_ref is true, it means that _target_mem is a pointer to whatever
 *   type is declared.
 */
-C3PValue::C3PValue(const TCode TC, void* ptr) : _TCODE(TC), _set_trace(1), _target_mem(ptr) {
-  _punned_ptr = typeIsPointerPunned(_TCODE);
-  _val_by_ref = !_punned_ptr;
-  _reap_val   = false;
+C3PValue::C3PValue(const TCode TC, void* ptr, uint8_t mem_flgs)
+  : _TCODE(TC), _mem_flgs(mem_flgs), _set_trace(1), _next(nullptr), _target_mem(ptr)
+{
   C3PType* t_helper = getTypeHelper(_TCODE);
   if (nullptr != t_helper) {
-    if (is_numeric()) {
-      // Every numeric type that does not fit inside a void* on the target
+    _set_flags(t_helper->is_punned_ptr(), C3PVAL_MEM_FLAG_PUNNED_PTR);
+    _set_flags(t_helper->is_ptr(), C3PVAL_MEM_FLAG_VALUE_BY_REF);
+    if (!t_helper->is_punned_ptr() & t_helper->value_by_copy()) {
+      // Every value-by-copy type that does not fit inside a void* on the target
       //   platform will be heap-allocated and zeroed on construction. C3PType
       //   is responsible for having homogenized this handling, and all we need
       //   to do is allocate the memory if the numeric type could not be
       //   type-punned.
       // This will cover such cases as DOUBLE and INT64 on 32-bit builds.
-      if (!_punned_ptr) {
-        // TODO: This is a constructor, and we thus have no clean way of
-        //   handling heap-allocation failures. So we'll need a lazy-allocate
-        //   arrangement eventually, in which case, this block will be redundant.
-        const uint32_t TYPE_STORAGE_SIZE = t_helper->length(nullptr);
-        _target_mem = malloc(TYPE_STORAGE_SIZE);   // Default value will be nonsense. Clobber it.
+      //
+      // TODO: This is a constructor, and we thus have no clean way of
+      //   handling heap-allocation failures. So we'll need a lazy-allocate
+      //   arrangement eventually, in which case, this block will be redundant.
+      // Default value will be nonsense. Clobber it. NOTE: This means that all
+      //   value-by-copy types must be fixed-length.
+      const uint32_t TYPE_STORAGE_SIZE = t_helper->length(nullptr);
+      if (0 < TYPE_STORAGE_SIZE) {
+        _target_mem = malloc(TYPE_STORAGE_SIZE);
         if (nullptr != _target_mem) {
-          _reap_val = true;
+          reapValue(true);  // We will free this memory upon our own destruction.
           if (nullptr == ptr) {
             memset(_target_mem, 0, TYPE_STORAGE_SIZE);
           }
           else {
-            // TODO: Should never fail, because no type conversion is being done,
+            // Should never fail, because no type conversion is being done,
             //   but there is no return assurance for the situation TODO'd above.
-            t_helper->set_from(_type_pun(), _TCODE, ptr);
+            // TODO: Until this is resolved, it will be burdensome for the
+            //   caller to detect a memory fault, and whatever initialization
+            //   value was passed in will not be recorded.
+            if (0 > t_helper->set_from(_target_mem, _TCODE, ptr)) {
+              _set_mem_fault();
+            }
           }
         }
+        else _set_mem_fault();
       }
+      else _set_mem_fault();
     }
     else if (t_helper->is_ptr_len()) {
       // The compound pointer-length types (BINARY, CBOR, etc) will have an
@@ -142,44 +163,96 @@ C3PValue::C3PValue(const TCode TC, void* ptr) : _TCODE(TC), _set_trace(1), _targ
       _target_mem = malloc(sizeof(C3PBinBinder));
       if (nullptr != _target_mem) {
         //((C3PBinBinder*) _target_mem)->tcode = TC;
-        _val_by_ref = true;
+        _set_flags(true, C3PVAL_MEM_FLAG_VALUE_BY_REF);
         // TODO: Is this the correct choice? We know that we are responsible for
         //   freeing the C3PBinBinder we just created, and I don't want to mix
         //   semantic layers, nor do I want to extend flags into the shim (thus
         //   indirecting them).
-        _reap_val   = false;
+        _set_flags(false, C3PVAL_MEM_FLAG_REAP_VALUE);
       }
+      else _set_mem_fault();
+    }
+    else {
+      // Anything else just sets _target_mem directly.
     }
   }
+  else _set_mem_fault();
 }
 
 
+/**
+* Destructor. This is touchy, and will be the source of grief for someone. So
+*   here are the rules....
+* This object is being destroyed either because delete was called upon it, or
+*   it was created on the stack and has gone out of scope. In any case, we don't
+*   worry about the sizeof(C3PValue) bytes of RAM this object occupies. Only the
+*   things that are (attached to) and (owned by) this object.
+*
+* The destructor will recursively traverse the linked-list of other data and
+*   destroy everything in the ownership chain from the leaves upward.
+* Then, the _target_mem will be free'd or deleted, as/if required.
+* Then, the destructor will return.
+*/
 C3PValue::~C3PValue() {
-  if (nullptr != _target_mem) {
-    // Some types have a shim to hold an explicit length, or other data. We
-    //   construe the reap member to refer to the data itself, and not the shim.
-    //   We will always free the shim.
-    // TODO: allocate() and deallocate() should be added to the type template.
-    switch (_TCODE) {
-      case TCode::BINARY:
-      case TCode::CBOR:
-        if (_reap_val) {
-          free(((C3PBinBinder*) _target_mem)->buf);
-        }
-        free(_target_mem);
-        break;
+  if (has_key()) {
+    // The derived KeyValuePair class doesn't actually have a destructor
+    //   that does anything. It always owns its own pointer and reap flags,
+    //   which it is responsible for manipulating. So we can just set the
+    //   key to some (const char*), and the class will free any existing
+    //   string that it might be holding.
+    ((KeyValuePair*) this)->setKey("");
+  }
 
-      case TCode::STR_BUILDER:  if (_reap_val) {  delete ((StringBuilder*) _target_mem);  }  break;
-      case TCode::KVP:          if (_reap_val) {  delete ((KeyValuePair*)  _target_mem);  }  break;
-      case TCode::STOPWATCH:    if (_reap_val) {  delete ((StopWatch*)     _target_mem);  }  break;
-    #if defined(CONFIG_C3P_IDENTITY_SUPPORT)
-      case TCode::IDENTITY:     if (_reap_val) {  delete ((Identity*)      _target_mem);  }  break;
-    #endif
-    #if defined(CONFIG_C3P_IMG_SUPPORT)
-      case TCode::IMAGE:        if (_reap_val) {  delete ((Image*)         _target_mem);  }  break;
-    #endif
-      //default:  if (_val_by_ref & _reap_val) {  free(_target_mem);  }  break;
-      default:  if (_reap_val) {  free(_target_mem);  }  break;
+  // Wipe out any chain of siblings.
+  if (nullptr != _next) {
+    C3PValue* a = _next;       // Concurrency measures being taken here. Null
+    _next       = nullptr;     //   the accessible ref prior to deleting it.
+    if (a->reapContainer()) {  // If we SHOULD delete it, that is...
+      delete a;
+    }
+  }
+
+  // Finally, Turn our attention to the data we ourselves hold.
+  // TODO: c3ptype_alloc(uint32_t free_arg) and c3ptype_free(void*) should be
+  //   added to C3PType.
+  if (nullptr != _target_mem) {
+    if (is_ptr_len()) {
+      // Some types have a shim to hold an explicit length, or other data. We
+      //   construe reapValue() to refer to the data itself, and not the shim.
+      //   We will always free the shim.
+      if (reapValue()) {
+        free(((C3PBinBinder*) _target_mem)->buf);  // We might be responsible for this.
+      }
+      free(_target_mem);  // We are always responsible for this.
+    }
+    else if (!_is_val_by_ref()) {
+      if (!_is_ptr_punned()) {
+        // In cases where we allocated the memory by this class for the sake of
+        //   facilitating value-by-copy, we will free it, regardless of what
+        //   reapValue() has to say about it.
+        free(_target_mem);
+      }
+    }
+    else if (reapValue()) {
+      switch (_TCODE) {
+        case TCode::BINARY:
+        case TCode::CBOR:
+          // TODO: These cases should all be ptr-len. Verify. But we don't want
+          //   to be in the default case.
+          break;
+        case TCode::STR_BUILDER:  delete ((StringBuilder*) _target_mem);  break;
+        case TCode::KVP:          delete ((KeyValuePair*)  _target_mem);  break;
+        case TCode::STOPWATCH:    delete ((StopWatch*)     _target_mem);  break;
+      #if defined(CONFIG_C3P_IDENTITY_SUPPORT)
+        case TCode::IDENTITY:     delete ((Identity*)      _target_mem);  break;
+      #endif
+      #if defined(CONFIG_C3P_IMG_SUPPORT)
+        case TCode::IMAGE:        delete ((Image*)         _target_mem);  break;
+      #endif
+        // No destructor semantics. Just free.
+        // TODO: This is dangerous. clarify the scope of this behavior...
+        default:    free(_target_mem);  break;
+      }
     }
   }
   _target_mem = nullptr;
@@ -190,6 +263,7 @@ C3PValue::~C3PValue() {
 * Typed constructors that have nuanced handling, and can't be inlined.
 *******************************************************************************/
 
+// TODO: This is no longer necessary.
 C3PValue::C3PValue(float val) : C3PValue(TCode::FLOAT, nullptr) {
   uint8_t* src = (uint8_t*) &val;                  // To avoid inducing bugs
   *(((uint8_t*) &_target_mem) + 0) = *(src + 0);   //   related to alignment,
@@ -204,7 +278,6 @@ C3PValue::C3PValue(float val) : C3PValue(TCode::FLOAT, nullptr) {
 *   owned by this class.
 */
 C3PValue::C3PValue(char* val) : C3PValue(TCode::STR, nullptr) {
-  bool failure = true;
   if (nullptr != val) {
     const uint32_t VAL_LENGTH = strlen(val);
     _target_mem = malloc(VAL_LENGTH + 1);
@@ -212,16 +285,20 @@ C3PValue::C3PValue(char* val) : C3PValue(TCode::STR, nullptr) {
       memcpy(_target_mem, val, VAL_LENGTH);
       *((char*)_target_mem + VAL_LENGTH) = 0;
       reapValue(true);
-      failure = false;
     }
-  }
-  if (failure) {
-    // TODO: Log? Set error bit? Same issue as in the base constructor...
+    else {  _set_mem_fault();  }
   }
 }
 
 
+/*
+* Construction from ptr-len will never deep-copy. So if that is desirable, the caller
+*   should pass in a pointer it has ownership of and optionally call
+*   reapValue(true) to relinquishing ownership to this class.
+*/
 C3PValue::C3PValue(uint8_t* val, uint32_t len) : C3PValue(TCode::BINARY, nullptr) {
+  // The main constructor will have handled allocating the C3PBinBinder struct,
+  //   which we will always be responsible for.
   if (nullptr != _target_mem) {
     ((C3PBinBinder*) _target_mem)->buf   = (uint8_t*) val;
     ((C3PBinBinder*) _target_mem)->len   = len;
@@ -242,6 +319,52 @@ bool C3PValue::is_ptr_len() {
 }
 
 
+// TODO: Until the rules are settled, this function translates _target_mem into
+//   the expected reference for the given type. This function should ultimately
+//   reduce into simple flag comparisons.
+void* C3PValue::_type_pun_get() {
+  if (_chk_flags(C3PVAL_MEM_FLAG_PUNNED_PTR) & !_chk_flags(C3PVAL_MEM_FLAG_VALUE_BY_REF)) {
+    return &_target_mem;
+  }
+  else {
+    return _target_mem;
+  }
+}
+
+// TODO: Until the rules are settled, this function translates _target_mem into
+//   the expected reference for the given type. This function should ultimately
+//   reduce into simple flag comparisons.
+void* C3PValue::_type_pun_set() {
+  switch (_TCODE) {
+    case TCode::VECT_3_INT8:
+    case TCode::VECT_3_INT16:
+    case TCode::VECT_3_INT32:
+    case TCode::VECT_3_UINT8:
+    case TCode::VECT_3_UINT16:
+    case TCode::VECT_3_UINT32:
+    case TCode::VECT_3_FLOAT:
+    case TCode::VECT_3_DOUBLE:
+      return _target_mem;
+    default:  break;
+  }
+
+  if (_chk_flags(C3PVAL_MEM_FLAG_PUNNED_PTR)) {
+    // Any data that fits into the pointer itself will want a pointer to
+    //   _target_mem as its dest argument to a set() fxn.
+    return &_target_mem;
+  }
+  else if (!_is_val_by_ref()) {
+    // Value-by-copy data that didn't fit inside void* will have been indirected
+    //   into a separate allocation. Return that pointer.
+    return _target_mem;
+  }
+  else {
+    return &_target_mem;
+  }
+}
+
+
+
 /*******************************************************************************
 * Basal accessors
 * These functions ultimately wrap the C3PTypeConstraint template that handles
@@ -251,7 +374,7 @@ int8_t C3PValue::set_from(const TCode SRC_TYPE, void* src) {
   int8_t ret = -1;
   C3PType* t_helper = getTypeHelper(_TCODE);
   if (nullptr != t_helper) {
-    ret = t_helper->set_from(_type_pun(), SRC_TYPE, src);
+    ret = t_helper->set_from(_type_pun_set(), SRC_TYPE, src);
   }
   if (0 == ret) {
     _set_trace++;
@@ -261,23 +384,14 @@ int8_t C3PValue::set_from(const TCode SRC_TYPE, void* src) {
 
 
 int8_t C3PValue::set(C3PValue* src) {
-  int8_t ret = -1;
-  C3PType* t_helper = getTypeHelper(_TCODE);
-  if (nullptr != t_helper) {
-    // NOTE: Private member accessed laterally...
-    ret = t_helper->set_from(_type_pun(), src->tcode(), src->_type_pun());
-  }
-  if (0 == ret) {
-    _set_trace++;
-  }
-  return ret;
+  return ((nullptr == src) ? -2 : set_from(src->tcode(), src->_type_pun_get()));
 }
 
 int8_t C3PValue::get_as(const TCode DEST_TYPE, void* dest) {
   int8_t ret = -1;
   C3PType* t_helper = getTypeHelper(_TCODE);
   if (nullptr != t_helper) {
-    ret = t_helper->get_as(_type_pun(), DEST_TYPE, dest);
+    ret = t_helper->get_as(_type_pun_get(), DEST_TYPE, dest);
   }
   return ret;
 }
@@ -393,7 +507,7 @@ C3PBinBinder C3PValue::get_as_ptr_len(int8_t* success) {
   else {
     // TODO: This ought to properly coerce any not ptr/len into such a
     //   representation. But it is untested.
-    ret.buf = (uint8_t*) _type_pun();
+    ret.buf = (uint8_t*) _type_pun_get();
     ret.len = length();
   }
 
@@ -401,28 +515,177 @@ C3PBinBinder C3PValue::get_as_ptr_len(int8_t* success) {
   return ret;
 }
 
+KeyValuePair* C3PValue::get_as_kvp() {
+  return (has_key()) ? (KeyValuePair*) this : nullptr;
+}
+
 
 /*******************************************************************************
-* Parsing/Packing
+* Accessors for linkage to parallel data.
 *******************************************************************************/
-int8_t C3PValue::serialize(StringBuilder* output, const TCode FORMAT) {
+
+/**
+* @return [description]
+*/
+C3PValue* C3PValue::valueWithIdx(uint32_t idx) {
+  switch (idx) {
+    case 0:
+      return this;   // Terminus of recursion for valid parameters.
+    default:
+      if (nullptr != _next) {
+        return _next->valueWithIdx(idx-1);
+      }
+      return nullptr;  // Terminus of recursion for parameters greater than the list's cardinality.
+  }
+}
+
+
+/**
+*
+* @param  idx      The KeyValuePair position
+* @param  trg_buf  A pointer to the place where we should write the result.
+* @return 0 on success or appropriate failure code.
+*/
+int8_t C3PValue::valueWithIdx(uint32_t idx, void* trg_buf) {
   int8_t ret = -1;
-  C3PType* t_helper = getTypeHelper(_TCODE);
-  if (nullptr != t_helper) {
-    ret = t_helper->serialize(_type_pun(), output, FORMAT);
+  C3PValue* val_container = valueWithIdx(idx);
+  if (nullptr != val_container) {
+    ret = val_container->get_as(val_container->tcode(), trg_buf);
   }
   return ret;
 }
 
 
-//int8_t C3PValue::deserialize(StringBuilder* input, const TCode FORMAT) {
-//  int8_t ret = -1;
-//  C3PType* t_helper = getTypeHelper(_TCODE);
-//  if (nullptr != t_helper) {
-//    ret = t_helper->deserialize(_type_pun(), input, FORMAT);
-//  }
-//  return ret;
-//}
+/* Return the next sibling object that is a KVP. */
+KeyValuePair* C3PValue::_next_sib_with_key() {
+  C3PValue* tmp_val = _next;
+  while (nullptr != tmp_val) {
+    // Skip anything that doesn't have a key.
+    if (tmp_val->has_key()) {
+      return (KeyValuePair*) tmp_val;  // Bimodal type hack.
+    }
+    tmp_val = tmp_val->_next;
+  }
+  return nullptr;
+}
+
+
+
+/**
+* @param linked_val is the value to link as a sibling.
+*/
+C3PValue* C3PValue::link(C3PValue* linked_val, bool reap_cont) {
+  if (nullptr == _next) {
+    if (nullptr != linked_val) {
+      linked_val->reapContainer(reap_cont);
+    }
+    _next = linked_val;
+  }
+  else {
+    _next->link(linked_val, reap_cont);
+  }
+  return linked_val;
+}
+
+/**
+* @return The number of sibling values.
+*/
+uint32_t C3PValue::count() {
+  return (1 + ((nullptr == _next) ? 0 : _next->count()));
+}
+
+
+/**
+* Given an C3PValue pointer, finds that pointer and drops it from the list.
+* TODO: There is a potential for a memory leak here. Need to explicitly call
+*   destructors if reapContainer() is true.
+*
+* @param  drop  The C3PValue to drop.
+* @return       0 on success. 1 on warning, -1 on "not found".
+*/
+int8_t C3PValue::drop(C3PValue** prior, C3PValue* drop, bool destruct) {
+  if (this == drop) {
+    // Re-write the prior parameter.
+    if (destruct & reapContainer()) {
+      *prior = nullptr;
+      delete this;
+    }
+    else {
+      *prior = _next;
+    }
+    return 0;
+  }
+  return (_next) ? _next->drop(&_next, drop) : -1;
+}
+
+
+/**
+* Return the RAM use of this KVP.
+* By passing true to deep, the return value will also factor in concealed heap
+*   overhead of the containers themselves.
+* Return value accounts for padding due to alignment constraints.
+* TODO: Does not account for keys.
+*
+* @param deep will also factor in heap overhead of the containers.
+* @return 0 on success, or negative on failure.
+*/
+int C3PValue::memoryCost(bool deep) {
+  // TODO: sizeof(intptr_t) for OVERHEAD_PER_MALLOC is an assumption based on a
+  //   specific build of newlib. Find a way to discover it from the build.
+  const uint32_t OVERHEAD_PER_CLASS  = (has_key() ? sizeof(KeyValuePair) : sizeof(C3PValue));
+  const uint32_t OVERHEAD_EFFECTIVE  = (deep ? OVERHEAD_PER_CLASS : 0);
+  const uint32_t OVERHEAD_PER_MALLOC = (deep ? sizeof(intptr_t) : 0);
+
+  int32_t ret = OVERHEAD_PER_CLASS;
+  ret += OVERHEAD_PER_MALLOC;
+  ret += length();
+  if (nullptr != _next) {
+    ret += _next->memoryCost(deep);
+  }
+  return ret;
+}
+
+
+
+/*******************************************************************************
+* Parsing/Packing
+*******************************************************************************/
+/*
+* This is the choke point for all serialization calls on data held by C3P's type
+*   system.
+*/
+int8_t C3PValue::serialize(StringBuilder* output, const TCode FORMAT) {
+  int8_t ret = -1;
+  // Use an intermediary StringBuilder so we can collapse the strings a
+  //   bit more neatly.
+  StringBuilder local_out_buffer;
+
+  // This object might have a number of attributes that will impact how it is
+  //   serialized.
+  // 1. It might have a key. In which case, let KVP do the work.
+  if (has_key()) {
+    ret = ((KeyValuePair*) this)->serialize(output, FORMAT);
+  }
+  else {
+    C3PType* t_helper = getTypeHelper(_TCODE);
+    if (nullptr != t_helper) {
+      ret = t_helper->serialize(_type_pun_get(), output, FORMAT);
+    }
+  }
+
+  // 2. It might be a compound value. This distinction is meaningless to the
+  //      memory layout, but is the difference between it being communicated
+  //      as a sequence of unrelated values, or a related group.
+  if (isCompound()) {
+
+  }
+
+  if (!local_out_buffer.isEmpty()) {
+    local_out_buffer.string();  // Consolidate the heap.
+    output->concatHandoff(&local_out_buffer);
+  }
+  return ret;
+}
 
 
 /*
@@ -431,7 +694,9 @@ uint32_t C3PValue::length() {
   uint32_t ret = 0;
   C3PType* t_helper = getTypeHelper(_TCODE);
   if (nullptr != t_helper) {
-    ret = t_helper->length(_type_pun());
+    // NOTE: This works reliably because any types copied into _target_mem that
+    //   are NOT pointers will also be fixed length.
+    ret = t_helper->length(_target_mem);
   }
   return ret;
 }
@@ -449,8 +714,8 @@ void C3PValue::toString(StringBuilder* out, bool include_type) {
   }
   C3PType* t_helper = getTypeHelper(_TCODE);
   if (nullptr != t_helper) {
-    t_helper->to_string(_type_pun(), out);
-    //out->concatf("%08x", _type_pun());
+    t_helper->to_string(_type_pun_get(), out);
+    //out->concatf("%08x", _type_pun_get());
   }
   else {
     const uint32_t L_ENDER = length();
@@ -459,6 +724,28 @@ void C3PValue::toString(StringBuilder* out, bool include_type) {
     }
   }
 }
+
+
+
+/*
+* Warning: call is propagated across entire list.
+*/
+void C3PValue::printDebug(StringBuilder* out) {
+  StringBuilder tmp;
+  tmp.concatf("\t%10s %5s %5s %5s\t",
+    (has_key() ?((KeyValuePair*) this)->getKey() : ""),
+    "",   //(_reap_key()     ? "(key)" : ""),
+    (reapContainer() ? "(con)" : ""),
+    (reapValue()     ? "(val)" : "")
+  );
+  toString(&tmp, true);
+  tmp.concat('\n');
+  tmp.string();
+  out->concatHandoff(&tmp);
+  if (nullptr !=  _next)  _next->printDebug(out);
+}
+
+
 
 
 
@@ -519,7 +806,9 @@ C3PValue* C3PValueDecoder::next(bool consume_unparsable) {
   uint32_t length_taken = 0;
   C3PValue* value = _next(&length_taken);
   const bool SHOULD_CULL = ((nullptr != value) | consume_unparsable);
-  if (SHOULD_CULL) {  _in->cull(length_taken);  }
+  if (SHOULD_CULL) {
+    _in->cull(length_taken);
+  }
   return value;
 }
 
@@ -705,6 +994,7 @@ C3PValue* C3PValueDecoder::_next(uint32_t* offset) {
 
 C3PValue* C3PValueDecoder::_handle_array(uint32_t* offset, uint32_t len) {
   C3PValue* value = nullptr;
+  c3p_log(LOG_LEV_ERROR, LOCAL_LOG_TAG, "CBOR arrays aren't yet supported.");
   return value;
 }
 
@@ -714,8 +1004,7 @@ C3PValue* C3PValueDecoder::_handle_array(uint32_t* offset, uint32_t len) {
 */
 C3PValue* C3PValueDecoder::_handle_map(uint32_t* offset, uint32_t count) {
   const uint32_t INPUT_LEN = _in->length();
-  C3PValue*     ret = nullptr;
-  KeyValuePair* kvp = nullptr;
+  KeyValuePair* ret = nullptr;
   uint32_t local_offset    = *offset;
   uint32_t len_key         = 0;
   bool bailout = false;
@@ -735,27 +1024,52 @@ C3PValue* C3PValueDecoder::_handle_map(uint32_t* offset, uint32_t count) {
           if ((int32_t) len_key == _in->copyToBuffer(buf_key, len_key, local_offset)) {
             local_offset += len_key;
             // Now the dangerous part. Recurse into next(), and parse out the
-            //  next C3PValue. If it came back non-null, then it means the buffer
-            //  was consumed up-to the point where the object became fully-defined.
+            //  next C3PValue.
             C3PValue* value = _next(&local_offset);
             if (nullptr != value) {
-              KeyValuePair* new_kvp = new KeyValuePair(
-                (char*) buf_key, value,
-                (C3P_KVP_FLAG_REAP_KVP | C3P_KVP_FLAG_REAP_KEY | C3P_KVP_FLAG_REAP_CNTNR)
-              );
-              if (nullptr == new_kvp) {
-                delete value;      // A memory error forced removal.
+              // If it came back non-null, then it means the buffer was consumed
+              //   up-to the point where the object became fully-defined.
+              KeyValuePair* tmp_kvp = nullptr;
+              if (!value->memError()) {
+                // TODO: Implement isCompound() instead of this mess.
+                if (value->has_key()) {
+                  // We have to reallocate the container to allow for a key.
+                  tmp_kvp = new KeyValuePair((char*) buf_key, (KeyValuePair*) value);
+                  if (tmp_kvp) {
+                    tmp_kvp->reapContainer(true);
+                    tmp_kvp->reapValue(true);
+                    value = nullptr;  // We claim the object.
+                  }
+                }
+                else {
+                  tmp_kvp = new KeyValuePair(
+                    value->tcode(), (char*) buf_key,
+                    (C3PVAL_MEM_FLAG_REAP_VALUE | C3PVAL_MEM_FLAG_REAP_KEY | C3PVAL_MEM_FLAG_REAP_CNTNR)
+                  );
+                  if (tmp_kvp) {
+                    const int8_t SET_RET = tmp_kvp->set(value);
+                    if (0 == SET_RET) {
+                      // We might have just taken something with its own
+                      //   life-cycle from the parser. We don't want it to be
+                      //   free'd when its container is reaped.
+                      value->reapValue(false);
+                    }
+                  }
+                }
               }
-              else if (new_kvp->hasError()) {
-                delete new_kvp;  // NOTE: Careful... The KVP owned the value.
-              }
-              else if (nullptr != kvp) {
-                kvp->link(new_kvp, true);
+
+              if (nullptr != tmp_kvp) {
+                if (nullptr == ret) {
+                  ret = tmp_kvp;
+                }
+                else {
+                  ret->link(tmp_kvp, true);
+                }
                 bailout = false;
               }
-              else {
-                kvp = new_kvp;
-                bailout = false;
+
+              if (nullptr != value) {
+                delete value;
               }
             }
           }
@@ -763,28 +1077,22 @@ C3PValue* C3PValueDecoder::_handle_map(uint32_t* offset, uint32_t count) {
       }
     }
     count--;
+    //c3p_log(LOG_LEV_DEBUG, LOCAL_LOG_TAG, "Bailout: %c with %u left to go.\n", (bailout ? 'y':'n'), count);
   }
 
   if (bailout) {
-    if (nullptr != kvp) {  delete kvp;  }
-    kvp = nullptr;
+    if (nullptr != ret) {  delete ret;  }
+    ret = nullptr;
   }
   else {
-    if (nullptr != kvp) {
-      ret = new C3PValue(kvp);
-      if (nullptr != ret) {
-        ret->reapValue(true);
-        *offset = local_offset;    // Indicate success by updating the offset.
-      }
-      else {
-        delete kvp;
-      }
+    if (nullptr != ret) {
+      *offset = local_offset;    // Indicate success by updating the offset.
     }
     else {
       c3p_log(LOG_LEV_DEBUG, LOCAL_LOG_TAG, "_handle_map(%u, %u) didn't bail out, but also didn't return a KVP.", *offset, count);
     }
   }
-  return ret;
+  return (C3PValue*) ret;
 }
 
 
@@ -800,12 +1108,15 @@ C3PValue* C3PValueDecoder::_handle_tag(uint32_t* offset, C3PType* t_helper) {
     if (5 == MAJOR) {  // If so, invest the time reading it.
       C3PValue* kvp_val = _next(&local_offset);
       if (nullptr != kvp_val) {
-        KeyValuePair* kvp = nullptr;
-        if (0 == kvp_val->get_as(&kvp)) {
+        if (kvp_val->has_key()) {
           // We got a KVP.
+          KeyValuePair* kvp = (KeyValuePair*) kvp_val;
           void* obj_ret = nullptr;
-          if (0 == t_helper->construct(&obj_ret, kvp)) {
-            ret = new C3PValue(t_helper->TCODE, obj_ret);
+          if (0 == t_helper->construct(&obj_ret, (KeyValuePair*) kvp_val)) {
+            // Any C3PValue objects created by this function will be heap-resident, and
+            //   should be marked as such.
+            const uint8_t MEM_FLGS = (C3PVAL_MEM_FLAG_REAP_CNTNR | C3PVAL_MEM_FLAG_REAP_VALUE);
+            ret = new C3PValue(t_helper->TCODE, obj_ret, MEM_FLGS);
           }
           else {
             c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "KVP construction failed for type (%s).", t_helper->NAME);
@@ -814,7 +1125,10 @@ C3PValue* C3PValueDecoder::_handle_tag(uint32_t* offset, C3PType* t_helper) {
         else {
           c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "Unhandled encoding for %s (%s).", t_helper->NAME, typecodeToStr(kvp_val->tcode()));
         }
-        delete kvp_val;
+
+        if (nullptr != kvp_val) {
+          delete kvp_val;
+        }
       }
       // Not enough bytes of input, presumably...
     }

@@ -29,28 +29,69 @@ This program tests C3PType, which is C3P's internal manifest of types and their
 * C3PType test routines
 *******************************************************************************/
 
-int c3p_type_wrapping_basics() {
-  int ret = 0;  // TODO
-  return ret;
-}
 
 
-int c3p_type_test_type_conversion() {
-  int ret = 0;  // TODO
-  return ret;
-}
+/*******************************************************************************
+* C3PType test plan
+*******************************************************************************/
+#define CHKLST_C3PTYPE_TEST_PRIMITIVES    0x00000001  // Basal types with no memory implications.
+#define CHKLST_C3PTYPE_TEST_VECTORS       0x00000002  //
+#define CHKLST_C3PTYPE_TEST_STRINGS       0x00000004  //
+#define CHKLST_C3PTYPE_TEST_KVP           0x00000008  //
+#define CHKLST_C3PTYPE_TEST_IDENTITY      0x00000010  //
+#define CHKLST_C3PTYPE_TEST_BLOBS         0x00000020  //
+
+#define CHKLST_C3PTYPE_TEST_ALL ( \
+  CHKLST_C3PTYPE_TEST_PRIMITIVES | CHKLST_C3PTYPE_TEST_VECTORS | \
+  CHKLST_C3PTYPE_TEST_STRINGS | CHKLST_C3PTYPE_TEST_KVP | \
+  CHKLST_C3PTYPE_TEST_IDENTITY | CHKLST_C3PTYPE_TEST_BLOBS)
+
+const StepSequenceList TOP_LEVEL_C3PTYPE_TEST_LIST[] = {
+  { .FLAG         = CHKLST_C3PTYPE_TEST_PRIMITIVES,
+    .LABEL        = "Primitives",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }
+  },
+  { .FLAG         = CHKLST_C3PTYPE_TEST_VECTORS,
+    .LABEL        = "Vectors",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }
+  },
+  { .FLAG         = CHKLST_C3PTYPE_TEST_STRINGS,
+    .LABEL        = "String types",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }
+  },
+  { .FLAG         = CHKLST_C3PTYPE_TEST_KVP,
+    .LABEL        = "KeyValuePair",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }
+  },
+  { .FLAG         = CHKLST_C3PTYPE_TEST_IDENTITY,
+    .LABEL        = "Identity",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }
+  },
+  { .FLAG         = CHKLST_C3PTYPE_TEST_BLOBS,
+    .LABEL        = "Big lists of bytes",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return 1;  }
+  },
+};
+
+AsyncSequencer c3ptype_test_plan(TOP_LEVEL_C3PTYPE_TEST_LIST, (sizeof(TOP_LEVEL_C3PTYPE_TEST_LIST) / sizeof(TOP_LEVEL_C3PTYPE_TEST_LIST[0])));
 
 
-int c3p_type_test_packing() {
-  int ret = 0;  // TODO
-  return ret;
-}
 
-
-int c3p_type_test_parsing() {
-  int ret = 0;  // TODO
-  return ret;
-}
+/*******************************************************************************
+* The main function.
+*******************************************************************************/
 
 void print_types_c3p_type() {
   printf("\tvoid*                    %u\t%u\n", sizeof(void*),  alignof(void*));
@@ -64,27 +105,18 @@ void print_types_c3p_type() {
 }
 
 
-/*******************************************************************************
-* The main function.
-*******************************************************************************/
 int c3p_type_test_main() {
-  int ret = -1;   // Failure is the default result.
   const char* const MODULE_NAME = "C3PType";
   printf("===< %s >=======================================\n", MODULE_NAME);
 
-  if (0 == c3p_type_wrapping_basics()) {
-    if (0 == c3p_type_test_type_conversion()) {
-      if (0 == c3p_type_test_packing()) {
-        if (0 == c3p_type_test_parsing()) {
-          ret = 0;
-        }
-        else printTestFailure(MODULE_NAME, "Type parsing");
-      }
-      else printTestFailure(MODULE_NAME, "Type packing");
-    }
-    else printTestFailure(MODULE_NAME, "Type conversion");
+  c3ptype_test_plan.requestSteps(CHKLST_C3PTYPE_TEST_ALL);
+  while (!c3ptype_test_plan.request_completed() && (0 == c3ptype_test_plan.failed_steps(false))) {
+    c3ptype_test_plan.poll();
   }
-  else printTestFailure(MODULE_NAME, "Basics");
+  int ret = (c3ptype_test_plan.request_fulfilled() ? 0 : 1);
 
+  StringBuilder report_output;
+  c3ptype_test_plan.printDebug(&report_output, "C3PValue test report");
+  printf("%s\n", (char*) report_output.string());
   return ret;
 }

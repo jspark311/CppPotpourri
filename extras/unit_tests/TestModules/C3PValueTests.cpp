@@ -190,6 +190,11 @@ int c3p_value_test_vectors() {
     generate_random_float(),
     generate_random_float()
   );
+  Vector3<float> test_set(
+    generate_random_float(),
+    generate_random_float(),
+    generate_random_float()
+  );
   C3PValue value_3float(&test_3float);
 
   printf("\tConstruction semantics for (Vector3f*)...\n\t\tHas proper length (%u)... ", 12);
@@ -201,8 +206,16 @@ int c3p_value_test_vectors() {
       if (!value_3float.reapValue()) {
         printf("Pass\n\t\tThe contents of the wrapped vector match those of the original... ");
         if (test_3float == ret_3float) {
-          printf("Pass\n\t\tAll (Vector3f*) tests pass.\n");
-          ret = 0;
+          printf("Pass\n\t\tset() works for the native type... ");
+          Vector3<float> test_set(
+            generate_random_float(),
+            generate_random_float(),
+            generate_random_float()
+          );
+          if (0 == value_3float.set(&test_set)) {
+            printf("Pass\n\t\tAll (Vector3f*) tests pass.\n");
+            ret = 0;
+          }
         }
       }
     }
@@ -348,9 +361,9 @@ int c3p_value_test_blobs() {
         printf("Pass\n\t\tIs properly marked as no-reap... ");
         if (!value_blob.reapValue()) {
           printf("Pass\n\t\tAll (pointer-length) tests pass.\n");
-          StringBuilder output;
-          value_blob.toString(&output);
-          printf("%s\n", (char*) output.string());
+          //StringBuilder output;
+          //value_blob.toString(&output);
+          //printf("%s\n", (char*) output.string());
           ret = 0;
         }
       }
@@ -365,10 +378,98 @@ int c3p_value_test_blobs() {
 
 
 /*
+* Test the timer aspects. That means StopWatch and C3PTrace.
+*/
+int c3p_value_test_timer_types() {
+  int ret = -1;
+  // Fill out a StopWatch (with a random tag) to test with. Then wrap it into a
+  //   C3PValue object in preparation for export.
+  const uint32_t STOPWATCH_CYCLES    = (15 + (randomUInt32() % 14));
+  const uint32_t STOPWATCH_FUZZ      = (1103 + (randomUInt32() % 140));
+  const uint32_t STOPWATCH_LENGTH    = sizeof(StopWatch);
+  printf("Testing C3PValue wrapping of timer types (Cycles/Fuzz: %u / %u)...\n", STOPWATCH_CYCLES, STOPWATCH_FUZZ);
+  StopWatch test_sw(randomUInt32());
+  for (uint32_t i = 0; i < STOPWATCH_CYCLES; i++) {
+    test_sw.markStart();
+    sleep_us(STOPWATCH_FUZZ);
+    test_sw.markStop();
+  }
+  C3PValue value_sw(&test_sw);
+  StringBuilder packed;
+  C3PValue* deser_val = nullptr;
+
+  printf("\tConstruction semantics for (StopWatch*)...\n\t\tHas proper length (%u)... ", STOPWATCH_LENGTH);
+  if (value_sw.length() == STOPWATCH_LENGTH) {
+    printf("Pass\n\t\tCan fetch with no conversion... ");
+    StopWatch* ret_sw = nullptr;
+    if (0 == value_sw.get_as(&ret_sw)) {
+      printf("Pass\n\t\tValue object pointer (%p) indicates value-by-reference operation... ", &test_sw);
+      if ((void*) ret_sw == (void*) &test_sw) {
+        printf("Pass\n\t\tIs properly marked as no-reap... ");
+        if (!value_sw.reapValue()) {
+          printf("Pass.\n\t\tStopWatch can be serialized... ");
+          if (0 == value_sw.serialize(&packed, TCode::CBOR)) {
+            printf("Pass.\n\t\tStopWatch can be deserialized... ");
+            //dump_strbldr(&packed);
+            deser_val = C3PValue::deserialize(&packed, TCode::CBOR);
+            if (nullptr != deser_val) {
+              printf("Pass.\n\t\tDeserialized value is a StopWatch... ");
+              ret_sw = nullptr;
+              if ((0 == deser_val->get_as(&ret_sw)) && (nullptr != ret_sw)) {
+                printf("Pass.\n\t\tDeserialized value contains a distict pointer (%p)... ", (void*) ret_sw);
+                if ((void*) ret_sw != (void*) &test_sw) {
+                  printf("Pass.\n\t\tThe source buffer was entirely consumed... ");
+                  if (packed.isEmpty()) {
+                    printf("Pass.\n\t\tDeserialized value is marked for reap (both container and value)... ");
+                    if (deser_val->reapValue() & deser_val->reapContainer()) {
+                      printf("Pass.\n\t\tDeserialized StopWatch matches input... ");
+                      bool pest_tasses = (ret_sw->tag() == test_sw.tag());
+                      pest_tasses &= (ret_sw->bestTime() == test_sw.bestTime());
+                      pest_tasses &= (ret_sw->lastTime() == test_sw.lastTime());
+                      pest_tasses &= (ret_sw->worstTime() == test_sw.worstTime());
+                      pest_tasses &= (ret_sw->meanTime() == test_sw.meanTime());
+                      pest_tasses &= (ret_sw->totalTime() == test_sw.totalTime());
+                      pest_tasses &= (ret_sw->executions() == test_sw.executions());
+                      if (pest_tasses) {
+                        printf("Pass\n\t\tAll (StopWatch) tests pass.\n");
+                        StringBuilder output;
+                        value_sw.toString(&output);
+                        printf("%s\n", (char*) output.string());
+                        ret = 0;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+    printf("=====> source_val:\t");  dump_c3pvalue(&value_sw);
+    if (nullptr != deser_val) {  printf("=====> deser_val:\t");  dump_c3pvalue(deser_val);  }
+    if (!packed.isEmpty()) {     printf("=====> packed:\t");     (char*) packed.string();   }
+  }
+
+  // We are always obliged to clean up anything we've deserialized.
+  if (nullptr != deser_val) {  delete deser_val;  }
+  return ret;
+}
+
+
+
+
+/*
 * The type abstractions in C3P allow for direct pointer transactions with the
 *   memory involved in the storage of types that it wraps. It should thus be
 *   accounting for the possibility of platform alignment requirements that might
 *   not be conducive to direct de-reference.
+* IE, many 32-bit platforms require float to be aligned on 8-byte boundaries,
+*   and some fraction of those platforms will allow void* on 4-byte boundaries.
 * Test the alignment-touchy types for proper handling.
 */
 int c3p_value_test_alignment() {
@@ -555,6 +656,9 @@ int c3p_value_test_alignment() {
   if (0 != ret) {
     printf("Fail.\n");
   }
+  else {
+    printf("\tAll alignment nightmare cases pass.\n");
+  }
   return ret;
 }
 
@@ -564,6 +668,160 @@ int c3p_value_test_type_conversion() {
   int ret = 0;
   return ret;
 }
+
+
+/*
+* C3PValue is also a linked list to facilitate arrays of like types.
+* Make sure that
+*/
+int c3p_value_test_linking() {
+  const uint32_t TEST_LINK_LEN    = (8 + (randomUInt32() % 5));
+  int ret = 0;
+  printf("Testing linking mechanics...\n");
+  printf("\tPreparing test cases... ");
+
+  // Create test_val0:  [uint32, uint32, uint32, uint32, uint32, uint32, uint32, uint32]
+  uint32_t ref_values[TEST_LINK_LEN] = {0};
+  ref_values[0] = randomUInt32();
+  C3PValue test_val0(ref_values[0]);  // This will effectively be test_val0[0].
+
+  ret -= (!test_val0.isCompound() ? 0 : 1);  // Not an array yet...
+  for (uint32_t i = 1; i < TEST_LINK_LEN; i++) {
+    ref_values[i] = randomUInt32();
+    // The return value of link() is uninteresting here, as it will just be whatever
+    //   pointer we passed into it. It was intended to grease this sort of usage.
+    if (nullptr == test_val0.link(new C3PValue(ref_values[i]))) {
+      ret--; // It would be amazing if it failed to allocate...
+    }
+  }
+
+  if (0 == ret) {
+    printf("Pass\n\t\tTest object should have %u siblings... ", TEST_LINK_LEN);
+    ret -= strict_abs_delta(TEST_LINK_LEN, test_val0.count());
+    if (0 == ret) {
+      // Some misuse tests. Simulate an OBO.
+      printf("Pass\n\t\tOOB index returns nullptr... ");
+      ret -= ((nullptr == test_val0.valueWithIdx(TEST_LINK_LEN)) ? 0 : 1);
+      if (0 == ret) {
+        printf("Pass\n\t\tThe values match the references... ");
+        for (uint32_t i = 0; i < TEST_LINK_LEN; i++) {
+          C3PValue* tmp_val = test_val0.valueWithIdx(i);
+          if (nullptr == tmp_val) {
+            ret--;  // Indexing failed failed.
+          }
+          else if (tmp_val->get_as_uint() != ref_values[i]) {   // TODO: Test is not 64-bit portable.
+            ret--;  // Values at given index didn't match.
+          }
+        }
+        if (0 == ret) {
+          printf("Pass\n");
+          // TODO: drop()
+        }
+      }
+    }
+    else printf("It reports %u. ", test_val0.count());
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+    for (uint32_t i = 0; i < TEST_LINK_LEN; i++) {
+      C3PValue* tmp_val = test_val0.valueWithIdx(i);
+      if (nullptr == tmp_val) {
+        printf("\t%10u  (nullptr)\n", ref_values[i]);
+      }
+      else {
+        printf("\t%10u  %10u\n", ref_values[i], tmp_val->get_as_uint());
+      }
+    }
+  }
+
+  return ret;
+}
+
+/*
+* C3P supports heterogenous arrays internally, but it probably shouldn't officially to avoid
+*   confusion and complexity. Thus, the array's underlying type may eventually be dictated
+*   by the tcode() used to create the first Value. Violation of this convention is discretionary.
+*/
+int c3p_value_test_nested_arrays() {
+  const uint32_t TEST_LINK_LEN0    = (8 + (randomUInt32() % 5));
+  const uint32_t TEST_LINK_LEN1    = (8 + (randomUInt32() % 5));
+  const uint32_t TEST_LINK_LEN_TOP = 2;
+  int ret = 0;
+  printf("Testing nested arrays...\n");
+  printf("\tPreparing test cases... ");
+  // Create test_val0:  [uint32, uint32, uint32, uint32, uint32, uint32, uint32, uint32]
+  // Create test_val1:  [int16, int16, int16, int16, int16, int16, int16, int16]
+  // Create top_val:    [test_val0, test_val1]
+  uint32_t ref_values0[TEST_LINK_LEN0] = {0};
+  int16_t  ref_values1[TEST_LINK_LEN1] = {0};
+  ref_values0[0] = randomUInt32();
+  ref_values1[0] = (int16_t) randomUInt32();
+  C3PValue test_val0(ref_values0[0]);  // This will effectively be test_val0[0].
+  C3PValue test_val1(ref_values1[0]);  // This will effectively be test_val1[0].
+  for (uint32_t i = 1; i < strict_max(TEST_LINK_LEN0, TEST_LINK_LEN1); i++) {
+    if (TEST_LINK_LEN0 > i) {
+      ref_values0[i] = randomUInt32();
+      if (nullptr == test_val0.link(new C3PValue(ref_values0[i]))) {
+        ret--; // It would be amazing if it failed to allocate...
+      }
+    }
+    if (TEST_LINK_LEN1 > i) {
+      ref_values1[i] = (int16_t) randomUInt32();
+      if (nullptr == test_val1.link(new C3PValue(ref_values1[i]))) {
+        ret--; // It would be amazing if it failed to allocate...
+      }
+    }
+  }
+
+  C3PValue top_val(&test_val0);  // This will effectively be test_val1[0].
+  top_val.link(new C3PValue(&test_val1), false);   // Stack objects shouldn't be explicitly destroyed.
+  if (0 == ret) {
+    printf("Pass\n\t\tSubarrays should have %u and %u siblings... ", TEST_LINK_LEN0, TEST_LINK_LEN1);
+    ret -= strict_abs_delta(TEST_LINK_LEN0, test_val0.count());
+    ret -= strict_abs_delta(TEST_LINK_LEN1, test_val1.count());
+    if (0 == ret) {
+      printf("Pass\n\t\tTop-level array should have %u siblings... ", TEST_LINK_LEN_TOP);
+      ret -= strict_abs_delta(TEST_LINK_LEN_TOP, top_val.count());
+      if (0 == ret) {
+        printf("Pass\n\t\tThe values match the references... ");
+        for (uint32_t i = 0; i < strict_max(TEST_LINK_LEN0, TEST_LINK_LEN1); i++) {
+          if (TEST_LINK_LEN0 > i) {
+            C3PValue* tmp_val0 = test_val0.valueWithIdx(i);
+            if (nullptr == tmp_val0) {
+              ret--;  // Indexing failed failed.
+            }
+            else if (tmp_val0->get_as_uint() != ref_values0[i]) {   // TODO: Test is not 64-bit portable.
+              ret--;  // Values at given index didn't match.
+            }
+          }
+          if (TEST_LINK_LEN1 > i) {
+            C3PValue* tmp_val1 = test_val1.valueWithIdx(i);
+            if (nullptr == tmp_val1) {
+              ret--;  // Indexing failed failed.
+            }
+            else if (tmp_val1->get_as_int() != ref_values1[i]) {
+              ret--;  // Values at given index didn't match.
+            }
+          }
+        }
+        if (0 == ret) {
+          printf("Pass\n");
+          // TODO: drop()
+        }
+      }
+    }
+    else printf("They report %u and %u. ", test_val0.count(), test_val1.count());
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
+
+  return ret;
+}
+
+
 
 
 int c3p_value_test_packing_parsing(const TCode FORMAT) {
@@ -591,6 +849,7 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
   //   null-terminator for a C-style string.
   generate_random_text_buffer(&TEST_VAL_STRING,  (TEST_BUF_LEN-1));
   generate_random_text_buffer(&TEST_VAL_STRBLDR, (TEST_BUF_LEN-1));
+  char*          TEST_VAL_STR_PTR = (char*) TEST_VAL_STRING.string();
 
   bool     parsed_val_bool    = !TEST_VAL_BOOL;
   uint8_t  parsed_val_uint8   = 0;
@@ -618,22 +877,22 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
   C3PValue test_val_int64(TEST_VAL_INT64);
   C3PValue test_val_float(TEST_VAL_FLOAT);
   C3PValue test_val_double(TEST_VAL_DOUBLE);
-  C3PValue test_val_string((char*) TEST_VAL_STRING.string());
+  C3PValue test_val_string(TEST_VAL_STR_PTR);
   //C3PValue test_val_strbldr(&TEST_VAL_STRBLDR);
 
-  KeyValuePair src_kvp("key_bool", TEST_VAL_BOOL);
-  src_kvp.link(new KeyValuePair("key_uint8",  TEST_VAL_UINT8),   true);
-  src_kvp.link(new KeyValuePair("key_int8",   TEST_VAL_INT8),    true);
-  src_kvp.link(new KeyValuePair("key_uint16", TEST_VAL_UINT16),  true);
-  src_kvp.link(new KeyValuePair("key_int16",  TEST_VAL_INT16),   true);
-  src_kvp.link(new KeyValuePair("key_uint32", TEST_VAL_UINT32),  true);
-  src_kvp.link(new KeyValuePair("key_int32",  TEST_VAL_INT32),   true);
-  src_kvp.link(new KeyValuePair("key_uint64", TEST_VAL_UINT64),  true);
-  src_kvp.link(new KeyValuePair("key_int64",  TEST_VAL_INT64),   true);
-  src_kvp.link(new KeyValuePair("key_float",  TEST_VAL_FLOAT),   true);
-  src_kvp.link(new KeyValuePair("key_double", TEST_VAL_DOUBLE),  true);
-  src_kvp.link(new KeyValuePair("key_string", (char*) TEST_VAL_STRING.string()),  true);
-  C3PValue test_val_kvp(&src_kvp);
+  KeyValuePair test_val_kvp("key_bool", TEST_VAL_BOOL);
+  test_val_kvp.isCompound(true);
+  test_val_kvp.link(new KeyValuePair("key_uint8",  TEST_VAL_UINT8),   true);
+  test_val_kvp.link(new KeyValuePair("key_int8",   TEST_VAL_INT8),    true);
+  test_val_kvp.link(new KeyValuePair("key_uint16", TEST_VAL_UINT16),  true);
+  test_val_kvp.link(new KeyValuePair("key_int16",  TEST_VAL_INT16),   true);
+  test_val_kvp.link(new KeyValuePair("key_uint32", TEST_VAL_UINT32),  true);
+  test_val_kvp.link(new KeyValuePair("key_int32",  TEST_VAL_INT32),   true);
+  test_val_kvp.link(new KeyValuePair("key_uint64", TEST_VAL_UINT64),  true);
+  test_val_kvp.link(new KeyValuePair("key_int64",  TEST_VAL_INT64),   true);
+  test_val_kvp.link(new KeyValuePair("key_float",  TEST_VAL_FLOAT),   true);
+  test_val_kvp.link(new KeyValuePair("key_double", TEST_VAL_DOUBLE),  true);
+  //test_val_kvp.link(new KeyValuePair("key_string", TEST_VAL_STR_PTR),  true);
 
   C3PValue* deser_container_bool    = nullptr;
   C3PValue* deser_container_uint8   = nullptr;
@@ -650,7 +909,7 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
   C3PValue* deser_container_strbldr = nullptr;
   C3PValue* deser_container_kvp     = nullptr;
 
-  printf("Pass\n\tSerializing... ");
+  printf("Pass\n\t\tSerializing... ");
   ret += test_val_bool.serialize(&buffer, FORMAT);
   ret += test_val_uint8.serialize(&buffer, FORMAT);
   ret += test_val_int8.serialize(&buffer, FORMAT);
@@ -665,8 +924,9 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
   ret += test_val_string.serialize(&buffer, FORMAT);
   //ret += deser_container_strbldr.serialize(&buffer, FORMAT);
   ret += test_val_kvp.serialize(&buffer, FORMAT);
+
   if (0 == ret) {
-    printf("Pass\n\tDeserializing... ");
+    printf("Pass\n\t\tDeserializing... ");
     deser_container_bool    = C3PValue::deserialize(&buffer, FORMAT);
     deser_container_uint8   = C3PValue::deserialize(&buffer, FORMAT);
     deser_container_int8    = C3PValue::deserialize(&buffer, FORMAT);
@@ -697,7 +957,7 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
     //ret -= (nullptr != deser_container_strbldr) ? 0 : 1;
     ret -= (nullptr != deser_container_kvp)      ? 0 : 1;
     if (0 == ret) {
-      printf("Pass\n\tFetching values from container... ");
+      printf("Pass\n\t\tFetching values from container... ");
       ret -= (0 == deser_container_bool->get_as(&parsed_val_bool))       ? 0 : 1;
       ret -= (0 == deser_container_uint8->get_as(&parsed_val_uint8))     ? 0 : 1;
       ret -= (0 == deser_container_int8->get_as(&parsed_val_int8))       ? 0 : 1;
@@ -711,9 +971,10 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
       ret -= (0 == deser_container_double->get_as(&parsed_val_double))   ? 0 : 1;
       ret -= (0 == deser_container_string->get_as(&parsed_val_string))   ? 0 : 1;
       //ret -= (0 == deser_container_strbldr->get_as(&parsed_val_strbldr)) ? 0 : 1;
-      ret -= (0 == deser_container_kvp->get_as(&parsed_val_kvp))         ? 0 : 1;
+      ret -= (deser_container_kvp->has_key() ? 0 : 1);
       if (0 == ret) {
-        printf("Pass\n\tComparing values... ");
+        parsed_val_kvp = (KeyValuePair*) deser_container_kvp;
+        printf("Pass\n\t\tComparing values... ");
         ret -= (TEST_VAL_BOOL    == parsed_val_bool   ) ? 0 : 1;
         ret -= (TEST_VAL_UINT8   == parsed_val_uint8  ) ? 0 : 1;
         ret -= (TEST_VAL_INT8    == parsed_val_int8   ) ? 0 : 1;
@@ -725,18 +986,18 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
         ret -= (TEST_VAL_INT64   == parsed_val_int64  ) ? 0 : 1;
         ret -= (TEST_VAL_FLOAT   == parsed_val_float  ) ? 0 : 1;
         ret -= (TEST_VAL_DOUBLE  == parsed_val_double ) ? 0 : 1;
-        ret -= (0 == StringBuilder::strcasecmp(parsed_val_string,  (const char*) TEST_VAL_STRING.string()) ) ? 0 : 1;
+        ret -= (0 == StringBuilder::strcasecmp(parsed_val_string,  (const char*) TEST_VAL_STR_PTR) ) ? 0 : 1;
         //ret -= (0 == StringBuilder::strcasecmp(parsed_val_strbldr, (const char*) TEST_VAL_STRBLDR.string())) ? 0 : 1;
 
         // TODO:
         // parsed_val_kvp->containsStructure(&src_kvp);
         // parsed_val_kvp->equals(&src_kvp);
-        if ((nullptr == parsed_val_kvp) || (src_kvp.count() != parsed_val_kvp->count())) {
+        if ((test_val_kvp.count() != parsed_val_kvp->count())) {
           ret--;
         }
 
         if (0 == ret) {
-          printf("Pass\n\tString was fully consumed... ");
+          printf("Pass\n\t\tString was fully consumed... ");
           ret -= buffer.length();
           if (0 == ret) {
             printf("Pass\n");
@@ -765,9 +1026,9 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
   printf("\t%lld / %lld\n", TEST_VAL_INT64,  parsed_val_int64);
   printf("\t%.3f / %.3f\n", TEST_VAL_FLOAT,  parsed_val_float);
   printf("\t%.6f / %.6f\n", TEST_VAL_DOUBLE, parsed_val_double);
-  printf("\t%s / %s\n", TEST_VAL_STRING.string(), (nullptr == parsed_val_string) ? "(null)" : parsed_val_string);
+  printf("\t%s / %s\n", TEST_VAL_STR_PTR, (nullptr == parsed_val_string) ? "(null)" : parsed_val_string);
   printf("Source KVP contents: \n");
-  dump_kvp(&src_kvp);
+  dump_kvp(&test_val_kvp);
   if (nullptr != parsed_val_kvp) {
     printf("Parsed KVP contents: \n");
     dump_kvp(parsed_val_kvp);
@@ -800,19 +1061,23 @@ int c3p_value_test_packing_parsing(const TCode FORMAT) {
 #define CHKLST_C3PVAL_TEST_VECTORS         0x00000002  //
 #define CHKLST_C3PVAL_TEST_STRINGS         0x00000004  //
 #define CHKLST_C3PVAL_TEST_BLOBS           0x00000008  //
-#define CHKLST_C3PVAL_TEST_ALIGNMENT       0x00000010  //
+#define CHKLST_C3PVAL_TEST_TIMER_TYPES     0x00000010  //
 #define CHKLST_C3PVAL_TEST_CONVERSION      0x00000020  //
 #define CHKLST_C3PVAL_TEST_PACK_PARSE_BIN  0x00000040  //
 #define CHKLST_C3PVAL_TEST_PACK_PARSE_CBOR 0x00000080  //
+#define CHKLST_C3PVAL_TEST_ALIGNMENT       0x00000100  //
+#define CHKLST_C3PVAL_TEST_LINKING         0x00000200  //
+#define CHKLST_C3PVAL_TEST_ARRAYS          0x00000400  //
 
 #define CHKLST_C3PVAL_TESTS_BASICS ( \
   CHKLST_C3PVAL_TEST_NUMERICS | CHKLST_C3PVAL_TEST_VECTORS | \
   CHKLST_C3PVAL_TEST_STRINGS | CHKLST_C3PVAL_TEST_BLOBS | \
+  CHKLST_C3PVAL_TEST_TIMER_TYPES | \
   CHKLST_C3PVAL_TEST_ALIGNMENT)
 
 #define CHKLST_C3PVAL_TESTS_ALL ( \
   CHKLST_C3PVAL_TESTS_BASICS | CHKLST_C3PVAL_TEST_CONVERSION | \
-  CHKLST_C3PVAL_TEST_PACK_PARSE_CBOR)
+  CHKLST_C3PVAL_TEST_LINKING | CHKLST_C3PVAL_TEST_PACK_PARSE_CBOR)
 
 const StepSequenceList TOP_LEVEL_C3PVALUE_TEST_LIST[] = {
   { .FLAG         = CHKLST_C3PVAL_TEST_NUMERICS,
@@ -843,6 +1108,13 @@ const StepSequenceList TOP_LEVEL_C3PVALUE_TEST_LIST[] = {
     .POLL_FXN     = []() { return ((0 == c3p_value_test_blobs()) ? 1:-1);  }
   },
 
+  { .FLAG         = CHKLST_C3PVAL_TEST_TIMER_TYPES,
+    .LABEL        = "Timer Types",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_timer_types()) ? 1:-1);  }
+  },
+
   { .FLAG         = CHKLST_C3PVAL_TEST_ALIGNMENT,
     .LABEL        = "Alignment nightmare case",
     .DEP_MASK     = (0),
@@ -856,17 +1128,30 @@ const StepSequenceList TOP_LEVEL_C3PVALUE_TEST_LIST[] = {
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == c3p_value_test_type_conversion()) ? 1:-1);  }
   },
+  { .FLAG         = CHKLST_C3PVAL_TEST_LINKING,
+    .LABEL        = "Linking mechanism",
+    .DEP_MASK     = (CHKLST_C3PVAL_TESTS_BASICS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_linking()) ? 1:-1);  }
+  },
+
+  { .FLAG         = CHKLST_C3PVAL_TEST_ARRAYS,
+    .LABEL        = "Nested arrays",
+    .DEP_MASK     = (CHKLST_C3PVAL_TEST_LINKING | CHKLST_C3PVAL_TEST_CONVERSION),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_value_test_nested_arrays()) ? 1:-1);  }
+  },
 
   { .FLAG         = CHKLST_C3PVAL_TEST_PACK_PARSE_BIN,
     .LABEL        = "Packing and Parsing (BIN)",
-    .DEP_MASK     = (CHKLST_C3PVAL_TESTS_BASICS),
+    .DEP_MASK     = (CHKLST_C3PVAL_TEST_ARRAYS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == c3p_value_test_packing_parsing(TCode::BINARY)) ? 1:-1);  }
   },
 
   { .FLAG         = CHKLST_C3PVAL_TEST_PACK_PARSE_CBOR,
     .LABEL        = "Packing and Parsing (CBOR)",
-    .DEP_MASK     = (CHKLST_C3PVAL_TESTS_BASICS),
+    .DEP_MASK     = (CHKLST_C3PVAL_TEST_ARRAYS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == c3p_value_test_packing_parsing(TCode::CBOR)) ? 1:-1);  }
   },
