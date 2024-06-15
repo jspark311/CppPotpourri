@@ -59,7 +59,7 @@ class TripleAxisCompass : public TripleAxisPipe {
     *
     * @return 0 on success, or -1 on sense mis-match.
     */
-    int8_t pushVector(SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
+    int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
     void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
     CompassErr calibrate();
