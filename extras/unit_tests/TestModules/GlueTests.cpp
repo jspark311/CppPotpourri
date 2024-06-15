@@ -331,6 +331,53 @@ void C3PHeaderTestCase::printDebug(StringBuilder* out) {
 /*
 *
 */
+int c3p_ref_counter_tests() {
+  bool test_failed = true;
+  printf("Running C3PRefCounter tests...\n");
+  const uint16_t INITIAL_REF_COUNT = C3PRefCounter::MAXIMUM_REFS + ((randomUInt32() % 57)|1);
+  C3PRefCounter test_ref_zero;
+  C3PRefCounter test_ref_nonzero(INITIAL_REF_COUNT);
+  printf("\tConstruction semantics are correct... ");
+  if ((0 == test_ref_zero.refCount()) & (INITIAL_REF_COUNT == test_ref_nonzero.refCount())) {
+    printf("Pass.\n\tTrying to decrement a zero count returns true, and the count remains zero... ");
+    if (test_ref_zero.refRelease() && (0 == test_ref_zero.refCount())) {
+      printf("Pass.\n\tThe count can be incremented... ");
+      if (test_ref_zero.refTake() && (1 == test_ref_zero.refCount())) {
+        printf("Pass.\n\tThe count advances to a maximum value of C3PRefCounter::MAXIMUM_REFS (%u)... ", C3PRefCounter::MAXIMUM_REFS);
+        while ((C3PRefCounter::MAXIMUM_REFS > test_ref_zero.refCount()) && test_ref_zero.refTake()) {};
+        if (C3PRefCounter::MAXIMUM_REFS == test_ref_zero.refCount()) {
+          printf("Pass.\n\tNo additional references can be taken past that point... ");
+          if (!test_ref_zero.refTake()) {
+            printf("Pass.\n\tRefs can decrement... ");
+            if (!test_ref_zero.refRelease() && ((C3PRefCounter::MAXIMUM_REFS - 1) == test_ref_zero.refCount())) {
+              printf("Pass.\n\tRefs can decrement all the way to zero before refRelease() returns true... ");
+              while ((1 < test_ref_zero.refCount()) && !test_ref_zero.refRelease()) {};
+              if (1 == test_ref_zero.refCount() && test_ref_zero.refRelease()) {
+                printf("Pass.\n\trefTake() returns false for a C3PRefCounter constructed with a value above C3PRefCounter::MAXIMUM_REFS... ");
+                if (!test_ref_nonzero.refTake() && (INITIAL_REF_COUNT == test_ref_nonzero.refCount())) {
+                  printf("Pass.\n\trefRelease() still works as expected... ");
+                  if (!test_ref_nonzero.refRelease() && ((INITIAL_REF_COUNT - 1) == test_ref_nonzero.refCount())) {
+                    printf("Pass.\n\tC3PRefCounter tests all pass.\n");
+                    test_failed = false;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  if (test_failed) {
+    printf(" Fail.\n");
+  }
+  return (test_failed ? -1 : 0);
+}
+
+
+/*
+*
+*/
 int numeric_helper_tests() {
   int ret = -1;
   printf("Running tests on inline numeric helpers...\n");
@@ -379,7 +426,9 @@ int c3p_header_test_main() {
   printf("===< %s >=======================================\n", MODULE_NAME);
 
   if (0 == numeric_helper_tests()) {
-    ret = 0;
+    if (0 == c3p_ref_counter_tests()) {
+      ret = 0;
+    }
   }
   else printTestFailure(MODULE_NAME, "Numeric helper inlines");
 

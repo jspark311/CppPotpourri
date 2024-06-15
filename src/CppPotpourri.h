@@ -186,4 +186,61 @@ class C3PPollable {
     virtual PollResult poll() =0;
 };
 
+
+/*******************************************************************************
+* This class is intended to be a compositional element that implements
+*   reference-counting. This might be employed for garbage collectors,
+*   wake-locking, or generally any purpose where a class should be notified
+*   when nothing is depending on it.
+* Maximum reference count is somewhat less than 16-bit to give some headroom for
+*   concurrency.
+*******************************************************************************/
+class C3PRefCounter {
+  public:
+    // Constructor.
+    C3PRefCounter(const uint16_t STARTING_COUNT = 0) :
+      _count_locked(false), _ref_count(STARTING_COUNT) {};
+
+    ~C3PRefCounter() {}; // Trivial destructor.
+
+    /**
+    * Releases a reference. Release happens at the dependent edge of the
+    *   semaphore to prevent the count hitting zero in a concurrency race.
+    *
+    * @return true if the reference count was 0 at the end of the call.
+    */
+    bool refRelease() {
+      while (_count_locked) {};
+      _count_locked = true;
+      if (0 < _ref_count) _ref_count--;
+      _count_locked = false;
+      return (0 == _ref_count);
+    };
+
+    /**
+    * Take a reference.
+    *
+    * @return true if the call was noted.
+    */
+    bool refTake() {
+      while (_count_locked) {};
+      if (64000 <= _ref_count) return false;
+      _count_locked = true;
+      _ref_count++;
+      _count_locked = false;
+      return true;
+    };
+
+    inline uint16_t refCount() {    return _ref_count;    };
+
+    static constexpr uint16_t MAXIMUM_REFS = 64000;
+
+
+  protected:
+    bool      _count_locked;
+    uint16_t  _ref_count;
+};
+
+
+
 #endif // __CPPPOTPOURRI_H__
