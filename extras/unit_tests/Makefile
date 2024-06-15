@@ -150,7 +150,7 @@ ANALYZER_FLAGS += --enable=all --report-progress --force
 
 .PHONY: all
 
-all: alltests coverage check
+all: coverage check
 
 %.o : %.cpp
 	$(CXX) -std=$(CPP_STANDARD) $(CXXFLAGS) -c -o $@ $^

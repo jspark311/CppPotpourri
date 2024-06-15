@@ -233,6 +233,7 @@ void printTestFailure(const char* module, const char* test) {
 #include "TestModules/IdentityTest.cpp"
 #include "TestModules/M2MLinkTests.cpp"
 #include "TestModules/ConfRecordTests.cpp"
+#include "TestModules/TripleAxisPipeTests.cpp"
 
 
 /*******************************************************************************
@@ -309,12 +310,12 @@ void printTypeSizes() {
 #define CHKLST_CONF_RECORD            0x00800000  // ConfRecord
 #define CHKLST_TYPE_CONTAINER_TESTS   0x01000000  // C3PType. C3PValue
 #define CHKLST_TIMESERIES_TESTS       0x02000000  // TimeSeries
+#define CHKLST_3_AXIS_PIPE_TESTS      0x40000000  // TripleAxisPipe
 
 #define CHKLST_ELEMENT_POOL_TESTS     0x04000000  // TODO: ElementPool<T>
 #define CHKLST_BUS_QUEUE_TESTS        0x08000000  // TODO:
 #define CHKLST_UNIT_HANDLING_TESTS    0x10000000  // TODO:
 #define CHKLST_GPS_PARSING_TESTS      0x20000000  // TODO:
-#define CHKLST_3_AXIS_PIPE_TESTS      0x40000000  // TODO:
 #define CHKLST_LOGGER_TESTS           0x80000000  // TODO: The logging abstraction.
 
 
@@ -353,7 +354,7 @@ void printTypeSizes() {
 
 #define CHKLST_ALL_TIER_3_TESTS ( \
   CHKLST_TIMESERIES_TESTS | CHKLST_SENSORFILTER_TESTS | \
-  CHKLST_PARSINGCONSOLE_TESTS | \
+  CHKLST_PARSINGCONSOLE_TESTS | CHKLST_3_AXIS_PIPE_TESTS | \
   CHKLST_LOGGER_TESTS | CHKLST_M2MLINK_TESTS | CHKLST_CONF_RECORD)
 
 #define CHKLST_ALL_TESTS ( \
@@ -686,6 +687,18 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == timeseries_tests_main()) ? 1:-1);  }
   },
+
+
+  // Vectors are commonly used for certain purposes, and vector streams are the
+  //   sort of things we don't want to constantly be re-writing. So there is a
+  //   class to construct such pipelienes with contract-bound operation.
+  { .FLAG         = CHKLST_3_AXIS_PIPE_TESTS,
+    .LABEL        = "TripleAxisPipe",
+    .DEP_MASK     = (CHKLST_VECTOR3_TESTS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == tripleaxispipe_tests_main()) ? 1:-1);  }
+  },
+
 
   // TODO: SensorFilter is under tremendous strain right now. It's API and
   //   contract are not finalized, and it will likely undergo fission into
