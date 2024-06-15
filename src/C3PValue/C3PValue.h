@@ -200,15 +200,15 @@ class C3PValue {
     * Getters return T(val) on success or T(val) on failure.
     */
     int8_t   get_as(const TCode DEST_TYPE, void* dest);
-    bool         get_as_bool(int8_t* success = nullptr);
-    unsigned int get_as_uint(int8_t* success = nullptr);
-    int          get_as_int(int8_t* success = nullptr);
-    uint64_t     get_as_uint64(int8_t* success = nullptr);
-    int64_t      get_as_int64(int8_t* success = nullptr);
-    float        get_as_float(int8_t* success = nullptr);
-    double       get_as_double(int8_t* success = nullptr);
-    C3PBinBinder get_as_ptr_len(int8_t* success = nullptr);
-    KeyValuePair* get_as_kvp();
+    bool          get_as_bool(int8_t* success = nullptr);
+    unsigned int  get_as_uint(int8_t* success = nullptr);
+    int           get_as_int(int8_t* success = nullptr);
+    uint64_t      get_as_uint64(int8_t* success = nullptr);
+    int64_t       get_as_int64(int8_t* success = nullptr);
+    float         get_as_float(int8_t* success = nullptr);
+    double        get_as_double(int8_t* success = nullptr);
+    C3PBinBinder  get_as_ptr_len(int8_t* success = nullptr);
+    KeyValuePair* get_as_kvp(int8_t* success = nullptr);
 
     inline int8_t get_as(uint8_t* x) {      return get_as(TCode::UINT8,         (void*) x);  };
     inline int8_t get_as(uint16_t* x) {     return get_as(TCode::UINT16,        (void*) x);  };

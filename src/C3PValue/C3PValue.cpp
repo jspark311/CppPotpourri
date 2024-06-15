@@ -515,8 +515,11 @@ C3PBinBinder C3PValue::get_as_ptr_len(int8_t* success) {
   return ret;
 }
 
-KeyValuePair* C3PValue::get_as_kvp() {
-  return (has_key()) ? (KeyValuePair*) this : nullptr;
+KeyValuePair* C3PValue::get_as_kvp(int8_t* success) {
+  KeyValuePair* ret = nullptr;
+  int8_t suc = get_as(TCode::KVP, (void*) &ret) + 1;
+  if (success) {  *success = suc;  }
+  return ret;
 }
 
 
