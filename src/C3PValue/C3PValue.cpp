@@ -606,12 +606,10 @@ uint32_t C3PValue::count() {
 int8_t C3PValue::drop(C3PValue** prior, C3PValue* drop, bool destruct) {
   if (this == drop) {
     // Re-write the prior parameter.
+    *prior = _next;
+    _next = nullptr;
     if (destruct & reapContainer()) {
-      *prior = nullptr;
       delete this;
-    }
-    else {
-      *prior = _next;
     }
     return 0;
   }

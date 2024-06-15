@@ -309,7 +309,7 @@ class GfxUILayout {
 *******************************************************************************/
 class GfxUIElement : public GfxUILayout {
   public:
-    virtual ~GfxUIElement() {};
+    virtual ~GfxUIElement();
 
     void enableFrames(uint32_t frame_flags = GFXUI_FLAG_DRAW_FRAME_MASK) {
       _class_clear_flag(GFXUI_FLAG_DRAW_FRAME_MASK);
@@ -381,6 +381,8 @@ class GfxUIElement : public GfxUILayout {
 
     int _add_child(GfxUIElement*);
     int _remove_child(GfxUIElement*);
+    void _remove_all_children();
+
     //int8_t _reflow(GfxUILayout);   // TODO: Now that layouts are working well, automate their flows.
 
     /* These are the obligate overrides. */

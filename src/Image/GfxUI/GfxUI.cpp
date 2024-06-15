@@ -74,6 +74,10 @@ GfxUIElement::GfxUIElement(GfxUILayout* layout, GfxUIStyle* style, uint32_t f) :
   _flags(f | GFXUI_FLAG_NEED_RERENDER) {}
 
 
+GfxUIElement::~GfxUIElement() {
+  _remove_all_children();
+}
+
 
 void GfxUIElement::muteRender(bool x) {
   _class_set_flag(GFXUI_FLAG_MUTE_RENDER, x);
@@ -113,6 +117,16 @@ int GfxUIElement::_remove_child(GfxUIElement* chld) {
   const int RET = (_children.remove(chld) ? 0 : -1);
   if (0 == RET) {  _need_redraw(true);  }
   return RET;
+}
+
+void GfxUIElement::_remove_all_children() {
+  while (_children.hasNext()) {
+    // There are child objects to render.
+    GfxUIElement* ui_obj = _children.dequeue();
+    if (ui_obj->shouldReap()) {
+      delete ui_obj;
+    }
+  }
 }
 
 

@@ -120,7 +120,7 @@ template <class T> void ImageGraphTrace<T>::findBounds(const PixUInt W, const Pi
   }
   // Re-locate the bounds of the range within this frustum.
   _max_value = *(dataset + rend_offset_x);
-  _min_value = 0;
+  _min_value = *(dataset + rend_offset_x);
 
   for (uint32_t i = rend_offset_x; i < data_len; i++) {
     T tmp = *(dataset + i);

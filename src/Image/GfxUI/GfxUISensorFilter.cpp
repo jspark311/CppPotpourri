@@ -20,12 +20,12 @@ template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
   ui_gfx->img()->setTextSize(_style.text_size);
   if ((_filter->dirty() | underPointer()) && _filter->windowFull()) {
     const uint32_t  DATA_SIZE = _filter->windowSize();
-    const uint32_t  LAST_SIDX = _filter->lastIndex();
+    const uint32_t  LAST_SIDX = _left_most_data_idx + i_w;  //_filter->lastIndex();
     const uint32_t  DATA_IDX  = (1 + LAST_SIDX + strict_abs_delta(DATA_SIZE, (uint32_t) i_w)) % DATA_SIZE;
     const uint32_t* F_MEM_PTR = _filter->memPtr();
 
-    uint32_t tmp_data[DATA_SIZE];
-    for (uint32_t i = 0; i < DATA_SIZE; i++) {
+    uint32_t tmp_data[i_w];
+    for (uint32_t i = 0; i < i_w; i++) {
       tmp_data[i] = *(F_MEM_PTR + ((i + LAST_SIDX) % DATA_SIZE));
     }
 
@@ -33,7 +33,7 @@ template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
     graph.fg_color            = 0xFFFFFFFF;
     graph.trace0.color        = _style.color_active;
     graph.trace0.dataset      = tmp_data;
-    graph.trace0.data_len     = DATA_SIZE;
+    graph.trace0.data_len     = i_w;
 
     graph.trace0.enabled      = true;
     graph.trace0.autoscale_x  = false;

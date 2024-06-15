@@ -40,7 +40,7 @@ template <> void ImageGraph<uint32_t>::drawGraph(Image* img, const PixUInt POS_X
       uint32_t  tmp_len = (trace0.data_len - trace0.rend_offset_x);
       for (uint32_t i = 0; i < tmp_len; i++) {
         const uint32_t DATA_VALUE = *(tmp_ptr + i);
-        const uint32_t DELTA_Y    = (DATA_VALUE / trace0.v_scale);
+        const uint32_t DELTA_Y    = ((DATA_VALUE-trace0.minValue()) / trace0.v_scale);
         const PixUInt PNT_X_POS  = (GRAPH_X + i);
         const PixUInt PNT_Y_POS  = ((GRAPH_Y + FRUS_H) - DELTA_Y);
         if ((int32_t) i != trace0.accented_idx) {
@@ -76,14 +76,17 @@ template <> void ImageGraph<uint32_t>::drawGraph(Image* img, const PixUInt POS_X
           img->fillRect(point_x, point_y, point_w, point_h, trace0.color);
           img->drawFastVLine(PNT_X_POS, GRAPH_Y, GRAPH_H, trace0.color);   // Vertical rule crossing accented point.
 
-          const uint16_t TXT_PIXEL_HEIGHT = img->getFontHeight();
+          const PixUInt TXT_PIXEL_HEIGHT = img->getFontHeight();
           StringBuilder temp_txt;
           PixUInt txt_x = (point_x + point_w + 1);
           PixUInt txt_y = ((point_y - GRAPH_Y) > TXT_PIXEL_HEIGHT) ? (point_y - TXT_PIXEL_HEIGHT) : GRAPH_Y;
           PixUInt txt_w = 0;
           PixUInt txt_h = 0;
           temp_txt.concatf("%u: %u", (trace0.offset_x + trace0.rend_offset_x + i), DATA_VALUE);
-          img->getTextBounds(&temp_txt, txt_x, txt_y, &txt_x, &txt_y, &txt_w, &txt_h);
+          //img->getTextBounds(&temp_txt, txt_x, txt_y, &txt_x, &txt_y, &txt_w, &txt_h);
+          txt_w = ((img->getFontWidth() +1) * temp_txt.length());
+          txt_h = TXT_PIXEL_HEIGHT;
+
           if ((txt_w + txt_x) > (GRAPH_X + GRAPH_W)) {
             // If the string would overflow the element's right-hand boundary,
             //   render it on the left-hand side of the indicator line.

@@ -39,6 +39,7 @@ template <class T> class GfxUISensorFilter : public GfxUIElement {
 
   private:
     SensorFilter<T>* _filter;
+    uint32_t _left_most_data_idx = 0;
 };
 
 
@@ -126,6 +127,21 @@ template <class T> bool GfxUISensorFilter<T>::_notify(const GfxUIEvent GFX_EVNT,
 
     case GfxUIEvent::DRAG_START:
       //reposition(x, y);
+      ret = true;
+      break;
+
+    case GfxUIEvent::MOVE_UP:
+      _left_most_data_idx = strict_min(
+        (uint32_t) (_left_most_data_idx + 10),
+        (uint32_t) (_filter->windowSize() - internalWidth())
+      );
+      ret = true;
+      break;
+
+    case GfxUIEvent::MOVE_DOWN:
+      _left_most_data_idx = (uint32_t) strict_max(
+        (int32_t) (_left_most_data_idx - 10), (int32_t) 0
+      );
       ret = true;
       break;
 
