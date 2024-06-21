@@ -24,7 +24,7 @@ This source file was never part of Adafruit's library. They are small graphics
 
 /*******************************************************************************
 * UIGfxWrapper flags
-* Each object has 32-bits of flag space. The low 16-bits are reserved for the
+* Each object has 32-bits of flag space. The low 24-bits are reserved for the
 *   base class.
 *******************************************************************************/
 #define GFXUI_FLAG_NEED_RERENDER              0x00000001   // Child classes mark this bit to demand a redraw.
@@ -41,7 +41,7 @@ This source file was never part of Adafruit's library. They are small graphics
 #define GFXUI_FLAG_UNDER_POINTER              0x00000800   // This element is underneath the pointer.
 #define GFXUI_FLAG_DRAGGABLE                  0x00001000   // This element is draggable.
 #define GFXUI_FLAG_DRAGGING                   0x00002000   // This element is undergoing a drag.
-#define GFXUI_FLAG_TRACK_POINTER              0x00004000   //
+#define GFXUI_FLAG_TRACK_POINTER              0x00004000   // This element observes the pointer position.
 
 // NOTE: This is thinking out-loud about "what" flow needs to accomplish.
 //   Don't write against it.
@@ -56,6 +56,8 @@ This source file was never part of Adafruit's library. They are small graphics
 #define GFXUI_FLAG_FLOW_SCALE_LOCK_X          0x00100000   // If set, auto-flow is inhibited on this axis.
 #define GFXUI_FLAG_FLOW_SCALE_LOCK_Y          0x00200000   // If set, auto-flow is inhibited on this axis.
 #define GFXUI_FLAG_FLOW_SCALE_LOCK_PROPAGATE  0x00400000   // Propagate the locks?
+
+#define GFXUI_FLAG_AUTOSCALE_ON_REDRAW        0x00800000   // Autoscales element to minimum size required to hold content on every redraw.
 
 //////////////////////////////////
 // TODO: Stark Fist of Removal

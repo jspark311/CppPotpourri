@@ -254,25 +254,15 @@ int sensor_filter_tests_main() {
                     if (0 == sensor_filter_teardown()) {
                       ret = 0;
                     }
-                    else printTestFailure(MODULE_NAME, "SensorFilter failed teardown.");
                   }
-                  else printTestFailure(MODULE_NAME, "SensorFilter failed advanced pack and parse.");
                 }
-                else printTestFailure(MODULE_NAME, "SensorFilter failed basic pack and parse.");
               }
-              else printTestFailure(MODULE_NAME, "SensorFilter failed nominal operations battery-2.");
             }
-            else printTestFailure(MODULE_NAME, "SensorFilter failed nominal operations battery-1.");
           }
-          else printTestFailure(MODULE_NAME, "SensorFilter failed nominal operations battery-0.");
         }
-        else printTestFailure(MODULE_NAME, "SensorFilter failed re-windowing.");
       }
-      else printTestFailure(MODULE_NAME, "SensorFilter failed stats test.");
     }
-    else printTestFailure(MODULE_NAME, "SensorFilter failed to fill with test state.");
   }
-  else printTestFailure(MODULE_NAME, "SensorFilter failed to initialize.");
 
   return ret;
 }

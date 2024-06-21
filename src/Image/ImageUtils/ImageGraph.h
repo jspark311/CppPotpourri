@@ -15,38 +15,38 @@ Tewmplates for abstracted rendering of cartesian graphs.
 #include "../Image.h"
 #include "../../SensorFilter.h"  // TODO: remove
 
-/*
+/*******************************************************************************
+* ImageGraphTrace
 * A parameter class that defines a trace on a cartesian graph.
-*/
+*******************************************************************************/
 template <class T> class ImageGraphTrace {
   public:
-    uint32_t color = 0x808080;
-    float std_err_pos     = 0.0;  // Default is to not plot error bars.
-    float std_err_neg     = 0.0;  // Default is to not plot error bars.
-    PixUInt major_grid_x  = 0;    // Default is off.
-    PixUInt minor_grid_x  = 0;    // Default is off.
-    PixUInt major_grid_y  = 0;    // Default is off.
-    PixUInt minor_grid_y  = 0;    // Default is off.
-    //int32_t  scale_min_y  = 0;    // Default is off.
-    //int32_t  scale_max_y  = 0;    // Default is off.
-    float    v_scale       = 0.0; // The vertical scaling factor for the data.
-    // TODO: Selections for discrete or joined dots, histogram mode.
-    // TODO: Selections for discrete or joined dots.
-    bool enabled      = false;
-    bool autoscale_x  = false;
-    bool autoscale_y  = true;
-    bool show_x_range = false;
-    bool show_y_range = false;
-    bool show_value   = false;
-    bool grid_lock_x  = false;   // Default is to allow the grid to scroll with the starting offset.
-    bool grid_lock_y  = false;   // Default is to allow the grid to scroll with any range shift.
+    // TODO: Histogram mode.
+    uint32_t color;         // The color motif for this object.
+    PixUInt major_grid_x;   // Default is off.
+    PixUInt minor_grid_x;   // Default is off.
+    PixUInt major_grid_y;   // Default is off.
+    PixUInt minor_grid_y;   // Default is off.
+    bool enabled;           // This trace will only render if this is set to true.
+    bool autoscale_x;       // Axis autoscaling.
+    bool autoscale_y;       // Axis autoscaling.
+    bool show_x_range;      // Show axis bounds.
+    bool show_y_range;      // Show axis bounds.
+    bool show_value;        // Render the value of the final datum in the set.
+    bool draw_curve;        // Draw lines between successive points on the graph.
+    bool draw_grid;         // Draw a grid on the graph.
+    bool grid_lock_x;       // Default is to allow the grid to scroll with the starting offset.
+    bool grid_lock_y;       // Default is to allow the grid to scroll with any range shift.
+    T*       dataset;       // Pointer to the data to be graphed.
+    uint32_t data_len;      // How long is the array?
+    uint32_t offset_x;      // Index 0 in the trace array is what index in the data?
+    int32_t  accented_idx;  // Isolates a single position in the data to be highlighted.
 
-    uint32_t offset_x      = 0;  // Index 0 in the trace array is what index to be shown?
-    uint32_t data_len      = 0;  // How long is the array?
-    int32_t  accented_idx  = -1; // Isolates a single position in the data to be highlighted.
-    uint32_t rend_offset_x = 0;  // What index in the trace array is first to be shown?
+    // Constructors
+    ImageGraphTrace();
+    ImageGraphTrace(const ImageGraphTrace<T>& src) {  copyFrom(&src);  };
 
-    T* dataset   = nullptr;
+    bool copyFrom(const ImageGraphTrace<T>*);
 
     // Accessors to derived data.
     inline T maxValue() {        return _max_value;                 };
@@ -55,19 +55,102 @@ template <class T> class ImageGraphTrace {
 
     void findBounds(const PixUInt w, const PixUInt h);
 
+    bool drawVGrid() {   return (draw_grid && ((0 != major_grid_x) | (0 != minor_grid_x)));  };
+    bool drawHGrid() {   return (draw_grid && ((0 != major_grid_y) | (0 != minor_grid_y)));  };
+    float v_scale() {    return _v_scale;  };
+
 
   private:
-    T _max_value = T(0);
-    T _min_value = T(0);
+    T     _max_value;
+    T     _min_value;
+    float _v_scale;        // The vertical scaling factor for the data.
 };
 
 
+/* Trivial constructor */
+template <class T> ImageGraphTrace<T>::ImageGraphTrace() :
+  color(0x808080),
+  major_grid_x(0), minor_grid_x(0),
+  major_grid_y(0), minor_grid_y(0),
+  enabled(false),
+  autoscale_x(false),  autoscale_y(false),
+  show_x_range(false), show_y_range(false),
+  show_value(false),   draw_curve(false),
+  draw_grid(false),    grid_lock_x(false),
+  grid_lock_y(false),  dataset(nullptr),
+  data_len(0),         offset_x(0),
+  accented_idx(-1),
+  _max_value(T(0)), _min_value(T(0)),
+  _v_scale(1.0) {}
+
+
+
+
+template <class T> bool ImageGraphTrace<T>::copyFrom(const ImageGraphTrace<T>* SRC) {
+  // NOTE: We can't simply...
+  //   memcpy(this, (void*) SRC, sizeof(ImageGraphTrace));
+  // ...because we don't want derived data coming along for the ride.
+  color          = SRC->color;
+  major_grid_x   = SRC->major_grid_x;
+  minor_grid_x   = SRC->minor_grid_x;
+  major_grid_y   = SRC->major_grid_y;
+  minor_grid_y   = SRC->minor_grid_y;
+  enabled        = SRC->enabled;
+  autoscale_x    = SRC->autoscale_x;
+  autoscale_y    = SRC->autoscale_y;
+  show_x_range   = SRC->show_x_range;
+  show_y_range   = SRC->show_y_range;
+  show_value     = SRC->show_value;
+  draw_curve     = SRC->draw_curve;
+  draw_grid      = SRC->draw_grid;
+  grid_lock_x    = SRC->grid_lock_x;
+  grid_lock_y    = SRC->grid_lock_y;
+  dataset        = SRC->dataset;
+  data_len       = SRC->data_len;
+  offset_x       = SRC->offset_x;
+  accented_idx   = SRC->accented_idx;
+  // Derived data is zeroed.
+  _max_value = T(0);
+  _min_value = T(0);
+  _v_scale   = 1.0f;
+  return (enabled & (data_len > 0));
+}
+
+
+
 /*
-* To facilitate building complex graphs, we don't force the feature-set into a
-*   series of discrete API calls. Instead we use this object to retain state that
-*   is costly to recalculate. We can then build up the state that we want and
-*   render all in one pass.
+* Given a pixel width and height of a frustum, finds the min/max values in the
+*   visible dataset, and recalculates any stored parameters that depend on them.
+*
+* NOTE: We phrase the algebra in such a way as to make use of v_scale a matter
+*   of multiplication, rather than division. Sole safety check is here.
 */
+template <class T> void ImageGraphTrace<T>::findBounds(const PixUInt W, const PixUInt H) {
+  // Re-locate the bounds of the range within this frustum.
+  // NOTE: We want autoscaling to work the same way for fully-negative renders.
+  _max_value = (autoscale_y ? T(0) : *(dataset));
+  _min_value = (autoscale_y ? *(dataset) : T(0));
+  const uint32_t SAFE_WIDTH = strict_min((uint32_t) W, data_len);
+  for (uint32_t i = 0; i < SAFE_WIDTH; i++) {
+    T tmp = *(dataset + i);
+    if (tmp > _max_value) {   _max_value = tmp;   }
+    if (tmp < _min_value) {   _min_value = tmp;   }
+  }
+  const T RANGE = rangeInFrustum();
+  _v_scale = (RANGE != T(0)) ? ((float) H / (float) RANGE) : 1.0f;
+}
+
+
+
+
+/*******************************************************************************
+* ImageGraph
+* To facilitate building complex graphs, we don't force the feature-set into a
+*   series of discrete API calls. Instead we use this object to retain state
+*   that is costly to recalculate. We can then build up the state that we want
+*   and render all in one pass.
+*******************************************************************************/
+
 template <class T> class ImageGraph {
   public:
     uint32_t fg_color;
@@ -96,46 +179,6 @@ template <class T> class ImageGraph {
     void _draw_accented_point(ImageGraphTrace<T>*);
 };
 
-
-
-/*******************************************************************************
-* ImageGraphTrace
-*******************************************************************************/
-
-/*
-* Given a pixel width and height of a frustum, finds the min/max values in the
-*   visible dataset, and recalculates any stored parameters that depend on them.
-*/
-template <class T> void ImageGraphTrace<T>::findBounds(const PixUInt W, const PixUInt H) {
-  if (W < data_len) {
-    // Adjust the range of data to consider if the frustum width and data
-    //   length don't match.
-    // Without X-axis auto-scaling, just show the tail of the array if the
-    //   frustum isn't wide enough for all of it.
-    // TODO: X-axis autoscaling.
-    rend_offset_x = (data_len - W);
-  }
-  else {
-    rend_offset_x = 0;
-  }
-  // Re-locate the bounds of the range within this frustum.
-  _max_value = *(dataset + rend_offset_x);
-  _min_value = *(dataset + rend_offset_x);
-
-  for (uint32_t i = rend_offset_x; i < data_len; i++) {
-    T tmp = *(dataset + i);
-    if (tmp > _max_value) {   _max_value = tmp;   }
-    if (tmp < _min_value) {   _min_value = tmp;   }
-  }
-  v_scale = (float) rangeInFrustum() / (float) H;
-}
-
-
-
-
-/*******************************************************************************
-* ImageGraph
-*******************************************************************************/
 
 
 /* After options are applied, returns the size of the data that will exactly fill the window. */

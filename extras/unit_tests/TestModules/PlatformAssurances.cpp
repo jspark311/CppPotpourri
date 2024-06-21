@@ -254,13 +254,9 @@ int platform_assurance_test_main() {
   //       if (0 == platform_gpio_tests()) {
             ret = 0;
   //       }
-  //       else printTestFailure(MODULE_NAME, "GPIO");
   //     }
-  //     else printTestFailure(MODULE_NAME, "Threading");
     }
-    else printTestFailure(MODULE_NAME, "millis() / micros()");
   }
-  else printTestFailure(MODULE_NAME, "RNG");
 
   return ret;
 }

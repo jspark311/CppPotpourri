@@ -86,11 +86,8 @@ class GfxUIButton : public GfxUIElement {
     GfxUIButton(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0) : GfxUIElement(lay, sty, f) {};
     ~GfxUIButton() {};
 
-    inline void buttonState(bool x) {  _class_set_flag(GFXUI_BUTTON_FLAG_STATE, x);  };
-    inline void pressed(bool x) {
-      if (momentary()) {  _class_set_flag(GFXUI_BUTTON_FLAG_STATE, x);  }
-      else if (x) {       _class_flip_flag(GFXUI_BUTTON_FLAG_STATE);    }
-    };
+    inline void buttonState(bool x) {  _class_set_flag(GFXUI_BUTTON_FLAG_STATE, x);     };
+    inline void pressed(bool x) {      _class_set_flag(GFXUI_BUTTON_FLAG_STATE, x);     };
     inline bool pressed() {          return _class_flag(GFXUI_BUTTON_FLAG_STATE);       };
     inline void momentary(bool x) {  _class_set_flag(GFXUI_BUTTON_FLAG_MOMENTARY, x);   };
     inline bool momentary() {        return _class_flag(GFXUI_BUTTON_FLAG_MOMENTARY);   };
@@ -170,7 +167,7 @@ class GfxUITabbedContentPane : public GfxUIElement {
 
 
 /*******************************************************************************
-* A graphical slider
+* Graphical sliders
 *******************************************************************************/
 /* A graphical single-axis slider. */
 class GfxUISlider : public GfxUIElement {
@@ -188,6 +185,27 @@ class GfxUISlider : public GfxUIElement {
 
   protected:
     float    _percentage;        // The current position of the mark, as a fraction.
+};
+
+/* A graphical single-axis slider, with a floating mark of variable width. */
+class GfxUIZoomSlider : public GfxUIElement {
+  public:
+    GfxUIZoomSlider(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0) : GfxUIElement(lay, sty, f), _frac_0(0.0f), _frac_1(0.0f) {};
+    ~GfxUIZoomSlider() {};
+
+    float value();                         // Construed to be the center of the mark.
+    void  value(const float);              // Construed to be setting the center of the mark. Width allowing.
+    void  value(const float, const float); // Set the bounds of the mark directly. Parameter order is not important.
+    inline float markWidth() {   return strict_abs_delta(_frac_1, _frac_0);  }; // The width of the mark.
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
+
+
+  protected:
+    float    _frac_0;    // The current position (left or top) of the mark.
+    float    _frac_1;    // The current position (right or bottom) of the mark.
 };
 
 
@@ -242,10 +260,6 @@ class GfxUITextArea : public GfxUIElement, public BufferAccepter {
     GfxUITextArea(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0) : GfxUIElement(lay, sty, f) {};
     ~GfxUITextArea() {};
 
-    /* Implementation of GfxUIElement. */
-    virtual int  _render(UIGfxWrapper* ui_gfx);
-    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
-
     /* Implementation of BufferAccepter. */
     int8_t pushBuffer(StringBuilder*);
     int32_t bufferAvailable();
@@ -259,6 +273,12 @@ class GfxUITextArea : public GfxUIElement, public BufferAccepter {
     inline void scrollbackLength(uint32_t x) {  _max_scrollback_bytes = x;     };
     inline bool scrollbackLength() {            return _max_scrollback_bytes;  };
     void clear();
+
+
+  //protected:
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
 
   private:

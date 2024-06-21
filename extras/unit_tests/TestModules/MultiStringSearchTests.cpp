@@ -353,9 +353,7 @@ int c3p_multisearch_test_main() {
     if (0 == multisearch_known_answer_tests()) {
       ret = 0;
     }
-    else printTestFailure(MODULE_NAME, "Known-answer tests");
   }
-  else printTestFailure(MODULE_NAME, "Trivial tests");
 
   return ret;
 }

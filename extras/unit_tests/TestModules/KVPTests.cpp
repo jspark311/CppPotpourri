@@ -955,22 +955,14 @@ int test_KeyValuePair() {
                   printf("KeyValuePair tests all pass.\n");
                   ret = 0;
                 }
-                else printTestFailure(MODULE_NAME, "KVP_CBOR_Problematic_KeyValuePair");
               }
-              else printTestFailure(MODULE_NAME, "test_CBOR_KeyValuePair");
               #endif  // CONFIG_C3P_CBOR
             }
-            else printTestFailure(MODULE_NAME, "test_Value_Translation");
           }
-          else printTestFailure(MODULE_NAME, "KeyValuePair_Key_Abuse");
         }
-        else printTestFailure(MODULE_NAME, "KVP_value_retrieval");
       }
-      else printTestFailure(MODULE_NAME, "KVP_InternalTypes");
     }
-    else printTestFailure(MODULE_NAME, "KVP_Value_Placement");
   }
-  else printTestFailure(MODULE_NAME, "Build_Polytyped_KVP");
 
   return ret;
 }

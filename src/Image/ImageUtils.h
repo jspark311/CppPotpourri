@@ -75,6 +75,16 @@ class UIGfxWrapper {
       bool draw_base, bool draw_val, float percent
     );
 
+    void drawZoomBarH(
+      PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color,
+      bool draw_val, float fraction_left, float fraction_right
+    );
+
+    void drawZoomBarV(
+      PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color,
+      bool draw_val, float fraction_top, float fraction_bot
+    );
+
     void drawCompass(
       PixUInt x, PixUInt y, PixUInt w, PixUInt h,
       bool scale_needle, bool draw_val, float bearing_field, float bearing_true_north

@@ -99,7 +99,6 @@ int identity_main() {
   if (0 == UUID_IDENT_TESTS()) {
     ret = 0;
   }
-  else printTestFailure(MODULE_NAME, "UUID_IDENT_TESTS");
 
   return ret;
 }

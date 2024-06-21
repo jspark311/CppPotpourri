@@ -7,6 +7,7 @@ Date:   2022.06.25
 
 #include "../GfxUI.h"
 
+
 /*******************************************************************************
 * GfxUISensorFilter
 *******************************************************************************/
@@ -18,39 +19,35 @@ template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
   PixUInt i_w = internalWidth();
   PixUInt i_h = internalHeight();
   ui_gfx->img()->setTextSize(_style.text_size);
-  if ((_filter->dirty() | underPointer()) && _filter->windowFull()) {
+  //if ((_filter->dirty() | underPointer()) && _filter->windowFull()) {
+  if (_filter->dirty() | underPointer()) {
     const uint32_t  DATA_SIZE = _filter->windowSize();
-    const uint32_t  LAST_SIDX = _left_most_data_idx + i_w;  //_filter->lastIndex();
-    const uint32_t  DATA_IDX  = (1 + LAST_SIDX + strict_abs_delta(DATA_SIZE, (uint32_t) i_w)) % DATA_SIZE;
+    const uint32_t  RENDER_SIZE = strict_min((uint32_t) DATA_SIZE, (uint32_t) i_w);
+    const uint32_t  LAST_SIDX = strict_min(DATA_SIZE, (_left_most_data_idx + RENDER_SIZE));
+    const uint32_t  DATA_IDX  = (LAST_SIDX - RENDER_SIZE);
+    //const uint32_t  DATA_IDX  = (1 + LAST_SIDX + strict_abs_delta(DATA_SIZE, (uint32_t) RENDER_SIZE)) % DATA_SIZE;
     const uint32_t* F_MEM_PTR = _filter->memPtr();
-
     uint32_t tmp_data[i_w];
-    for (uint32_t i = 0; i < i_w; i++) {
-      tmp_data[i] = *(F_MEM_PTR + ((i + LAST_SIDX) % DATA_SIZE));
+    for (uint32_t i = 0; i < RENDER_SIZE; i++) {
+      tmp_data[i] = *(F_MEM_PTR + ((i + DATA_IDX) % DATA_SIZE));
     }
 
     ImageGraph<uint32_t> graph(i_w, i_h);
-    graph.fg_color            = 0xFFFFFFFF;
-    graph.trace0.color        = _style.color_active;
-    graph.trace0.dataset      = tmp_data;
-    graph.trace0.data_len     = i_w;
+    graph.fg_color          = 0xFFFFFFFF;
+    trace_settings.color    = _style.color_active;
+    trace_settings.dataset  = tmp_data;
+    trace_settings.data_len = RENDER_SIZE;
+    trace_settings.enabled  = true;
+    trace_settings.offset_x = DATA_IDX;
+    if (graph.trace0.copyFrom(&trace_settings)) {
+      if (trackPointer() && underPointer()) {
+        graph.trace0.accented_idx = (_pointer_x - (i_x + 1));
+        ui_gfx->img()->setTextColor(ui_gfx->img()->convertColor(graph.trace0.color), ui_gfx->img()->convertColor(_style.color_bg));
+      }
 
-    graph.trace0.enabled      = true;
-    graph.trace0.autoscale_x  = false;
-    graph.trace0.autoscale_y  = true;
-    graph.trace0.show_x_range = false;
-    graph.trace0.show_y_range = showRange();
-    graph.trace0.show_value   = underPointer();
-    graph.trace0.grid_lock_x  = false;   // Default is to allow the grid to scroll with the starting offset.
-    graph.trace0.grid_lock_y  = false;   // Default is to allow the grid to scroll with any range shift.
-    graph.trace0.offset_x     = DATA_IDX;
-
-    if (trackPointer() && underPointer()) {
-      graph.trace0.accented_idx = (_pointer_x - (i_x + 1));
+      graph.drawGraph(ui_gfx->img(), i_x, i_y);
+      ret++;
     }
-
-    graph.drawGraph(ui_gfx->img(), i_x, i_y);
-    ret++;
   }
   else if (_filter->initialized()) {
     if (!_filter->windowFull()) {
@@ -85,7 +82,6 @@ template <> int GfxUISensorFilter<float>::_render(UIGfxWrapper* ui_gfx) {
     const uint32_t  LAST_SIDX = _filter->lastIndex();
     const uint32_t  DATA_IDX  = (1 + LAST_SIDX + strict_abs_delta(DATA_SIZE, (uint32_t) i_w)) % DATA_SIZE;
     const float*    F_MEM_PTR = _filter->memPtr();
-
     float tmp_data[DATA_SIZE];
     for (uint32_t i = 0; i < DATA_SIZE; i++) {
       tmp_data[i] = *(F_MEM_PTR + ((i + LAST_SIDX) % DATA_SIZE));
@@ -93,20 +89,18 @@ template <> int GfxUISensorFilter<float>::_render(UIGfxWrapper* ui_gfx) {
 
     ImageGraph<float> graph(i_w, i_h);
     graph.fg_color            = 0xFFFFFFFF;
-    graph.trace0.color        = _style.color_active;
-    graph.trace0.show_y_range = showRange();
-    graph.trace0.show_value   = underPointer();
-    graph.trace0.dataset      = tmp_data;
+    trace_settings.dataset    = tmp_data;
     graph.trace0.data_len     = DATA_SIZE;
     graph.trace0.offset_x     = DATA_IDX;
     graph.trace0.enabled      = true;
-
-    if (underPointer()) {
-      graph.trace0.accented_idx = (_pointer_x - (i_x + 1));
+    if (graph.trace0.copyFrom(&trace_settings)) {
+      if (trackPointer() && underPointer()) {
+        graph.trace0.accented_idx = (_pointer_x - (i_x + 1));
+        ui_gfx->img()->setTextColor(ui_gfx->img()->convertColor(graph.trace0.color), ui_gfx->img()->convertColor(_style.color_bg));
+      }
+      graph.drawGraph(ui_gfx->img(), i_x, i_y);
+      ret++;
     }
-
-    graph.drawGraph(ui_gfx->img(), i_x, i_y);
-    ret++;
   }
   else if (_filter->initialized()) {
     if (!_filter->windowFull()) {

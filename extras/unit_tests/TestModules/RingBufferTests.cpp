@@ -237,11 +237,8 @@ int ringbuffer_main() {
       if (0 == test_RingBuffer_multiple_insert()) {
         ret = 0;
       }
-      else printTestFailure(MODULE_NAME, "insert(T*, int)");
     }
-    else printTestFailure(MODULE_NAME, "contains() insert()");
   }
-  else printTestFailure(MODULE_NAME, "test_RingBuffer_general()");
 
   return ret;
 }

@@ -181,9 +181,7 @@ int c3p_conf_record_test_main() {
     if (0 == naked_conf_record_advanced_tests()) {
       ret = 0;
     }
-    else printTestFailure(MODULE_NAME, "Advanced tests (naked record)");
   }
-  else printTestFailure(MODULE_NAME, "Basic tests (naked record)");
 
   return ret;
 }

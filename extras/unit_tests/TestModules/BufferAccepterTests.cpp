@@ -899,11 +899,8 @@ int c3p_b64_test_main() {
       if (0 == b64_test_loopback()) {
         ret = 0;
       }
-      else printTestFailure(MODULE_NAME, "Decoder can't understand encoder's output.");
     }
-    else printTestFailure(MODULE_NAME, "Decoder fails tests.");
   }
-  else printTestFailure(MODULE_NAME, "Encoder fails tests");
 
   return ret;
 }

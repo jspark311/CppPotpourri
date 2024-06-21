@@ -196,7 +196,6 @@ int vector3_test_main() {
   if (0 == vector3_float_test()) {
     ret = 0;
   }
-  else printTestFailure("Vector3", "Using float");
 
   return ret;
 }

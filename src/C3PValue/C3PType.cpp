@@ -2067,6 +2067,32 @@ template <> int8_t      C3PTypeConstraint<Vector3i16>::get_as(void* src, const T
   return -1;
 }
 
+template <> int         C3PTypeConstraint<Vector3i16>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
+  int8_t ret = -1;
+  if (nullptr != obj) {
+    char* o = (char*) obj;
+    if (nullptr != o) {
+      switch (FORMAT) {
+        case TCode::BINARY:
+          //out->concat(o);
+          break;
+
+        case TCode::CBOR:
+          {
+            //cbor::output_stringbuilder output(out);
+            //cbor::encoder encoder(output);
+            //encoder.write_string(o);
+            //ret = 0;   // TODO: Safe SB API.
+          }
+          break;
+
+        default:  break;
+      }
+    }
+  }
+  return ret;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// char*

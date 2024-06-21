@@ -116,6 +116,72 @@ void UIGfxWrapper::drawProgressBarV(
 }
 
 
+/*
+* Displays a zoom bar that runs left to right.
+* @param fraction_left is in the range [0.0, 1.0]
+* @param fraction_right is in the range [0.0, 1.0]
+*/
+void UIGfxWrapper::drawZoomBarH(
+  PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color,
+  bool draw_val, float fraction_left, float fraction_right
+) {
+  _img->fillRect(x, y, w, h, bg_color);
+  const PixUInt PIX_M_LEFT  = fraction_left  * (w-2);
+  const PixUInt PIX_M_RIGHT = fraction_right * (w-2);
+  const PixUInt PIX_M_WIDTH = strict_abs_delta(PIX_M_RIGHT, PIX_M_LEFT);
+  const PixUInt PIX_RADIUS  = strict_min(w, h) / 5;
+
+  _img->fillRoundRect((x+PIX_M_LEFT), (y+1), PIX_M_WIDTH, (h-2), PIX_RADIUS, color);
+  _img->drawRoundRect(x, y, w, h, PIX_RADIUS, fg_color);
+
+
+
+  if (draw_val && ((h-4) >= 7)) {
+    // If we have space to do so, and the application requested it, draw the
+    //   progress value in the middle of the bar.
+    int txt_x = x+3;
+    int txt_y = y+3;
+    StringBuilder temp_str;
+    temp_str.concatf("%d%%", (int) ((fraction_left + fraction_right) / 0.02f));
+    _img->setCursor(txt_x, txt_y);
+    _img->setTextColor(fg_color);
+    _img->writeString((char*) temp_str.string());
+  }
+}
+
+
+/*
+* Displays a zoom bar that runs bottom to top.
+* @param fraction_top is in the range [0.0, 1.0]
+* @param fraction_bot is in the range [0.0, 1.0]
+*/
+void UIGfxWrapper::drawZoomBarV(
+  PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color,
+  bool draw_val, float fraction_top, float fraction_bot
+) {
+  _img->fillRect(x, y, w, h, bg_color);
+  const PixUInt PIX_M_TOP    = fraction_top * (h-2);
+  const PixUInt PIX_M_BOT    = fraction_bot * (h-2);
+  const PixUInt PIX_M_HEIGHT = strict_abs_delta(PIX_M_TOP, PIX_M_BOT);
+  const PixUInt PIX_RADIUS   = strict_min(w, h) / 5;
+  _img->fillRoundRect((x+1), ((y+h)-PIX_M_TOP+1), (w-2), PIX_M_HEIGHT, PIX_RADIUS, color);
+  _img->drawRoundRect(x, y, w, h, PIX_RADIUS, fg_color);
+
+  if (draw_val && ((w-4) >= 15)) {
+    // If we have space to do so, and the application requested it, draw the
+    //   progress value in the middle of the bar.
+    int txt_x = x+2;
+    // If there is not space under the line, draw above it.
+    int txt_y = (9 < PIX_M_HEIGHT) ? ((y+2+h)-PIX_M_HEIGHT) : ((y+h)-(PIX_M_HEIGHT+8));
+    StringBuilder temp_str;
+    temp_str.concatf("%d%%", (int) ((fraction_top + fraction_bot) / 0.02f));
+    _img->setCursor(txt_x, txt_y);
+    _img->setTextColor(fg_color);
+    _img->writeString((char*) temp_str.string());
+  }
+}
+
+
 
 /*******************************************************************************
 * Functions for rendering specific kinds of data.

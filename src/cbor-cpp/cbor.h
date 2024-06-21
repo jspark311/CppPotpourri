@@ -34,7 +34,12 @@ class C3PValue;
 //   spelled out with a TCode, rather than using the built-in CBOR types.
 // We will be using a tag from the IANA 'unassigned' space to avoid confusion.
 //   The first byte after the tag is the native C3P TCode.
-#define C3P_CBOR_VENDOR_CODE 0x00E97800
+#define C3P_CBOR_VENDOR_CODE 0xE900
+
+// TODO: Begin gravitating things into RFC-bound tags.
+// https://www.rfc-editor.org/rfc/rfc8949.html
+// https://www.iana.org/assignments/cbor-tags/cbor-tags.xhtml
+
 
 
 #include <stdio.h>

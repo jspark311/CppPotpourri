@@ -46,7 +46,6 @@ int uuid_test_main() {
   for (int i = 0; i < 16; i++) {
     if (0 != *((uint8_t*) &test0.id[i])) {
       printf("UUID should be initialized to zeros. It was not. Failing...\n");
-      printTestFailure(MODULE_NAME, "clean init()");
       return -1;
     }
   }
@@ -55,7 +54,6 @@ int uuid_test_main() {
   printf("UUID comparison... ");
   if (uuid_compare(&test0, &test1)) {
     printf(" considers these distinct. Failing...\n");
-    printTestFailure(MODULE_NAME, "uuid_compare()");
     temp.concat((uint8_t*) &test0, sizeof(test0));
     temp.printDebug(&log);
     temp.clear();
@@ -71,7 +69,6 @@ int uuid_test_main() {
   // Does the comparison function work?
   if (0 == uuid_compare(&test0, &test1)) {
     printf("produced no change in the UUID. Failing...\n");
-    printTestFailure(MODULE_NAME, "uuid_compare()");
     temp.concat((uint8_t*) &test0, sizeof(test0));
     temp.printDebug(&log);
     temp.clear();
@@ -92,14 +89,12 @@ int uuid_test_main() {
 
     if (0 == uuid_compare(&test0, &test1)) {
       printf("UUID generator gave us a repeat UUID. Fail...\n");
-      printTestFailure(MODULE_NAME, "uuid_compare()");
       printf("%s\n\n", (const char*) log.string());
       return -1;
     }
     uuid_copy(&test0, &test1);
     if (0 != uuid_compare(&test0, &test1)) {
       log.concat("UUID copy appears to have failed...\n");
-      printTestFailure(MODULE_NAME, "uuid_copy()");
       temp.concat((uint8_t*) &test0, sizeof(test0));
       temp.printDebug(&log);
       temp.clear();
@@ -134,7 +129,6 @@ int uuid_test_main() {
 
   if (0 != uuid_compare(&test0, &test1)) {
     printf("UUID parsing of the string previously packed did not yield the same value. Failing...\n");
-    printTestFailure(MODULE_NAME, "parse on prior pack didn't match input");
     printf("%s\n\n", (const char*) log.string());
     return -1;
   }

@@ -264,25 +264,15 @@ int timeseries_tests_main() {
                     if (0 == timeseries_teardown()) {
                       ret = 0;
                     }
-                    else printTestFailure(MODULE_NAME, "TimeSeries failed teardown.");
                   }
-                  else printTestFailure(MODULE_NAME, "TimeSeries failed advanced pack and parse.");
                 }
-                else printTestFailure(MODULE_NAME, "TimeSeries failed basic pack and parse.");
               }
-              else printTestFailure(MODULE_NAME, "TimeSeries failed nominal operations battery-2.");
             }
-            else printTestFailure(MODULE_NAME, "TimeSeries failed nominal operations battery-1.");
           }
-          else printTestFailure(MODULE_NAME, "TimeSeries failed nominal operations battery-0.");
         }
-        else printTestFailure(MODULE_NAME, "TimeSeries failed re-windowing.");
       }
-      else printTestFailure(MODULE_NAME, "TimeSeries failed stats test.");
     }
-    else printTestFailure(MODULE_NAME, "TimeSeries failed to fill with test state.");
   }
-  else printTestFailure(MODULE_NAME, "TimeSeries failed to initialize.");
 
   return ret;
 }

@@ -255,15 +255,10 @@ int scheduler_tests_main() {
             printf("**********************************\n");
             ret = 0;
           }
-          else printTestFailure(MODULE_NAME, "Schedule removal.");
         }
-        else printTestFailure(MODULE_NAME, "Schedules did not execute as expected (n-to-1).");
       }
-      else printTestFailure(MODULE_NAME, "Schedules did not execute as expected (1-to-1).");
     }
-    else printTestFailure(MODULE_NAME, "Scheduler initial conditions failed to evolve into working state.");
   }
-  else printTestFailure(MODULE_NAME, "Scheduler failed to initialize.");
 
   return ret;
 }

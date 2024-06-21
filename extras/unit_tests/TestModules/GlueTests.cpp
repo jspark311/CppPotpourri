@@ -430,7 +430,6 @@ int c3p_header_test_main() {
       ret = 0;
     }
   }
-  else printTestFailure(MODULE_NAME, "Numeric helper inlines");
 
   return ret;
 }

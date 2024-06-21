@@ -164,8 +164,6 @@ int timer_utilities_main() {
       ret = 0;
     }
   }
-  else printTestFailure(MODULE_NAME, "PeriodicTimeout");
-
 
   return ret;
 }

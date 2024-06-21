@@ -250,7 +250,6 @@ int parsing_console_main() {
           if (!test_result_union) {
             StringBuilder tmp_sb;
             tmp_sb.concatf("test_result_array[%d]", idx);
-            printTestFailure(MODULE_NAME, (char*) tmp_sb.string());
           }
           idx++;
         }
@@ -264,11 +263,8 @@ int parsing_console_main() {
           else log.concatf("Callback for test6 was called %d times. This is wrong.\n", test_result_count);
         }
       }
-      else printTestFailure(MODULE_NAME, "run_history_tests()");
     }
-    else printTestFailure(MODULE_NAME, "run_command_tests()");
   }
-  else printTestFailure(MODULE_NAME, "setup_console()");
 
   if (0 < log.length()) {
     printf("%s\n\n", (const char*) log.string());

@@ -359,11 +359,8 @@ int fsm_test_main() {
         printf("StateMachine tests all pass\n");
         ret = 0;
       }
-      else printTestFailure(MODULE_NAME, "State evolution");
     }
-    else printTestFailure(MODULE_NAME, "FSM initial states");
   }
-  else printTestFailure(MODULE_NAME, "Enum catch-all");
 
   return ret;
 }

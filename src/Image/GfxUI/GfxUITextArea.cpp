@@ -56,7 +56,7 @@ int GfxUITextArea::_render(UIGfxWrapper* ui_gfx) {
           // Shorten the line length to fit the area.
           *(line + _max_cols) = 0;  // TODO: Ugly. Won't go backward.
         }
-        ui_gfx->img()->setCursor(_x, _y + (next_row * y_adv));
+        ui_gfx->img()->setCursor(i_x, i_y + (next_row * y_adv));
         ui_gfx->img()->writeString((const char*) line);
         next_row++;
       }
@@ -106,7 +106,7 @@ bool GfxUITextArea::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, Pri
 
 int8_t GfxUITextArea::pushBuffer(StringBuilder* buf) {
   int8_t ret = 0;
-  uint additional_length = buf->length();
+  uint32_t additional_length = buf->length();
 
   if (0 < additional_length) {   // Reject empty input strings.
     // TODO: By considering the allocated area, and features like text-wrap, I
@@ -133,12 +133,13 @@ int8_t GfxUITextArea::pushBuffer(StringBuilder* buf) {
       while ((additional_length + _scrollback.length()) > _max_scrollback_bytes) {
         _scrollback.drop_position(0);
       }
-      buf->split("\n");
       _scrollback.concatHandoff(buf);
+      _scrollback.string();
+      buf->split("\n");
     }
 
     // In all cases, we now need to re-tokenize the buffer on a per-line basis.
-    uint lines = _scrollback.count();
+    uint32_t lines = _scrollback.count();
     if (scrollable()) {
       // If the desired top_line is such that the last line of the text
       //   was visible before the append, update it again to maintain that
@@ -168,7 +169,7 @@ int8_t GfxUITextArea::pushBuffer(StringBuilder* buf) {
 * @return the number of bytes available.
 */
 int32_t GfxUITextArea::bufferAvailable() {
-  int32_t ret = 2048;  // TODO: Faind sensible value.
+  int32_t ret = 2048;  // TODO: Find sensible value.
   return ret;
 }
 
@@ -178,4 +179,5 @@ void GfxUITextArea::clear() {
   if (scrollable()) {
     _top_line = 0;
   }
+  _need_redraw(true);
 }

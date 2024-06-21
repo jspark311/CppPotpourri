@@ -423,15 +423,10 @@ int async_seq_test_main() {
           if (0 == async_seq_test_abuse()) {
             ret = 0;
           }
-          else printTestFailure(MODULE_NAME, "async_seq_test_abuse()");
         }
-        else printTestFailure(MODULE_NAME, "async_seq_test_full_execution()");
       }
-      else printTestFailure(MODULE_NAME, "async_seq_test_simple_failures()");
     }
-    else printTestFailure(MODULE_NAME, "async_seq_test_simple_advancement()");
   }
-  else printTestFailure(MODULE_NAME, "async_seq_impose_initial_state()");
 
   return ret;
 }

@@ -195,14 +195,6 @@ void dump_strbldr(StringBuilder* a) {
 }
 
 
-void printTestFailure(const char* module, const char* test) {
-  printf("\n");
-  printf("*********************************************\n");
-  printf("* %s FAILED test: %s.\n", module, test);
-  printf("*********************************************\n");
-}
-
-
 /*******************************************************************************
 * Something terrible.
 * Textual inclusion of CPP files until a testing framework is writen or adopted.

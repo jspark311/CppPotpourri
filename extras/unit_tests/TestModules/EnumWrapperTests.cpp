@@ -159,11 +159,8 @@ int c3p_enum_wrapper_test_main() {
       if (0 == enum_wrapper_abbreviated_tests()) {
         ret = 0;
       }
-      else printTestFailure(MODULE_NAME, "Abbreviated list");
     }
-    else printTestFailure(MODULE_NAME, "Anisotropic list tests");
   }
-  else printTestFailure(MODULE_NAME, "Isotropic list tests");
 
   return ret;
 }
