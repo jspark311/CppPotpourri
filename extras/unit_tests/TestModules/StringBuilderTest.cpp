@@ -1094,12 +1094,11 @@ int test_stringbuilder_concat_handoff_limit() {
 */
 int test_misuse_cases() {
   int return_value = -1;
-  printf("===< Mis-use tests >====================================\n");
   StringBuilder content_from_const("The compiler considered this string a (const char*).");
   content_from_const.clear();
 
   if (content_from_const.isEmpty(true)) {
-    printf("About to double-clear content_from_const... ");
+    printf("Robust against double-clear... ");
     content_from_const.clear();
     printf("success.\n");
     if (nullptr != content_from_const.string()) {    // Should always return an empty string, in the worst-case.
@@ -1136,6 +1135,59 @@ int test_misuse_cases() {
   return return_value;
 }
 
+
+typedef struct SB_KAT_Test {
+  const char*    TEST_STR;
+  const uint32_t TEST_STR_LEN;
+  const uint32_t EXPECTED_TRIM_LEN;
+};
+
+const char* SB_TRIM_KAT_STR_0 = "";                            // Truly empty string
+const char* SB_TRIM_KAT_STR_1 = "                          ";  // Semantically empty string.
+const char* SB_TRIM_KAT_STR_2 = "         leading trim case";
+const char* SB_TRIM_KAT_STR_3 = "trailing trim case        ";
+const char* SB_TRIM_KAT_STR_4 = "   leading and trailing   ";
+const char* SB_TRIM_KAT_STR_5 = "\n\r\t all supported whitespace on both edges \n\r\t";
+
+SB_KAT_Test trim_kat_cases[] = {
+  { SB_TRIM_KAT_STR_0, strlen(SB_TRIM_KAT_STR_0), 0 },
+  { SB_TRIM_KAT_STR_1, strlen(SB_TRIM_KAT_STR_1), 0 },
+  { SB_TRIM_KAT_STR_2, strlen(SB_TRIM_KAT_STR_2), 17 },
+  { SB_TRIM_KAT_STR_3, strlen(SB_TRIM_KAT_STR_3), 18 },
+  { SB_TRIM_KAT_STR_4, strlen(SB_TRIM_KAT_STR_4), 20 },
+  { SB_TRIM_KAT_STR_5, strlen(SB_TRIM_KAT_STR_5), 38 }
+};
+
+
+int test_StringBuilder_trim() {
+  int ret = 0;
+  printf("Testing trim(char*)... ");
+  // The static trim() fxn cannot be used with (const char*). So copy them first.
+  const uint32_t KAT_COUNT = (sizeof(trim_kat_cases) / sizeof(trim_kat_cases[0]));
+  uint32_t idx = 0;
+
+  while ((0 == ret) & (idx < KAT_COUNT)) {
+    char stacked_str[trim_kat_cases[idx].TEST_STR_LEN + 1] = {0};
+    memcpy(&stacked_str, trim_kat_cases[idx].TEST_STR, trim_kat_cases[idx].TEST_STR_LEN+1);
+    char* trimmed = StringBuilder::trim(stacked_str);
+    const uint32_t TRIMMED_LEN = strlen(trimmed);
+    if (TRIMMED_LEN != trim_kat_cases[idx].EXPECTED_TRIM_LEN) {
+      ret = -1;
+    }
+    else {
+      idx++;
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail (case %d)\n", idx);
+  }
+  else {
+    printf("Pass\n");
+  }
+
+  return ret;
+}
 
 
 
@@ -1174,6 +1226,10 @@ int test_misuse_cases() {
 #define CHKLST_SB_TEST_VIVISECTION    0x02000000  // Sectional copy with layout non-mutation assurances.
 #define CHKLST_SB_TEST_MISUSE         0x04000000  // Foreseeable misuse tests.
 #define CHKLST_SB_TEST_MISCELLANEOUS  0x08000000  // Scattered small tests.
+#define CHKLST_SB_TEST_TRIM           0x10000000  // Whitespace trim fxns.
+//#define CHKLST_SB_TEST_   0x20000000  //
+//#define CHKLST_SB_TEST_NUMERIC_PARSE  0x40000000  //
+//#define CHKLST_SB_TEST_MEM_SEMANTICS  0x80000000  // Deep-copy versus transfer.
 
 #define CHKLST_SB_TESTS_ALL ( \
   CHKLST_SB_TEST_STRCASESTR | CHKLST_SB_TEST_STRCASECMP | CHKLST_SB_TEST_BASICS | \
@@ -1186,7 +1242,7 @@ int test_misuse_cases() {
   CHKLST_SB_TEST_COUNT | CHKLST_SB_TEST_POSITION | CHKLST_SB_TEST_CONCATF | \
   CHKLST_SB_TEST_PRINTDEBUG | CHKLST_SB_TEST_PRINTBUFFER | \
   CHKLST_SB_TEST_MEM_MUTATION | CHKLST_SB_TEST_VIVISECTION | \
-  CHKLST_SB_TEST_MISUSE | CHKLST_SB_TEST_MISCELLANEOUS)
+  CHKLST_SB_TEST_MISUSE | CHKLST_SB_TEST_MISCELLANEOUS | CHKLST_SB_TEST_TRIM)
 
 const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
   { .FLAG         = CHKLST_SB_TEST_STRCASESTR,
@@ -1351,12 +1407,19 @@ const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_misuse_cases()) ? 1:-1);  }
   },
+  { .FLAG         = CHKLST_SB_TEST_TRIM,
+    .LABEL        = "trim()",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_StringBuilder_trim()) ? 1:-1);  }
+  },
   { .FLAG         = CHKLST_SB_TEST_MISCELLANEOUS,
     .LABEL        = "Scattered small tests",
     .DEP_MASK     = (0),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_StringBuilder()) ? 1:-1);  }
   },
+
 };
 
 AsyncSequencer sb_test_plan(TOP_LEVEL_SB_TEST_LIST, (sizeof(TOP_LEVEL_SB_TEST_LIST) / sizeof(TOP_LEVEL_SB_TEST_LIST[0])));

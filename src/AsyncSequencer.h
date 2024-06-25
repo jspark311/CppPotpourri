@@ -49,10 +49,15 @@ class AsyncSequencer {
     inline bool request_fulfilled() {       return (_steps_requested.raw == (_steps_requested.raw & _steps_passed.raw & _steps_complete.raw));  };
     inline bool request_completed() {       return (_steps_requested.raw == (_steps_requested.raw & _steps_complete.raw));  };
     inline bool all_steps_have_run() {      return (_steps_runnable.raw  == (_steps_runnable.raw & _steps_complete.raw));   };
+    inline bool all_steps_have_run(const uint32_t MASK) {       return (MASK == (MASK & _steps_complete.raw));              };
     inline bool all_steps_have_passed() {   return (_steps_runnable.raw  == (_steps_runnable.raw & _steps_passed.raw));     };
     inline bool all_steps_have_passed(const uint32_t MASK) {    return (MASK == (MASK & _steps_passed.raw));                };
     inline bool all_steps_still_running(const uint32_t MASK) {  return (MASK == (MASK & _steps_running.raw));               };
     inline bool all_steps_dispatched(const uint32_t MASK) {     return (MASK == (MASK & _steps_requested.raw));             };
+
+    inline const StepSequenceList* const getStep(const uint8_t IDX) {  return ((IDX < _STEP_COUNT) ? (_STEP_LIST+IDX) : nullptr);  };
+    inline const uint32_t stepCount() {     return _STEP_COUNT;    };
+    uint32_t stepList(StringBuilder* output = nullptr);
 
 
   private:

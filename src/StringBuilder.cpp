@@ -35,8 +35,12 @@ limitations under the License.
 
 /*
 * Trim the whitespace from the beginning and end of the input string.
-* Should not be used on malloc'd space, because it will eliminate the
-*   reference to the start of an allocated range which must be freed.
+*
+* Does not make copies, but the trade-off is that it will mutate the argument
+*   string by replaceing the first byte of trailing whitespace with '\0'. It
+*   therefore cannot be used on flash-resident strings, and the returned
+*   pointer should not be free()'d. A referance to the original untrimmed string
+*   should be retained if memory management is required.
 */
 char* StringBuilder::trim(char* str) {
   char* end;

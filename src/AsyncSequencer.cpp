@@ -252,6 +252,18 @@ uint32_t AsyncSequencer::failed_steps(const bool INC_RUNNING) {
 }
 
 
+/*
+* @return The number of steps in the checklist.
+*/
+uint32_t AsyncSequencer::stepList(StringBuilder* output) {
+  if (nullptr != output) {
+    for (uint32_t i = 0; i < _STEP_COUNT; i++) {
+      output->concat((_STEP_LIST+i)->LABEL);
+    }
+  }
+  return _STEP_COUNT;
+}
+
 
 /**
 * NOTE: Recursion in use, with bailout. Bailout is set to such a depth that it

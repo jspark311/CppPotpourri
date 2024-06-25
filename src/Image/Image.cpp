@@ -564,6 +564,16 @@ bool Image::reallocate() {
 }
 
 
+uint32_t Image::bytesUsed() {
+  if (ImgBufferFormat::UNALLOCATED == _buf_fmt) return 0;
+  const uint32_t PIXEL_COUNT  = pixels();
+  const uint8_t  BPP          = _bits_per_pixel();
+  const uint32_t TOTAL_BITS   = (PIXEL_COUNT * BPP);
+  const uint32_t PADDING_BYTE = ((TOTAL_BITS & 7) ? 1:0);
+  return ((TOTAL_BITS >> 3) + PADDING_BYTE);
+};
+
+
 /*
 * Returns 0 on success, -1 on bad class state, -2 on free failure, -3 on malloc fail
 */

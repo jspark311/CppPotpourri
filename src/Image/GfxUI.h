@@ -48,6 +48,7 @@ This source file was never part of Adafruit's library. They are small graphics
 // HTML was very well thought-out, and many people understand it. I should imagine
 //   element flows and positioning/scaling rules should endeavor to follow that
 //   pattern, without explicitly spending too many resources to do so. Mint tin.
+// Flow parameters should be a member of Layout?
 #define GFXUI_FLAG_FLOW_POS_LOCK_U            0x00008000   // If set, auto-flow is inhibited in this direction.
 #define GFXUI_FLAG_FLOW_POS_LOCK_D            0x00010000   // If set, auto-flow is inhibited in this direction.
 #define GFXUI_FLAG_FLOW_POS_LOCK_L            0x00020000   // If set, auto-flow is inhibited in this direction.
@@ -80,6 +81,11 @@ This source file was never part of Adafruit's library. They are small graphics
 
 #define GFXUI_TABBAR_FLAG_VERTICAL_TABS       0x01000000   // The tabs are stacked veritcally.
 #define GFXUI_TABBAR_FLAG_SCROLL_CYCLES_TABS  0x02000000   // Scroll wheel cycles tabs.
+
+#define GFXUI_CHKLST_FLAG_SHOW_SUMMARY        0x01000000   // Show the overall state of the checklist.
+#define GFXUI_CHKLST_FLAG_SHOW_DEPS_MASKS     0x02000000   // Show the dependencies as hex.
+#define GFXUI_CHKLST_FLAG_SHOW_EXPLICIT_STATE 0x04000000   // Show the dependencies as a tree. Might get large for complicated checklists.
+#define GFXUI_CHKLST_FLAG_SHOW_DEP_TREE       0x08000000   // Show the dependencies as a tree. Might get large for complicated checklists.
 // TODO: /Stark Fist
 //////////////////////////////////
 

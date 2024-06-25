@@ -18,6 +18,7 @@ These classes are built on top of the GfxUI classes, and implement higher-level
 
 #include "../Image.h"
 #include "../ImageUtils.h"
+#include "../../AsyncSequencer.h"
 #include "../../M2MLink/M2MLink.h"
 #include "../../Identity/Identity.h"
 #include "../../Storage/Storage.h"
@@ -46,8 +47,8 @@ class GfxUIGroup : public GfxUIElement {
 
     /* Implementation of GfxUIElement. */
     // This class has no rendering tasks, and doesn't respond to user input.
-    int  _render(UIGfxWrapper* ui_gfx) {    return 0;   };
-    bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {  return false;   };
+    int  _render(UIGfxWrapper*) {    return 0;   };
+    bool _notify(const GfxUIEvent, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>*) {  return false;   };
 };
 
 
@@ -66,6 +67,26 @@ class GfxUIRoot : public GfxUIGroup {
 
   private:
     UIGfxWrapper* _ui_gfx;
+};
+
+
+/**
+* A class to group UI elements into a grid or table.
+*/
+class GfxUIGrid : public GfxUIElement {
+  public:
+    GfxUIGrid(GfxUILayout layout, const PixUInt COLS = 0, const PixUInt ROWS = 0, uint32_t f = 0) : GfxUIElement(&layout, f) {};
+    ~GfxUIGrid() {};
+
+    //inline int add_child(GfxUIElement* element) {     return _add_child(element);     };
+    //inline int remove_child(GfxUIElement* element) {  return _remove_child(element);  };
+
+    /* Implementation of GfxUIElement. */
+    // This class has no rendering tasks, and doesn't respond to user input.
+    int  _render(UIGfxWrapper*) {    return 0;   };
+    bool _notify(const GfxUIEvent, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>*) {  return false;   };
+
+  private:
 };
 
 
@@ -295,6 +316,39 @@ class GfxUITextArea : public GfxUIElement, public BufferAccepter {
 /*******************************************************************************
 * A graphical text area that is specialized for the logger.
 *******************************************************************************/
+
+
+/*******************************************************************************
+* A graphical breakout for AsyncSequencer, phrased as a checklist.
+*******************************************************************************/
+
+class GfxUIChecklist : public GfxUIElement {
+  public:
+    GfxUIChecklist(AsyncSequencer*, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
+    ~GfxUIChecklist() {};
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
+
+  private:
+    AsyncSequencer* _CHK_LIST;
+};
+
+
+class GfxUIInteractiveChecklist : public GfxUIChecklist {
+  public:
+    GfxUIInteractiveChecklist(AsyncSequencer*, const GfxUILayout lay, const GfxUIStyle sty, uint32_t f = 0);
+    ~GfxUIInteractiveChecklist() {};
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
+
+  private:
+    //PriorityQueue<>
+};
+
 
 
 

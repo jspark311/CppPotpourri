@@ -28,11 +28,66 @@ This program tests Image.
 * Test routines
 *******************************************************************************/
 
-
 int test_img_construction() {
   int ret = -1;
+  printf("Testing Image construction...\n");
+  const uint32_t TEST_X_sz     = (37 + (randomUInt32() % 151));
+  const uint32_t TEST_Y_sz     = (37 + (randomUInt32() % 151));
+  const uint32_t TEST_PX_COUNT = (TEST_X_sz * TEST_Y_sz);
+  printf("\tCreating test images of size (%u x %u)... ", TEST_X_sz, TEST_Y_sz);
+
+  //Image(TEST_X_sz, TEST_Y_sz, ImgBufferFormat, uint8_t*);
+  Image img_trivial;
+  Image img_0(TEST_X_sz, TEST_Y_sz, ImgBufferFormat::MONOCHROME);  // Monochrome
+  Image img_1(TEST_X_sz, TEST_Y_sz, ImgBufferFormat::GREY_8);      // 8-bit greyscale
+  Image img_2(TEST_X_sz, TEST_Y_sz, ImgBufferFormat::R8_G8_B8);    // 24-bit color
+  Image img_3(TEST_X_sz, TEST_Y_sz, ImgBufferFormat::R5_G6_B5);    // 16-bit color
+  Image img_4(TEST_X_sz, TEST_Y_sz, ImgBufferFormat::R3_G3_B2);    // 8-bit color
+  Image img_5(TEST_X_sz, TEST_Y_sz);
+  printf("Done.\n\tAllocation works for all (and only) fully-specified Images... ");
+
+  bool step_pass = !img_trivial.reallocate();
+  step_pass &= img_0.reallocate();
+  step_pass &= img_1.reallocate();
+  step_pass &= img_2.reallocate();
+  step_pass &= img_3.reallocate();
+  step_pass &= img_4.reallocate();
+  step_pass &= !img_5.reallocate();
+
+  if (step_pass) {
+    printf("Pass\n\tAllocation sizes match expectations...\n");
+    const uint32_t EXPECTED_SZ_1BIT  = ((TEST_PX_COUNT >> 3) + ((TEST_PX_COUNT & 7) ? 1:0));
+    const uint32_t EXPECTED_SZ_1BYTE = TEST_PX_COUNT;
+    const uint32_t EXPECTED_SZ_2BYTE = (TEST_PX_COUNT * 2);
+    const uint32_t EXPECTED_SZ_3BYTE = (TEST_PX_COUNT * 3);
+    printf("Pass.\n\t\tUnder-specified images report 0 for bytesUsed()... ");
+    if ((0 == img_trivial.bytesUsed()) & (0 == img_5.bytesUsed())) {
+      printf("Pass.\n\t\tMONOCHROME image reports %u for bytesUsed()... ", EXPECTED_SZ_1BIT);
+      if (EXPECTED_SZ_1BIT == img_0.bytesUsed()) {
+        printf("Pass.\n\t\tGREY_8 image reports %u for bytesUsed()... ", EXPECTED_SZ_1BYTE);
+        if (EXPECTED_SZ_1BYTE == img_1.bytesUsed()) {
+          printf("Pass.\n\t\tR8_G8_B8 image reports %u for bytesUsed()... ", EXPECTED_SZ_3BYTE);
+          if (EXPECTED_SZ_3BYTE == img_2.bytesUsed()) {
+            printf("Pass.\n\t\tR5_G6_B5 image reports %u for bytesUsed()... ", EXPECTED_SZ_2BYTE);
+            if (EXPECTED_SZ_2BYTE == img_3.bytesUsed()) {
+              printf("Pass.\n\t\tR3_G3_B2 image reports %u for bytesUsed()... ", EXPECTED_SZ_1BYTE);
+              if (EXPECTED_SZ_1BYTE == img_4.bytesUsed()) {
+                printf("Pass\n\tAllocation tests pass.\n");
+                ret = 0;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
   return ret;
 }
+
 
 
 int test_img_buffer_by_copy() {
@@ -41,10 +96,12 @@ int test_img_buffer_by_copy() {
 }
 
 
+
 int test_img_reallocation() {
   int ret = -1;
   return ret;
 }
+
 
 
 int test_img_color() {
@@ -296,16 +353,15 @@ int c3p_image_test_main() {
   const char* const MODULE_NAME = "Image";
   printf("===< %s >=======================================\n", MODULE_NAME);
 
+  img_test_plan.requestSteps(CHKLST_IMG_TEST_ALLOCATION);
   //img_test_plan.requestSteps(CHKLST_IMG_TESTS_ALL);
-  img_test_plan.requestSteps(0);
   while (!img_test_plan.request_completed() && (0 == img_test_plan.failed_steps(false))) {
     img_test_plan.poll();
   }
-  int ret = (img_test_plan.request_fulfilled() ? 0 : 1);
 
   StringBuilder report_output;
   img_test_plan.printDebug(&report_output, "Image test report");
   printf("%s\n", (char*) report_output.string());
 
-  return ret;
+  return (img_test_plan.request_fulfilled() ? 0 : 1);
 }

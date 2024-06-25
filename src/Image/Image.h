@@ -196,6 +196,7 @@ class Image {
     bool setBufferByCopy(uint8_t*, ImgBufferFormat);
     bool setSize(PixUInt x, PixUInt y);
     bool reallocate();
+    uint32_t bytesUsed();
 
     void wipe();
     int8_t serialize(StringBuilder*);
@@ -219,7 +220,7 @@ class Image {
     inline ImgBufferFormat format() {         return _buf_fmt;                               };
     inline bool            allocated() {      return (nullptr != _buffer);                   };
     inline uint32_t        pixels() {         return (_x * _y);                              };
-    inline uint32_t        bytesUsed() {      return ((_x * _y * _bits_per_pixel()) >> 3);   };
+
     inline uint8_t         bitsPerPixel() {   return _bits_per_pixel(_buf_fmt);              };
     inline bool            isFrameBuffer() {  return _img_flag(C3P_IMG_FLAG_IS_FRAMEBUFFER); };
     inline bool            locked() {         return _img_flag(C3P_IMG_FLAG_BUFFER_LOCKED);  };
