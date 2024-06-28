@@ -66,12 +66,16 @@ const char* getIRQConditionString(const IRQCondition con_code) {
 }
 
 
+/*******************************************************************************
+*
+*******************************************************************************/
+
 /**
 * Do the boilerplate setup of the MCU that all applications will require.
 *
 * @return 0 on success. Negative on failure.
 */
-int8_t platform_init() {
+int8_t __attribute__((weak)) platform_init() {
   int8_t ret = -127;
   if (platformObj()) {
     ret = platformObj()->init();
@@ -94,10 +98,8 @@ void AbstractPlatform::_discover_alu_params() {
 
   // Now determine the endianess with a magic number and a pointer dance.
   if (8 != aluWidth()) {
-    uint16_t test = 0xAA55;
-    if (0xAA == *((uint8_t*) &test)) {
-      _alter_flags(true, ABSTRACT_PF_FLAG_BIG_ENDIAN);
-    }
+    const uint16_t TEST = 0xAA55;
+    _alter_flags((0xAA == *((uint8_t*) &TEST)), ABSTRACT_PF_FLAG_BIG_ENDIAN);
   }
 
   uintptr_t initial_sp = 0;
@@ -369,7 +371,7 @@ int8_t AbstractPlatform::configureConsole(C3PConsole* console) {
   #endif
   #if defined(CONFIG_C3P_CONSOLE_PFINFO_TOOL)
     console->defineCommand("pfinfo", '\0', "Platform information", "[types | crypto]", 0, callback_platform_info);
-  #endif   
+  #endif
   #if defined(CONFIG_C3P_CONSOLE_REBOOT_TOOL)
     console->defineCommand("reboot", '\0', "Reboot firmware", "[reason code]", 0, callback_reboot);
   #endif

@@ -17,21 +17,23 @@ Date:   2023.04.08
 */
 GfxUICryptoRNG::GfxUICryptoRNG(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f) :
   GfxUIElement(lay, sty, f),
-  _rng_buffer(internalWidth(), FilteringStrategy::RAW),
+  _rng_buffer(256, FilteringStrategy::RAW),
   _vis_0(
     GfxUILayout(
       internalPosX(), internalPosY(),
-      internalWidth(), (internalHeight() >> 1),
+      258, (internalHeight() >> 1),
       1, 0, 0, 0,   // Margins_px(t, b, l, r)
       1, 0, 0, 0    // Border_px(t, b, l, r)
     ),
     sty,
     &_rng_buffer,
-    (GFXUI_FLAG_ALWAYS_REDRAW)
+    (GFXUI_FLAG_ALWAYS_REDRAW | GFXUI_SENFILT_FLAG_DRAW_CURVE | GFXUI_SENFILT_FLAG_DRAW_GRID | GFXUI_SENFILT_FLAG_AUTOSCALE_Y)
   ),
   _schedule_rng_update("rng_update", 55000, -1, true, this)
 {
   _add_child(&_vis_0);
+  _vis_0.majorDivX(0);
+  _vis_0.majorDivY(100);
   C3PScheduler::getInstance()->addSchedule(&_schedule_rng_update);
 }
 
@@ -61,7 +63,12 @@ bool GfxUICryptoRNG::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, Pr
   switch (GFX_EVNT) {
     case GfxUIEvent::TOUCH:
       if (_rng_buffer.initialized()) {
-        random_fill((uint8_t*) _rng_buffer.memPtr(), _rng_buffer.memUsed());
+        uint8_t tmp_buffer[4096];
+        random_fill(tmp_buffer, sizeof(tmp_buffer));
+        _rng_buffer.purge();
+        for (uint32_t i = 0; i < sizeof(tmp_buffer); i++) {
+          *(_rng_buffer.memPtr() + tmp_buffer[i]) = *(_rng_buffer.memPtr() + tmp_buffer[i])+1;
+        }
         _rng_buffer.feedFilter();
         ret = true;
       }
@@ -85,8 +92,13 @@ PollResult GfxUICryptoRNG::poll() {
     }
   }
   if (_rng_buffer.initialized() & (PollResult::NO_ACTION == ret)) {
-    random_fill((uint8_t*) _rng_buffer.memPtr(), _rng_buffer.memUsed());
-    _rng_buffer.feedFilter();
+        uint8_t tmp_buffer[4096];
+        random_fill(tmp_buffer, sizeof(tmp_buffer));
+        _rng_buffer.purge();
+        for (uint32_t i = 0; i < sizeof(tmp_buffer); i++) {
+          *(_rng_buffer.memPtr() + tmp_buffer[i]) = *(_rng_buffer.memPtr() + tmp_buffer[i])+1;
+        }
+        _rng_buffer.feedFilter();
     ret = PollResult::ACTION;
   }
   return ret;

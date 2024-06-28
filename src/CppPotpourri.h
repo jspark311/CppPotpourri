@@ -242,5 +242,42 @@ class C3PRefCounter {
 };
 
 
+/*******************************************************************************
+* An optional interface class for providing pluggable RNGs. Some cryptographic
+*   arrangements might want tRNG and pRNG in the same build.
+*
+* NOTE: The platform is in no way obliged to use this. It is only useful for
+*   cases where a specific RNG is demanded, rather than the shared mystery
+*   implementation from the Platform.
+*******************************************************************************/
+class C3PRandom {
+  public:
+    bool     randomBool();
+    uint8_t  randomUInt8();
+    uint16_t randomUInt16();
+    uint32_t randomUInt32();
+    uint64_t randomUInt64();
+    float    randomFloat();
+    double   randomDouble();
+    virtual int8_t fill(uint8_t*, const uint32_t LEN) =0;  // True implementation.
+};
+
+/* A bundled pRNG based on pcg_basic. Creates deterministic bitstreams. */
+class C3P_pRNG : public C3PRandom {
+  public:
+    C3P_pRNG() : _state(0x853c49e6748fea9bULL), _inc(0xda3e39cb94b95bdbULL) {};
+    ~C3P_pRNG() {  _state = 0;  _inc = 0;  };
+
+    int8_t init(const uint64_t SEED = 0);
+    int8_t fill(uint8_t*, const uint32_t LEN);
+
+
+  private:
+    uint64_t _state;  // RNG state.  All values are possible.
+    uint64_t _inc;    // Controls which RNG sequence (stream) is selected. Must *always* be odd.
+
+    uint32_t _pcg32_random_r();   // Generate a uniformly distributed 32-bit random number.
+    void     _pcg32_srandom(uint64_t seed, uint64_t seq);
+};
 
 #endif // __CPPPOTPOURRI_H__

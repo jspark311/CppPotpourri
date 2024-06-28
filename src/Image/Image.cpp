@@ -882,6 +882,13 @@ void Image::_remap_for_orientation(PixUInt* xn, PixUInt* yn) {
     case ImgOrientation::ROTATION_0:   // Native format.
       break;
   }
+
+  if (flipX()) {
+    *xn = (x() - 1) - *xn;
+  }
+  if (flipY()) {
+    *yn = (y() - 1) - *yn;
+  }
 }
 
 

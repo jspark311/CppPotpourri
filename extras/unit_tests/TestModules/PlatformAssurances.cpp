@@ -83,6 +83,77 @@ int platform_rng_tests() {
 
 
 /*
+* Test that the pRNG class is working correctly.
+*/
+int platform_rng_api_tests() {
+  int ret = -1;
+  printf("Verifying RNG API via pRNG... \n");
+  // We'll need a test matrix...
+  const uint32_t FUZZ_VAL_COUNT = (18 + (randomUInt32() % 12));
+  const uint64_t SEED_VALUE_0 = generate_random_uint64();
+  const uint64_t SEED_VALUE_1 = generate_random_uint64();
+  uint32_t RNG_TEST_VALUE[6][FUZZ_VAL_COUNT];
+  C3P_pRNG rng0;            // [0] and [1] should differ from each other, since it is left up to system time.
+  C3P_pRNG rng1;            //
+  C3P_pRNG rng2;            // [2] and [3] should match each other, but shouldn't match anything else.
+  C3P_pRNG rng3;            //
+  C3P_pRNG rng4;            // [4] and [5] should match each other, but shouldn't match anything else.
+  C3P_pRNG rng5;            //
+  rng0.init();
+  rng1.init();
+  rng2.init(SEED_VALUE_0);
+  rng3.init(SEED_VALUE_0);
+  rng4.init(SEED_VALUE_1);
+  rng5.init(SEED_VALUE_1);
+
+  // Collect the test data...
+  for (uint32_t i = 0; i < FUZZ_VAL_COUNT; i++) {
+    RNG_TEST_VALUE[0][i] = rng0.randomUInt32();
+    RNG_TEST_VALUE[1][i] = rng1.randomUInt32();
+    RNG_TEST_VALUE[2][i] = rng2.randomUInt32();
+    RNG_TEST_VALUE[3][i] = rng3.randomUInt32();
+    RNG_TEST_VALUE[4][i] = rng4.randomUInt32();
+    RNG_TEST_VALUE[5][i] = rng5.randomUInt32();
+  }
+
+  printf("\tVerifying Two pRNGs seeded by timers are different... ");
+  bool test_passed = true;
+  for (uint32_t i = 0; i < FUZZ_VAL_COUNT; i++) {
+    if (RNG_TEST_VALUE[0][i] == RNG_TEST_VALUE[1][i]) {  test_passed = false;  break;  }
+  }
+  if (test_passed) {
+    printf("Pass.\n\tVerifying pRNG returns different values on subsequent calls... ");
+    for (uint32_t i = 0; i < (FUZZ_VAL_COUNT-1); i++) {
+      if (RNG_TEST_VALUE[0][i] == RNG_TEST_VALUE[0][i+1]) {  test_passed = false;  break;  }
+      if (RNG_TEST_VALUE[1][i] == RNG_TEST_VALUE[1][i+1]) {  test_passed = false;  break;  }
+      if (RNG_TEST_VALUE[2][i] == RNG_TEST_VALUE[2][i+1]) {  test_passed = false;  break;  }
+      if (RNG_TEST_VALUE[3][i] == RNG_TEST_VALUE[3][i+1]) {  test_passed = false;  break;  }
+      if (RNG_TEST_VALUE[4][i] == RNG_TEST_VALUE[4][i+1]) {  test_passed = false;  break;  }
+      if (RNG_TEST_VALUE[5][i] == RNG_TEST_VALUE[5][i+1]) {  test_passed = false;  break;  }
+    }
+    if (test_passed) {
+      printf("Pass.\n\tVerifying pRNG returns the same (distinct sequence for the same seed value... ");
+      for (uint32_t i = 0; i < FUZZ_VAL_COUNT; i++) {
+        if (RNG_TEST_VALUE[2][i] != RNG_TEST_VALUE[3][i]) {  test_passed = false;  break;  }
+        if (RNG_TEST_VALUE[4][i] != RNG_TEST_VALUE[5][i]) {  test_passed = false;  break;  }
+      }
+      if (test_passed) {
+        printf("Pass\n\n");
+        ret = 0;
+      }
+    }
+  }
+
+
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
+  return ret;
+}
+
+
+
+/*
 * C3P system time is given by millis() and micros().
 * This function only tests the validity of the system time functions in terms of
 *   self-reference, and if the test environment gives an implementation of both
@@ -235,28 +306,80 @@ int platform_gpio_tests() {
 }
 
 
+
 void print_types_platform() {
-  printf("\tAbstractPlatform         %u\t%u\n", sizeof(AbstractPlatform),     alignof(AbstractPlatform));
+  printf("\tAbstractPlatform         %u\t%u\n", sizeof(AbstractPlatform), alignof(AbstractPlatform));
+  printf("\tC3P_pRNG                 %u\t%u\n", sizeof(C3P_pRNG),         alignof(C3P_pRNG));
 }
 
 
+
 /*******************************************************************************
-* The main function.
+* Test plan
 *******************************************************************************/
+#define CHKLST_PLATFORM_RNG_WORKS     0x00000001  //
+#define CHKLST_PLATFORM_TIMER_CHECK   0x00000002  //
+#define CHKLST_PLATFORM_THREAD_CHECK  0x00000004  //
+#define CHKLST_PLATFORM_GPIO_API      0x40000000  //
+#define CHKLST_PLATFORM_RNG_API       0x80000000  //
+
+#define CHKLST_PLATFORM_TESTS_ALL ( \
+  CHKLST_PLATFORM_RNG_WORKS | CHKLST_PLATFORM_TIMER_CHECK | CHKLST_PLATFORM_RNG_API)
+
+const StepSequenceList TOP_LEVEL_PLATFORM_TEST_LIST[] = {
+  { .FLAG         = CHKLST_PLATFORM_RNG_WORKS,
+    .LABEL        = "Test environment RNG operation",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == platform_rng_tests()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_PLATFORM_TIMER_CHECK,
+    .LABEL        = "Test environment timer operation",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == platform_system_time_tests()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_PLATFORM_THREAD_CHECK,
+    .LABEL        = "Test environment thread operation",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == platform_threading_tests()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_PLATFORM_GPIO_API,
+    .LABEL        = "GPIO API",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == platform_gpio_tests()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_PLATFORM_RNG_API,
+    .LABEL        = "RNG API",
+    .DEP_MASK     = (CHKLST_PLATFORM_RNG_WORKS | CHKLST_PLATFORM_TIMER_CHECK),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == platform_rng_api_tests()) ? 1:-1);  }
+  },
+};
+
+AsyncSequencer platform_test_plan(TOP_LEVEL_PLATFORM_TEST_LIST, (sizeof(TOP_LEVEL_PLATFORM_TEST_LIST) / sizeof(TOP_LEVEL_PLATFORM_TEST_LIST[0])));
+
+
+
+/*******************************************************************************
+* The main function
+*******************************************************************************/
+
 int platform_assurance_test_main() {
-  int ret = -1;   // Failure is the default result.
   const char* const MODULE_NAME = "AbstractPlatform";
   printf("===< %s >=======================================\n", MODULE_NAME);
 
-  if (0 == platform_rng_tests()) {
-    if (0 == platform_system_time_tests()) {
-  //     if (0 == platform_threading_tests()) {
-  //       if (0 == platform_gpio_tests()) {
-            ret = 0;
-  //       }
-  //     }
-    }
+  platform_test_plan.requestSteps(CHKLST_PLATFORM_TESTS_ALL);
+  while (!platform_test_plan.request_completed() && (0 == platform_test_plan.failed_steps(false))) {
+    platform_test_plan.poll();
   }
+  int ret = (platform_test_plan.request_fulfilled() ? 0 : 1);
+
+  StringBuilder report_output;
+  platform_test_plan.printDebug(&report_output, "AbstractPlatform test report");
+  printf("%s\n", (char*) report_output.string());
 
   return ret;
 }

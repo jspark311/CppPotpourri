@@ -163,7 +163,6 @@ typedef struct __platform_thread_opts {
   int8_t random_fill(uint8_t* buf, size_t len);
 
 
-
 /*******************************************************************************
 *   _______                                   __   ____        __
 *  /_  __(_)___ ___  ___     ____ _____  ____/ /  / __ \____ _/ /____
@@ -288,7 +287,7 @@ typedef struct __platform_thread_opts {
       #if defined(__HAS_CRYPT_WRAPPER)
         CryptoProcessor* crypto = nullptr;
       #endif
-  
+
       /* Accessors for platform capability discovery. */
       #if defined(__BUILD_HAS_THREADS)
         inline bool hasThreads() const {        return true;     };
@@ -311,30 +310,30 @@ typedef struct __platform_thread_opts {
         // TODO: This is possible to do without the magic number 13... Figure out how.
         return (8 << ((_pflags & ABSTRACT_PF_FLAG_ALU_WIDTH_MASK) >> 13));
       };
-  
+
       /* These are bootstrap checkpoints. */
       int8_t configureConsole(C3PConsole*);
       inline uint8_t platformState() {   return (_pflags & ABSTRACT_PF_FLAG_P_STATE_MASK);  };
-  
+
       void printCryptoOverview(StringBuilder*);
-  
+
       virtual int8_t init()  =0;
       virtual void printDebug(StringBuilder*)  =0;
-  
+
       /* Functions that don't return. */
       virtual void firmware_reset(uint8_t)     =0;
       virtual void firmware_shutdown(uint8_t)  =0;
-  
-  
+
+
     protected:
       const char* _board_name;
       uint32_t    _pflags = 0;
-  
+
       AbstractPlatform(const char* n) : _board_name(n) {};
-  
+
       void _print_abstract_debug(StringBuilder* out);
       void _discover_alu_params();
-  
+
       /* Inlines for altering and reading the flags. */
       inline void _alter_flags(bool en, uint32_t mask) {
         _pflags = (en) ? (_pflags | mask) : (_pflags & ~mask);
