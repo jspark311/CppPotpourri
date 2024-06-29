@@ -18,7 +18,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 
-This header file contains the libraries means of handling time-series data.
+This header file contains the library's means of handling time-series data.
 */
 
 
@@ -34,94 +34,97 @@ This header file contains the libraries means of handling time-series data.
 #include "../FlagContainer.h"
 #include "../C3PValue/KeyValuePair.h"
 
-#define TIMESERIES_FLAG_FILTER_INITD       0x00000001  // Timeseries is initialized and ready.
-#define TIMESERIES_FLAG_WINDOW_FULL        0x00000002  // Window is filled.
-#define TIMESERIES_FLAG_SELF_ALLOC         0x00000004  // Memory holding the values is owned by this class.
-#define TIMESERIES_FLAG_VALID_MINMAX       0x00000008  // Statistical measurement is valid.
-#define TIMESERIES_FLAG_VALID_MEAN         0x00000010  // Statistical measurement i s valid.
-#define TIMESERIES_FLAG_VALID_RMS          0x00000020  // Statistical measurement is valid.
-#define TIMESERIES_FLAG_VALID_STDEV        0x00000040  // Statistical measurement is valid.
-#define TIMESERIES_FLAG_VALID_MEDIAN       0x00000080  // Statistical measurement is valid.
-#define TIMESERIES_FLAG_VALID_SNR          0x00000100  // Statistical measurement is valid.
+/* Class flags */
+#define TIMESERIES_FLAG_FILTER_INITD   0x01  // Timeseries is initialized and ready.
+#define TIMESERIES_FLAG_SELF_ALLOC     0x02  // Memory holding the values is owned by this class.
+#define TIMESERIES_FLAG_VALID_SNR      0x04  // Statistical measurement i s valid.
+#define TIMESERIES_FLAG_VALID_MINMAX   0x08  // Statistical measurement is valid.
+#define TIMESERIES_FLAG_VALID_MEAN     0x10  // Statistical measurement i s valid.
+#define TIMESERIES_FLAG_VALID_RMS      0x20  // Statistical measurement is valid.
+#define TIMESERIES_FLAG_VALID_STDEV    0x40  // Statistical measurement is valid.
+#define TIMESERIES_FLAG_VALID_MEDIAN   0x80  // Statistical measurement is valid.
 
-// Flag compounds
 #define TIMESERIES_FLAG_MASK_ALL_STATS ( \
   TIMESERIES_FLAG_VALID_MINMAX | TIMESERIES_FLAG_VALID_MEAN | \
   TIMESERIES_FLAG_VALID_RMS | TIMESERIES_FLAG_VALID_STDEV | \
   TIMESERIES_FLAG_VALID_MEDIAN | TIMESERIES_FLAG_VALID_SNR)
 
-#define TIMESERIES_FLAG_MASK_SENDABLE_RESULT ( \
-  TIMESERIES_FLAG_WINDOW_FULL | TIMESERIES_FLAG_FILTER_INITD)
 
-
-/*
-* Virtual base class that handles the basic flags and meta for a timeseries.
+/******************************************************************************
+* Pure virtual base class that handles the basic meta for a timeseries.
 * The primary purpose here is to control template bloat, rather than provide a
-*   generic interface to timeseries data.
-*/
+*   generic interface to timeseries data. Code in this class will not be
+*   replicated by the template.
+******************************************************************************/
 class TimeSeriesBase {
   public:
-    inline int8_t   purge() {                  return _zero_samples();                  };
+    inline TCode    tcode() {              return _TCODE;  };
+    inline bool     initialized() {        return _chk_flags(TIMESERIES_FLAG_FILTER_INITD);  };
+    inline bool     windowFull() {         return (initialized() && (_samples_total >= _window_size));   };
+    inline uint32_t lastIndex() {          return _sample_idx;        };
+    inline uint32_t totalSamples() {       return _samples_total;     };
+    inline int8_t   purge() {              return _zero_samples();    };
+    inline bool     dirty() {              return (_last_trace != (0x0000FFFF & _samples_total));  };
+    inline void     invalidateStats() {    _set_flags(false, TIMESERIES_FLAG_MASK_ALL_STATS);  };
+    inline void     markClean() {          _last_trace = (0x0000FFFF & _samples_total);   };
     inline int8_t   windowSize(uint32_t x) {   return _reallocate_sample_window(x);     };
     inline uint32_t windowSize() {         return (initialized() ? _window_size : 0);   };
-    inline uint32_t windowFull() {         return _flags.value(TIMESERIES_FLAG_WINDOW_FULL);   };
-    inline bool     initialized() {        return _flags.value(TIMESERIES_FLAG_FILTER_INITD);  };
-    inline uint32_t lastIndex() {          return _sample_idx;                            };
-    inline uint32_t totalSamples() {       return _samples_total;                         };
-    inline char*    name() {               return (_name ? _name : (char*) "");           };
-    inline SIUnit*  units() {              return (_units ? _units : nullptr);            };
-    inline void     invalidateStats() {    _flags.clear(TIMESERIES_FLAG_MASK_ALL_STATS);  };
 
-    inline C3PValue* valueObj() {          return &_value;                                };
-    inline TCode     tcode() {             return _value.tcode();                         };
-    inline bool      dirty() {             return (_value.trace() == _last_trace);        };
-    inline void      markClean() {         _last_trace = _value.trace();                  };
-
+    /* Accessors for optional string-like annotations */
+    inline char*    name() {               return (_name ? _name : (char*) "");   };
+    inline SIUnit*  units() {              return (_units ? _units : nullptr);    };
     int8_t name(char*);
     int8_t units(SIUnit*);
+
+    /* Parsing and packing */
+    void printSeries(StringBuilder*);
     int8_t serialize(StringBuilder*, TCode);
-    int8_t deserialize(StringBuilder*, TCode);
 
 
   protected:
-    C3PValue        _value;          // Allocated and supplied by the child class.
     uint32_t        _window_size;    // The present size of the window.
     uint32_t        _samples_total;  // Total number of samples that have been ingested since purge().
     uint32_t        _sample_idx;     // The present sample index in the underlying memory pool.
-    FlagContainer32 _flags;
 
-    TimeSeriesBase(const TCode, uint32_t ws, uint32_t flgs = 0);
+    //friend int    C3PTypeConstraint<TimeSeries*>::serialize(void*, StringBuilder*, const TCode);
+    //friend int8_t C3PTypeConstraint<TimeSeries*>::construct(void*, KeyValuePair*);
+
+    TimeSeriesBase(const TCode, uint32_t ws, uint16_t flgs = 0);
     ~TimeSeriesBase();
 
-    inline bool   _self_allocated() {  return _flags.value(TIMESERIES_FLAG_SELF_ALLOC);       };
-    inline bool   _stale_minmax() {    return !(_flags.value(TIMESERIES_FLAG_VALID_MINMAX));  };
-    inline bool   _stale_mean() {      return !(_flags.value(TIMESERIES_FLAG_VALID_MEAN));    };
-    inline bool   _stale_rms() {       return !(_flags.value(TIMESERIES_FLAG_VALID_RMS));     };
-    inline bool   _stale_stdev() {     return !(_flags.value(TIMESERIES_FLAG_VALID_STDEV));   };
-    inline bool   _stale_median() {    return !(_flags.value(TIMESERIES_FLAG_VALID_MEDIAN));  };
-    inline bool   _stale_snr() {       return !(_flags.value(TIMESERIES_FLAG_VALID_SNR));     };
-
-    void _print_series_base(StringBuilder*);
+    inline bool _self_allocated() {  return _chk_flags(TIMESERIES_FLAG_SELF_ALLOC);       };
+    inline bool _stale_minmax() {    return !(_chk_flags(TIMESERIES_FLAG_VALID_MINMAX));  };
+    inline bool _stale_mean() {      return !(_chk_flags(TIMESERIES_FLAG_VALID_MEAN));    };
+    inline bool _stale_rms() {       return !(_chk_flags(TIMESERIES_FLAG_VALID_RMS));     };
+    inline bool _stale_stdev() {     return !(_chk_flags(TIMESERIES_FLAG_VALID_STDEV));   };
+    inline bool _stale_median() {    return !(_chk_flags(TIMESERIES_FLAG_VALID_MEDIAN));  };
+    inline bool _stale_snr() {       return !(_chk_flags(TIMESERIES_FLAG_VALID_SNR));     };
+    inline void _set_flags(bool x, const uint16_t MSK) {  _flags = (x ? (_flags | MSK) : (_flags & ~MSK)); };
+    inline bool _chk_flags(const uint16_t MSK) {          return (MSK == (_flags & MSK));                  };
 
     /* Mandatory overrides for a child class. */
     virtual int8_t _reallocate_sample_window(uint32_t) =0;
     virtual int8_t _zero_samples() =0;
-    #if defined(__BUILD_HAS_CBOR)
-      virtual void   _serialize_value(cbor::encoder*, uint32_t idx)    =0;
-      virtual void   _deserialize_value(cbor::encoder*, uint32_t idx)  =0;
-    #endif
+    virtual void   _print_series(StringBuilder*) =0;
+    virtual void   _serialize_value(cbor::encoder*, uint32_t idx)    =0;
+    virtual void   _deserialize_value(cbor::encoder*, uint32_t idx)  =0;
 
 
   private:
-    char*      _name;
-    SIUnit*    _units;
-    uint16_t   _last_trace;
+    const TCode _TCODE;
+    uint8_t     _flags;       // Class behavior flags.
+    uint16_t    _last_trace;  // A slice of the _samples_total to track updates.
+    char*       _name;        // An optional name for this TimeSeries.
+    SIUnit*     _units;       // Optional unit specification.
 };
 
 
-/*
-* Filters for linear sequences of scalar values.
-*/
+
+/******************************************************************************
+* Linear sequences of simple numeric values
+******************************************************************************/
+// TODO?
+//template <class T> class TimeSeries : public TimeSeriesBase, protected RingBuffer<T> {
 template <class T> class TimeSeries : public TimeSeriesBase {
   public:
     TimeSeries(T* buf, uint32_t ws);
@@ -132,8 +135,9 @@ template <class T> class TimeSeries : public TimeSeriesBase {
     int8_t feedSeries();
     int8_t init();
     T      value();
+    int8_t copyValues(T*, const uint32_t COUNT = 1);
+    //T      value(const uint32_t IDX = 0);
 
-    void printSeries(StringBuilder*);
 
     /* Value accessor inlines */
     inline T        minValue() {   if (_stale_minmax()) _calculate_minmax();  return _min_value;  };
@@ -160,6 +164,7 @@ template <class T> class TimeSeries : public TimeSeriesBase {
 
     int8_t  _reallocate_sample_window(uint32_t);
     int8_t  _zero_samples();
+    void    _print_series(StringBuilder*);
     #if defined(__BUILD_HAS_CBOR)
       void    _serialize_value(cbor::encoder*, uint32_t idx);
       void    _deserialize_value(cbor::encoder*, uint32_t idx);
@@ -175,9 +180,9 @@ template <class T> class TimeSeries : public TimeSeriesBase {
 
 
 
-/*
-* Filters for linear sequences of vector values.
-*/
+/******************************************************************************
+* Linear sequences of vectors
+******************************************************************************/
 template <class T> class TimeSeries3 : public TimeSeriesBase {
   public:
     TimeSeries3(T* buf, uint32_t ws);
@@ -189,8 +194,6 @@ template <class T> class TimeSeries3 : public TimeSeriesBase {
     int8_t feedSeries();
     int8_t init();
     Vector3<T> value();
-
-    void printSeries(StringBuilder*);
 
     /* Value accessor inlines */
     inline Vector3<T> minValue() {   if (_stale_minmax()) _calculate_minmax();  return _min_value;  };
@@ -217,6 +220,7 @@ template <class T> class TimeSeries3 : public TimeSeriesBase {
 
     int8_t  _reallocate_sample_window(uint32_t);
     int8_t  _zero_samples();
+    void    _print_series(StringBuilder*);
     #if defined(__BUILD_HAS_CBOR)
       void    _serialize_value(cbor::encoder*, uint32_t idx);
       void    _deserialize_value(cbor::encoder*, uint32_t idx);
@@ -232,27 +236,49 @@ template <class T> class TimeSeries3 : public TimeSeriesBase {
 
 
 
-
 /*******************************************************************************
 * Single-value variant
 *******************************************************************************/
-/*
-* Constructor.
+/**
+* Constructor that allows the caller to side-step memory management.
 */
 template <class T> TimeSeries<T>::TimeSeries(T* buf, uint32_t ws) :
   TimeSeriesBase(tcodeForType(T(0)), ws, ((nullptr != buf) ? 0:TIMESERIES_FLAG_SELF_ALLOC)),
   samples(buf) {}
 
 
-/*
+/**
 * Destructor. Free sample memory.
 */
 template <class T> TimeSeries<T>::~TimeSeries() {
-  if ((nullptr != samples) & _flags.value(TIMESERIES_FLAG_SELF_ALLOC)) {
+  _set_flags(false, TIMESERIES_FLAG_FILTER_INITD);
+  if ((nullptr != samples) & _chk_flags(TIMESERIES_FLAG_SELF_ALLOC)) {
     // If we allocated our own memory pool, we need to free it at this point.
-    free(samples);
+    T* tmp_ptr = samples;
     samples = nullptr;
+    free(tmp_ptr);
   }
+}
+
+
+/**
+* This must be called ahead of usage to allocate the needed memory.
+*
+* @return 0 on success, or -1 on failure.
+*/
+template <class T> int8_t TimeSeries<T>::init() {
+  bool series_initd = false;
+  _set_flags(false, TIMESERIES_FLAG_FILTER_INITD);
+  if (_self_allocated())  {
+    uint32_t tmp_window_size = _window_size;
+    _window_size = 0;
+    series_initd = (0 == _reallocate_sample_window(tmp_window_size));
+  }
+  else {
+    series_initd = ((nullptr != samples) & (_window_size > 0));
+  }
+  _set_flags(series_initd, TIMESERIES_FLAG_FILTER_INITD);
+  return (series_initd ? 0 : -1);
 }
 
 
@@ -263,31 +289,12 @@ template <class T> TimeSeries<T>::~TimeSeries() {
 template <class T> int8_t TimeSeries<T>::feedSeries() {
   int8_t ret = -1;
   if (initialized()) {
-    _flags.set(TIMESERIES_FLAG_WINDOW_FULL);
     _sample_idx = 0;
     _samples_total += _window_size;
     invalidateStats();
     ret = 0;
   }
   return ret;
-}
-
-/*
-* This must be called ahead of usage to allocate the needed memory.
-*/
-template <class T> int8_t TimeSeries<T>::init() {
-  bool series_initd = false;
-  _flags.clear(TIMESERIES_FLAG_FILTER_INITD);
-  if (_self_allocated())  {
-    uint32_t tmp_window_size = _window_size;
-    _window_size = 0;
-    series_initd = (0 == _reallocate_sample_window(tmp_window_size));
-  }
-  else {
-    series_initd = ((nullptr != samples) & (_window_size > 0));
-  }
-  _flags.set(TIMESERIES_FLAG_FILTER_INITD, series_initd);
-  return (series_initd ? 0 : -1);
 }
 
 /*
@@ -298,24 +305,26 @@ template <class T> int8_t TimeSeries<T>::_reallocate_sample_window(uint32_t win)
   int8_t ret = -1;
   if (win != _window_size) {
     if (_self_allocated())  {
-      _window_size = win;
-      _flags.clear(TIMESERIES_FLAG_WINDOW_FULL);
+      _set_flags(false, TIMESERIES_FLAG_FILTER_INITD);
+      _sample_idx    = 0;
+      _samples_total = 0;
       if (nullptr != samples) {
         free(samples);
         samples = nullptr;
       }
-      if (_window_size > 0) {
-        samples = (T*) malloc(_window_size * sizeof(T));
-        ret = _zero_samples();
-        _sample_idx = 0;
+      if (win > 0) {
+        samples = (T*) malloc(win * sizeof(T));
+        if (nullptr != samples) {
+          _window_size = win;
+          ret = _zero_samples();
+        }
       }
-      else {   // Program asked for no sample depth.
-        ret = 0;
+      else {       // Program asked for no sample depth. Return success, having
+        ret = 0;   //   basically de-initialized the class.
       }
     }
-    else {
-      // We can't reallocate if we were constructed with a buffer.
-      ret--;
+    else {         // We can't reallocate if we were constructed with
+      ret--;       //   an external buffer.
     }
   }
   else {
@@ -332,16 +341,17 @@ template <class T> int8_t TimeSeries<T>::_reallocate_sample_window(uint32_t win)
 template <class T> int8_t TimeSeries<T>::_zero_samples() {
   int8_t ret = -1;
   _samples_total = 0;
-  _value.set(T(0));
-  _min_value = T(0);
-  _max_value = T(0);
-  _median    = T(0);
-  _mean      = 0.0d;
-  _rms       = 0.0d;
-  _stdev     = 0.0d;
-  _snr       = 0.0d;
+  _sample_idx    = 0;
+  invalidateStats();
+  markClean();
+  _min_value     = T(0);
+  _max_value     = T(0);
+  _median        = T(0);
+  _mean          = 0.0d;
+  _rms           = 0.0d;
+  _stdev         = 0.0d;
+  _snr           = 0.0d;
 
-  _flags.clear(TIMESERIES_FLAG_WINDOW_FULL | TIMESERIES_FLAG_MASK_ALL_STATS);
   if (nullptr != samples) {
     if (_window_size > 0) {
       ret = 0;
@@ -354,8 +364,7 @@ template <class T> int8_t TimeSeries<T>::_zero_samples() {
 }
 
 
-template <class T> void TimeSeries<T>::printSeries(StringBuilder* output) {
-  _print_series_base(output);
+template <class T> void TimeSeries<T>::_print_series(StringBuilder* output) {
   output->concatf("\tMin   = %.8f\n", (double) minValue());
   output->concatf("\tMax   = %.8f\n", (double) maxValue());
   output->concatf("\tRMS   = %.8f\n", (double) rms());
@@ -368,29 +377,20 @@ template <class T> void TimeSeries<T>::printSeries(StringBuilder* output) {
 * Add data to the series.
 *
 * @param val The value to be fed to the series.
-* @return -1 if series not initialized, 0 on value acceptance, or 1 one acceptance with new result.
+* @return -1 if series not initialized, 0 on value acceptance, or 1 on acceptance with full window.
 */
 template <class T> int8_t TimeSeries<T>::feedSeries(T val) {
   int8_t ret = -1;
   if (initialized()) {
-    if (_window_size > 1) {
-      samples[_sample_idx++] = val;
-      _samples_total++;
-      if (_sample_idx >= _window_size) {
-        // NOTE: Will run only on index overflow.
-        _flags.set(TIMESERIES_FLAG_WINDOW_FULL);
-        _sample_idx = 0;
-      }
-      ret = (windowFull() ? 1 : 0);
+    samples[_sample_idx++] = val;
+    _samples_total++;
+    if (_sample_idx >= _window_size) {
+      // NOTE: Will run only on index overflow.
+      _sample_idx = 0;
     }
-    else {
-      _value.set(val);
-      _flags.set(TIMESERIES_FLAG_WINDOW_FULL);
-      ret = 1;
-    }
+    ret = (windowFull() ? 1 : 0);
 
     if (1 == ret) {
-      _value.set(val);
       // Calculating the stats is an expensive process, and most of the
       //   time, there will be no demand for the result. So we mark our
       //   flags to recalculate fresh in the accessor's stack frame.
@@ -409,11 +409,36 @@ template <class T> int8_t TimeSeries<T>::feedSeries(T val) {
 */
 template <class T> T TimeSeries<T>::value() {
   T ret = T(0);
-  if (0 <= _value.get_as(&ret)) {
-    markClean();
+  if (windowFull()) {
+    const uint32_t SAFE_SAMPLE_IDX = (((0 != _sample_idx) ? _sample_idx : _window_size) - 1);
+    markClean();  // Do this here (specifically) to minimize concurrency grief.
+    ret = *(samples + SAFE_SAMPLE_IDX);
   }
   return ret;
 };
+
+
+template <class T> int8_t TimeSeries<T>::copyValues(T* buf, const uint32_t COUNT) {
+  int8_t ret = -1;
+  if (windowSize() >= COUNT) {  // Initialized and within bounds?
+    ret--;
+    if (COUNT > 0) {
+      ret--;
+      if (_samples_total >= COUNT) {  // Do so many samples exist?
+        // TODO: Inefficient for the sake of expediency. Should be a split copy
+        //   and a single modulus operation.
+        const uint32_t PRE_MOD_IDX = ((windowSize() + _sample_idx) - COUNT);
+        markClean();  // Do this here (specifically) to minimize concurrency grief.
+        for (uint32_t i = 0; i < COUNT; i++) {
+          const uint32_t SAFE_SAMPLE_IDX = ((PRE_MOD_IDX + i) % windowSize());
+          *(buf + i) = *(samples + SAFE_SAMPLE_IDX);
+        }
+        ret = 0;
+      }
+    }
+  }
+  return ret;
+}
 
 
 /**
@@ -432,7 +457,7 @@ template <class T> int8_t TimeSeries<T>::_calculate_minmax() {
       if (samples[i] > _max_value) _max_value = samples[i];
       else if (samples[i] < _min_value) _min_value = samples[i];
     }
-    _flags.set(TIMESERIES_FLAG_VALID_MINMAX);
+    _set_flags(true, TIMESERIES_FLAG_VALID_MINMAX);
   }
   return ret;
 }
@@ -453,7 +478,7 @@ template <class T> int8_t TimeSeries<T>::_calculate_mean() {
       summed_samples += (double) samples[i];
     }
     _mean = (summed_samples / _window_size);
-    _flags.set(TIMESERIES_FLAG_VALID_MEAN);
+    _set_flags(true, TIMESERIES_FLAG_VALID_MEAN);
   }
   return ret;
 }
@@ -474,7 +499,7 @@ template <class T> int8_t TimeSeries<T>::_calculate_rms() {
       squared_samples += ((double) samples[i] * (double) samples[i]);
     }
     _rms = sqrt(squared_samples / _window_size);
-    _flags.set(TIMESERIES_FLAG_VALID_RMS);
+    _set_flags(true, TIMESERIES_FLAG_VALID_RMS);
   }
   return ret;
 }
@@ -497,7 +522,7 @@ template <class T> int8_t TimeSeries<T>::_calculate_stdev() {
       deviation_sum += ((double) tmp * (double) tmp);
     }
     _stdev = sqrt(deviation_sum / _window_size);
-    _flags.set(TIMESERIES_FLAG_VALID_STDEV);
+    _set_flags(true, TIMESERIES_FLAG_VALID_STDEV);
   }
   return ret;
 }
@@ -542,7 +567,7 @@ template <class T> int8_t TimeSeries<T>::_calculate_median() {
       uint32_t upper = lower + 1;
       _median = (sorted[upper] + sorted[lower]) / 2;
     }
-    _flags.set(TIMESERIES_FLAG_VALID_MEDIAN);
+    _set_flags(true, TIMESERIES_FLAG_VALID_MEDIAN);
   }
   return ret;
 }
@@ -559,7 +584,7 @@ template <class T> int8_t TimeSeries<T>::_calculate_snr() {
   if ((_window_size > 1) & windowFull()) {
     ret = 0;
     _snr = (mean() / stdev());
-    _flags.set(TIMESERIES_FLAG_VALID_SNR);
+    _set_flags(true, TIMESERIES_FLAG_VALID_SNR);
   }
   return ret;
 }
@@ -592,7 +617,7 @@ template <class T> TimeSeries3<T>::~TimeSeries3() {
 */
 template <class T> int8_t TimeSeries3<T>::init() {
   bool series_initd = false;
-  _flags.clear(TIMESERIES_FLAG_FILTER_INITD);
+  _set_flags(false, TIMESERIES_FLAG_FILTER_INITD);
   if (_self_allocated()) {
     uint32_t tmp_window_size = _window_size;
     _window_size = 0;
@@ -601,7 +626,7 @@ template <class T> int8_t TimeSeries3<T>::init() {
   else {
     series_initd = ((nullptr != samples) & (_window_size > 0));
   }
-  _flags.set(TIMESERIES_FLAG_FILTER_INITD, series_initd);
+  _set_flags(series_initd, TIMESERIES_FLAG_FILTER_INITD);
   return (series_initd ? 0 : -1);
 }
 
@@ -613,7 +638,6 @@ template <class T> int8_t TimeSeries3<T>::init() {
 template <class T> int8_t TimeSeries3<T>::feedSeries() {
   int8_t ret = -1;
   if (initialized()) {
-    _flags.set(TIMESERIES_FLAG_WINDOW_FULL);
     _sample_idx = 0;
     _samples_total += _window_size;
     invalidateStats();
@@ -630,25 +654,27 @@ template <class T> int8_t TimeSeries3<T>::feedSeries() {
 template <class T> int8_t TimeSeries3<T>::_reallocate_sample_window(uint32_t win) {
   int8_t ret = -1;
   if (win != _window_size) {
-    if (_self_allocated()) {
-      _window_size = win;
-      _flags.clear(TIMESERIES_FLAG_WINDOW_FULL);
+    if (_self_allocated())  {
+      _set_flags(false, TIMESERIES_FLAG_FILTER_INITD);
+      _sample_idx    = 0;
+      _samples_total = 0;
       if (nullptr != samples) {
         free(samples);
         samples = nullptr;
       }
-      if (_window_size > 0) {
-        samples = (Vector3<T>*) malloc(_window_size * sizeof(Vector3<T>));
-        ret = _zero_samples();
-        _sample_idx = 0;
+      if (win > 0) {
+        samples = (T*) malloc(win * sizeof(Vector3<T>));
+        if (nullptr != samples) {
+          _window_size = win;
+          ret = _zero_samples();
+        }
       }
-      else {   // Program asked for no sample depth.
-        ret = 0;
+      else {       // Program asked for no sample depth. Return success, having
+        ret = 0;   //   basically de-initialized the class.
       }
     }
-    else {
-      // We can't reallocate if we were constructed with a buffer.
-      ret--;
+    else {         // We can't reallocate if we were constructed with
+      ret--;       //   an external buffer.
     }
   }
   else {
@@ -664,9 +690,11 @@ template <class T> int8_t TimeSeries3<T>::_reallocate_sample_window(uint32_t win
 */
 template <class T> int8_t TimeSeries3<T>::_zero_samples() {
   int8_t ret = -1;
+  invalidateStats();
+  markClean();
   _samples_total = 0;
+  _sample_idx    = 0;
   Vector3<T> tmp_vect(T(0), T(0), T(0));
-  _value.set(&tmp_vect);
   _min_value(T(0), T(0), T(0));
   _max_value(T(0), T(0), T(0));
   _median(T(0), T(0), T(0));
@@ -674,7 +702,7 @@ template <class T> int8_t TimeSeries3<T>::_zero_samples() {
   _rms(0.0d, 0.0d, 0.0d);
   _stdev(0.0d, 0.0d, 0.0d);
   _snr(0.0d, 0.0d, 0.0d);
-  _flags.clear(TIMESERIES_FLAG_WINDOW_FULL | TIMESERIES_FLAG_MASK_ALL_STATS);
+
   if (nullptr != samples) {
     if (_window_size > 0) {
       ret = 0;
@@ -687,13 +715,11 @@ template <class T> int8_t TimeSeries3<T>::_zero_samples() {
 }
 
 
-template <class T> void TimeSeries3<T>::printSeries(StringBuilder* output) {
-  _print_series_base(output);
+template <class T> void TimeSeries3<T>::_print_series(StringBuilder* output) {
   if (_stale_minmax()) _calculate_minmax();
   if (_stale_mean())   _calculate_mean();
   if (_stale_rms())    _calculate_rms();
   if (_stale_stdev())  _calculate_stdev();
-
   output->concatf("\tMin   = (%.4f, %.4f, %.4f)\n", (double) _min_value.x, (double) _min_value.y, (double) _min_value.z);
   output->concatf("\tMax   = (%.4f, %.4f, %.4f)\n", (double) _max_value.x, (double) _max_value.y, (double) _max_value.z);
   output->concatf("\tRMS   = (%.4f, %.4f, %.4f)\n", _rms.x, _rms.y, _rms.z);
@@ -728,14 +754,12 @@ template <class T> int8_t TimeSeries3<T>::feedSeries(T x, T y, T z) {
       samples[_sample_idx++](x, y, z);
       _samples_total++;
       if (_sample_idx >= _window_size) {
-        _flags.set(TIMESERIES_FLAG_WINDOW_FULL);
         _sample_idx = 0;
       }
       ret = (windowFull() ? 1 : 0);
     }
 
     if (1 == ret) {
-      _value.set(&tmp_vect);
       // Calculating the stats is an expensive process, and most of the
       //   time, there will be no demand for the result. So we mark our
       //   flags to recalculate fresh in the accessor's stack frame.
@@ -753,9 +777,12 @@ template <class T> int8_t TimeSeries3<T>::feedSeries(T x, T y, T z) {
 * @return The new result.
 */
 template <class T> Vector3<T> TimeSeries3<T>::value() {
-  Vector3<T> ret(T(0), T(0), T(0));
-  if (0 <= _value.get_as(&ret)) {
-    markClean();
+  Vector3<T> ret;
+
+  if (windowFull()) {
+    const uint32_t SAFE_SAMPLE_IDX = (((0 != _sample_idx) ? _sample_idx : _window_size) - 1);
+    markClean();  // Do this here (specifically) to minimize concurrency grief.
+    ret = *(samples + SAFE_SAMPLE_IDX);
   }
   return ret;
 }
@@ -777,7 +804,7 @@ template <class T> int8_t TimeSeries3<T>::_calculate_minmax() {
     }
     _min_value.set(&tmp_min);
     _max_value.set(&tmp_max);
-    _flags.set(TIMESERIES_FLAG_VALID_MINMAX);
+    _set_flags(true, TIMESERIES_FLAG_VALID_MINMAX);
   }
   return ret;
 }
@@ -804,7 +831,7 @@ template <class T> int8_t TimeSeries3<T>::_calculate_mean() {
       summed_samples.y,
       summed_samples.z
     );
-    _flags.set(TIMESERIES_FLAG_VALID_MEAN);
+    _set_flags(true, TIMESERIES_FLAG_VALID_MEAN);
   }
   return ret;
 }
@@ -835,7 +862,7 @@ template <class T> int8_t TimeSeries3<T>::_calculate_rms() {
       sqrt(squared_samples.y),
       sqrt(squared_samples.z)
     );
-    _flags.set(TIMESERIES_FLAG_VALID_RMS);
+    _set_flags(true, TIMESERIES_FLAG_VALID_RMS);
   }
   return ret;
 }
@@ -868,7 +895,7 @@ template <class T> int8_t TimeSeries3<T>::_calculate_stdev() {
       sqrt(deviation_sum.y),
       sqrt(deviation_sum.z)
     );
-    _flags.set(TIMESERIES_FLAG_VALID_STDEV);
+    _set_flags(true, TIMESERIES_FLAG_VALID_STDEV);
   }
   return ret;
 }
@@ -919,7 +946,7 @@ template <class T> int8_t TimeSeries3<T>::_calculate_median() {
         ((sorted[2][upper] + sorted[2][lower]) / 2)
       );
     }
-    _flags.set(TIMESERIES_FLAG_VALID_MEDIAN);
+    _set_flags(true, TIMESERIES_FLAG_VALID_MEDIAN);
   }
   return ret;
 }
@@ -937,7 +964,7 @@ template <class T> int8_t TimeSeries3<T>::_calculate_snr() {
   if ((_window_size > 1) & windowFull()) {
     ret = 0;
     _snr = (mean() / stdev());
-    _flags.set(TIMESERIES_FLAG_VALID_SNR);
+    _set_flags(true, TIMESERIES_FLAG_VALID_SNR);
   }
   return ret;
 }

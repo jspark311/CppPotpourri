@@ -377,7 +377,6 @@ class M2ML_Test_Vehicle {
       StringBuilder* log      = (is_peer1 ? &log_1 : &log_0);
       KeyValuePair** kvps_rxd = (is_peer1 ? &_args_rxd_1 : &_args_rxd_0);
       const char* NAME_IN_LOG = (is_peer1 ? "carl":"vlad");
-      log->concatf("%s received Msg(0x%x)\n", NAME_IN_LOG, msg->uniqueId());
       //msg->printDebug(&log);
       msg->getPayload(kvps_rxd);
       if (msg->isReply()) {
@@ -390,7 +389,8 @@ class M2ML_Test_Vehicle {
       }
       const bool REPLY_LOCKOUT = (is_peer1 ? _reply_lockout_1 : _reply_lockout_0);
       if ((!REPLY_LOCKOUT) && msg->expectsReply()) {
-        log->concatf("\nACKing returns %d.\n", msg->ack());
+        log->concatf("%s received Msg(0x%x)", NAME_IN_LOG, msg->uniqueId());
+        log->concatf(" ACKing returns %d.\n", msg->ack());
       }
     };
 

@@ -75,27 +75,23 @@ class KeyValuePair;
 *   actual binary.
 */
 enum class TCode : uint8_t {
-  /* Primitives */
+  /* Numeric primitives */
   NONE          = 0x00,    // Reserved. Denotes end-of-list in type strings.
-  INT8          = 0x01,    // 8-bit integer
-  INT16         = 0x02,    // 16-bit integer
-  INT32         = 0x03,    // 32-bit integer
-  UINT8         = 0x04,    // Unsigned 8-bit integer
-  UINT16        = 0x05,    // Unsigned 16-bit integer
-  UINT32        = 0x06,    // Unsigned 32-bit integer
-  INT64         = 0x07,    // 64-bit integer
-  INT128        = 0x08,    // 128-bit integer
-  UINT64        = 0x09,    // Unsigned 64-bit integer
-  UINT128       = 0x0A,    // Unsigned 128-bit integer
+  UINT8         = 0x01,    // Unsigned 8-bit integer
+  UINT16        = 0x02,    // Unsigned 16-bit integer
+  UINT32        = 0x03,    // Unsigned 32-bit integer
+  UINT64        = 0x04,    // Unsigned 64-bit integer
+  UINT128       = 0x05,    // Unsigned 128-bit integer
+  INT8          = 0x06,    // 8-bit integer
+  INT16         = 0x07,    // 16-bit integer
+  INT32         = 0x08,    // 32-bit integer
+  INT64         = 0x09,    // 64-bit integer
+  INT128        = 0x0A,    // 128-bit integer
   BOOLEAN       = 0x0B,    // A boolean
   FLOAT         = 0x0C,    // A float
   DOUBLE        = 0x0D,    // A double
 
-  // Our basic notions of variable-length data.
-  BINARY        = 0x0E,    // A collection of bytes
-  STR           = 0x0F,    // A null-terminated string
-
-  /* Compound numeric types */
+  /* Numeric vectors */
   VECT_2_FLOAT  = 0x30,    // A vector of floats in 2-space
   VECT_2_DOUBLE = 0x31,    // A vector of floats in 2-space
   VECT_2_INT8   = 0x32,    // A vector of signed integers in 2-space
@@ -113,6 +109,10 @@ enum class TCode : uint8_t {
   VECT_3_INT32  = 0x3E,    // A vector of signed integers in 3-space
   VECT_3_UINT32 = 0x3F,    // A vector of unsigned integers in 3-space
   VECT_4_FLOAT  = 0x40,    // A vector of floats in 4-space
+
+  /* Our basic notions of variable-length data. */
+  BINARY        = 0x50,    // A collection of bytes
+  STR           = 0x51,    // A null-terminated string
 
   /* Encoded buffers and semantic aliases to other types */
   URL           = 0x60,    // An alias of STR that carries the semantic 'URL'.
@@ -136,6 +136,8 @@ enum class TCode : uint8_t {
   GEOLOCATION   = 0xE5,    // A pointer to a location class
   STOPWATCH     = 0xE6,    // A pointer to a StopWatch class
   TRACE         = 0xE7,    // A pointer to a C3PTrace.
+  //CHECKLIST     = 0xE8,    // A pointer to an AsyncSequencer.
+  TIMESERIES    = 0xE9,    // A pointer to a unit-controlled TimeSeries.
 
   RESERVED      = 0xFE,    // Reserved for custom extension.
   INVALID       = 0xFF     // A code denoting TCode invalidity.

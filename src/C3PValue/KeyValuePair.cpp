@@ -35,15 +35,13 @@ limitations under the License.
 * Constructors/destructors, class initialization functions and so-forth...
 *******************************************************************************/
 
-KeyValuePair::KeyValuePair(const TCode TC, const char* key, uint8_t flags) : C3PValue(TC) {
+KeyValuePair::KeyValuePair(const TCode TC, const char* key, uint8_t flags) : C3PValue(TC, nullptr, (flags | C3PVAL_MEM_FLAG_HAS_KEY)) {
   setKey(key);
-  _set_flags(true, (flags | C3PVAL_MEM_FLAG_HAS_KEY));
 }
 
 
-KeyValuePair::KeyValuePair(const TCode TC, char* key, uint8_t flags) : C3PValue(TC) {
+KeyValuePair::KeyValuePair(const TCode TC, char* key, uint8_t flags) : C3PValue(TC, nullptr, (flags | C3PVAL_MEM_FLAG_HAS_KEY)) {
   setKey(key);
-  _set_flags(true, (flags | C3PVAL_MEM_FLAG_HAS_KEY));
 }
 
 
@@ -68,7 +66,6 @@ KeyValuePair::KeyValuePair(char* key, uint8_t* v, uint32_t l, uint8_t flags) : C
 */
 int8_t KeyValuePair::setKey(const char* k) {
   _set_new_key((char*) k);
-  _reap_key(false);
   return 0;
 }
 
@@ -81,10 +78,8 @@ int8_t KeyValuePair::setKey(char* k) {
   if (nullptr != k) {
     ret--;
     int K_LEN = strlen(k);
-    char* nk = (char*) malloc(K_LEN + 1);
+    char* nk = StringBuilder::deep_copy(k, K_LEN);
     if (nullptr != nk) {
-      memcpy(nk, k, K_LEN);
-      *(nk + K_LEN) = 0;
       _set_new_key(nk);
       _reap_key(true);
       ret = 0;
@@ -116,21 +111,6 @@ void KeyValuePair::_set_new_key(char* k) {
   _key = k;
 }
 
-// /**
-// * Conditionally handles any cleanup associated with replacing the value.
-// * Passing nullptr will free any existing value without reassignment.
-// * Calling this function will reset the reapValue flag.
-// *
-// * @param  v A replacement value.
-// */
-// void KeyValuePair::_set_new_value(C3PValue* v) {
-//   if ((nullptr != _value) && reapContainer()) {
-//     C3PValue* tmp_value = _value;
-//     _value = nullptr;
-//     delete tmp_value;
-//   }
-//   _value = v;
-// }
 
 
 /*******************************************************************************

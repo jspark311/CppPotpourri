@@ -31,16 +31,16 @@ limitations under the License.
 * Protected constructor.
 * NOTE: The C3PValue pointer will be correct when this constructor is called,
 *   and will be assured to be non-null. However, the C3PValue constructor will
-*   not yet have been called. So make no access attempts. Just set he pointer.
+*   not yet have been called. So make no access attempts. Just set the pointer.
 */
-TimeSeriesBase::TimeSeriesBase(const TCode TCODE, uint32_t ws, uint32_t flgs) :
-  _value(TCODE), _window_size(ws),
-  _samples_total(0), _sample_idx(0), _flags(flgs),
-  _name(nullptr), _units(nullptr), _last_trace(0) {}
+TimeSeriesBase::TimeSeriesBase(const TCode TC, uint32_t ws, uint16_t flgs) :
+  _window_size(ws), _samples_total(0), _sample_idx(0),
+  _TCODE(TC), _flags(flgs), _last_trace(0),
+  _name(nullptr), _units(nullptr) {}
 
 
 TimeSeriesBase::~TimeSeriesBase() {
-  _flags.clear(TIMESERIES_FLAG_FILTER_INITD | TIMESERIES_FLAG_WINDOW_FULL);
+  _set_flags(false, TIMESERIES_FLAG_FILTER_INITD);
   if (nullptr != _name) {
     free(_name);
     _name = nullptr;
@@ -52,17 +52,27 @@ TimeSeriesBase::~TimeSeriesBase() {
 }
 
 
-
-
-void TimeSeriesBase::_print_series_base(StringBuilder* output) {
-  StringBuilder::styleHeader2(output, name());
-  output->concatf("\tInitialized:  %c\n",   initialized() ? 'y':'n');
-  output->concatf("\tSelf alloc:   %c\n",   _self_allocated() ? 'y':'n');
-  output->concatf("\tDirty:        %c\n",   dirty() ? 'y':'n');
-  output->concatf("\tWindow size:  %u\n",   windowSize());
-  output->concatf("\tWindow full:  %c\n",   windowFull()  ? 'y':'n');
-  _value.toString(output, true);
-  output->concat("\n");
+void TimeSeriesBase::printSeries(StringBuilder* output) {
+  StringBuilder hdr;
+  if (_name) {  hdr.concat(name());  }
+  hdr.concatf("%s[%u]", typecodeToStr(_TCODE), windowSize());
+  if (_units) {
+    hdr.concat(" (");
+    SIUnitToStr(_units, &hdr, false);
+    hdr.concat(")");
+  }
+  StringBuilder tmp;
+  StringBuilder::styleHeader2(&tmp, (char*) hdr.string());
+  hdr.clear();
+  tmp.concatf("\tInitialized:   %c\n", initialized() ? 'y':'n');
+  tmp.concatf("\tSelf alloc:    %c\n", _self_allocated() ? 'y':'n');
+  tmp.concatf("\tDirty:         %c\n", dirty() ? 'y':'n');
+  tmp.concatf("\tWindow full:   %c\n", windowFull()  ? 'y':'n');
+  tmp.concatf("\tTotal samples: %u\n", _samples_total);
+  _print_series(&tmp);
+  tmp.concat("\n");
+  tmp.string();  // Consolidate heap
+  output->concatHandoff(&tmp);
 }
 
 
@@ -76,13 +86,8 @@ int8_t TimeSeriesBase::name(char* n) {
     const uint32_t NAME_LEN = strlen(n);
     ret--;
     if (NAME_LEN > 0) {
-      _name = (char*) malloc(NAME_LEN+1);
-      ret--;
-      if (_name) {
-        memcpy(_name, n, NAME_LEN);
-        *(_name+NAME_LEN) = 0;
-        ret = 0;
-      }
+      _name = StringBuilder::deep_copy(n, NAME_LEN);
+      ret = (_name) ? 0 : (ret-1);
     }
   }
   return ret;
@@ -99,12 +104,8 @@ int8_t TimeSeriesBase::units(SIUnit* u) {
     const uint32_t STR_LEN = strlen((char*) u);
     ret--;
     if (STR_LEN > 0) {
-      _units = (SIUnit*) malloc(STR_LEN+1);
-      ret--;
-      if (_units) {
-        memcpy(_units, u, STR_LEN+1);
-        ret = 0;
-      }
+      _units = (SIUnit*) StringBuilder::deep_copy((char*) u, STR_LEN);
+      ret = (_units) ? 0 : (ret-1);
     }
   }
   return ret;
@@ -129,18 +130,15 @@ int8_t TimeSeriesBase::serialize(StringBuilder* out, TCode format) {
         if (_name) {           map_count++;   }
         if (initialized()) {   map_count++;   }
 
-        encoder.write_string("TimeSeries");
+        encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(TCode::TIMESERIES));
+
         encoder.write_map(map_count);
-        encoder.write_string("type");
-          encoder.write_string("TimeSeries");
+        encoder.write_string("tc");    encoder.write_int(TcodeToInt(_TCODE));
+        encoder.write_string("win");   encoder.write_int(windowSize());
+        encoder.write_string("ttl");   encoder.write_int(totalSamples());
         if (_name) {
-          encoder.write_string("name");
-            encoder.write_string(_name);
+          encoder.write_string("n");   encoder.write_string(_name);
         }
-        encoder.write_string("win_sz");
-          encoder.write_int(windowSize());
-        encoder.write_string("total");
-          encoder.write_int(totalSamples());
         if (initialized()) {
           encoder.write_string("dat");
             encoder.write_array(RANGE_TO_SERIALIZE);
@@ -159,36 +157,6 @@ int8_t TimeSeriesBase::serialize(StringBuilder* out, TCode format) {
   return ret;
 }
 
-
-int8_t TimeSeriesBase::deserialize(StringBuilder* raw, TCode format) {
-  //const uint8_t* SERDAT = raw->string();
-  //const uint32_t SERLEN = raw->length();
-  int8_t ret = -1;
-  switch (format) {
-    case TCode::CBOR:
-      #if defined(__BUILD_HAS_CBOR)
-      {
-        //KeyValuePair* kvp = KeyValuePair::unserialize(raw->string(), raw->length(), TCode::CBOR);
-        KeyValuePair* kvp = nullptr;
-        CBORArgListener cl(&kvp);
-        cbor::input_static input(raw->string(), raw->length());
-        cbor::decoder decoder(input, cl);
-        //decoder.run();
-        if (nullptr != kvp) {
-          //StringBuilder txt_output;
-          //kvp->printDebug(&txt_output);
-          //printf("%s\n", txt_output.string());
-          ret = 0;
-        }
-      }
-      #endif
-      break;
-
-    default:
-      break;
-  }
-  return ret;
-}
 
 
 /******************************************************************************

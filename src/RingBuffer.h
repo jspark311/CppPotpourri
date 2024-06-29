@@ -23,9 +23,10 @@ Template for a ring buffer.
 TODO: Rework modulus operations into bit mask, and make element count pow(2).
 TODO: Audit for best-practices for a lock-free design.
 
-NOTE: RingBuffer will not allow excursions past its declared buffer limit. In
-  the event that it is requested, it will take all that it can, and report how
-  much it actually took.
+NOTE: RingBuffer will not allow excursions past its declared buffer limit. Nor
+  will it overwrite previously-written values that have not been read. In the
+  event that more elements are pushed into the ring that the ring can fit, the
+  ring will take all that it can, and report how much it actually took.
 */
 
 #ifndef __DS_RING_BUFFER_H
@@ -57,7 +58,7 @@ template <class T> class RingBuffer {
 
     /* Returns an integer representing how many items are buffered. */
     inline unsigned int count() {      return _count;              };
-    inline bool         isEmpty() {    return (0 == count());      };
+    inline bool         isEmpty() {    return (0 == _count);       };
 
     int  insert(T);           // Insert an element.
     int  insert(T*, unsigned int len);   // Insert many elements.

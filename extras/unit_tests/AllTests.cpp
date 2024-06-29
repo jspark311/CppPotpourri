@@ -32,6 +32,7 @@ TODO: About that... This program is presumably being run under linux, and so we
 #include "C3PValue/KeyValuePair.h"
 #include "LightLinkedList.h"
 #include "SensorFilter.h"
+#include "TimeSeries/TimeSeries.h"
 #include "Vector3.h"
 #include "TimerTools/TimerTools.h"
 #include "uuid.h"
@@ -180,6 +181,17 @@ void dump_kvp(KeyValuePair* a) {
   }
   else {
     printf("dump_kvp() was passed a nullptr.\n");
+  }
+}
+
+void dump_timeseries(TimeSeriesBase* a) {
+  if (a) {
+    StringBuilder log;
+    a->printSeries(&log);
+    printf("%s\n", (char*) log.string());
+  }
+  else {
+    printf("dump_timeseries() was passed a nullptr.\n");
   }
 }
 
