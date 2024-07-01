@@ -25,14 +25,14 @@ limitations under the License.
 #define __C3P_SCHEDULER_H
 
 #include <functional>
+#include "TimerTools.h"
 #include "../StringBuilder.h"
 #include "../CppPotpourri.h"
 #include "../FlagContainer.h"
-#include "../TimerTools/TimerTools.h"
 #include "../PriorityQueue.h"
 #include "../ElementPool.h"
 #include "../AbstractPlatform.h"
-#include "../SensorFilter.h"
+#include "../TimeSeries/TimeSeries.h"
 #include "../C3PLogger.h"
 
 
@@ -190,10 +190,10 @@ class C3PScheduledLambda : public C3PSchedule {
 */
 class C3PScheduledJitterProbe : public C3PSchedule {
   public:
-    SensorFilter<uint32_t>  jitter;
+    TimeSeries<uint32_t>  jitter;
 
     C3PScheduledJitterProbe(const char* HANDLE, const uint32_t PERIOD, const int32_t RECURRENCES, const bool ENABLED, std::function<int8_t(void)> lam) :
-      C3PSchedule(HANDLE, PERIOD, RECURRENCES, ENABLED), jitter(100, FilteringStrategy::RAW) {};
+      C3PSchedule(HANDLE, PERIOD, RECURRENCES, ENABLED), jitter(100) {};
 
     virtual ~C3PScheduledJitterProbe() {};
 
@@ -227,7 +227,6 @@ class C3PScheduler {
 
     void serviceSchedules();              // Execute any schedules that have come due.
     void advanceScheduler();              // Push all enabled schedules forward by one tick.
-
     void printDebug(StringBuilder*);
 
     inline uint32_t serviceLoops() {      return profiler_service.executions();    };

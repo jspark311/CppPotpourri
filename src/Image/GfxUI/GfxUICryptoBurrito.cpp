@@ -17,7 +17,7 @@ Date:   2023.04.08
 */
 GfxUICryptoRNG::GfxUICryptoRNG(const GfxUILayout lay, const GfxUIStyle sty, uint32_t f) :
   GfxUIElement(lay, sty, f),
-  _rng_buffer(256, FilteringStrategy::RAW),
+  _rng_buffer(256),
   _vis_0(
     GfxUILayout(
       internalPosX(), internalPosY(),
@@ -69,7 +69,8 @@ bool GfxUICryptoRNG::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, Pr
         for (uint32_t i = 0; i < sizeof(tmp_buffer); i++) {
           *(_rng_buffer.memPtr() + tmp_buffer[i]) = *(_rng_buffer.memPtr() + tmp_buffer[i])+1;
         }
-        _rng_buffer.feedFilter();
+        _rng_buffer.feedSeries();   // Flash the entire TimeSeries state all at once.
+        // TODO: Feed the SNR series.
         ret = true;
       }
       break;
@@ -98,7 +99,8 @@ PollResult GfxUICryptoRNG::poll() {
         for (uint32_t i = 0; i < sizeof(tmp_buffer); i++) {
           *(_rng_buffer.memPtr() + tmp_buffer[i]) = *(_rng_buffer.memPtr() + tmp_buffer[i])+1;
         }
-        _rng_buffer.feedFilter();
+        _rng_buffer.feedSeries();   // Flash the entire TimeSeries state all at once.
+        // TODO: Feed the SNR series.
     ret = PollResult::ACTION;
   }
   return ret;

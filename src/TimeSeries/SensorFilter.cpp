@@ -20,7 +20,7 @@ limitations under the License.
 
 #include "CppPotpourri.h"
 #include "SensorFilter.h"
-#include "C3PValue/KeyValuePair.h"
+#include "../C3PValue/KeyValuePair.h"
 
 
 /******************************************************************************

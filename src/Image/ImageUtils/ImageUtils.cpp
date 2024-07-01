@@ -226,7 +226,7 @@ void UIGfxWrapper::drawCompass(
 */
 void UIGfxWrapper::drawHeatMap(
   PixUInt x, PixUInt y, PixUInt w, PixUInt h,
-  SensorFilter<float>* filt,
+  TimeSeries<float>* filt,
   uint32_t flags,
   float range_lock_low, float range_lock_hi
 ) {

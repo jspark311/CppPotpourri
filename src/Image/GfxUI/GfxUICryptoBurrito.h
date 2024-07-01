@@ -41,8 +41,11 @@ class GfxUICryptoRNG : public GfxUIElement, public C3PPollable {
 
 
   private:
-    SensorFilter<uint32_t> _rng_buffer;
-    GfxUISensorFilter<uint32_t> _vis_0;
+    TimeSeries<uint32_t> _rng_buffer;
+    //TimeSeries<float>    _snr_history;
+    // TODO: Measure how "white" the RNG is.
+    GfxUITimeSeries<uint32_t> _vis_0;
+    // TODO: Byte-wise value histogram
     C3PScheduledPolling _schedule_rng_update;
 };
 

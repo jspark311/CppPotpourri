@@ -19,6 +19,8 @@ limitations under the License.
 
 
 This header file contains the library's means of handling time-series data.
+
+See the README.md file for module-level documentation.
 */
 
 
@@ -55,6 +57,17 @@ This header file contains the library's means of handling time-series data.
 * The primary purpose here is to control template bloat, rather than provide a
 *   generic interface to timeseries data. Code in this class will not be
 *   replicated by the template.
+*
+* TODO: The constellation of classes in this header file should eventual come to
+*   resemble the patterns in Storage/RecordTypes/ConfRecord.h. Specifically: the
+*   concealed templates. By burying the template, TimeSeriesBase becomes the
+*   defacto public-facing API, and the templates will reduce to a cluster of
+*   protected-scope members.
+* TODO: It was considered to use RingBuffer in this class. It might be worth it.
+*   But for now, it is re-implemented (at tremendous annoyance). The only reason
+*   it hasn't happened is related to construction-time knowledge of the ultimate
+*   size of the buffer (which is violated by the mere existance of
+*   _reallocate_sample_window(uint32_t).
 ******************************************************************************/
 class TimeSeriesBase {
   public:
@@ -70,6 +83,10 @@ class TimeSeriesBase {
     inline int8_t   windowSize(uint32_t x) {   return _reallocate_sample_window(x);     };
     inline uint32_t windowSize() {         return (initialized() ? _window_size : 0);   };
 
+    // TODO: Add inlines for type-agnostic value accessors, but avoid it for as
+    //   long as practical.
+
+    // And if added, only the simple numerics and vector types matter.
     /* Accessors for optional string-like annotations */
     inline char*    name() {               return (_name ? _name : (char*) "");   };
     inline SIUnit*  units() {              return (_units ? _units : nullptr);    };
@@ -82,16 +99,21 @@ class TimeSeriesBase {
 
 
   protected:
-    uint32_t        _window_size;    // The present size of the window.
-    uint32_t        _samples_total;  // Total number of samples that have been ingested since purge().
-    uint32_t        _sample_idx;     // The present sample index in the underlying memory pool.
+    uint32_t  _window_size;    // The present size of the window.
+    uint32_t  _samples_total;  // Total number of samples that have been ingested since purge().
+    uint32_t  _sample_idx;     // The present sample index in the underlying memory pool.
 
+    // TODO: Replicate the same pattern in use by StopWatch? This is the next logical step.
+    //   But TimeSeries *isn't* StopWatch. TimeSeries might have a data field of
+    //   dozens of KB which shouldn't be packed up on all occasions.
+    // Some nuance will need to be observed.
     //friend int    C3PTypeConstraint<TimeSeries*>::serialize(void*, StringBuilder*, const TCode);
     //friend int8_t C3PTypeConstraint<TimeSeries*>::construct(void*, KeyValuePair*);
 
     TimeSeriesBase(const TCode, uint32_t ws, uint16_t flgs = 0);
     ~TimeSeriesBase();
 
+    /* Semantic breakouts for flags */
     inline bool _self_allocated() {  return _chk_flags(TIMESERIES_FLAG_SELF_ALLOC);       };
     inline bool _stale_minmax() {    return !(_chk_flags(TIMESERIES_FLAG_VALID_MINMAX));  };
     inline bool _stale_mean() {      return !(_chk_flags(TIMESERIES_FLAG_VALID_MEAN));    };
@@ -131,11 +153,11 @@ template <class T> class TimeSeries : public TimeSeriesBase {
     TimeSeries(uint32_t ws) : TimeSeries(nullptr, ws) {};
     virtual ~TimeSeries();
 
-    int8_t feedSeries(T);
-    int8_t feedSeries();
+    int8_t feedSeries(T);   // Add a value into the series.
+    int8_t feedSeries();    // Bulk update.
     int8_t init();
-    T      value();
-    int8_t copyValues(T*, const uint32_t COUNT = 1);
+    T      value();   // Returns the most-recent value.
+    int8_t copyValues(T*, const uint32_t COUNT, const bool ABS_IDX = true);
     //T      value(const uint32_t IDX = 0);
 
 
@@ -418,17 +440,27 @@ template <class T> T TimeSeries<T>::value() {
 };
 
 
-template <class T> int8_t TimeSeries<T>::copyValues(T* buf, const uint32_t COUNT) {
+
+/**
+* Returns the COUNT most recent results from the series. Marks the series 'not dirty'
+*   as a side-effect, so don't call this for internal logic.
+*
+* @param COUNT is the number of samples to copy.
+* @param ABS_IDX dictates if the copy begins at the beginning of sample memory (if true),
+*          or the COUNT most-recent samples to have been fed into the series (false).
+* @return 0 on success, of -1 on failure.
+*/
+template <class T> int8_t TimeSeries<T>::copyValues(T* buf, const uint32_t COUNT, const bool ABS_IDX) {
   int8_t ret = -1;
   if (windowSize() >= COUNT) {  // Initialized and within bounds?
     ret--;
     if (COUNT > 0) {
       ret--;
       if (_samples_total >= COUNT) {  // Do so many samples exist?
+        const uint32_t PRE_MOD_IDX = (ABS_IDX ? 0 : ((windowSize() + _sample_idx) - COUNT));
+        markClean();  // Do this here (specifically) to minimize concurrency grief.
         // TODO: Inefficient for the sake of expediency. Should be a split copy
         //   and a single modulus operation.
-        const uint32_t PRE_MOD_IDX = ((windowSize() + _sample_idx) - COUNT);
-        markClean();  // Do this here (specifically) to minimize concurrency grief.
         for (uint32_t i = 0; i < COUNT; i++) {
           const uint32_t SAFE_SAMPLE_IDX = ((PRE_MOD_IDX + i) % windowSize());
           *(buf + i) = *(samples + SAFE_SAMPLE_IDX);

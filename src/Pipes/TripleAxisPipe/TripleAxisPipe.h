@@ -22,7 +22,8 @@ limitations under the License.
 #include <stdint.h>
 #include "../../Vector3.h"
 #include "../../StringBuilder.h"
-#include "../../SensorFilter.h"
+#include "../../TimeSeries/TimeSeries.h"
+#include "../../TimeSeries/SensorFilter.h"
 #include "../../FlagContainer.h"
 
 #ifndef __TRIPLE_AXIS_PIPE_H__

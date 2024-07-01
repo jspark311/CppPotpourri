@@ -31,8 +31,8 @@ TODO: About that... This program is presumably being run under linux, and so we
 #include "PriorityQueue.h"
 #include "C3PValue/KeyValuePair.h"
 #include "LightLinkedList.h"
-#include "SensorFilter.h"
 #include "TimeSeries/TimeSeries.h"
+#include "TimeSeries/SensorFilter.h"
 #include "Vector3.h"
 #include "TimerTools/TimerTools.h"
 #include "uuid.h"
@@ -711,7 +711,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   //   probably have a memory implementation rooted in RingBuffer.
   { .FLAG         = CHKLST_SENSORFILTER_TESTS,
     .LABEL        = "SensorFilter<T>",
-    .DEP_MASK     = (CHKLST_FSM_TESTS | CHKLST_KEY_VALUE_PAIR_TESTS),
+    .DEP_MASK     = (CHKLST_FSM_TESTS | CHKLST_TIMESERIES_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == sensor_filter_tests_main()) ? 1:-1);  }
   },

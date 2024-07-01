@@ -13,7 +13,6 @@ Tewmplates for abstracted rendering of cartesian graphs.
 #define __C3P_IMG_GRAPHING_H
 
 #include "../Image.h"
-#include "../../SensorFilter.h"  // TODO: remove
 
 /*******************************************************************************
 * ImageGraphTrace
@@ -207,7 +206,6 @@ template <class T> PixUInt ImageGraph<T>::frustum_height() {
 
 
 template <class T> void ImageGraph<T>::_draw_accented_point(ImageGraphTrace<T>* trace) {
-
 }
 
 #endif  // __C3P_IMG_GRAPHING_H

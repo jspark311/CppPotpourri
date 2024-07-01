@@ -18,8 +18,9 @@ TODOING: UIGfxWrapper is somewhat vestigial. It should be subsumed (or divided)
 #define __C3P_IMG_UTILS_H
 
 #include "Image.h"
-#include "../M2MLink/M2MLink.h"
+#include "../TimeSeries/TimeSeries.h"
 #include "../Identity/Identity.h"
+#include "../M2MLink/M2MLink.h"
 #include "ImageUtils/ImageGraph.h"
 
 
@@ -92,7 +93,7 @@ class UIGfxWrapper {
 
     void drawHeatMap(
       PixUInt x, PixUInt y, PixUInt w, PixUInt h,
-      SensorFilter<float>* filt,
+      TimeSeries<float>* filt,
       uint32_t flags,
       float range_lock_low = 0.0f, float range_lock_hi = 0.0f
     );

@@ -200,7 +200,8 @@ class KeyValuePair : public C3PValue {
     int8_t setKey(const char*);
     int8_t setKey(char*);
 
-    /* Accessors for linkage to parallel data. */
+    /* Key handling */
+    // TODO: These should be migrated to C3PValue.
     int collectKeys(StringBuilder*);
     KeyValuePair* valueWithKey(const char*);
     int8_t    valueWithKey(const char*, void* trg_buf);
@@ -210,6 +211,8 @@ class KeyValuePair : public C3PValue {
     //   and their redundancies can disappear.
     //void   valToString(StringBuilder*);
     virtual int8_t serialize(StringBuilder*, const TCode FORMAT);
+
+    // TODO: This should no longer be necessary. CTRL+D to demote scope.
     inline KeyValuePair* nextKVP() {  return _next_sib_with_key();  };
 
     /* Statics */

@@ -16,6 +16,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+
+This class is a thin (TODO: keep making it thinner) adapter for C3PValue that
+  adds a string key member.
 */
 
 #include "KeyValuePair.h"
@@ -159,10 +163,6 @@ KeyValuePair* KeyValuePair::valueWithKey(const char* k) {
   return nullptr;
 }
 
-
-/*******************************************************************************
-* Accessors to type information and underpinnings.
-*******************************************************************************/
 
 /**
 * Get a value by its key.

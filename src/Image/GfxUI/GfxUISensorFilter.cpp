@@ -9,10 +9,10 @@ Date:   2022.06.25
 
 
 /*******************************************************************************
-* GfxUISensorFilter
+* GfxUITimeSeries
 *******************************************************************************/
 
-template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
+template <> int GfxUITimeSeries<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
   int ret = 0;
   PixUInt i_x = internalPosX();
   PixUInt i_y = internalPosY();
@@ -24,13 +24,24 @@ template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
     const uint32_t  DATA_SIZE = _filter->windowSize();
     const uint32_t  RENDER_SIZE = strict_min((uint32_t) DATA_SIZE, (uint32_t) i_w);
     const uint32_t  LAST_SIDX = strict_min(DATA_SIZE, (_left_most_data_idx + RENDER_SIZE));
+    // TODO: If the render wants strict window indicies for data, it should be
+    //   handled by a modal boolean, or distinct functions for...
+    //   a) copy from most-recent samples
+    //   b) copy from first sample in RAM wrap will be plainly visible in the
+    //      render, but some uses of TimeSeries are temporal snap-shots, and not
+    //      bounded memories of an endless stream of samples.
     const uint32_t  DATA_IDX  = (LAST_SIDX - RENDER_SIZE);
     //const uint32_t  DATA_IDX  = (1 + LAST_SIDX + strict_abs_delta(DATA_SIZE, (uint32_t) RENDER_SIZE)) % DATA_SIZE;
+    uint32_t tmp_data[RENDER_SIZE];
+
+    // Option (a)
     const uint32_t* F_MEM_PTR = _filter->memPtr();
-    uint32_t tmp_data[i_w];
     for (uint32_t i = 0; i < RENDER_SIZE; i++) {
       tmp_data[i] = *(F_MEM_PTR + ((i + DATA_IDX) % DATA_SIZE));
     }
+
+    // Option (b)
+    //_filter->copyValues(tmp_data, RENDER_SIZE, false);
 
     ImageGraph<uint32_t> graph(i_w, i_h);
     graph.fg_color          = 0xFFFFFFFF;
@@ -38,7 +49,7 @@ template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
     trace_settings.dataset  = tmp_data;
     trace_settings.data_len = RENDER_SIZE;
     trace_settings.enabled  = true;
-    trace_settings.offset_x = DATA_IDX;
+    trace_settings.offset_x = DATA_IDX;  // This only impacts render. Not reading of samples.
     if (graph.trace0.copyFrom(&trace_settings)) {
       if (trackPointer() && underPointer()) {
         graph.trace0.accented_idx = (_pointer_x - (i_x + 1));
@@ -70,7 +81,7 @@ template <> int GfxUISensorFilter<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
 
 
 
-template <> int GfxUISensorFilter<float>::_render(UIGfxWrapper* ui_gfx) {
+template <> int GfxUITimeSeries<float>::_render(UIGfxWrapper* ui_gfx) {
   int ret = 0;
   PixUInt i_x = internalPosX();
   PixUInt i_y = internalPosY();

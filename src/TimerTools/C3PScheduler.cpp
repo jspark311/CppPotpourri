@@ -153,7 +153,7 @@ FAST_FUNC int8_t C3PScheduledJitterProbe::_execute() {
     if (nextExec() > NOW) {
       wrapped_jitter = (nextExec() - NOW);
     }
-    jitter.feedFilter(wrapped_jitter);
+    jitter.feedSeries(wrapped_jitter);
   }
   else {
     jitter.init();

@@ -14,7 +14,8 @@ These classes are built on top of the GfxUI classes, and implement data graphing
 
 #include "../Image.h"
 #include "../ImageUtils.h"
-
+#include "../ImageUtils.h"
+#include "../../TimeSeries/TimeSeries.h"
 
 //////////////////////////////////
 // TODO: Stark Fist of Removal
@@ -35,13 +36,13 @@ These classes are built on top of the GfxUI classes, and implement data graphing
 * Graphical tools for manipulating filters.
 *******************************************************************************/
 
-/* A basic pane that shows an annotated graph of a given SensorFilter. */
-template <class T> class GfxUISensorFilter : public GfxUIElement {
+/* A basic pane that shows an annotated graph of a given TimeSeries. */
+template <class T> class GfxUITimeSeries : public GfxUIElement {
   public:
     ImageGraphTrace<T> trace_settings;
 
-    GfxUISensorFilter(const GfxUILayout lay, const GfxUIStyle sty, SensorFilter<T>* sf, uint32_t f = 0) : GfxUIElement(lay, sty, f | GFXUI_FLAG_ALWAYS_REDRAW), _filter(sf) {};
-    ~GfxUISensorFilter() {};
+    GfxUITimeSeries(const GfxUILayout lay, const GfxUIStyle sty, TimeSeries<T>* sf, uint32_t f = 0) : GfxUIElement(lay, sty, f | GFXUI_FLAG_ALWAYS_REDRAW), _filter(sf) {};
+    ~GfxUITimeSeries() {};
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
@@ -71,12 +72,12 @@ template <class T> class GfxUISensorFilter : public GfxUIElement {
     inline void firstIdxRendered(uint32_t x) {  _left_most_data_idx = x;    };
     inline bool firstIdxRendered() {            return _left_most_data_idx; };
 
-    inline SensorFilter<T>* dataset() {    return _filter;  };
+    inline TimeSeries<T>* dataset() {    return _filter;  };
 
 
 
   private:
-    SensorFilter<T>* _filter;
+    TimeSeries<T>* _filter;
     uint32_t _left_most_data_idx = 0;
 
     bool _sync_settings();   // Called to copy trace_settings into the active config.
@@ -86,14 +87,14 @@ template <class T> class GfxUISensorFilter : public GfxUIElement {
 /* The basic pane with control elements for runtime behavior adjustment. */
 template <class T> class GfxUIGraphWithCtrl : public GfxUIElement {
   public:
-    GfxUIGraphWithCtrl(const GfxUILayout lay, const GfxUIStyle sty, SensorFilter<T>* sf, uint32_t f = 0);
+    GfxUIGraphWithCtrl(const GfxUILayout lay, const GfxUIStyle sty, TimeSeries<T>* sf, uint32_t f = 0);
     ~GfxUIGraphWithCtrl() {};
 
     /* Implementation of GfxUIElement. */
     virtual int  _render(UIGfxWrapper* ui_gfx);
     virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
 
-    inline GfxUISensorFilter<T>* graphRender() {  return &_graph;  };
+    inline GfxUITimeSeries<T>* graphRender() {  return &_graph;  };
     inline void showValue(bool x) {           _btn_show_value.pressed(x);     };
     inline void showRangeX(bool x) {          _btn_show_range_x.pressed(x);   };
     inline void showRangeY(bool x) {          _btn_show_range_y.pressed(x);   };
@@ -123,7 +124,7 @@ template <class T> class GfxUIGraphWithCtrl : public GfxUIElement {
     GfxUIGroup      _major_x_group;
     GfxUIGroup      _major_y_group;
     GfxUIZoomSlider _slider_x_axis;
-    GfxUISensorFilter<T> _graph;
+    GfxUITimeSeries<T> _graph;
     T           _y_axis_min;
     T           _y_axis_max;
 };
@@ -132,10 +133,10 @@ template <class T> class GfxUIGraphWithCtrl : public GfxUIElement {
 #define GFXUI_SF_CTRL_OFFSET_PX   180
 
 /* Constructor */
-template <class T> GfxUIGraphWithCtrl<T>::GfxUIGraphWithCtrl(const GfxUILayout lay, const GfxUIStyle sty, SensorFilter<T>* sf, uint32_t f) :
+template <class T> GfxUIGraphWithCtrl<T>::GfxUIGraphWithCtrl(const GfxUILayout lay, const GfxUIStyle sty, TimeSeries<T>* sf, uint32_t f) :
   GfxUIElement(lay, sty, (f | GFXUI_FLAG_TRACK_POINTER | GFXUI_FLAG_ALWAYS_REDRAW)),
   _ctrl_group(
-    internalPosX(), (internalPosY() + (internalHeight()-60)),  // Bottom-float pattern
+    internalPosX(), (internalPosY() + (internalHeight()-64)),  // Bottom-float pattern
     internalWidth(), 60
   ),
 
@@ -278,17 +279,17 @@ template <class T> GfxUIGraphWithCtrl<T>::GfxUIGraphWithCtrl(const GfxUILayout l
 }
 
 
-/* A high-cost pane for detailed examination and control over a SensorFilter. */
+/* A high-cost pane for detailed examination and control over a TimeSeries. */
 template <class T> class GfxUITimeSeriesDetail : public GfxUITabbedContentPane {
   public:
-    GfxUITimeSeriesDetail(const GfxUILayout lay, const GfxUIStyle sty, SensorFilter<T>* sf, uint32_t f = 0) :
+    GfxUITimeSeriesDetail(const GfxUILayout lay, const GfxUIStyle sty, TimeSeries<T>* sf, uint32_t f = 0) :
       GfxUITabbedContentPane(lay, sty, (f | GFXUI_FLAG_ALWAYS_REDRAW)),
       _filter(sf),
-      _filter_mirror(sf->windowSize(), _filter->strategy()),
-      _running_stdev(sf->windowSize(), FilteringStrategy::RAW),
-      _running_min(sf->windowSize(), FilteringStrategy::RAW),
-      _running_mean(sf->windowSize(), FilteringStrategy::RAW),
-      _running_max(sf->windowSize(), FilteringStrategy::RAW),
+      _filter_mirror(sf->windowSize()),
+      _running_stdev(sf->windowSize()),
+      _running_min(sf->windowSize()),
+      _running_mean(sf->windowSize()),
+      _running_max(sf->windowSize()),
       _skipped_samples(0),
       _pane_data(
         GfxUILayout(
@@ -329,15 +330,15 @@ template <class T> class GfxUITimeSeriesDetail : public GfxUITabbedContentPane {
 
 
   protected:
-    SensorFilter<T>* _filter;
-    SensorFilter<T>  _filter_mirror;   // Decouples filter feed-rate from render-rate while keeping stats syncd.
-    SensorFilter<float>  _running_stdev;
-    SensorFilter<T>      _running_min;
-    SensorFilter<float>  _running_mean;
-    SensorFilter<T>      _running_max;
-    uint32_t             _skipped_samples;
-    GfxUISensorFilter<T> _pane_data;
-    GfxUISensorFilter<float> _pane_stats;
+    TimeSeries<T>* _filter;
+    TimeSeries<T>  _filter_mirror;   // Decouples filter feed-rate from render-rate while keeping stats syncd.
+    TimeSeries<float>  _running_stdev;
+    TimeSeries<T>      _running_min;
+    TimeSeries<float>  _running_mean;
+    TimeSeries<T>      _running_max;
+    uint32_t           _skipped_samples;
+    GfxUITimeSeries<T> _pane_data;
+    GfxUITimeSeries<float> _pane_stats;
     //GfxUIOptionsView     _pane_config;
 
     int8_t _filter_alignment_check();
@@ -349,7 +350,7 @@ template <class T> class GfxUITimeSeriesDetail : public GfxUITabbedContentPane {
 /*
 * All types used with this template have isomorphic notify behavior.
 */
-template <class T> bool GfxUISensorFilter<T>::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
+template <class T> bool GfxUITimeSeries<T>::_notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log) {
   bool ret = false;
   switch (GFX_EVNT) {
     case GfxUIEvent::TOUCH:
@@ -465,12 +466,12 @@ template <class T> int GfxUITimeSeriesDetail<T>::fast_forward_data() {
         // Get the pointer to the next value in the feed filter...
         const T* FEED_MEM_PTR = _filter->memPtr() + (((FEED_WIN_SZ + _filter->lastIndex()) - (FF_COUNT - i)) % FEED_WIN_SZ);
         const T FEED_VALUE = *FEED_MEM_PTR;        // Get the next value from the filter...
-        _filter_mirror.feedFilter(FEED_VALUE);     // ...insert it into the mirror...
+        _filter_mirror.feedSeries(FEED_VALUE);     // ...insert it into the mirror...
         if (_filter_mirror.windowFull()) {         // ...and record the running stats if the mirror is full.
-          _running_stdev.feedFilter(_filter_mirror.stdev());
-          _running_min.feedFilter(_filter_mirror.minValue());
-          _running_mean.feedFilter(_filter_mirror.mean());
-          _running_max.feedFilter(_filter_mirror.maxValue());
+          _running_stdev.feedSeries(_filter_mirror.stdev());
+          _running_min.feedSeries(_filter_mirror.minValue());
+          _running_mean.feedSeries(_filter_mirror.mean());
+          _running_max.feedSeries(_filter_mirror.maxValue());
         }
       }
       ret = FF_COUNT;
