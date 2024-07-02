@@ -15,8 +15,8 @@ Templates for abstracted rendering of cartesian graphs.
 /*******************************************************************************
 * ImageGraph
 *******************************************************************************/
-/**
-*
+/*
+* Draws a graph of all enabled traces to the given location on the given Image.
 */
 template <> void ImageGraph<uint32_t>::drawGraph(Image* img, const PixUInt POS_X, const PixUInt POS_Y) {
   const PixUInt FRUS_W  = frustum_width();
@@ -200,6 +200,9 @@ template <> void ImageGraph<uint32_t>::drawGraph(Image* img, const PixUInt POS_X
 
 
 
+
+
+
 /**
 *
 */
@@ -261,7 +264,7 @@ template <> void ImageGraph<float>::drawGraph(Image* img, const PixUInt POS_X, c
           img->fillRect(point_x, point_y, point_w, point_h, trace0.color);
           img->drawFastVLine(PNT_X_POS, GRAPH_Y, GRAPH_H, trace0.color);   // Vertical rule crossing accented point.
 
-          const uint16_t TXT_PIXEL_HEIGHT = img->getFontHeight();
+          const PixUInt TXT_PIXEL_HEIGHT = img->getFontHeight();
           StringBuilder temp_txt;
           PixUInt txt_x = (point_x + point_w + 1);
           PixUInt txt_y = ((point_y - GRAPH_Y) > TXT_PIXEL_HEIGHT) ? (point_y - TXT_PIXEL_HEIGHT) : GRAPH_Y;
@@ -299,7 +302,7 @@ template <> void ImageGraph<float>::drawGraph(Image* img, const PixUInt POS_X, c
 
       StringBuilder tmp_val_str;
       if (trace0.show_y_range) {
-        uint16_t y_adv = img->getFontHeight();
+        PixUInt y_adv = img->getFontHeight();
         img->setCursor(GRAPH_X+1, GRAPH_Y);
         img->setTextColor(fg_color, bg_color);
         tmp_val_str.concatf("%.2f", (double) trace0.maxValue());
