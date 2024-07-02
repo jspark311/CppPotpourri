@@ -29,7 +29,7 @@ GfxUICryptoRNG::GfxUICryptoRNG(const GfxUILayout lay, const GfxUIStyle sty, uint
     &_rng_buffer,
     (GFXUI_FLAG_ALWAYS_REDRAW | GFXUI_SENFILT_FLAG_DRAW_CURVE | GFXUI_SENFILT_FLAG_DRAW_GRID | GFXUI_SENFILT_FLAG_AUTOSCALE_Y)
   ),
-  _schedule_rng_update("rng_update", 55000, -1, true, this)
+  _schedule_rng_update("rng_update", 100000, -1, true, this)
 {
   _add_child(&_vis_0);
   _vis_0.majorDivX(0);
@@ -93,13 +93,13 @@ PollResult GfxUICryptoRNG::poll() {
     }
   }
   if (_rng_buffer.initialized() & (PollResult::NO_ACTION == ret)) {
-        uint8_t tmp_buffer[4096];
-        random_fill(tmp_buffer, sizeof(tmp_buffer));
-        _rng_buffer.purge();
-        for (uint32_t i = 0; i < sizeof(tmp_buffer); i++) {
-          *(_rng_buffer.memPtr() + tmp_buffer[i]) = *(_rng_buffer.memPtr() + tmp_buffer[i])+1;
-        }
-        _rng_buffer.feedSeries();   // Flash the entire TimeSeries state all at once.
+        //uint8_t tmp_buffer[4096];
+        //random_fill(tmp_buffer, sizeof(tmp_buffer));
+        //_rng_buffer.purge();
+        //for (uint32_t i = 0; i < sizeof(tmp_buffer); i++) {
+        //  *(_rng_buffer.memPtr() + tmp_buffer[i]) = *(_rng_buffer.memPtr() + tmp_buffer[i])+1;
+        //}
+        //_rng_buffer.feedSeries();   // Flash the entire TimeSeries state all at once.
         // TODO: Feed the SNR series.
     ret = PollResult::ACTION;
   }

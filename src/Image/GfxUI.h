@@ -117,9 +117,11 @@ enum class GfxUIEvent : uint8_t {
   MOVE_DOWN    = 0x0A,  // Usually a scrollwheel on a PC.
   MOVE_LEFT    = 0x0B,  // Usually a scrollwheel on a PC.
   MOVE_RIGHT   = 0x0C,  // Usually a scrollwheel on a PC.
-  MOVE_IN      = 0x0D,  //
-  MOVE_OUT     = 0x0E,  //
+  MOVE_IN      = 0x0D,  // Usually a scrollwheel on a PC.
+  MOVE_OUT     = 0x0E,  // Usually a scrollwheel on a PC.
   KEY_PRESS    = 0x0F,  // Usually from a keyboard.
+  //COPY         = 0x10,  //
+  //PASTE        = 0x11,  //
 
   /* Return path for notify() */
   IDENTIFY     = 0x1C,  // Uses the notify() API to get the inner-most element at given location.
@@ -128,6 +130,22 @@ enum class GfxUIEvent : uint8_t {
   VALUE_CHANGE = 0x1F,  // A value-bearing UI element was updated by user action.
   INVALID      = 0x20   // We are bound by architecture to a maximum of 32 types of events.
 };
+
+
+// TODO: This will be saner that the split codespace in GfxUIEvent.
+/*
+* This class is used to track responses to notify() on the exit-side of the
+*   call stack.
+*/
+//class GfxUINoticeResponse {
+//  //GfxUIElement* ptr;   // TODO: Going to try handling it with node priority. But a map would be best.
+//  // TODO: How do I not have a hash-map object yet?
+//  public:
+//    GfxUIEvent event;
+//
+//  private:
+//    //FlagContainer32 _event_mask;  // Bitmask derived from GfxUIEvent.
+//};
 
 
 /*
@@ -295,21 +313,6 @@ class GfxUILayout {
     uint8_t  _bordr_r; // How many pixels should be the drawn border?
 };
 
-
-
-/*
-* This class is used to track responses to notify() on the exit-side of the
-*   call stack.
-*/
-//class GfxUINoticeResponse {
-//  //GfxUIElement* ptr;   // TODO: Going to try handling it with node priority. But a map would be best.
-//  // TODO: How do I not have a hash-map object yet?
-//  public:
-//    GfxUIEvent event;
-//
-//  private:
-//    //FlagContainer32 _event_mask;  // Bitmask derived from GfxUIEvent.
-//};
 
 
 /*******************************************************************************
