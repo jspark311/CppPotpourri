@@ -52,6 +52,25 @@ TimeSeriesBase::~TimeSeriesBase() {
 }
 
 
+/*
+* Given a sample index in memory, return the sample index (since last purge())
+*   that wrote it.
+* Example: if you have a sample at index 45, are recording the most-recent 300
+*   samples, and there are 2319 samples that have have passed through the class,
+*   this function should return 2193.
+*
+* @param MEM_IDX is the memory index containing the data of interest.
+* @returns the computed sample index, or 0 if undefined or window not full.
+*/
+uint32_t TimeSeriesBase::indexIsWhichSample(const uint32_t MEM_IDX) {
+  uint32_t ret = 0;
+  if (initialized() & (_samples_total >= MEM_IDX)) {
+    ret = (_samples_total - delta_assume_wrap(_sample_idx, MEM_IDX)) - 1;
+  }
+  return ret;
+}
+
+
 void TimeSeriesBase::printSeries(StringBuilder* output) {
   StringBuilder hdr;
   if (_name) {  hdr.concat(name());  }

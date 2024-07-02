@@ -68,21 +68,18 @@ int GfxUIStopWatch::_render(UIGfxWrapper* ui_gfx) {
 
     // Annotate the bar with the best and worst run times.
     const PixUInt MIN_MAX_Y_POS = i_y + (b_h >> 1) - (SCALE_TXT_H_PIX >> 1);
-    ui_gfx->img()->setCursor((b_x + MIN_MAX_LR_MARGIN), MIN_MAX_Y_POS);
-    ui_gfx->img()->setTextColor(0xFFFFFF, _style.color_bg);
+    const PixUInt TXT_PIXEL_WIDTH  = ui_gfx->img()->getFontWidth();
     line.concatf("%u us", _stopwatch->bestTime());
+
+    ui_gfx->img()->setTextColor(0xFFFFFF, _style.color_bg);
+    ui_gfx->img()->setCursor((b_x + MIN_MAX_LR_MARGIN), MIN_MAX_Y_POS);
     ui_gfx->img()->writeString(&line);
     line.clear();
 
     {
       line.concatf("%u us", _stopwatch->worstTime());
-      PixUInt str_bounds_x = 0;
-      PixUInt str_bounds_y = 0;
-      PixUInt str_bounds_w = 0;
-      PixUInt str_bounds_h = 0;
-      ui_gfx->img()->getTextBounds(&line, 0, 0, &str_bounds_x, &str_bounds_y, &str_bounds_w, &str_bounds_h);
-      const PixUInt SCALE_TXT_WC_X_PIX = (b_x + (b_w - (str_bounds_w + MIN_MAX_LR_MARGIN)));
-      ui_gfx->img()->setCursor(SCALE_TXT_WC_X_PIX, MIN_MAX_Y_POS);
+      const PixUInt LINE_WIDTH = ((TXT_PIXEL_WIDTH + 1) * line.length()) + MIN_MAX_LR_MARGIN;
+      ui_gfx->img()->setCursor((b_x + (b_w - LINE_WIDTH)), MIN_MAX_Y_POS);
       ui_gfx->img()->writeString(&line);
       line.clear();
     }
@@ -90,30 +87,22 @@ int GfxUIStopWatch::_render(UIGfxWrapper* ui_gfx) {
     // Now, for the mean and previous run times...
     {
       line.concatf("%u us", _stopwatch->meanTime());
-      PixUInt str_bounds_x = 0;
-      PixUInt str_bounds_y = 0;
-      PixUInt str_bounds_w = 0;
-      PixUInt str_bounds_h = 0;
-      ui_gfx->img()->getTextBounds(&line, 0, 0, &str_bounds_x, &str_bounds_y, &str_bounds_w, &str_bounds_h);
-      const PixUInt SCALE_TXT_WC_X_PIX = (b_x + 1 + (b_w - str_bounds_w));
-      const PixUInt CONSTRAINED_CURSOR_X = strict_min((PixUInt) (b_x + (PRCNT_LAST * (b_w - 2))), SCALE_TXT_WC_X_PIX);
+      ui_gfx->img()->setTextColor(0xa0a0a0, _style.color_bg);
+      const PixUInt LINE_WIDTH = ((TXT_PIXEL_WIDTH + 1) * line.length()) + MIN_MAX_LR_MARGIN;
+      const PixUInt SCALE_TXT_WC_X_PIX = (b_x + 1 + (b_w - LINE_WIDTH));
+      const PixUInt CONSTRAINED_CURSOR_X = strict_min((PixUInt) (b_x + (PRCNT_MEAN * (b_w - 2))), SCALE_TXT_WC_X_PIX);
       ui_gfx->img()->setCursor(CONSTRAINED_CURSOR_X, s_y);
-      ui_gfx->img()->setTextColor(0x606060, _style.color_bg);
       ui_gfx->img()->writeString(&line);
       line.clear();
     }
 
     {
       line.concatf("%u us", _stopwatch->lastTime());
-      PixUInt str_bounds_x = 0;
-      PixUInt str_bounds_y = 0;
-      PixUInt str_bounds_w = 0;
-      PixUInt str_bounds_h = 0;
-      ui_gfx->img()->getTextBounds(&line, 0, 0, &str_bounds_x, &str_bounds_y, &str_bounds_w, &str_bounds_h);
-      const PixUInt SCALE_TXT_WC_X_PIX = (b_x + (b_w - str_bounds_w));
+      ui_gfx->img()->setTextColor(0xF06060, _style.color_bg);
+      const PixUInt LINE_WIDTH = ((TXT_PIXEL_WIDTH + 1) * line.length()) + MIN_MAX_LR_MARGIN;
+      const PixUInt SCALE_TXT_WC_X_PIX = (b_x + (b_w - LINE_WIDTH));
       const PixUInt CONSTRAINED_CURSOR_X = strict_min((PixUInt) (b_x + (PRCNT_LAST * (b_w - 2))), SCALE_TXT_WC_X_PIX);
       ui_gfx->img()->setCursor(CONSTRAINED_CURSOR_X, s_y);
-      ui_gfx->img()->setTextColor(0xF03030, _style.color_bg);
       ui_gfx->img()->writeString(&line);
       line.clear();
     }

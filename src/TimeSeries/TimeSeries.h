@@ -63,11 +63,12 @@ See the README.md file for module-level documentation.
 *   concealed templates. By burying the template, TimeSeriesBase becomes the
 *   defacto public-facing API, and the templates will reduce to a cluster of
 *   protected-scope members.
-* TODO: It was considered to use RingBuffer in this class. It might be worth it.
-*   But for now, it is re-implemented (at tremendous annoyance). The only reason
+* NOTE: It was considered to use RingBuffer in this class. But it might not be
+*   worth it. It is re-implemented (at tremendous annoyance). The main reason
 *   it hasn't happened is related to construction-time knowledge of the ultimate
-*   size of the buffer (which is violated by the mere existance of
-*   _reallocate_sample_window(uint32_t).
+*   size of the buffer (which is violated by the mere existence of
+*   _reallocate_sample_window(uint32_t). But also, it will not overwrite samples
+*   when full.
 ******************************************************************************/
 class TimeSeriesBase {
   public:
@@ -82,6 +83,8 @@ class TimeSeriesBase {
     inline void     markClean() {          _last_trace = (0x0000FFFF & _samples_total);   };
     inline int8_t   windowSize(uint32_t x) {   return _reallocate_sample_window(x);     };
     inline uint32_t windowSize() {         return (initialized() ? _window_size : 0);   };
+    uint32_t indexIsWhichSample(const uint32_t MEM_IDX);
+
 
     // TODO: Add inlines for type-agnostic value accessors, but avoid it for as
     //   long as practical.
@@ -156,9 +159,11 @@ template <class T> class TimeSeries : public TimeSeriesBase {
     int8_t feedSeries(T);   // Add a value into the series.
     int8_t feedSeries();    // Bulk update.
     int8_t init();
-    T      value();   // Returns the most-recent value.
-    int8_t copyValues(T*, const uint32_t COUNT, const bool ABS_IDX = true);
-    //T      value(const uint32_t IDX = 0);
+    T      value();         // Returns the most-recent value.
+    int8_t copyValueRange(T*, const uint32_t COUNT, const uint32_t OFFSET, const bool ABS_IDX = true);
+    int8_t copyValues(T* buf, const uint32_t COUNT, const bool ABS_IDX = true) {
+      return copyValueRange(buf, COUNT, 0, ABS_IDX);
+    }
 
 
     /* Value accessor inlines */
@@ -280,6 +285,8 @@ template <class T> TimeSeries<T>::~TimeSeries() {
     samples = nullptr;
     free(tmp_ptr);
   }
+  units(nullptr);
+  name(nullptr);
 }
 
 
@@ -387,11 +394,25 @@ template <class T> int8_t TimeSeries<T>::_zero_samples() {
 
 
 template <class T> void TimeSeries<T>::_print_series(StringBuilder* output) {
-  output->concatf("\tMin   = %.8f\n", (double) minValue());
-  output->concatf("\tMax   = %.8f\n", (double) maxValue());
-  output->concatf("\tRMS   = %.8f\n", (double) rms());
-  output->concatf("\tSTDEV = %.8f\n", (double) stdev());
-  output->concatf("\tSNR   = %.8f\n", (double) snr());
+  C3PType* t_helper = getTypeHelper(tcode());
+  StringBuilder tmp_sb;
+  if (t_helper) {
+    T max_val = maxValue();
+    T min_val = minValue();
+    T med_val = median();
+    tmp_sb.concat("\tMin    = ");
+    t_helper->to_string((void*) &min_val, &tmp_sb);
+    tmp_sb.concat("\n\tMax    = ");
+    t_helper->to_string((void*) &max_val, &tmp_sb);
+    tmp_sb.concat("\n\tMedian = ");
+    t_helper->to_string((void*) &med_val, &tmp_sb);
+  }
+  tmp_sb.concatf("\n\tMEAN   = %.8f\n", mean());
+  tmp_sb.concatf("\tRMS    = %.8f\n", rms());
+  tmp_sb.concatf("\tSTDEV  = %.8f\n", stdev());
+  tmp_sb.concatf("\tSNR    = %.8f\n", snr());
+  tmp_sb.string();   // Consolidate heap...
+  output->concatHandoff(&tmp_sb);
 }
 
 
@@ -440,27 +461,28 @@ template <class T> T TimeSeries<T>::value() {
 };
 
 
-
 /**
 * Returns the COUNT most recent results from the series. Marks the series 'not dirty'
 *   as a side-effect, so don't call this for internal logic.
 *
 * @param COUNT is the number of samples to copy.
+* @param OFFSET is the first index to copy. This may be either a memory or sample index.
 * @param ABS_IDX dictates if the copy begins at the beginning of sample memory (if true),
 *          or the COUNT most-recent samples to have been fed into the series (false).
 * @return 0 on success, of -1 on failure.
 */
-template <class T> int8_t TimeSeries<T>::copyValues(T* buf, const uint32_t COUNT, const bool ABS_IDX) {
+template <class T> int8_t TimeSeries<T>::copyValueRange(T* buf, const uint32_t COUNT, const uint32_t OFFSET, const bool ABS_IDX) {
   int8_t ret = -1;
   if (windowSize() >= COUNT) {  // Initialized and within bounds?
     ret--;
     if (COUNT > 0) {
       ret--;
-      if (_samples_total >= COUNT) {  // Do so many samples exist?
-        const uint32_t PRE_MOD_IDX = (ABS_IDX ? 0 : ((windowSize() + _sample_idx) - COUNT));
+      if (_samples_total >= (COUNT + OFFSET)) {  // Do so many samples exist?
+        const uint32_t PRE_MOD_IDX = (ABS_IDX ? OFFSET : ((windowSize() + OFFSET + _sample_idx) - (COUNT+1)));
         markClean();  // Do this here (specifically) to minimize concurrency grief.
         // TODO: Inefficient for the sake of expediency. Should be a split copy
         //   and a single modulus operation.
+        printf("\t %u     %u      %u\n", PRE_MOD_IDX, OFFSET, _sample_idx);
         for (uint32_t i = 0; i < COUNT; i++) {
           const uint32_t SAFE_SAMPLE_IDX = ((PRE_MOD_IDX + i) % windowSize());
           *(buf + i) = *(samples + SAFE_SAMPLE_IDX);
@@ -528,7 +550,7 @@ template <class T> int8_t TimeSeries<T>::_calculate_rms() {
     ret = 0;
     double squared_samples = 0.0;
     for (uint32_t i = 0; i < _window_size; i++) {
-      squared_samples += ((double) samples[i] * (double) samples[i]);
+      squared_samples += pow((double) samples[i], 2.0);
     }
     _rms = sqrt(squared_samples / _window_size);
     _set_flags(true, TIMESERIES_FLAG_VALID_RMS);
@@ -541,6 +563,10 @@ template <class T> int8_t TimeSeries<T>::_calculate_rms() {
 * Calulates the standard deviation of the samples.
 * Updates the private cache variable.
 *
+* NOTE: Since it is not concerned with extimating stdev against a wider
+*   population, this implementation does not use Bessel's correction.
+*   https://en.wikipedia.org/wiki/Bessel%27s_correction
+*
 * @return 0 on success, -1 if the window isn't full.
 */
 template <class T> int8_t TimeSeries<T>::_calculate_stdev() {
@@ -550,8 +576,8 @@ template <class T> int8_t TimeSeries<T>::_calculate_stdev() {
     double deviation_sum = 0.0;
     double cached_mean = mean();
     for (uint32_t i = 0; i < _window_size; i++) {
-      double tmp = samples[i] - cached_mean;
-      deviation_sum += ((double) tmp * (double) tmp);
+      double tmp = ((double) samples[i] - cached_mean);
+      deviation_sum += pow((double) tmp, 2.0);
     }
     _stdev = sqrt(deviation_sum / _window_size);
     _set_flags(true, TIMESERIES_FLAG_VALID_STDEV);
@@ -606,8 +632,7 @@ template <class T> int8_t TimeSeries<T>::_calculate_median() {
 
 
 /**
-* Calulates the standard deviation of the samples.
-* Updates the private cache variable.
+* Calulates the signal-to-noise ratio of the samples.
 *
 * @return 0 on success, -1 if the window isn't full.
 */
@@ -615,7 +640,7 @@ template <class T> int8_t TimeSeries<T>::_calculate_snr() {
   int8_t ret = -1;
   if ((_window_size > 1) & windowFull()) {
     ret = 0;
-    _snr = (mean() / stdev());
+    _snr = (pow(mean(), 2.0) / pow(stdev(), 2.0));
     _set_flags(true, TIMESERIES_FLAG_VALID_SNR);
   }
   return ret;

@@ -44,18 +44,6 @@ TimeSeries<float>    series_test_2_1(TEST_FILTER_DEPTH);
 TimeSeries<int32_t> series_stats_test_0(TEST_FILTER_DEPTH);
 TimeSeries<int32_t> series_stats_test_1(TEST_FILTER_DEPTH);
 
-const int32_t KAT_SERIES_0_MIN   = -126000;
-const int32_t KAT_SERIES_0_MAX   = 127000;
-const double  KAT_SERIES_0_MEAN  = 0.0;
-const double  KAT_SERIES_0_STDEV = 0.0;
-const double  KAT_SERIES_0_SNR   = 0.0;
-
-const int32_t KAT_SERIES_1_MIN   = 0;
-const int32_t KAT_SERIES_1_MAX   = 0;
-const double  KAT_SERIES_1_MEAN  = 0.0;
-const double  KAT_SERIES_1_STDEV = 0.0;
-const double  KAT_SERIES_1_SNR   = 0.0;
-
 SIUnit UNIT_STR[] = { SIUnit::SECONDS, SIUnit::UNITLESS};
 
 /*******************************************************************************
@@ -142,26 +130,148 @@ int timeseries_initial_conditions() {
 }
 
 
+
+// Substantially taken from StackOverflow. Thank you, Daniel Laügt.
+// https://stackoverflow.com/questions/12278523/comparing-double-values-in-c
+// Reworked for assignment vs equality assurance and removal of short-circuit,
+//   and const usage.
+bool nearly_equal(const double A, const double B, const int FACTOR_OF_EPSILON) {
+  const double MIN_A = (A - (A - std::nextafter(A, std::numeric_limits<double>::lowest())) * FACTOR_OF_EPSILON);
+  const double MAX_A = (A + (std::nextafter(A, std::numeric_limits<double>::max()) - A) * FACTOR_OF_EPSILON);
+  return ((MIN_A <= B) & (MAX_A >= B));
+}
+
+// TODO: Using this mess for now until I tighten up my precision enough for the good version to work.
+bool nearly_equal(const double A, const double B, const double PRECISION) {
+  const double MIN_A = (A - PRECISION);
+  const double MAX_A = (A + PRECISION);
+  return ((MIN_A <= B) & (MAX_A >= B));
+}
+
+
 /*
-* TODO
+* Tests the statistical functions using a handful of KATs.
+* This test needs to be phrased as a known-answer test to avoid comparison
+*   against a "golden implementation" reproduced in this testing program.
 */
 int timeseries_stats_tests() {
+  const uint32_t TEST_SAMPLE_COUNT   = 1500;
+  const double   TEST_PRECISION      = 0.0002D;
+  const int32_t  TEST_EPSILON_FACTOR = (int32_t) (TEST_PRECISION / std::numeric_limits<double>::epsilon());
+  printf("Statistical KATs with a sample count of %u, and an epsilon factor of %.d required for success...\n", TEST_SAMPLE_COUNT, TEST_EPSILON_FACTOR);
+
   int ret = -1;
-  StringBuilder output;
-  series_stats_test_0.printSeries(&output);  // This should force stats calculation.
-  series_stats_test_1.printSeries(&output);  // This should force stats calculation.
-  printf("%s\n", output.string());
-  if (series_stats_test_0.minValue() == KAT_SERIES_0_MIN) {
-    if (series_stats_test_0.maxValue() == KAT_SERIES_0_MAX) {
-      ret = 0;
+  float osc_val = 153.0;
+
+  const double  EXPECTED_DBL_MIN  = 102.442193159035;
+  const double  EXPECTED_DBL_MAX  = 153000;
+  const double  EXPECTED_DBL_MEDN = 206.415273504598;
+  const double  EXPECTED_DBL_MEAN = 804.898759643693;
+  const double  EXPECTED_DBL_RMS  = 5065.69080921953;
+  const double  EXPECTED_DBL_STDV = 5001.33595765524;
+  const double  EXPECTED_DBL_SNR  = 0.025900637819809;
+
+  const int32_t EXPECTED_INT_MIN  = 102;
+  const int32_t EXPECTED_INT_MAX  = 153000;
+  const int32_t EXPECTED_INT_MEDN = 206;
+  const double  EXPECTED_INT_MEAN = 804.402;
+  const double  EXPECTED_INT_RMS  = 5065.62458083897;
+  const double  EXPECTED_INT_STDV = 5001.34879971353;
+  const double  EXPECTED_INT_SNR  = 0.025868544627461;
+
+  TimeSeries<double>  series_dbl(TEST_SAMPLE_COUNT);
+  TimeSeries<int32_t> series_int(TEST_SAMPLE_COUNT);
+  series_dbl.name((char*) "state double");
+  series_dbl.init();
+  series_int.name((char*) "state int32");
+  series_int.init();
+
+  // Generate the test curve, and fill the series...
+  for (uint32_t i = 0; i < TEST_SAMPLE_COUNT; i++) {
+    const double TEST_CURVE = (double) (((osc_val/(i+1)) + (sin(i/13.0D)/350.0D)) * 1000);
+    series_dbl.feedSeries(TEST_CURVE);
+    series_int.feedSeries((int32_t) TEST_CURVE);
+    //printf("%5d \t %.12f\n", (int32_t) TEST_CURVE, TEST_CURVE);
+  }
+
+  const double  RESULT_DBL_MIN  = series_dbl.minValue();
+  const double  RESULT_DBL_MAX  = series_dbl.maxValue();
+  const double  RESULT_DBL_MEAN = series_dbl.mean();
+  const double  RESULT_DBL_MEDN = series_dbl.median();
+  const double  RESULT_DBL_RMS  = series_dbl.rms();
+  const double  RESULT_DBL_STDV = series_dbl.stdev();
+  const double  RESULT_DBL_SNR  = series_dbl.snr();
+
+  const int32_t RESULT_INT_MIN  = series_int.minValue();
+  const int32_t RESULT_INT_MAX  = series_int.maxValue();
+  const double  RESULT_INT_MEAN = series_int.mean();
+  const int32_t RESULT_INT_MEDN = series_int.median();
+  const double  RESULT_INT_RMS  = series_int.rms();
+  const double  RESULT_INT_STDV = series_int.stdev();
+  const double  RESULT_INT_SNR  = series_int.snr();
+
+  printf("\tTesting with type DOUBLE...\n");
+  printf("\t\tminValue() matches within +/-%.8f of expected value (%f)... ", TEST_PRECISION, EXPECTED_DBL_MIN);
+  if (nearly_equal(EXPECTED_DBL_MIN, RESULT_DBL_MIN, TEST_PRECISION)) {
+    printf("Pass.\n\t\tmaxValue() matches within +/-%.8f of expected value (%f)... ", TEST_PRECISION, EXPECTED_DBL_MAX);
+    if (nearly_equal(EXPECTED_DBL_MAX, RESULT_DBL_MAX, TEST_PRECISION)) {
+      printf("Pass.\n\t\tmean() matches within +/-%.8f of expected value (%f)... ", TEST_PRECISION, EXPECTED_DBL_MEAN);
+      if (nearly_equal(EXPECTED_DBL_MEAN, RESULT_DBL_MEAN, TEST_PRECISION)) {
+        printf("Pass.\n\t\tmedian() matches within +/-%.8f of expected value (%f)... ", TEST_PRECISION, EXPECTED_DBL_MEDN);
+        if (nearly_equal(EXPECTED_DBL_MEDN, RESULT_DBL_MEDN, TEST_PRECISION)) {
+          printf("Pass.\n\t\trms() matches within +/-%.8f of expected value (%f)... ", TEST_PRECISION, EXPECTED_DBL_RMS);
+          if (nearly_equal(EXPECTED_DBL_RMS, RESULT_DBL_RMS, TEST_PRECISION)) {
+            printf("Pass.\n\t\tstdev() matches within +/-%.8f of expected value (%f)... ", TEST_PRECISION, EXPECTED_DBL_STDV);
+            if (nearly_equal(EXPECTED_DBL_STDV, RESULT_DBL_STDV, TEST_PRECISION)) {
+              printf("Pass.\n\t\tsnr() matches within +/-%.8f of expected value (%f)... ", TEST_PRECISION, EXPECTED_DBL_SNR);
+              if (nearly_equal(EXPECTED_DBL_SNR, RESULT_DBL_SNR, TEST_PRECISION)) {
+                ret = 0;
+              }
+            }
+          }
+        }
+      }
     }
+  }
+
+  if (0 == ret) {
+    ret = -1;
+    printf("\tTesting with type INT32...\n");
+    printf("\t\tminValue() matches within expected value (%d)... ", EXPECTED_INT_MIN);
+    if (EXPECTED_INT_MIN == RESULT_INT_MIN) {
+      printf("Pass.\n\t\tmaxValue() matches expected value (%d)... ", EXPECTED_INT_MAX);
+      if (EXPECTED_INT_MAX == RESULT_INT_MAX) {
+        printf("Pass.\n\t\tmean() matches within +/-%.8f of expected value (%f)... ", TEST_PRECISION, EXPECTED_INT_MEAN);
+        if (nearly_equal(EXPECTED_INT_MEAN, RESULT_INT_MEAN, TEST_PRECISION)) {
+          printf("Pass.\n\t\tmedian() matches expected value (%d)... ", EXPECTED_INT_MEDN);
+          if (EXPECTED_INT_MEDN == RESULT_INT_MEDN) {
+            printf("Pass.\n\t\trms() matches within +/-%.8f of expected value (%f)... ", TEST_PRECISION, EXPECTED_INT_RMS);
+            if (nearly_equal(EXPECTED_INT_RMS, RESULT_INT_RMS, TEST_PRECISION)) {
+              printf("Pass.\n\t\tstdev() matches within +/-%.8f of expected value (%f)... ", TEST_PRECISION, EXPECTED_INT_STDV);
+              if (nearly_equal(EXPECTED_INT_STDV, RESULT_INT_STDV, TEST_PRECISION)) {
+                printf("Pass.\n\t\tsnr() matches within +/-%.8f of expected value (%f)... ", TEST_PRECISION, EXPECTED_INT_SNR);
+                if (nearly_equal(EXPECTED_INT_SNR, RESULT_INT_SNR, TEST_PRECISION)) {
+                  ret = 0;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  printf("%s.\n", ((0 != ret) ? "Fail" : "PASS"));
+  if (0 != ret) {
+    dump_timeseries(&series_dbl);
+    dump_timeseries(&series_int);
   }
   return ret;
 }
 
 
 /*
-*
+* Re-windowing is the act of changing the sample capacity of the TimeSeries.
 */
 int timeseries_rewindowing() {
   int ret = 0;
@@ -280,8 +390,12 @@ int timeseries_nominal_operation_0() {
 *
 */
 int timeseries_nominal_operation_1() {
+  const uint32_t TEST_SAMPLE_COUNT = (91 + (randomUInt32() % 23));
   int ret = 0;
+  printf("Testing normal operation (bulk) with a sample count of %u...\n", TEST_SAMPLE_COUNT);
+  printf("\tCreating test object... ");
   // TODO
+  //indexIsWhichSample(const uint32_t MEM_IDX) {
   return ret;
 }
 
@@ -301,6 +415,8 @@ int timeseries_test_abuse() {
 */
 int timeseries_test_parse_pack() {
   int ret = -1;
+  dump_timeseries(&series_stats_test_0);
+
   // Serialize the source.
   StringBuilder serialized;
   if (0 == series_stats_test_0.serialize(&serialized, TCode::CBOR)) {
