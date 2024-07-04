@@ -44,20 +44,46 @@ TimeSeries<float>    series_test_2_1(TEST_FILTER_DEPTH);
 TimeSeries<int32_t> series_stats_test_0(TEST_FILTER_DEPTH);
 TimeSeries<int32_t> series_stats_test_1(TEST_FILTER_DEPTH);
 
+//SIUnit UNIT_STR[] = { SIUnit::UNIT_GRAMMAR_MARKER,
+//  SIUnit::META_ORDER_OF_MAGNITUDE, (SIUnit) -6,
+//  SIUnit::SECONDS, SIUnit::UNITLESS
+//};
 SIUnit UNIT_STR[] = { SIUnit::SECONDS, SIUnit::UNITLESS};
 
+/*
+* This helper function does a pedantic check to ensure that the given TimeSeries
+*   is initialized and bears the proper freshly-initialized state:
+* Window size is non-zero, and is initialized, but there are no samples within
+*   it, and is not dirty().
+*/
+bool timeseries_helper_is_zeroed(TimeSeries<int16_t>* series) {
+  if (series) {
+    if (series->initialized()) {
+      if ((series->windowSize() > 0) & (!series->windowFull())) {
+        if ((0 == series->totalSamples()) & !series->dirty()) {
+          const uint32_t TEST_SAMPLE_COUNT = series->windowSize();
+          int16_t* val_ptr = series->memPtr();
+          for (uint32_t i = 0; i < TEST_SAMPLE_COUNT; i++) {
+            if (0 != *(val_ptr+i)) return false;
+          }
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+
+
 /*******************************************************************************
-* Scheduler test routines
+* Test routines
 *******************************************************************************/
 /*
 *
 */
 int timeseries_init() {
   int ret = 0;
-  //SIUnit UNIT_STR[] = { SIUnit::UNIT_GRAMMAR_MARKER,
-  //  SIUnit::META_ORDER_OF_MAGNITUDE, (SIUnit) -6,
-  //  SIUnit::SECONDS, SIUnit::UNITLESS
-  //};
 
   if (0 == ret) {   ret = series_stats_test_0.name((char*) "stats_0");   }
   if (0 == ret) {   ret = series_stats_test_1.name((char*) "stats_1");   }
@@ -91,15 +117,15 @@ int timeseries_initial_conditions() {
   printf("TimeSeries setting up initial conditions...\n");
   for (int i = 0; i < TEST_FILTER_DEPTH; i++) {
     if ((0 > series_test_0_m.feedSeries(randomUInt32()))) {
-      printf("TimeSeries failed to series_test_0_m.feedSeries() at index %d.", i);
+      printf("TimeSeries failed to series_test_0_m.feedSeries() at index %d.\n", i);
       return -1;
     }
     if ((0 > series_test_1_m.feedSeries(randomUInt32()))) {
-      printf("TimeSeries failed to series_test_1_m.feedSeries() at index %d.", i);
+      printf("TimeSeries failed to series_test_1_m.feedSeries() at index %d.\n", i);
       return -1;
     }
     if ((0 > series_test_2_m.feedSeries(generate_random_float()))) {
-      printf("TimeSeries failed to series_test_2_m.feedSeries() at index %d.", i);
+      printf("TimeSeries failed to series_test_2_m.feedSeries() at index %d.\n", i);
       return -1;
     }
 
@@ -111,7 +137,7 @@ int timeseries_initial_conditions() {
     feed_failure |= (0 > series_stats_test_1.feedSeries(TVAL_C));
 
     if (feed_failure) {
-      printf("TimeSeries failed to feed stats timeseries at index %d.", i);
+      printf("TimeSeries failed to feed stats timeseries at index %d.\n", i);
       return -1;
     }
   }
@@ -124,7 +150,9 @@ int timeseries_initial_conditions() {
     windows_not_full |= !series_test_2_m.windowFull();
     ret = (windows_not_full ? -2 : 0);
   }
-  else printf("TimeSeries failed to set initial conditions.");
+  else {
+    printf("TimeSeries failed to set initial conditions.\n");
+  }
 
   return ret;
 }
@@ -141,7 +169,8 @@ bool nearly_equal(const double A, const double B, const int FACTOR_OF_EPSILON) {
   return ((MIN_A <= B) & (MAX_A >= B));
 }
 
-// TODO: Using this mess for now until I tighten up my precision enough for the good version to work.
+// TODO: Using this mess for now until I tighten up my precision enough for the
+//   good version to work. These known answers were arrived at
 bool nearly_equal(const double A, const double B, const double PRECISION) {
   const double MIN_A = (A - PRECISION);
   const double MAX_A = (A + PRECISION);
@@ -270,12 +299,91 @@ int timeseries_stats_tests() {
 }
 
 
+
 /*
 * Re-windowing is the act of changing the sample capacity of the TimeSeries.
+* Doing this will cause all existing class state as it pertains to samples being
+*   reset. Samples zero'd, marked clean, 0 == totalSamples(), etc...
 */
 int timeseries_rewindowing() {
-  int ret = 0;
-  // TODO
+  const uint32_t TEST_SAMPLE_COUNT_0 = (91 + (randomUInt32() % 23));
+  const uint32_t TEST_SAMPLE_COUNT_1 = (TEST_SAMPLE_COUNT_0 + 1 + (randomUInt32() % 23));
+  bool stat_passes = false;
+  bool dyn_passes  = false;
+  printf("Testing the ability to reallocate windows (%u --> %u)...\n", TEST_SAMPLE_COUNT_0, TEST_SAMPLE_COUNT_1);
+  printf("\tGenerating test objects... ");
+
+  // Self-allocating objects will be able to change window size.
+  // Objects created with explicit memory pools will not be able to change their
+  //   window size.
+  int16_t static_series_mem[TEST_SAMPLE_COUNT_0];
+  TimeSeries<int16_t> series_static(static_series_mem, TEST_SAMPLE_COUNT_0);
+  TimeSeries<int16_t> series_dynamic(TEST_SAMPLE_COUNT_0);
+  series_static.name("static-mem");
+  series_dynamic.name("dynamic-mem");
+
+  if ((0 == series_static.init()) & (0 == series_dynamic.init())) {
+    printf("Pass.\n\tWindows are both full... ");
+    const int16_t* MEM_PTR_DYN_0 = series_dynamic.memPtr();
+    // Fill the series with index values,
+    for (uint32_t i = 0; i < TEST_SAMPLE_COUNT_0; i++) {
+      const int16_t KNOWN_VALUE = (int16_t) i;
+      series_static.feedSeries(KNOWN_VALUE);
+      series_dynamic.feedSeries(KNOWN_VALUE);
+    }
+
+    if (series_static.windowFull() & series_dynamic.windowFull()) {
+      printf("Pass.\n\twindowSize(%u) succeeds for both static and dynamic (no change to pool size)... ", TEST_SAMPLE_COUNT_0);
+      if (((0 == series_static.windowSize(TEST_SAMPLE_COUNT_0)) & (0 == series_dynamic.windowSize(TEST_SAMPLE_COUNT_0)))) {
+        printf("Pass.\n\tBoth objects are zeroed... ");
+        if (timeseries_helper_is_zeroed(&series_static) & timeseries_helper_is_zeroed(&series_dynamic)) {
+          // Re-fill the series...
+          for (uint32_t i = 0; i < TEST_SAMPLE_COUNT_0; i++) {
+            const int16_t KNOWN_VALUE = (int16_t) i;
+            series_static.feedSeries(KNOWN_VALUE);
+            series_dynamic.feedSeries(KNOWN_VALUE);
+          }
+          printf("Pass.\n\twindowSize(%u) fails for static-mem... ", TEST_SAMPLE_COUNT_1);
+          if (0 != series_static.windowSize(TEST_SAMPLE_COUNT_1)) {
+            printf("Pass.\n\t\twindowSize() returns the old value (%u)... ", TEST_SAMPLE_COUNT_0);
+            if (TEST_SAMPLE_COUNT_0 == series_static.windowSize()) {
+              printf("Pass.\n\t\tThe value returned by memPtr() is the same as before... ");
+              if (series_static.memPtr() == static_series_mem) {
+                printf("Pass.\n\t\tThe sample pool has not been wiped... ");
+                if (!timeseries_helper_is_zeroed(&series_static)) {
+                  stat_passes = true;
+                  printf("Pass.\n\twindowSize(%u) succeeds for dynamic-mem... ", TEST_SAMPLE_COUNT_1);
+                  if (0 == series_dynamic.windowSize(TEST_SAMPLE_COUNT_1)) {
+                    printf("Pass.\n\t\twindowSize() returns the new value (%u)... ", TEST_SAMPLE_COUNT_1);
+                    if (TEST_SAMPLE_COUNT_1 == series_dynamic.windowSize()) {
+                      printf("Pass.\n\t\tThe value returned by memPtr() is different for dynamic... ");
+                      if (series_dynamic.memPtr() != MEM_PTR_DYN_0) {
+                        printf("Pass.\n\t\tThe sample pool has been wiped... ");
+                        if (timeseries_helper_is_zeroed(&series_dynamic)) {
+                          printf("Pass.\n\twindowSize(0) succeeds for dynamic-mem... ");
+                          if (0 == series_dynamic.windowSize(0)) {
+                            printf("Pass.\n\tThe dynamic-mem series is no longer initialized... ");
+                            if (!series_dynamic.initialized()) {
+                              dyn_passes = true;
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  int ret = ((stat_passes & dyn_passes) ? 0 : -1);
+  printf("%s.\n", ((0 != ret) ? "Fail" : "PASS"));
+  if (!stat_passes) {  dump_timeseries(&series_static);   printf("\n");  }
+  if (!dyn_passes) {   dump_timeseries(&series_dynamic);  printf("\n");  }
   return ret;
 }
 
@@ -391,11 +499,81 @@ int timeseries_nominal_operation_0() {
 */
 int timeseries_nominal_operation_1() {
   const uint32_t TEST_SAMPLE_COUNT = (91 + (randomUInt32() % 23));
-  int ret = 0;
+  int ret = -1;
   printf("Testing normal operation (bulk) with a sample count of %u...\n", TEST_SAMPLE_COUNT);
-  printf("\tCreating test object... ");
-  // TODO
-  //indexIsWhichSample(const uint32_t MEM_IDX) {
+  printf("\tGenerating test objects... ");
+
+  int16_t stored_mem[TEST_SAMPLE_COUNT];
+  TimeSeries<int16_t> series_0(TEST_SAMPLE_COUNT);
+  series_0.name("bulk-test");
+  if (0 == series_0.init()) {
+    int16_t* MEM_PTR = series_0.memPtr();
+    // Fill the series with index values via direct manipulation of memory. This
+    //   might happen in a real DMA-based use-case, or it might be to avoid the
+    //   overhead associated with looping discretely over several values. In any
+    //   case, calling feedSeries() with no args should mark the window as full,
+    //   and increment totalSamples() by windowSize().
+    for (int16_t i = 0; i < (int16_t) TEST_SAMPLE_COUNT; i++) {
+      *(MEM_PTR + i) = i;
+    }
+
+    printf("Pass.\n\tindexIsWhichSample(x) returns 0 for all input... ");
+    bool bogus_index_relationship = false;
+    for (int16_t i = 0; i < (int16_t) (TEST_SAMPLE_COUNT+10); i++) {
+      bogus_index_relationship |= (0 != series_0.indexIsWhichSample(i));
+    }
+    if (!bogus_index_relationship) {
+      printf("Pass.\n\tfeedSeries() returns 1... ");
+      if (1 == series_0.feedSeries()) {
+        printf("Pass.\n\twindowFull() returns true... ");
+        if (series_0.windowFull()) {
+          const uint32_t COPY_LENGTH = (5 + (randomUInt32() % 19));
+          const uint32_t COPY_START  = (11 + (randomUInt32() % 43));
+          printf("Pass.\n\tcopyValueRange(%u, %u, true) succeeds... ", COPY_LENGTH, COPY_START);
+          if (0 == series_0.copyValueRange(stored_mem, COPY_LENGTH, COPY_START, true)) {
+            printf("Pass.\n\tcopyValueRange(%u, %u, true) produced the expected pattern in the target buffer... ", COPY_LENGTH, COPY_START);
+            bool compare_failed = false;
+            for (int16_t i = 0; i < (int16_t) COPY_LENGTH; i++) {
+              // The value written was the index, and thus should match.
+              compare_failed |= (stored_mem[i] != *(MEM_PTR + COPY_START + i));
+              compare_failed |= (stored_mem[i] != (COPY_START + i));
+            }
+            if (!compare_failed) {
+              printf("Pass.\n\tindexIsWhichSample(x) returns parity for all input when (totalSamples() == windowSize())... ");
+              for (int16_t i = 0; i < (int16_t) TEST_SAMPLE_COUNT; i++) {
+                bogus_index_relationship |= (i != series_0.indexIsWhichSample(i));
+              }
+              if (!bogus_index_relationship) {
+                const uint32_t ADDED_SAMPLE_COUNT = ((TEST_SAMPLE_COUNT << 2) + (randomUInt32() % 137));
+                const uint32_t EXPECTED_TOTAL_COUNT = (TEST_SAMPLE_COUNT + ADDED_SAMPLE_COUNT);
+                printf("Pass.\n\tAdding %u additional samples produces the expected outcome from totalSamples() (%u)... ", ADDED_SAMPLE_COUNT, EXPECTED_TOTAL_COUNT);
+                for (int16_t i = 0; i < (int16_t) ADDED_SAMPLE_COUNT; i++) {
+                  series_0.feedSeries(i + TEST_SAMPLE_COUNT);
+                }
+                if (EXPECTED_TOTAL_COUNT == series_0.totalSamples()) {
+                  printf("Pass.\n\tindexIsWhichSample(x) returns expected results for all input... ");
+                  for (int16_t i = 0; i < (int16_t) TEST_SAMPLE_COUNT; i++) {
+                    bogus_index_relationship |= (i != (series_0.indexIsWhichSample(i) % TEST_SAMPLE_COUNT));
+                  }
+                  if (!bogus_index_relationship) {
+                    ret = 0;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  printf("%s.\n", ((0 != ret) ? "Fail" : "PASS"));
+  if (0 != ret) {
+    dump_timeseries(&series_0);
+    for (uint32_t i = 0; i < TEST_SAMPLE_COUNT; i++) {
+      printf("%5d ", stored_mem[i]);
+      if ((i & 0x07) == 7) printf("\n");
+    }
+  }
   return ret;
 }
 

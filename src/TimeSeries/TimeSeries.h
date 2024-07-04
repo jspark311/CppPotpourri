@@ -114,7 +114,7 @@ class TimeSeriesBase {
     //friend int8_t C3PTypeConstraint<TimeSeries*>::construct(void*, KeyValuePair*);
 
     TimeSeriesBase(const TCode, uint32_t ws, uint16_t flgs = 0);
-    ~TimeSeriesBase();
+    virtual ~TimeSeriesBase();
 
     /* Semantic breakouts for flags */
     inline bool _self_allocated() {  return _chk_flags(TIMESERIES_FLAG_SELF_ALLOC);       };
@@ -285,29 +285,32 @@ template <class T> TimeSeries<T>::~TimeSeries() {
     samples = nullptr;
     free(tmp_ptr);
   }
-  units(nullptr);
-  name(nullptr);
 }
 
 
 /**
 * This must be called ahead of usage to allocate the needed memory.
 *
-* @return 0 on success, or -1 on failure.
+* @return 0 on success, or negative on failure.
 */
 template <class T> int8_t TimeSeries<T>::init() {
   bool series_initd = false;
-  _set_flags(false, TIMESERIES_FLAG_FILTER_INITD);
   if (_self_allocated())  {
-    uint32_t tmp_window_size = _window_size;
-    _window_size = 0;
-    series_initd = (0 == _reallocate_sample_window(tmp_window_size));
+    const uint32_t TMP_SZ = _window_size; // This dance forces re-init to hapopen
+    _window_size = 0;                     //   where it otherwise would not.
+    series_initd = (0 == _reallocate_sample_window(TMP_SZ));
   }
   else {
-    series_initd = ((nullptr != samples) & (_window_size > 0));
+    series_initd = ((0 < _window_size) & (nullptr != samples));
+    _set_flags(series_initd, TIMESERIES_FLAG_FILTER_INITD);
   }
-  _set_flags(series_initd, TIMESERIES_FLAG_FILTER_INITD);
-  return (series_initd ? 0 : -1);
+  int8_t ret = (series_initd ? 0 : -1);
+  if (0 == ret) {
+    if (0 != _zero_samples()) {
+      ret = -2;
+    }
+  }
+  return ret;
 }
 
 
@@ -318,10 +321,9 @@ template <class T> int8_t TimeSeries<T>::init() {
 template <class T> int8_t TimeSeries<T>::feedSeries() {
   int8_t ret = -1;
   if (initialized()) {
-    _sample_idx = 0;
     _samples_total += _window_size;
     invalidateStats();
-    ret = 0;
+    ret = 1;
   }
   return ret;
 }
@@ -350,6 +352,7 @@ template <class T> int8_t TimeSeries<T>::_reallocate_sample_window(uint32_t win)
       }
       else {       // Program asked for no sample depth. Return success, having
         ret = 0;   //   basically de-initialized the class.
+        _window_size = 0;
       }
     }
     else {         // We can't reallocate if we were constructed with
@@ -358,6 +361,10 @@ template <class T> int8_t TimeSeries<T>::_reallocate_sample_window(uint32_t win)
   }
   else {
     ret = _zero_samples();
+  }
+
+  if (0 == ret) {
+    _set_flags(((0 < _window_size) & (nullptr != samples)), TIMESERIES_FLAG_FILTER_INITD);
   }
   return ret;
 }
@@ -482,7 +489,6 @@ template <class T> int8_t TimeSeries<T>::copyValueRange(T* buf, const uint32_t C
         markClean();  // Do this here (specifically) to minimize concurrency grief.
         // TODO: Inefficient for the sake of expediency. Should be a split copy
         //   and a single modulus operation.
-        printf("\t %u     %u      %u\n", PRE_MOD_IDX, OFFSET, _sample_idx);
         for (uint32_t i = 0; i < COUNT; i++) {
           const uint32_t SAFE_SAMPLE_IDX = ((PRE_MOD_IDX + i) % windowSize());
           *(buf + i) = *(samples + SAFE_SAMPLE_IDX);
