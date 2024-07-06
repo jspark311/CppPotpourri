@@ -243,6 +243,7 @@ C3PValue::~C3PValue() {
         case TCode::STR_BUILDER:  delete ((StringBuilder*) _target_mem);  break;
         case TCode::KVP:          delete ((KeyValuePair*)  _target_mem);  break;
         case TCode::STOPWATCH:    delete ((StopWatch*)     _target_mem);  break;
+        case TCode::TIMESERIES:   delete ((TimeSeriesBase*) _target_mem);  break;
       #if defined(CONFIG_C3P_IDENTITY_SUPPORT)
         case TCode::IDENTITY:     delete ((Identity*)      _target_mem);  break;
       #endif
@@ -589,6 +590,19 @@ C3PValue* C3PValue::link(C3PValue* linked_val, bool reap_cont) {
   }
   return linked_val;
 }
+
+
+int8_t C3PValue::unlink(C3PValue* linked_val, bool destruct) {
+  if (linked_val == _next) {
+    _next = nullptr;
+    if (destruct & linked_val->reapContainer()) {
+      delete linked_val;
+    }
+    return 0;
+  }
+  return (nullptr != _next) ? _next->unlink(linked_val, destruct) : -1;
+}
+
 
 /**
 * @return The number of sibling values.
@@ -993,11 +1007,41 @@ C3PValue* C3PValueDecoder::_next(uint32_t* offset) {
 
 
 
-C3PValue* C3PValueDecoder::_handle_array(uint32_t* offset, uint32_t len) {
-  C3PValue* value = nullptr;
-  c3p_log(LOG_LEV_ERROR, LOCAL_LOG_TAG, "CBOR arrays aren't yet supported.");
-  return value;
+C3PValue* C3PValueDecoder::_handle_array(uint32_t* offset, uint32_t count) {
+  const uint32_t INPUT_LEN = _in->length();
+  uint32_t local_offset    = *offset;
+  C3PValue* ret = nullptr;
+  bool bailout = false;
+
+  while (!bailout & (count > 0)) {
+    //c3p_log(LOG_LEV_DEBUG, LOCAL_LOG_TAG, "Decoding value for array (%u)", count);
+    bailout = true;
+    C3PValue* value = _next(&local_offset);
+    if (nullptr != value) {
+      // For now, we handle this with a sloppy grouping of the elements.
+      //   This might, after all, be a heterogenously typed array.
+      if (nullptr == ret) {  ret = value;       }
+      else {                 ret->link(value);  }
+      bailout = false;
+    }
+    count--;
+  }
+
+  if (bailout) {
+    if (nullptr != ret) {  delete ret;  }
+    ret = nullptr;
+  }
+  else {
+    if (nullptr != ret) {
+      *offset = local_offset;    // Indicate success by updating the offset.
+    }
+    else {
+      c3p_log(LOG_LEV_DEBUG, LOCAL_LOG_TAG, "_handle_map(%u, %u) didn't bail out, but also didn't return a KVP.", *offset, count);
+    }
+  }
+  return (C3PValue*) ret;
 }
+
 
 
 /*
@@ -1054,6 +1098,12 @@ C3PValue* C3PValueDecoder::_handle_map(uint32_t* offset, uint32_t count) {
                       //   life-cycle from the parser. We don't want it to be
                       //   free'd when its container is reaped.
                       value->reapValue(false);
+                      // There may have been other values attached. Take them as well.
+                      C3PValue* tagalong = value->nextValue();
+                      if (nullptr != tagalong) {
+                        tmp_kvp->link(tagalong);
+                        value->unlink(tagalong, false);
+                      }
                     }
                   }
                 }

@@ -86,6 +86,7 @@ static const C3PTypeConstraint<Vector3f>        c3p_type_helper_vect3_float(  "V
 static const C3PTypeConstraint<Vector3f64>      c3p_type_helper_vect3_double( "VEC3_DOUBLE",  24, TCode::VECT_3_DOUBLE,  (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
 static const C3PTypeConstraint<KeyValuePair*>   c3p_type_helper_kvp(          "KVP",          0,  TCode::KVP,            (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
 static const C3PTypeConstraint<StopWatch*>      c3p_type_helper_stopwatch(    "STOPWATCH",    sizeof(StopWatch),  TCode::STOPWATCH,  (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
+static const C3PTypeConstraint<TimeSeriesBase*>  c3p_type_helper_timeseries(   "TIMESERIES",   0,  TCode::TIMESERIES, (TCODE_FLAG_VALUE_IS_PUNNED_PTR));
 
 // Type-indirected handlers (parameter binders).
 static const C3PTypeConstraint<C3PBinBinder>    c3p_type_helper_ptrlen(       "BINARY",       0,  TCode::BINARY,       (TCODE_FLAG_PTR_LEN_TYPE | TCODE_FLAG_LEGAL_FOR_ENCODING));
@@ -160,6 +161,7 @@ static const C3PType* _get_type_def(const TCode TC) {
     case TCode::VECT_3_DOUBLE:   return (const C3PType*) &c3p_type_helper_vect3_double;
     case TCode::KVP:             return (const C3PType*) &c3p_type_helper_kvp;
     case TCode::STOPWATCH:       return (const C3PType*) &c3p_type_helper_stopwatch;
+    case TCode::TIMESERIES:      return (const C3PType*) &c3p_type_helper_timeseries;
     case TCode::BINARY:          return (const C3PType*) &c3p_type_helper_ptrlen;
 
     #if defined(CONFIG_C3P_CBOR)
@@ -2408,6 +2410,39 @@ template <> int8_t      C3PTypeConstraint<StopWatch*>::get_as(void* src, const T
     switch (DEST_TYPE) {
       case TCode::STOPWATCH:
         *((StopWatch**) dest) = (StopWatch*) src;
+        ret = 0;
+        break;
+      default:  break;
+    }
+  }
+  return ret;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// TimeSeriesBase*
+///
+template <> int8_t      C3PTypeConstraint<TimeSeriesBase*>::set_from(void* dest, const TCode SRC_TYPE, void* src) {
+  int8_t ret = -1;
+  if (nullptr != dest) {
+    switch (SRC_TYPE) {
+      case TCode::TIMESERIES:
+        //memcpy(dest, &src, sizeof(TimeSeriesBase*));
+        *((TimeSeriesBase**) dest) = (TimeSeriesBase*) src;
+        ret = 0;
+        break;
+      default:  break;
+    }
+  }
+  return ret;
+}
+
+template <> int8_t      C3PTypeConstraint<TimeSeriesBase*>::get_as(void* src, const TCode DEST_TYPE, void* dest) {
+  int8_t ret = -1;
+  if (nullptr != dest) {
+    switch (DEST_TYPE) {
+      case TCode::TIMESERIES:
+        *((TimeSeriesBase**) dest) = (TimeSeriesBase*) src;
         ret = 0;
         break;
       default:  break;

@@ -40,14 +40,10 @@ TimeSeries<float>    series_test_2_m(TEST_FILTER_DEPTH);
 TimeSeries<float>    series_test_2_0(TEST_FILTER_DEPTH);
 TimeSeries<float>    series_test_2_1(TEST_FILTER_DEPTH);
 
-// These values are knwon-answer test cases to check stats operation.
-TimeSeries<int32_t> series_stats_test_0(TEST_FILTER_DEPTH);
-TimeSeries<int32_t> series_stats_test_1(TEST_FILTER_DEPTH);
-
-//SIUnit UNIT_STR[] = { SIUnit::UNIT_GRAMMAR_MARKER,
-//  SIUnit::META_ORDER_OF_MAGNITUDE, (SIUnit) -6,
-//  SIUnit::SECONDS, SIUnit::UNITLESS
-//};
+SIUnit UNIT_STR_HARD_MODE[] = { SIUnit::UNIT_GRAMMAR_MARKER,
+  SIUnit::META_ORDER_OF_MAGNITUDE, (SIUnit) -6,
+  SIUnit::SECONDS, SIUnit::UNITLESS
+};
 SIUnit UNIT_STR[] = { SIUnit::SECONDS, SIUnit::UNITLESS};
 
 /*
@@ -83,27 +79,29 @@ bool timeseries_helper_is_zeroed(TimeSeries<int16_t>* series) {
 *
 */
 int timeseries_init() {
-  int ret = 0;
+  int ret = -1;
+  printf("TimeSeries construction semantics...\n");
+  printf("\tGlobally declared objects are created as expected... ");
+  bool tcode_check_passes = (TCode::UINT32 == series_test_0_m.tcode());
+  tcode_check_passes &= (TCode::INT32 == series_test_1_m.tcode());
+  tcode_check_passes &= (TCode::FLOAT == series_test_2_m.tcode());
 
-  if (0 == ret) {   ret = series_stats_test_0.name((char*) "stats_0");   }
-  if (0 == ret) {   ret = series_stats_test_1.name((char*) "stats_1");   }
-  if (0 == ret) {   ret = series_stats_test_0.units(UNIT_STR);   }
-  if (0 == ret) {   ret = series_stats_test_1.units(UNIT_STR);   }
-
-  if (0 == ret) {   ret = series_stats_test_0.init();    }
-  if (0 == ret) {   ret = series_stats_test_1.init();    }
-  if (0 == ret) {   ret = series_test_0_m.init();        }
-  if (0 == ret) {   ret = series_test_0_0.init();        }
-  if (0 == ret) {   ret = series_test_0_1.init();        }
-  if (0 == ret) {   ret = series_test_1_m.init();        }
-  if (0 == ret) {   ret = series_test_1_0.init();        }
-  if (0 == ret) {   ret = series_test_1_1.init();        }
-  if (0 == ret) {   ret = series_test_2_m.init();        }
-  if (0 == ret) {   ret = series_test_2_0.init();        }
-  if (0 == ret) {   ret = series_test_2_1.init();        }
-  if (0 != ret) {
-    printf("TimeSeries::init() returns (%d).\n", ret);
+  if (tcode_check_passes) {
+    printf("Pass.\n\tObjects initialize correctly... ");
+    //timeseries_helper_is_zeroed(TimeSeries<int16_t>* series)
+    ret = 0;
+    if (0 == ret) {   ret -= series_test_0_m.init();   }
+    if (0 == ret) {   ret -= series_test_0_0.init();   }
+    if (0 == ret) {   ret -= series_test_0_1.init();   }
+    if (0 == ret) {   ret -= series_test_1_m.init();   }
+    if (0 == ret) {   ret -= series_test_1_0.init();   }
+    if (0 == ret) {   ret -= series_test_1_1.init();   }
+    if (0 == ret) {   ret -= series_test_2_m.init();   }
+    if (0 == ret) {   ret -= series_test_2_0.init();   }
+    if (0 == ret) {   ret -= series_test_2_1.init();   }
   }
+
+  printf("%s.\n", ((0 != ret) ? "Fail" : "PASS"));
   return ret;
 }
 
@@ -126,18 +124,6 @@ int timeseries_initial_conditions() {
     }
     if ((0 > series_test_2_m.feedSeries(generate_random_float()))) {
       printf("TimeSeries failed to series_test_2_m.feedSeries() at index %d.\n", i);
-      return -1;
-    }
-
-    bool feed_failure = false;
-    // For the stats filters, we build a test pattern and send it through a
-    //   filter configured for each mode we care to test.
-    const int32_t TVAL_C = (int32_t) (1000*i*((i%2)?1:-1));
-    feed_failure |= (0 > series_stats_test_0.feedSeries(TVAL_C));
-    feed_failure |= (0 > series_stats_test_1.feedSeries(TVAL_C));
-
-    if (feed_failure) {
-      printf("TimeSeries failed to feed stats timeseries at index %d.\n", i);
       return -1;
     }
   }
@@ -265,6 +251,7 @@ int timeseries_stats_tests() {
 
   if (0 == ret) {
     ret = -1;
+    printf("PASS\n");
     printf("\tTesting with type INT32...\n");
     printf("\t\tminValue() matches within expected value (%d)... ", EXPECTED_INT_MIN);
     if (EXPECTED_INT_MIN == RESULT_INT_MIN) {
@@ -307,7 +294,7 @@ int timeseries_stats_tests() {
 */
 int timeseries_rewindowing() {
   const uint32_t TEST_SAMPLE_COUNT_0 = (91 + (randomUInt32() % 23));
-  const uint32_t TEST_SAMPLE_COUNT_1 = (TEST_SAMPLE_COUNT_0 + 1 + (randomUInt32() % 23));
+  const uint32_t TEST_SAMPLE_COUNT_1 = (TEST_SAMPLE_COUNT_0 + 15 + (randomUInt32() % 31));
   bool stat_passes = false;
   bool dyn_passes  = false;
   printf("Testing the ability to reallocate windows (%u --> %u)...\n", TEST_SAMPLE_COUNT_0, TEST_SAMPLE_COUNT_1);
@@ -592,46 +579,114 @@ int timeseries_test_abuse() {
 * Test the transfer of an entire package of timeseries data all at once.
 */
 int timeseries_test_parse_pack() {
-  int ret = -1;
-  dump_timeseries(&series_stats_test_0);
+  const uint32_t TEST_SAMPLE_COUNT = (91 + (randomUInt32() % 23));
+  printf("Testing Parsing and packing with a sample count of %u...\n", TEST_SAMPLE_COUNT);
+  printf("\tGenerating test objects... ");
+  bool pack_passes    = false;
+  bool parse_passes   = false;
+  bool compare_passes = false;
 
-  // Serialize the source.
-  StringBuilder serialized;
-  if (0 == series_stats_test_0.serialize(&serialized, TCode::CBOR)) {
-    // StringBuilder txt_output;
-    // serialized.printDebug(&txt_output);
-    // printf("%s\n", txt_output.string());
-    // Deserialize into the target.
-    //TimeSeries<int32_t> filt_copy_test(0);
-    //if (0 == filt_copy_test.deserialize(&serialized, TCode::CBOR)) {
-    //  ret = 0;
-    //}
-    // TODO: test for equality.
+  StringBuilder serialized_txt;
+  StringBuilder serialized_cbor;
+
+  TimeSeries<int16_t> series_0(TEST_SAMPLE_COUNT);
+  series_0.name("source");
+  series_0.units(UNIT_STR);
+
+  if (0 == series_0.init()) {
+    // Fill the series with index values via direct manipulation of memory.
+    int16_t* MEM_PTR = series_0.memPtr();
+    for (int16_t i = 0; i < (int16_t) TEST_SAMPLE_COUNT; i++) {  *(MEM_PTR + i) = i;  }
+    if (1 == series_0.feedSeries()) {
+      // Serialize the source into a few different formats.
+      printf("Pass.\n\tSerialize to text... ");
+      series_0.printSeries(&serialized_txt);
+      { //if (0 == series_0.serialize(&serialized_txt, TCode::STR)) {
+        printf("Pass.\n\tSerialize to CBOR... ");
+        if (0 == series_0.serialize(&serialized_cbor, TCode::CBOR)) {
+          printf("Pass.\n\tSerializing the original TimeSeries did not mark it as clean... ");
+          if (series_0.dirty()) {
+            pack_passes = true;
+          }
+        }
+      }
+    }
   }
-  ret = 0;  // TODO: Wrong
+
+  TimeSeries<int16_t>* series_1 = nullptr;
+  if (pack_passes) {
+    // Deserialize into the target for machine-readable serializations.
+    printf("Pass.\n\tDeserializing CBOR back into an object... ");
+    //if (0 == series_1.deserialize(&serialized, TCode::CBOR)) {
+    C3PValue* series_c3pval = C3PValue::deserialize(&serialized_cbor, TCode::CBOR);
+    if (nullptr != series_c3pval) {
+      printf("Pass.\n\tThe result is truly a TimeSeries... ");
+      TimeSeriesBase* ts_base = nullptr;
+      if (0 == series_c3pval->get_as(&ts_base)) {
+        printf("Pass.\n\tThe TimeSeries has the expected TCode (%s == %s)... ", typecodeToStr(ts_base->tcode()), typecodeToStr(series_0.tcode()));
+        if (ts_base->tcode() == series_0.tcode()) {
+          series_1 = (TimeSeries<int16_t>*) ts_base;
+          parse_passes = true;
+        }
+      }
+    }
+  }
+
+  if (parse_passes) {
+    // Compare the objects. They should have final content that is exactly equal.
+    printf("Pass.\n\tThe new TimeSeries has the same metadata as the original... ");
+    compare_passes  = (series_0.initialized()  == series_1->initialized());
+    compare_passes &= (series_0.windowSize()   == series_1->windowSize());
+    compare_passes &= (series_0.windowFull()   == series_1->windowFull());
+    compare_passes &= (series_0.totalSamples() == series_1->totalSamples());
+    compare_passes &= (series_0.lastIndex()    == series_1->lastIndex());
+    compare_passes &= (0 == StringBuilder::strcasecmp(series_0.name(),  series_1->name()));
+    compare_passes &= (0 == StringBuilder::strcasecmp((const char*) series_0.units(), (const char*) series_1->units()));
+
+    if (compare_passes) {
+      int16_t stored_mem_0[TEST_SAMPLE_COUNT];
+      int16_t stored_mem_1[TEST_SAMPLE_COUNT];
+      printf("Pass.\n\tThe original TimeSeries reads back in bulk... ");
+      if (0 == series_0.copyValueRange(stored_mem_0, TEST_SAMPLE_COUNT, 0, true)) {
+        printf("Pass.\n\tThe new TimeSeries is dirty()... ");
+        if (series_1->dirty()) {
+          printf("Pass.\n\tThe new TimeSeries reads back in bulk... ");
+          if (0 == series_1->copyValueRange(stored_mem_1, TEST_SAMPLE_COUNT, 0, true)) {
+            printf("Pass.\n\tThe samples in the new TimeSeries match those of the original... ");
+            for (int16_t i = 0; i < (int16_t) TEST_SAMPLE_COUNT; i++) {
+              //printf("%d\t%d\t%d\n", i, stored_mem_0[i], stored_mem_1[i]);
+              compare_passes &= (stored_mem_0[i] == i);  // Source data is correct.
+              compare_passes &= (stored_mem_1[i] == i);  // Copied data is correct.
+            }
+          }
+        }
+      }
+    }
+  }
+
+  int8_t ret = (pack_passes & parse_passes & compare_passes) ? 0 : -1;
+  printf("%s.\n", ((0 != ret) ? "Fail" : "PASS"));
+  StringBuilder final_output("\nSerializer outputs:\n---------------------------\nTEXT:\n---------------------------\n");
+  final_output.concatHandoff(&serialized_txt);
+  final_output.concat("\nUnconsumed CBOR:\n---------------------------\n");
+  serialized_cbor.printDebug(&final_output);
+  printf("%s\n", (char*) final_output.string());
+
+  if (nullptr != series_1) {
+    dump_timeseries(series_1);
+    delete series_1;
+  }
   return ret;
 }
 
 
 /*
-*
 */
 int timeseries_data_sharing() {
   int ret = 0;
   // TODO
   return ret;
 }
-
-
-/*
-*
-*/
-int timeseries_teardown() {
-  int ret = 0;
-  // TODO
-  return ret;
-}
-
 
 
 void print_types_timeseries() {
@@ -658,14 +713,13 @@ void print_types_timeseries() {
 #define CHKLST_TIMESERIES_TEST_ABUSE          0x00000040  //
 #define CHKLST_TIMESERIES_TEST_PARSE_PACK     0x00000080  //
 #define CHKLST_TIMESERIES_TEST_SHARING        0x00000100  //
-#define CHKLST_TIMESERIES_TEST_DESTRUCTION    0x80000000  //
 
 #define CHKLST_TIMESERIES_TESTS_ALL ( \
   CHKLST_TIMESERIES_TEST_CONSTRUCTION | CHKLST_TIMESERIES_TEST_INITIAL_COND | \
   CHKLST_TIMESERIES_TEST_STATS | CHKLST_TIMESERIES_TEST_REWINDOWING | \
   CHKLST_TIMESERIES_TEST_NORMAL_OP_0 | CHKLST_TIMESERIES_TEST_NORMAL_OP_1 | \
   CHKLST_TIMESERIES_TEST_ABUSE | CHKLST_TIMESERIES_TEST_PARSE_PACK | \
-  CHKLST_TIMESERIES_TEST_SHARING | CHKLST_TIMESERIES_TEST_DESTRUCTION)
+  CHKLST_TIMESERIES_TEST_SHARING)
 
 
 const StepSequenceList TIMESERIES_TEST_LIST[] = {
@@ -722,12 +776,6 @@ const StepSequenceList TIMESERIES_TEST_LIST[] = {
     .DEP_MASK     = (CHKLST_TIMESERIES_TEST_PARSE_PACK),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == timeseries_data_sharing()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_TIMESERIES_TEST_DESTRUCTION,
-    .LABEL        = "Destruction",
-    .DEP_MASK     = (CHKLST_TIMESERIES_TEST_SHARING),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == timeseries_teardown()) ? 1:-1);  }
   },
 };
 

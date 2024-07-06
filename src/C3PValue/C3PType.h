@@ -27,6 +27,10 @@ TODO: Might-should adopt some IANA standard code-spaces here? Is there a
   painless way to get better inter-op? Dig...
 
 TODO: Add cross-type support for TCode::STR. atoi(), toString(), etc...
+
+TODO: There is inconsistency in this subsystem regarding property lookups.
+  Mostly surrounding booleans. It would be nice to unconfuse this, and do it
+  one way. Those schizophrenic parts of the API have been labled as such.
 */
 
 #ifndef __C3P_TYPE_WRAPPER_H
@@ -41,6 +45,7 @@ class StringBuilder;
 class C3PType;
 class Identity;
 class StopWatch;
+class TimeSeriesBase;
 class Image;
 class KeyValuePair;
 
@@ -51,7 +56,8 @@ class KeyValuePair;
 /**
 * These are the different flags that might apply to a type. They are constants.
 *
-* NOTE: TCODE_FLAG_VALUE_IS_PUNNED_PTR, TCODE_FLAG_VALUE_BY_COPY, TCODE_FLAG_PTR_LEN_TYPE
+* TODO: TCODE_FLAG_VALUE_IS_PUNNED_PTR, TCODE_FLAG_VALUE_BY_COPY, TCODE_FLAG_PTR_LEN_TYPE
+*   are mirrored on a per-instance basis in C3PValue. It is confusing, at best.
 */
 #define TCODE_FLAG_VALUE_BY_COPY       0x01  // This type should be deep-copied for this platform.
 #define TCODE_FLAG_VALUE_IS_PUNNED_PTR 0x02  // This type is small enough to fit inside a void* on this platform. This includes other pointer types.
@@ -145,15 +151,16 @@ enum class TCode : uint8_t {
 
 
 /* Quick inlines to facilitate moving into and out of serialization. */
+// TODO: Schizophrenic API, option #1 (global-scope fxns for type properties)
 inline uint8_t TcodeToInt(const TCode code) {   return (const uint8_t) code; };
 inline TCode IntToTcode(const uint8_t code) {   return (const TCode) code;   };
-
 const char* const typecodeToStr(const TCode);
 const bool typeIsFixedLength(const TCode);
 const bool typeIsPointerPunned(const TCode);
 const int sizeOfType(const TCode);
-C3PType* getTypeHelper(const TCode);
 
+/* Global function that is the entry-point for the type API. */
+C3PType* getTypeHelper(const TCode);
 
 /*
 * Inlines that return a TCode the represents that type in the argument.
@@ -185,7 +192,7 @@ inline const TCode tcodeForType(StringBuilder*) {      return TCode::STR_BUILDER
 inline const TCode tcodeForType(Identity*) {           return TCode::IDENTITY;       };
 inline const TCode tcodeForType(Image*) {              return TCode::IMAGE;          };
 inline const TCode tcodeForType(StopWatch*) {          return TCode::STOPWATCH;      };
-
+inline const TCode tcodeForType(TimeSeriesBase*) {     return TCode::TIMESERIES;     };
 
 
 /*******************************************************************************
@@ -209,8 +216,10 @@ typedef struct c3p_bin_binder_t {
 
 /*
 * This class describes the interface to the type-wrapper helper functions. It
-*   must be implemented (and instanced) as a template, but this is the API for
-*   its use.
+*   must be implemented (and instanced) as a template, but this API for its use
+*   doesn't require built-time knowledge about the specific type.
+* This piece of the type subsystem should be const to facilitate memory
+*   placement goals. Mere support for a type should not consume RAM. Only flash.
 */
 class C3PType {
   public:
@@ -218,6 +227,7 @@ class C3PType {
     const uint16_t    FIXED_LEN;
     const TCode       TCODE;
 
+    // Implementation for a specific type needs to implement these.
     virtual uint32_t length(void* obj)                                          =0;
     virtual void     to_string(void* obj, StringBuilder*)                       =0;
     virtual int8_t   representable_by(const TCode DEST_TYPE)                    =0;
@@ -227,6 +237,7 @@ class C3PType {
     virtual int      deserialize(void* obj, StringBuilder*, const TCode FORMAT) =0;
     virtual int8_t   construct(void* obj, KeyValuePair*)                        =0;
 
+    // TODO: Schizophrenic API, option #2 (flag accessors buiried within a C3PType instance)
     const bool legal_for_encoding() {  return _all_flags_set(TCODE_FLAG_LEGAL_FOR_ENCODING);  };
     const bool null_terminated() {     return _all_flags_set(TCODE_FLAG_NULL_TERMIMNATED);    };
     const bool value_by_copy() {       return _all_flags_set(TCODE_FLAG_VALUE_BY_COPY);       };
@@ -235,6 +246,8 @@ class C3PType {
     const bool is_ptr_len() {          return _all_flags_set(TCODE_FLAG_PTR_LEN_TYPE);        };
     const bool is_fixed_length() {     return (FIXED_LEN > 0);    };
 
+    // Static functions to facilitate lookup of common type properties.
+    // TODO: Schizophrenic API, option #3 (a blend of options #1 and #2)
     static int8_t conversionRisk(const TCode, const TCode);
     static int8_t exportTypeMap(StringBuilder*, const TCode);
     static const bool is_numeric(const TCode);
@@ -245,7 +258,6 @@ class C3PType {
   protected:
     C3PType(const char* const type_name, const uint16_t fixed_len, const TCode tcode, const uint8_t flags) :
       NAME(type_name), FIXED_LEN(fixed_len), TCODE(tcode), _FLAGS(flags) {};
-
 
     int8_t _type_blind_copy(void* src, void* dest, const TCode);
     int    _type_blind_serialize(void* obj, StringBuilder*, const TCode FORMAT);

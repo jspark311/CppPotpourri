@@ -85,6 +85,9 @@ class TimeSeriesBase {
     inline uint32_t windowSize() {         return (initialized() ? _window_size : 0);   };
     uint32_t indexIsWhichSample(const uint32_t MEM_IDX);
 
+    virtual int8_t init() =0;
+    //int8_t serializeRange(StringBuilder*, const uint32_t COUNT, const uint32_t OFFSET, const bool ABS_IDX);
+
 
     // TODO: Add inlines for type-agnostic value accessors, but avoid it for as
     //   long as practical.
@@ -92,13 +95,16 @@ class TimeSeriesBase {
     // And if added, only the simple numerics and vector types matter.
     /* Accessors for optional string-like annotations */
     inline char*    name() {               return (_name ? _name : (char*) "");   };
-    inline SIUnit*  units() {              return (_units ? _units : nullptr);    };
+    inline SIUnit*  units() {              return (_units ? _units : (SIUnit*) "");    };
     int8_t name(char*);
     int8_t units(SIUnit*);
 
     /* Parsing and packing */
     void printSeries(StringBuilder*);
-    int8_t serialize(StringBuilder*, TCode);
+    int8_t serialize(StringBuilder* out, TCode FORMAT) {
+      C3PType* t_helper = getTypeHelper(TCode::TIMESERIES);
+      return ((nullptr != t_helper) ? t_helper->serialize((void*) this, out, FORMAT) : -1);
+    };
 
 
   protected:
@@ -110,8 +116,8 @@ class TimeSeriesBase {
     //   But TimeSeries *isn't* StopWatch. TimeSeries might have a data field of
     //   dozens of KB which shouldn't be packed up on all occasions.
     // Some nuance will need to be observed.
-    //friend int    C3PTypeConstraint<TimeSeries*>::serialize(void*, StringBuilder*, const TCode);
-    //friend int8_t C3PTypeConstraint<TimeSeries*>::construct(void*, KeyValuePair*);
+    friend int    C3PTypeConstraint<TimeSeriesBase*>::serialize(void*, StringBuilder*, const TCode);
+    friend int8_t C3PTypeConstraint<TimeSeriesBase*>::construct(void*, KeyValuePair*);
 
     TimeSeriesBase(const TCode, uint32_t ws, uint16_t flgs = 0);
     virtual ~TimeSeriesBase();
@@ -128,9 +134,11 @@ class TimeSeriesBase {
     inline bool _chk_flags(const uint16_t MSK) {          return (MSK == (_flags & MSK));                  };
 
     /* Mandatory overrides for a child class. */
+    virtual void*  _mem_raw_ptr() =0;
     virtual int8_t _reallocate_sample_window(uint32_t) =0;
     virtual int8_t _zero_samples() =0;
     virtual void   _print_series(StringBuilder*) =0;
+
     virtual void   _serialize_value(cbor::encoder*, uint32_t idx)    =0;
     virtual void   _deserialize_value(cbor::encoder*, uint32_t idx)  =0;
 
@@ -153,7 +161,7 @@ class TimeSeriesBase {
 template <class T> class TimeSeries : public TimeSeriesBase {
   public:
     TimeSeries(T* buf, uint32_t ws);
-    TimeSeries(uint32_t ws) : TimeSeries(nullptr, ws) {};
+    TimeSeries(uint32_t ws = 0) : TimeSeries(nullptr, ws) {};
     virtual ~TimeSeries();
 
     int8_t feedSeries(T);   // Add a value into the series.
@@ -163,7 +171,7 @@ template <class T> class TimeSeries : public TimeSeriesBase {
     int8_t copyValueRange(T*, const uint32_t COUNT, const uint32_t OFFSET, const bool ABS_IDX = true);
     int8_t copyValues(T* buf, const uint32_t COUNT, const bool ABS_IDX = true) {
       return copyValueRange(buf, COUNT, 0, ABS_IDX);
-    }
+    };
 
 
     /* Value accessor inlines */
@@ -189,6 +197,7 @@ template <class T> class TimeSeries : public TimeSeriesBase {
     double   _stdev     = 0.0d;
     double   _snr       = 0.0d;
 
+    void*   _mem_raw_ptr() {    return ((void*) samples);    };
     int8_t  _reallocate_sample_window(uint32_t);
     int8_t  _zero_samples();
     void    _print_series(StringBuilder*);

@@ -134,52 +134,6 @@ int8_t TimeSeriesBase::units(SIUnit* u) {
 }
 
 
-int8_t TimeSeriesBase::serialize(StringBuilder* out, TCode format) {
-  int8_t ret = -1;
-  switch (format) {
-    case TCode::BINARY:
-      // TODO
-      break;
-
-    case TCode::CBOR:
-      #if defined(__BUILD_HAS_CBOR)
-      {
-        cbor::output_stringbuilder output(out);
-        cbor::encoder encoder(output);
-        const uint32_t RANGE_TO_SERIALIZE = windowSize();  // TODO: Calculate from last dirty idx.
-
-        uint8_t map_count = 4;
-        if (_name) {           map_count++;   }
-        if (initialized()) {   map_count++;   }
-
-        encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(TCode::TIMESERIES));
-
-        encoder.write_map(map_count);
-        encoder.write_string("tc");    encoder.write_int(TcodeToInt(_TCODE));
-        encoder.write_string("win");   encoder.write_int(windowSize());
-        encoder.write_string("ttl");   encoder.write_int(totalSamples());
-        if (_name) {
-          encoder.write_string("n");   encoder.write_string(_name);
-        }
-        if (initialized()) {
-          encoder.write_string("dat");
-            encoder.write_array(RANGE_TO_SERIALIZE);
-            uint32_t real_idx = ((RANGE_TO_SERIALIZE <= _sample_idx) ? _sample_idx : (_window_size + _sample_idx)) - RANGE_TO_SERIALIZE;
-            for (uint32_t i = 0; i < RANGE_TO_SERIALIZE; i++) {
-              _serialize_value(&encoder, (real_idx + i) % _window_size);
-            }
-            ret = 0;
-          }
-      }
-      #endif
-      break;
-    default:
-      break;
-  }
-  return ret;
-}
-
-
 
 /******************************************************************************
 * TimeSeries<T> type specializations
@@ -188,6 +142,8 @@ int8_t TimeSeriesBase::serialize(StringBuilder* out, TCode format) {
 // If someone wants to teach me a less obnoxious way to do this, please branch
 //   and PR. I will probably take it.
 #if defined(__BUILD_HAS_CBOR)
+template <> void TimeSeries<uint64_t>::_serialize_value(cbor::encoder* enc, uint32_t idx) {   enc->write_int(samples[idx]);  }
+template <> void TimeSeries<uint64_t>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
 template <> void TimeSeries<uint32_t>::_serialize_value(cbor::encoder* enc, uint32_t idx) {   enc->write_int(samples[idx]);  }
 template <> void TimeSeries<uint32_t>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
 template <> void TimeSeries<uint16_t>::_serialize_value(cbor::encoder* enc, uint32_t idx) {   enc->write_int(samples[idx]);  }
@@ -195,6 +151,8 @@ template <> void TimeSeries<uint16_t>::_deserialize_value(cbor::encoder* enc, ui
 template <> void TimeSeries<uint8_t>::_serialize_value(cbor::encoder* enc, uint32_t idx) {   enc->write_int(samples[idx]);  }
 template <> void TimeSeries<uint8_t>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
 
+template <> void TimeSeries<int64_t>::_serialize_value(cbor::encoder* enc, uint32_t idx) {   enc->write_int(samples[idx]);  }
+template <> void TimeSeries<int64_t>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
 template <> void TimeSeries<int32_t>::_serialize_value(cbor::encoder* enc, uint32_t idx) {   enc->write_int(samples[idx]);  }
 template <> void TimeSeries<int32_t>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
 template <> void TimeSeries<int16_t>::_serialize_value(cbor::encoder* enc, uint32_t idx) {   enc->write_int(samples[idx]);  }
@@ -222,3 +180,161 @@ template <> void TimeSeries3<float>::_deserialize_value(cbor::encoder* enc, uint
 // template <> void TimeSeries3<double>::_serialize_value(cbor::encoder* enc, uint32_t idx) {  enc->write_double(samples[idx]);  }
 // template <> void TimeSeries3<double>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
 #endif
+
+
+
+
+/*******************************************************************************
+* C3PTypeConstraint
+*******************************************************************************/
+
+template <> int C3PTypeConstraint<TimeSeriesBase*>::serialize(void* _obj, StringBuilder* out, const TCode FORMAT) {
+  int ret = -1;
+  if (nullptr == _obj) {  return ret;  }
+  TimeSeriesBase* obj = (TimeSeriesBase*) _obj;
+
+  switch (FORMAT) {
+    case TCode::STR:
+      ret = 0;
+      break;
+
+    case TCode::BINARY:
+      break;
+
+    #if defined(__BUILD_HAS_CBOR)
+    case TCode::CBOR:
+      {
+        cbor::output_stringbuilder output(out);
+        cbor::encoder encoder(output);
+        const uint32_t RANGE_TO_SERIALIZE = obj->windowSize();  // TODO: Calculate from last dirty idx?
+
+        uint8_t map_count = (obj->windowFull() ? 5:3);
+        if (obj->_name) {   map_count++;  }
+        if (obj->_units) {  map_count++;  }
+
+        encoder.write_tag(C3P_CBOR_VENDOR_CODE | TcodeToInt(TCode::TIMESERIES));
+        encoder.write_map(map_count);
+        encoder.write_string("tc");    encoder.write_int(TcodeToInt(obj->tcode()));
+        encoder.write_string("win");   encoder.write_int(obj->windowSize());
+        encoder.write_string("ttl");   encoder.write_int(obj->totalSamples());
+        if (obj->_name) {
+          encoder.write_string("n");   encoder.write_string(obj->name());
+        }
+        if (obj->_units) {
+          encoder.write_string("u");   encoder.write_string((char*) obj->units());
+        }
+        if (obj->windowFull()) {
+          // If the window is full, the data is worth sending. But first, we
+          //   should write the absolute offset of the starting sample index so
+          //   that the parser can know where in the series this range belongs.
+          // NOTE: Line belong assumes we're sending all of it.
+          // TODO: This arrangement will need to mutate soon. It is already
+          //   under breaking selective pressure.
+          //C3PType* t_helper = getTypeHelper(_TCODE);
+          const uint32_t PACKER_ABS_IDX_START = (obj->totalSamples() - RANGE_TO_SERIALIZE);
+          encoder.write_string("idx");   encoder.write_int(PACKER_ABS_IDX_START);
+          encoder.write_string("dat");
+            encoder.write_array(RANGE_TO_SERIALIZE);
+            uint32_t real_idx = ((RANGE_TO_SERIALIZE <= obj->_sample_idx) ? obj->_sample_idx : (obj->_window_size + obj->_sample_idx)) - RANGE_TO_SERIALIZE;
+            for (uint32_t i = 0; i < RANGE_TO_SERIALIZE; i++) {
+              obj->_serialize_value(&encoder, (real_idx + i) % obj->_window_size);
+            }
+          ret = 0;
+        }
+      }
+      break;
+    #endif  // __BUILD_HAS_CBOR
+
+    default:  break;
+  }
+  return ret;
+}
+
+
+template <> int8_t C3PTypeConstraint<TimeSeriesBase*>::construct(void* _obj, KeyValuePair* kvp) {
+  int8_t ret = -1;
+  if ((nullptr != _obj) & (nullptr != kvp)) {
+    ret--;
+    // Always take win, because it may indicate a re-windowing.
+    uint32_t win_sz = 0;
+    const bool CONTAINED_WIN_KEY = (0 == kvp->valueWithKey("win", &win_sz));
+
+    TimeSeriesBase* obj = *((TimeSeriesBase**) _obj);
+    if (nullptr == obj) {
+      // TimeSeriesBase requires tc in order to allocate, and having windowSize
+      //   up-front is also helpful (but not required). If the key isn't in the
+      //   received structure, it will be left as zero.
+      TCode tc_val = TCode::NONE;
+      if (0 == kvp->valueWithKey("tc", (uint8_t*) &tc_val)) {
+        switch (tc_val) {
+          case TCode::UINT8:   obj = (TimeSeriesBase*) new TimeSeries<uint8_t>(win_sz);   break;
+          case TCode::UINT16:  obj = (TimeSeriesBase*) new TimeSeries<uint16_t>(win_sz);  break;
+          case TCode::UINT32:  obj = (TimeSeriesBase*) new TimeSeries<uint32_t>(win_sz);  break;
+          case TCode::UINT64:  obj = (TimeSeriesBase*) new TimeSeries<uint64_t>(win_sz);  break;
+          case TCode::INT8:    obj = (TimeSeriesBase*) new TimeSeries<int8_t>(win_sz);    break;
+          case TCode::INT16:   obj = (TimeSeriesBase*) new TimeSeries<int16_t>(win_sz);   break;
+          case TCode::INT32:   obj = (TimeSeriesBase*) new TimeSeries<int32_t>(win_sz);   break;
+          case TCode::INT64:   obj = (TimeSeriesBase*) new TimeSeries<int64_t>(win_sz);   break;
+          case TCode::FLOAT:   obj = (TimeSeriesBase*) new TimeSeries<float>(win_sz);     break;
+          case TCode::DOUBLE:  obj = (TimeSeriesBase*) new TimeSeries<double>(win_sz);    break;
+          default:
+            break;
+        }
+      }
+      *((TimeSeriesBase**) _obj) = obj; // And assign.
+      if (nullptr != obj) {
+        if (0 < win_sz) {
+          obj->init();  // Initialize if we have everything needed.
+        }
+      }
+    }
+    if (nullptr != obj) {
+      ret = 0;
+      // The specific ordering of key observation matters. If the packer placed
+      //   dat ahead of win, we don't want to wipe out the values we just placed
+      //   on accident (for instance).
+      // First: Do the order invariant things.
+      char* name_val   = nullptr;
+      char* unit_val   = nullptr;
+      kvp->valueWithKey("n", &name_val);
+      kvp->valueWithKey("u", &unit_val);
+      if (name_val) {  obj->name(name_val);             }
+      if (unit_val) {  obj->units((SIUnit*) unit_val);  }
+
+      // Next, look for indications that the window size should be set, and
+      //   change it if needed.
+      if (CONTAINED_WIN_KEY & (win_sz != obj->windowSize())) {
+        obj->windowSize(win_sz);  // This will initialize, as well.
+      }
+
+      kvp->valueWithKey("ttl", &(obj->_samples_total));
+
+      uint32_t idx_val = 0;
+      C3PValue* dat_val = kvp->valueWithKey("dat");
+      const bool CONTAINED_IDX_KEY = (0 == kvp->valueWithKey("idx", &idx_val));
+      if (CONTAINED_IDX_KEY & (nullptr != dat_val)) {
+        // The dat and idx keys go together, and refer to the (samples)
+        //   beginning at the (absolute index), respectively.
+        // But because we took ttl already, we need to do a direct mem
+        //   manipulation, rather than calling feedSeries().
+        const uint32_t SAMPLE_COUNT = strict_min(dat_val->count(), obj->windowSize());
+        const uint32_t ADJUSTED_IDX = idx_val + (SAMPLE_COUNT - dat_val->count());
+        const uint32_t SIZE_OF_TYPE = sizeOfType(obj->tcode());
+        uint32_t count = 0;
+        while ((nullptr != dat_val) && (count < SAMPLE_COUNT)) {
+          const uint32_t ABS_MEM_IDX  = (count + (obj->_samples_total - ADJUSTED_IDX)) % obj->windowSize();
+          void* raw_ptr = (obj->_mem_raw_ptr() + (ABS_MEM_IDX * SIZE_OF_TYPE));
+          dat_val->get_as(obj->tcode(), raw_ptr);
+          dat_val = dat_val->nextValue();
+          count++;
+        }
+      }
+    }
+  }
+  return ret;
+}
+
+
+template <> void C3PTypeConstraint<TimeSeriesBase*>::to_string(void* _obj, StringBuilder* out) {
+  C3PTypeConstraint<TimeSeriesBase*>::serialize(_obj, out, TCode::STR);
+}

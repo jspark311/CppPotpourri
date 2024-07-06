@@ -150,6 +150,7 @@ class C3PValue {
     C3PValue(Identity* val)    : C3PValue(TCode::IDENTITY,      (void*) val) {};
     C3PValue(KeyValuePair* val) : C3PValue(TCode::KVP,          (void*) val) {};
     C3PValue(StopWatch* val)    : C3PValue(TCode::STOPWATCH,    (void*) val) { _target_mem = val; };
+    C3PValue(TimeSeriesBase* val) : C3PValue(TCode::TIMESERIES, (void*) val) { _target_mem = val; };
 
     // Conditional types.
     #if defined(CONFIG_C3P_IMG_SUPPORT)
@@ -194,6 +195,7 @@ class C3PValue {
     inline int8_t set(Identity* x) {        return set_from(TCode::IDENTITY,      (void*) x);  };
     inline int8_t set(KeyValuePair* x) {    return set_from(TCode::KVP,           (void*) x);  };
     inline int8_t set(StopWatch* x) {       return set_from(TCode::STOPWATCH,     (void*) x);  };
+    inline int8_t set(TimeSeriesBase* x) {  return set_from(TCode::TIMESERIES,    (void*) x);  };
 
     /*
     * Type-coercion convenience functions for getting values.
@@ -235,6 +237,7 @@ class C3PValue {
     inline int8_t get_as(StringBuilder** x) {    return get_as(TCode::STR_BUILDER,    (void*) x);  };
     inline int8_t get_as(KeyValuePair** x) {     return get_as(TCode::KVP,            (void*) x);  };
     inline int8_t get_as(StopWatch** x) {        return get_as(TCode::STOPWATCH,      (void*) x);  };
+    inline int8_t get_as(TimeSeriesBase** x) {   return get_as(TCode::TIMESERIES,     (void*) x);  };
     int8_t get_as(uint8_t** v, uint32_t* l);
 
 
@@ -260,7 +263,9 @@ class C3PValue {
     int8_t    valueWithIdx(uint32_t idx, void* trg_buf);
     int8_t    drop(C3PValue**, C3PValue*, bool destruct = false);
     C3PValue* link(C3PValue*, bool reap_container = true);
+    int8_t    unlink(C3PValue* linked_val, bool reap_cont = true);
     uint32_t count();
+    inline C3PValue* nextValue() {  return _next;   };
 
     /* Memory handling options. */
     inline void     reapValue(bool x) {      _set_flags(x, C3PVAL_MEM_FLAG_REAP_VALUE);      };
