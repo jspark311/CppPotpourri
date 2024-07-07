@@ -53,7 +53,7 @@ const char* const SIUnitToStr(const int8_t OOM, const bool sym) {
 
 const char* const SIUnitToStr(const SIUnit UC, const bool sym) {
   switch (UC) {
-    case SIUnit::UNITLESS:                return (sym ? "" : "unitless");
+    case SIUnit::UNITLESS:                return (sym ? "" : "(unitless)");
     case SIUnit::SECONDS:                 return (sym ? "s" : "seconds");
     case SIUnit::METERS:                  return (sym ? "m" : "meters");
     case SIUnit::GRAMS:                   return (sym ? "g" : "grams");
@@ -109,6 +109,9 @@ void SIUnitToStr(const SIUnit* UC_STR, StringBuilder* output, const bool sym) {
         switch (CURRENT_UCODE) {
           case SIUnit::META_ORDER_OF_MAGNITUDE:
             oom = (int8_t) *cur_ptr++;
+            // Modify the unit with the SI prefix, if called for.
+            output->concat(SIUnitToStr(oom, sym));
+            oom = 0;
             break;
           case SIUnit::META_DIMENSIONALITY:
             break;
@@ -129,9 +132,6 @@ void SIUnitToStr(const SIUnit* UC_STR, StringBuilder* output, const bool sym) {
             break;
         }
       }
-
-      // Modify the unit with the SI prefix, if called for.
-      output->prepend(SIUnitToStr(oom, sym));
     }
     else {
       output->concat(SIUnitToStr(*cur_ptr, sym));

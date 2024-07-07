@@ -129,6 +129,7 @@ int test_stringbuilder_chunk() {
   StringBuilder stack_obj;
   int ret = -1;
   printf("===< Tokenizer tests >====================================\n");
+  const uint32_t TEST_CHUNK_COUNT  = (3 + (randomUInt32() % 23));
   stack_obj.concat("                 _______  \n");
   stack_obj.concat("                / _____ \\ \n");
   stack_obj.concat("          _____/ /     \\ \\_____ \n");
@@ -153,36 +154,52 @@ int test_stringbuilder_chunk() {
   stack_obj.concat("               \\ \\_____/ / \n");
   stack_obj.concat("                \\_______/ \n");
 
-  int i_length = stack_obj.length();
-  int i_count  = stack_obj.count();
-  int i_mem_sz = stack_obj.memoryCost();
+  const int I_LENGTH   = stack_obj.length();
+  const int I_COUNT    = stack_obj.count();
+  const int I_MEM_SZ   = stack_obj.memoryCost();
+  const int I_MAX_FRAG = stack_obj.maximumFragmentLength();
 
-  int chunks   = stack_obj.chunk(21);
-  int p_length = stack_obj.length();
-  int p_count  = stack_obj.count();
-  int p_mem_sz = stack_obj.memoryCost();
+  const int CHUNKS     = stack_obj.chunk(TEST_CHUNK_COUNT);
+  const int P_LENGTH   = stack_obj.length();
+  const int P_COUNT    = stack_obj.count();
+  const int P_MEM_SZ   = stack_obj.memoryCost();
+  const int P_MAX_FRAG = stack_obj.maximumFragmentLength();
 
   stack_obj.string();
-  int f_length = stack_obj.length();
-  int f_count  = stack_obj.count();
-  int f_mem_sz = stack_obj.memoryCost();
+  const int F_LENGTH   = stack_obj.length();
+  const int F_COUNT    = stack_obj.count();
+  const int F_MEM_SZ   = stack_obj.memoryCost();
+  const int F_MAX_FRAG = stack_obj.maximumFragmentLength();
+  const int CHUNK_SZ_MAX = (I_LENGTH / CHUNKS);
 
-  print_sb_metrics("Initial conditions", i_length, i_count, i_mem_sz);
-  print_sb_metrics("Post-chunk", p_length, p_count, p_mem_sz);
-  print_sb_metrics("Final (collapsed)", f_length, f_count, f_mem_sz);
+  print_sb_metrics("Initial conditions", I_LENGTH, I_COUNT, I_MEM_SZ);
+  print_sb_metrics("Post-chunk",         P_LENGTH, P_COUNT, P_MEM_SZ);
+  print_sb_metrics("Final (collapsed)",  F_LENGTH, F_COUNT, F_MEM_SZ);
 
   printf("Final Stack obj:\n");
-  printf("%s", (char*) stack_obj.string());
-  printf("\n\n");
+  printf("%s\n\n", (char*) stack_obj.string());
 
-  if ((-1 != chunks) & (p_count == chunks)) {
-    if ((i_length == p_length) & (i_length == f_length)) {
-      printf("\tTokenizer tests pass:\n");
-      ret = 0;
+  printf("\tThe return value of chunk(%d) agrees with the fragment count after the call (%d)... ", TEST_CHUNK_COUNT, P_COUNT);
+  if ((-1 != CHUNKS) & (P_COUNT == CHUNKS)) {
+    printf("Pass.\n\tLength of string remained constant throughout test (I, P, D):  %d, %d, %d)... ", I_LENGTH, P_LENGTH, F_LENGTH);
+    if ((I_LENGTH == P_LENGTH) & (I_LENGTH == F_LENGTH)) {
+      printf("Pass.\n\tWhen the string is collapsed, maximumFragmentLength() and length() return the same value (%d == %d)... ", F_LENGTH, F_MAX_FRAG);
+      if (F_LENGTH == F_MAX_FRAG) {
+        //printf("Pass.\n\tThe post-chunk() return value for maximumFragmentLength() is the expected value (%d == %d)... ", P_MAX_FRAG, CHUNK_SZ_MAX);
+        //if (CHUNK_SZ_MAX == P_MAX_FRAG) {
+          ret = 0;
+        //}
+      }
     }
-    else printf("\tLength of string did not stay constant throughout test (I, P, D):  %d, %d, %d).\n", i_length, p_length, f_length);
   }
-  else printf("\tChunk request disagreement with measurement (%d versus %d).\n", chunks, p_count);
+
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
+  else {
+    printf("PASS.\n");
+  }
+
   return ret;
 }
 

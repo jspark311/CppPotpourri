@@ -228,6 +228,11 @@ class C3PType {
     const TCode       TCODE;
 
     // Implementation for a specific type needs to implement these.
+    // TODO: A major deficiency in the parse/pack API that we've been carrying
+    //   for a decade would be removed by adding a uint32 to both calls...
+    //virtual int      serialize(void* obj, StringBuilder*, const uint32_t MAX_BYTES, const TCode FORMAT) =0;
+    //virtual int      deserialize(void* obj, StringBuilder*, const uint32_t OFFSET, const TCode FORMAT) =0;
+
     virtual uint32_t length(void* obj)                                          =0;
     virtual void     to_string(void* obj, StringBuilder*)                       =0;
     virtual int8_t   representable_by(const TCode DEST_TYPE)                    =0;

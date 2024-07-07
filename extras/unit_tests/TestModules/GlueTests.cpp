@@ -379,7 +379,6 @@ int c3p_ref_counter_tests() {
 *
 */
 int numeric_helper_tests() {
-  int ret = -1;
   printf("Running tests on inline numeric helpers...\n");
   const int CASE_COUNT = sizeof(NUMERIC_TEST_TYPES);
   int  case_idx        = 0;  // NOTE: Cloaked fourth-order loop. Tread carefully.
@@ -417,19 +416,141 @@ int numeric_helper_tests() {
 
 
 
+typedef struct SIUnit_KAT{
+  const SIUnit* UNIT_STR;
+  const char*   EXPECTED_LONG;
+  const char*   EXPECTED_SHORT;
+};
+
+
+const SIUnit ORDER_OF_MAG_TEST_0[] = {SIUnit::UNIT_GRAMMAR_MARKER, SIUnit::META_ORDER_OF_MAGNITUDE, (SIUnit) -6, SIUnit::RADIANS, SIUnit::UNITLESS};
+const SIUnit ORDER_OF_MAG_TEST_1[] = {SIUnit::UNIT_GRAMMAR_MARKER, SIUnit::META_ORDER_OF_MAGNITUDE, (SIUnit) 6,  SIUnit::METERS,  SIUnit::UNITLESS};
+const SIUnit SPECIFIC_IMPULSE[] = {SIUnit::UNIT_GRAMMAR_MARKER, SIUnit::NEWTONS, SIUnit::OPERATOR_MULTIPLIED, SIUnit::SECONDS, SIUnit::OPERATOR_DIVIDED, SIUnit::META_ORDER_OF_MAGNITUDE, (SIUnit) 3, SIUnit::GRAMS, SIUnit::UNITLESS};
+
+SIUnit_KAT SIUNIT_KATS[] = {
+  {
+    ORDER_OF_MAG_TEST_0,
+    "microradians", "urad"
+  },
+  {
+    ORDER_OF_MAG_TEST_1,
+    "megameters", "urad"
+  },
+};
+
+/*
+* There is a small collection of functions surrounding the SIUnit enum. Most of
+*   their bulk is simple 1-to-1 string lookup and return. But a small fraction
+*   of the enum space has special behavior that is not const.
+*/
+int c3p_siunit_tests() {
+  printf("Running tests on SIUnit handling...\n");
+  bool test_failed  = false;
+
+  StringBuilder should_be_microradians;
+  StringBuilder should_be_megameters;
+  StringBuilder should_be_specific_impulse;
+
+  const char EXPECTED_0[] = "microradians";
+  const char EXPECTED_1[] = "megameters";
+  const char EXPECTED_2[] = "N*s/kg";
+
+  printf("\tOrder-of-magnitude handling...\n");
+  SIUnitToStr(ORDER_OF_MAG_TEST_0, &should_be_microradians, false);
+  SIUnitToStr(ORDER_OF_MAG_TEST_1, &should_be_megameters, false);
+  SIUnitToStr(SPECIFIC_IMPULSE,    &should_be_specific_impulse, true);
+
+  printf("\t\tThe unit string produced the expected output (\"%s\")... ", EXPECTED_0);
+  test_failed |= (0 != should_be_microradians.locate((const uint8_t*) EXPECTED_0, strlen(EXPECTED_0)));
+  if (!test_failed) {
+    printf("Pass.\n\t\tThe unit string produced the expected output (\"%s\")... ", EXPECTED_1);
+    test_failed |= (0 != should_be_megameters.locate((const uint8_t*) EXPECTED_1, strlen(EXPECTED_1)));
+    if (!test_failed) {
+      // TODO: Off-scale handling, patch gaps in range.
+    }
+  }
+
+  if (!test_failed) {
+    printf("Pass.\n");
+    printf("\tArbitrary unit construction...\n");
+    test_failed |= (0 != should_be_specific_impulse.locate((const uint8_t*) EXPECTED_2, strlen(EXPECTED_2)));
+  }
+
+  if (test_failed) {
+    printf("Fail.\n");
+    StringBuilder log;
+    log.concatf("Expected \"%s\"\tand got \"%s\"\n", EXPECTED_0, (char*) should_be_microradians.string());
+    log.concatf("Expected \"%s\"\tand got \"%s\"\n", EXPECTED_1, (char*) should_be_megameters.string());
+    log.concatf("Expected \"%s\"\tand got \"%s\"\n", EXPECTED_2, (char*) should_be_specific_impulse.string());
+    printf("\n%s\n", (const char*) log.string());
+  }
+  else {
+    printf("PASS.\n");
+  }
+
+  return (test_failed ? -1 : 0);
+}
+
+
+void print_types_glue() {
+  printf("\tC3PRefCounter             %u\t%u\n", sizeof(C3PRefCounter),  alignof(C3PRefCounter));
+}
+
+
+/*******************************************************************************
+* Test plan
+*******************************************************************************/
+#define CHKLST_C3PGLUE_TEST_ANTIMACRO    0x00000001  // strict_max(), strict_min(), etc...
+#define CHKLST_C3PGLUE_TEST_REF_COUNTER  0x00000002  // The reference counter class.
+#define CHKLST_C3PGLUE_TEST_SIUNIT_ENUM  0x00000004  // The functions surrounding the SIUnit enum.
+
+
+#define CHKLST_C3PGLUE_TESTS_ALL ( \
+  CHKLST_C3PGLUE_TEST_ANTIMACRO | CHKLST_C3PGLUE_TEST_REF_COUNTER | \
+  CHKLST_C3PGLUE_TEST_SIUNIT_ENUM)
+
+const StepSequenceList TOP_LEVEL_GLUE_TEST_LIST[] = {
+  { .FLAG         = CHKLST_C3PGLUE_TEST_ANTIMACRO,
+    .LABEL        = "Anti-macro numeric helpers",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == numeric_helper_tests()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_C3PGLUE_TEST_REF_COUNTER,
+    .LABEL        = "ReCounter class",
+    .DEP_MASK     = (CHKLST_C3PGLUE_TEST_ANTIMACRO),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_ref_counter_tests()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_C3PGLUE_TEST_SIUNIT_ENUM,
+    .LABEL        = "SIUnit enum",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == c3p_siunit_tests()) ? 1:-1);  }
+  },
+};
+
+AsyncSequencer glue_test_plan(TOP_LEVEL_GLUE_TEST_LIST, (sizeof(TOP_LEVEL_GLUE_TEST_LIST) / sizeof(TOP_LEVEL_GLUE_TEST_LIST[0])));
+
+
 /*******************************************************************************
 * The main function.
 *******************************************************************************/
+
+
 int c3p_header_test_main() {
-  int ret = -1;   // Failure is the default result.
   const char* const MODULE_NAME = "C3P Header";
   printf("===< %s >=======================================\n", MODULE_NAME);
 
-  if (0 == numeric_helper_tests()) {
-    if (0 == c3p_ref_counter_tests()) {
-      ret = 0;
-    }
+  glue_test_plan.requestSteps(CHKLST_C3PGLUE_TESTS_ALL);
+  while (!glue_test_plan.request_completed() && (0 == glue_test_plan.failed_steps(false))) {
+    glue_test_plan.poll();
   }
+  int ret = (glue_test_plan.request_fulfilled() ? 0 : 1);
+
+  StringBuilder report_output;
+  glue_test_plan.printDebug(&report_output, "C3P Header test report");
+  printf("%s\n", (char*) report_output.string());
 
   return ret;
 }

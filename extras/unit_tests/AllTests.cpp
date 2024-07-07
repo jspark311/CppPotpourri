@@ -252,6 +252,7 @@ void dump_strbldr(StringBuilder* a) {
 */
 void printTypeSizes() {
   printf("===< Type sizes >=======================================\n");
+  print_types_glue();
   print_types_c3p_type();
   print_types_platform();
   print_types_vector3();

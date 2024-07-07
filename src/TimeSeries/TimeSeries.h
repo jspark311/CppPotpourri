@@ -58,20 +58,22 @@ See the README.md file for module-level documentation.
 *   generic interface to timeseries data. Code in this class will not be
 *   replicated by the template.
 *
-* TODO: The constellation of classes in this header file should eventual come to
-*   resemble the patterns in Storage/RecordTypes/ConfRecord.h. Specifically: the
-*   concealed templates. By burying the template, TimeSeriesBase becomes the
+* TODO: The constellation of classes in this header file should eventually come
+*   to resemble the patterns in Storage/RecordTypes/ConfRecord.h. Specifically:
+*   the concealed templates. By burying the template, TimeSeriesBase becomes the
 *   defacto public-facing API, and the templates will reduce to a cluster of
 *   protected-scope members.
-* NOTE: It was considered to use RingBuffer in this class. But it might not be
-*   worth it. It is re-implemented (at tremendous annoyance). The main reason
+* NOTE: It was considered to use RingBuffer<T> in this class. But it isn't worth
+*   it. It is re-implemented (at tremendous annoyance). The main reason
 *   it hasn't happened is related to construction-time knowledge of the ultimate
 *   size of the buffer (which is violated by the mere existence of
-*   _reallocate_sample_window(uint32_t). But also, it will not overwrite samples
-*   when full.
+*   _reallocate_sample_window(uint32_t). But also, RingBuffer<T> will not
+*   overwrite samples when full, and this class relies on this behavior.
 ******************************************************************************/
 class TimeSeriesBase {
   public:
+    virtual ~TimeSeriesBase();
+
     inline TCode    tcode() {              return _TCODE;  };
     inline bool     initialized() {        return _chk_flags(TIMESERIES_FLAG_FILTER_INITD);  };
     inline bool     windowFull() {         return (initialized() && (_samples_total >= _window_size));   };
@@ -91,8 +93,8 @@ class TimeSeriesBase {
 
     // TODO: Add inlines for type-agnostic value accessors, but avoid it for as
     //   long as practical.
-
     // And if added, only the simple numerics and vector types matter.
+
     /* Accessors for optional string-like annotations */
     inline char*    name() {               return (_name ? _name : (char*) "");   };
     inline SIUnit*  units() {              return (_units ? _units : (SIUnit*) "");    };
@@ -120,7 +122,6 @@ class TimeSeriesBase {
     friend int8_t C3PTypeConstraint<TimeSeriesBase*>::construct(void*, KeyValuePair*);
 
     TimeSeriesBase(const TCode, uint32_t ws, uint16_t flgs = 0);
-    virtual ~TimeSeriesBase();
 
     /* Semantic breakouts for flags */
     inline bool _self_allocated() {  return _chk_flags(TIMESERIES_FLAG_SELF_ALLOC);       };
