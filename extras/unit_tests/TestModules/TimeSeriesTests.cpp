@@ -681,6 +681,9 @@ int timeseries_test_parse_pack() {
 
 
 /*
+* This tests the partial-update uses of the parser and packer. The goal is to
+*   keep the objects in sync in spite of having parsing split up into multiple
+*   steps.
 */
 int timeseries_data_sharing() {
   int ret = 0;

@@ -7,6 +7,17 @@ NOTE: Do not include this file directly. Only via GfxUI.h.
 
 These classes are built on top of the GfxUI classes, and implement data graphing
   elements of a UI.
+
+|-------------------< data >---------------------------------------------------|
+|                                                                              |
+|          |------------< render >-------------------|                         |
+|          |                                         |                         |
+|          |-----------------------------------------|                         |
+
+0          ^
+           |
+           +--- firstIdxRendered()
+
 */
 
 #ifndef __C3P_GFXUI_KIT_GRAPHING_H
@@ -41,7 +52,7 @@ template <class T> class GfxUITimeSeries : public GfxUIElement {
   public:
     ImageGraphTrace<T> trace_settings;
 
-    GfxUITimeSeries(const GfxUILayout lay, const GfxUIStyle sty, TimeSeries<T>* sf, uint32_t f = 0) : GfxUIElement(lay, sty, f | GFXUI_FLAG_ALWAYS_REDRAW), _filter(sf) {};
+    GfxUITimeSeries(const GfxUILayout lay, const GfxUIStyle sty, TimeSeries<T>* sf, uint32_t f = 0) : GfxUIElement(lay, sty, (f | GFXUI_FLAG_ALWAYS_REDRAW)), _filter(sf) {};
     ~GfxUITimeSeries() {};
 
     /* Implementation of GfxUIElement. */
@@ -69,8 +80,13 @@ template <class T> class GfxUITimeSeries : public GfxUIElement {
     inline void majorDivX(PixUInt x) {     trace_settings.major_grid_x = x;  _class_set_flag(GFXUI_FLAG_NEED_RERENDER);  };
     inline void majorDivY(PixUInt x) {     trace_settings.major_grid_y = x;  _class_set_flag(GFXUI_FLAG_NEED_RERENDER);  };
 
+    inline void xLabelsSample(bool x) {    _opt_x_labels_sample = x;  _class_set_flag(GFXUI_FLAG_NEED_RERENDER);  };
+    inline bool xLabelsSample() {          return _opt_x_labels_sample;     };
+    inline void autoscroll(bool x) {       _opt_autoscroll = x;  _class_set_flag(GFXUI_FLAG_NEED_RERENDER);  };
+    inline bool autoscroll() {             return _opt_autoscroll;     };
+
     inline void firstIdxRendered(uint32_t x) {  _left_most_data_idx = x;    };
-    inline bool firstIdxRendered() {            return _left_most_data_idx; };
+    inline uint32_t firstIdxRendered() {        return _left_most_data_idx; };
 
     inline TimeSeries<T>* dataset() {    return _filter;  };
 
@@ -78,7 +94,9 @@ template <class T> class GfxUITimeSeries : public GfxUIElement {
 
   private:
     TimeSeries<T>* _filter;
-    uint32_t _left_most_data_idx = 0;
+    uint32_t _left_most_data_idx   = 0;
+    bool     _opt_autoscroll       = false;   // Should the frustum "scroll" as data arrives?
+    bool     _opt_x_labels_sample  = false;   // X-axis indicies shown as mem offsets, or sample count?
 
     bool _sync_settings();   // Called to copy trace_settings into the active config.
 };
@@ -118,6 +136,8 @@ template <class T> class GfxUIGraphWithCtrl : public GfxUIElement {
     GfxUITextButton _btn_show_range_y;
     GfxUITextButton _btn_draw_curve;
     GfxUITextButton _btn_show_value;
+    GfxUITextButton _btn_autoscroll;
+    GfxUITextButton _btn_x_labels_samples;
     GfxUITextButton _btn_draw_grid;
     GfxUITextButton _btn_grid_lock_x;
     GfxUITextButton _btn_grid_lock_y;
@@ -180,7 +200,7 @@ template <class T> GfxUIGraphWithCtrl<T>::GfxUIGraphWithCtrl(const GfxUILayout l
 
   _btn_draw_curve(
     GfxUILayout(
-      (_btn_show_range_y.elementPosX()+_btn_show_range_y.elementWidth()+48), _ctrl_group.elementPosY(),
+      (_btn_show_range_y.elementPosX()+_btn_show_range_y.elementWidth()+28), _ctrl_group.elementPosY(),
       128, (_ctrl_group.elementHeight() >> 1),
       1, 1, 1, 1,   // Margins_px(t, b, l, r)
       0, 0, 0, 0    // Border_px(t, b, l, r)
@@ -198,10 +218,29 @@ template <class T> GfxUIGraphWithCtrl<T>::GfxUIGraphWithCtrl(const GfxUILayout l
     sty, "Show value"
   ),
 
+  _btn_autoscroll(
+    GfxUILayout(
+      (_btn_show_value.elementPosX()+_btn_show_value.elementWidth()+28), _ctrl_group.elementPosY(),
+      128, (_ctrl_group.elementHeight() >> 1),
+      1, 1, 1, 1,   // Margins_px(t, b, l, r)
+      0, 0, 0, 0    // Border_px(t, b, l, r)
+    ),
+    sty, "Autoscroll"
+  ),
+
+  _btn_x_labels_samples(
+    GfxUILayout(
+      _btn_autoscroll.elementPosX(), (_ctrl_group.elementPosY() + (_ctrl_group.elementHeight() >> 1)),
+      128, (_ctrl_group.elementHeight() >> 1),
+      1, 1, 1, 1,   // Margins_px(t, b, l, r)
+      0, 0, 0, 0    // Border_px(t, b, l, r)
+    ),
+    sty, "Sample on X"
+  ),
 
   _btn_draw_grid(
     GfxUILayout(
-      (_btn_draw_curve.elementPosX()+_btn_draw_curve.elementWidth()+128), _ctrl_group.elementPosY(),
+      (_btn_autoscroll.elementPosX()+_btn_autoscroll.elementWidth()+128), _ctrl_group.elementPosY(),
       128, (_ctrl_group.elementHeight() >> 1),
       1, 1, 1, 1,   // Margins_px(t, b, l, r)
       0, 0, 0, 0    // Border_px(t, b, l, r)
@@ -263,17 +302,19 @@ template <class T> GfxUIGraphWithCtrl<T>::GfxUIGraphWithCtrl(const GfxUILayout l
 {
   _ctrl_group.add_child(&_btn_autoscale_x);
   _ctrl_group.add_child(&_btn_autoscale_y);
-  _ctrl_group.add_child(&_btn_draw_curve);
   _ctrl_group.add_child(&_btn_draw_grid);
+  _ctrl_group.add_child(&_btn_x_labels_samples);
+  _ctrl_group.add_child(&_btn_autoscroll);
   _ctrl_group.add_child(&_btn_show_value);
+  _ctrl_group.add_child(&_btn_draw_curve);
   _ctrl_group.add_child(&_btn_show_range_x);
   _ctrl_group.add_child(&_btn_show_range_y);
   _ctrl_group.add_child(&_btn_grid_lock_x);
   _ctrl_group.add_child(&_btn_grid_lock_y);
   _ctrl_group.add_child(&_major_x_group);
   _ctrl_group.add_child(&_major_y_group);
-  _add_child(&_slider_x_axis);
   _add_child(&_ctrl_group);
+  _add_child(&_slider_x_axis);
   _add_child(&_graph);
   _graph.elementActive(true);
 }
@@ -368,6 +409,9 @@ template <class T> bool GfxUITimeSeries<T>::_notify(const GfxUIEvent GFX_EVNT, P
         (uint32_t) (_left_most_data_idx + 20),
         (uint32_t) (_filter->windowSize() - internalWidth())
       );
+      if (_left_most_data_idx == (_filter->windowSize() - internalWidth())) {
+        _opt_autoscroll = true;
+      }
       ret = true;
       break;
 
@@ -375,6 +419,7 @@ template <class T> bool GfxUITimeSeries<T>::_notify(const GfxUIEvent GFX_EVNT, P
       _left_most_data_idx = (uint32_t) strict_max(
         ((int32_t) _left_most_data_idx - 20), (int32_t) 0
       );
+      _opt_autoscroll = false;
       ret = true;
       break;
 

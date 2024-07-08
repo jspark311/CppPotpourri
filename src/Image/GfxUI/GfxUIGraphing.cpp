@@ -32,9 +32,11 @@ template <> int GfxUIGraphWithCtrl<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
   _btn_grid_lock_y.elementActive(_btn_draw_grid.pressed());
   _graph.lockGridX(_btn_grid_lock_x.pressed());
   _graph.lockGridY(_btn_grid_lock_y.pressed());
+  _graph.autoscroll(_btn_autoscroll.pressed());
+  _graph.xLabelsSample(_btn_x_labels_samples.pressed());
 
-  const float M0 = ((float) _graph.trace_settings.offset_x / (float) _graph.dataset()->windowSize());
-  const float M1 = ((float) (_graph.trace_settings.offset_x + _graph.trace_settings.data_len) / (float) _graph.dataset()->windowSize());
+  const float M0 = ((float) _graph.firstIdxRendered() / (float) _graph.dataset()->windowSize());
+  const float M1 = ((float) (_graph.firstIdxRendered() + _graph.trace_settings.data_len) / (float) _graph.dataset()->windowSize());
   _slider_x_axis.value(M0, M1);
 
   const PixUInt TXT_PIXEL_WIDTH  = ui_gfx->img()->getFontWidth();

@@ -281,7 +281,6 @@ void printTypeSizes() {
   print_types_m2mlink();
 }
 
-//timeseries_tests_main()
 
 /*******************************************************************************
 * Top-level tests are managed using AsyncSequencer.

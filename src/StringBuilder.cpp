@@ -322,7 +322,7 @@ int StringBuilder::maximumFragmentLength() {
   int return_value = 0;
   StrLL* current = _root;
   while (current != nullptr) {
-    return_value = strict_max(return_value, current->len);
+    return_value = strict_max((int32_t) return_value, (int32_t) current->len);
     current = current->next;
   }
   return return_value;

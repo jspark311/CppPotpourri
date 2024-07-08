@@ -74,7 +74,7 @@ class TripleAxisCompass : public TripleAxisPipe {
 
     inline Vector3f* getError() {   return &_ERR_COMPASS;   };
 
-    inline void setDelination(float v) {        _declination = v;             };
+    inline void setDeclination(float v) {        _declination = v;             };
     inline void setLatLong(double lat, double lon) {
       _latitude  = lat;
       _longitude = lon;
