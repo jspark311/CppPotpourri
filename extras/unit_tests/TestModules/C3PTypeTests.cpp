@@ -19,7 +19,7 @@ limitations under the License.
 
 
 This program tests C3PType, which is C3P's internal manifest of types and their
-  handlers.
+  handlers. These tests form the foundation of C3PValue.
 */
 
 #include "C3PValue/C3PType.h"
@@ -28,6 +28,33 @@ This program tests C3PType, which is C3P's internal manifest of types and their
 /*******************************************************************************
 * C3PType test routines
 *******************************************************************************/
+
+
+/*
+* Test the vector aspects.
+*/
+int c3ptype_test_numerics() {
+  int ret = 0;
+  // TODO? Or are the C3PValue tests sufficient?
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
+  return ret;
+}
+
+
+/*
+* Test the vector aspects.
+*/
+int c3ptype_test_vectors() {
+  int ret = 0;
+  // TODO? Or are the C3PValue tests sufficient?
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
+  return ret;
+}
+
 
 
 
@@ -51,13 +78,13 @@ const StepSequenceList TOP_LEVEL_C3PTYPE_TEST_LIST[] = {
     .LABEL        = "Primitives",
     .DEP_MASK     = (0),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return 1;  }
+    .POLL_FXN     = []() { return ((0 == c3ptype_test_numerics()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_C3PTYPE_TEST_VECTORS,
     .LABEL        = "Vectors",
     .DEP_MASK     = (0),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return 1;  }
+    .POLL_FXN     = []() { return ((0 == c3ptype_test_vectors()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_C3PTYPE_TEST_STRINGS,
     .LABEL        = "String types",

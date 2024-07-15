@@ -195,37 +195,75 @@ int c3p_value_test_vectors() {
     generate_random_float(),
     generate_random_float()
   );
-  C3PValue value_3float(&test_3float);
+  Vector3<float> test_get;
+  C3PValue value_vect(&test_3float);
+  C3PValue* deser_val = nullptr;
+  StringBuilder packed;
+
+  printf("\tGenerated test_3float:    (%.4f, %.4f, %.4f)\n", test_3float.x, test_3float.y, test_3float.z);
+  printf("\t          test_set:       (%.4f, %.4f, %.4f)\n", test_set.x, test_set.y, test_set.z);
+  //printf("\t          value_vect:");
+  //dump_c3pvalue(&value_vect);
 
   printf("\tConstruction semantics for (Vector3f*)...\n\t\tHas proper length (%u)... ", 12);
-  if (value_3float.length() == 12) {
+  if (value_vect.length() == 12) {
     printf("Pass\n\t\tCan fetch with no conversion... ");
     Vector3<float> ret_3float;
-    if (0 == value_3float.get_as(&ret_3float)) {
-      printf("Pass\n\t\tIs properly marked as no-reap... ");
-      if (!value_3float.reapValue()) {
+    if (0 == value_vect.get_as(&ret_3float)) {
+      printf("Pass\n\t\tIs properly marked as reap (since it is larger than intptr_t... ");
+      if (value_vect.reapValue()) {
         printf("Pass\n\t\tThe contents of the wrapped vector match those of the original... ");
         if (test_3float == ret_3float) {
           printf("Pass\n\t\tset() works for the native type... ");
-          Vector3<float> test_set(
-            generate_random_float(),
-            generate_random_float(),
-            generate_random_float()
-          );
-          if (0 == value_3float.set(&test_set)) {
-            printf("Pass\n\t\tAll (Vector3f*) tests pass.\n");
-            ret = 0;
+          if (0 == value_vect.set(&test_set)) {
+            printf("Pass\n\t\ttest_set matches the vector's current state... ");
+            value_vect.get_as(&ret_3float);
+            if ((ret_3float == test_set) && (test_3float != ret_3float)) {
+              printf("Pass\n\t\tVector can be serialized... ");
+              if (0 == value_vect.serialize(&packed, TCode::CBOR)) {
+                printf("Pass.\n\t\tVector can be deserialized... ");
+                deser_val = C3PValue::deserialize(&packed, TCode::CBOR);
+                if (nullptr != deser_val) {
+                  printf("Pass.\n\t\tDeserialized value is a Vector... ");
+                  if (TCode::VECT_3_FLOAT == deser_val->tcode()) {
+                    printf("Pass.\n\t\tDeserialized value can be retrieved with get_as()... ");
+                    if (0 == deser_val->get_as(&test_get)) {
+                      printf("Pass.\n\t\tThe source buffer was entirely consumed... ");
+                      if (packed.isEmpty()) {
+                        printf("Pass.\n\t\tDeserialized value is marked for reap (both container and value)... ");
+                        if (deser_val->reapValue() & deser_val->reapContainer()) {
+                          printf("Pass.\n\t\tDeserialized Vector matches input... ");
+                          bool pest_tasses = (test_get == test_set);
+                          if (pest_tasses) {
+                            ret = 0;
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     }
   }
 
-  if (0 == ret) {
-  }
-
   if (0 != ret) {
     printf("Fail.\n");
+    dump_c3pvalue(&value_vect);
+    if (nullptr != deser_val) {
+      dump_c3pvalue(deser_val);
+    }
+    dump_strbldr(&packed);
+  }
+  else {
+    printf("PASS.\n");
+  }
+
+  if (nullptr != deser_val) {
+    delete deser_val;
   }
   return ret;
 }
@@ -416,7 +454,7 @@ int c3p_value_test_timer_types() {
               printf("Pass.\n\t\tDeserialized value is a StopWatch... ");
               ret_sw = nullptr;
               if ((0 == deser_val->get_as(&ret_sw)) && (nullptr != ret_sw)) {
-                printf("Pass.\n\t\tDeserialized value contains a distict pointer (%p)... ", (void*) ret_sw);
+                printf("Pass.\n\t\tDeserialized value contains a distinct pointer (%p)... ", (void*) ret_sw);
                 if ((void*) ret_sw != (void*) &test_sw) {
                   printf("Pass.\n\t\tThe source buffer was entirely consumed... ");
                   if (packed.isEmpty()) {

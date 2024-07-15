@@ -22,6 +22,17 @@ limitations under the License.
 */
 
 #include "cbor.h"
+#include "../AbstractPlatform.h"
+
+
+#if (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+  #define PF_IS_LITTLE_ENDIAN    true
+#elif (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+  #define PF_IS_LITTLE_ENDIAN    false
+#else
+  #error cbor.cpp needs to know the compiler BYTE_ORDER.
+#endif
+
 
 using namespace cbor;
 
@@ -47,9 +58,7 @@ bool input_stringbuilder::has_bytes(int count) {
 uint8_t input_stringbuilder::get_byte() {
   uint8_t value = 0;
   if (nullptr != _str_bldr) {
-    uint8_t buf[1] = {0};
-    const int THIS_SIZE = _str_bldr->copyToBuffer(buf, 1, _offset);
-    value = buf[0];
+    const int THIS_SIZE = _str_bldr->copyToBuffer(&value, 1, _offset);
     _update_local_vars(THIS_SIZE);
   }
   return value;
@@ -409,6 +418,41 @@ void encoder::write_type_value_signed64(int64_t v) {
   else {        write_type_value64(0, (uint64_t) v);         }
 }
 
+
+/**
+* Some arrays of primitives can be put into a special CBOR tag for a
+*   homogeneously-typed array. This private function (with cooperation from
+*   public wrapper inlines) is used to write raw memory content that also
+*   conveys endianess.
+*
+* @param TCODE identifies the type of the array.
+* @param PTR Is the starting address of the first element of the array.
+* @param COUNT is the number of elements in the array.
+* @return 0 on success, -1 on unsupported type, or -2 on zero-byte request.
+*/
+int8_t encoder::write_typed_array(const uint32_t TAG_VAL, const void* PTR, const uint32_t COUNT) {
+  uint32_t t_size = 0;
+  switch (TAG_VAL) {
+    case 64:  t_size = 1;  break;  // TCode::UINT8
+    case 65:  t_size = 2;  break;  // TCode::UINT16
+    case 66:  t_size = 4;  break;  // TCode::UINT32
+    case 67:  t_size = 8;  break;  // TCode::UINT64
+    case 72:  t_size = 1;  break;  // TCode::INT8
+    case 73:  t_size = 2;  break;  // TCode::INT16
+    case 74:  t_size = 4;  break;  // TCode::INT32
+    case 75:  t_size = 8;  break;  // TCode::INT64
+    case 81:  t_size = 4;  break;  // TCode::FLOAT
+    case 82:  t_size = 8;  break;  // TCode::DOUBLE
+    default:  return -1;           // Unsupported type for homotyped array.
+  }
+  const uint32_t BYTE_COUNT = (COUNT * t_size);
+  if (0 < BYTE_COUNT) {
+    write_type_value(6, (TAG_VAL + (PF_IS_LITTLE_ENDIAN ? 4:0)));
+    write_bytes((const uint8_t*) PTR, BYTE_COUNT);
+    return 0;
+  }
+  return -2;
+}
 
 
 /*******************************************************************************

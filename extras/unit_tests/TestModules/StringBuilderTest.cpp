@@ -942,7 +942,7 @@ int sb_test_vivisection() {
       printf("Pass.\n\t\tSource is unchanged... ");
       if ((TEST_SRC_LEN == (uint32_t) random_src.length()) & (TEST_ORIGINAL_COST == random_src.memoryCost(true))) {
         printf("Pass.\n\t\tDestination matches content... ");
-        if (TEST_START_OFFSET == random_src.locate(dest_buf, TEST_DEST_LEN, TEST_START_OFFSET)) {
+        if (TEST_START_OFFSET == (uint32_t) random_src.locate(dest_buf, TEST_DEST_LEN, TEST_START_OFFSET)) {
           printf("Pass.\n");
           ret = 0;
         }
@@ -1153,7 +1153,7 @@ int test_misuse_cases() {
 }
 
 
-typedef struct SB_KAT_Test {
+struct SB_KAT_Test {
   const char*    TEST_STR;
   const uint32_t TEST_STR_LEN;
   const uint32_t EXPECTED_TRIM_LEN;

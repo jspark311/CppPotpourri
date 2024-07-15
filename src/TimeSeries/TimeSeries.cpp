@@ -323,7 +323,10 @@ template <> int8_t C3PTypeConstraint<TimeSeriesBase*>::construct(void* _obj, Key
         uint32_t count = 0;
         while ((nullptr != dat_val) && (count < SAMPLE_COUNT)) {
           const uint32_t ABS_MEM_IDX  = (count + (obj->_samples_total - ADJUSTED_IDX)) % obj->windowSize();
-          void* raw_ptr = (obj->_mem_raw_ptr() + (ABS_MEM_IDX * SIZE_OF_TYPE));
+          // NOTE: The strange casting dance below is to convince the compiler
+          //   that we intend to increment the pointer by some byte quantity (as
+          //   opposed to the size of some multi-byte type).
+          void* raw_ptr = (void*) (((uint8_t*) obj->_mem_raw_ptr()) + (ABS_MEM_IDX * SIZE_OF_TYPE));
           dat_val->get_as(obj->tcode(), raw_ptr);
           dat_val = dat_val->nextValue();
           count++;

@@ -124,9 +124,10 @@ C3PValue::C3PValue(const TCode TC, void* ptr, uint8_t mem_flgs)
       // Every value-by-copy type that does not fit inside a void* on the target
       //   platform will be heap-allocated and zeroed on construction. C3PType
       //   is responsible for having homogenized this handling, and all we need
-      //   to do is allocate the memory if the numeric type could not be
-      //   type-punned.
-      // This will cover such cases as DOUBLE and INT64 on 32-bit builds.
+      //   to do is allocate the memory if the type could not be type-punned.
+      // This will cover such cases as DOUBLE, INT64, VECT_3_INT16, etc on
+      //   32-bit builds, Some types are too wide to type-pun on an ALU of any
+      //   width, and will exhibit this execution path regardless of how built.
       //
       // TODO: This is a constructor, and we thus have no clean way of
       //   handling heap-allocation failures. So we'll need a lazy-allocate
@@ -234,29 +235,13 @@ C3PValue::~C3PValue() {
       }
     }
     else if (reapValue()) {
-      switch (_TCODE) {
-        case TCode::BINARY:
-        case TCode::CBOR:
-          // TODO: These cases should all be ptr-len. Verify. But we don't want
-          //   to be in the default case.
-          break;
-        case TCode::STR_BUILDER:  delete ((StringBuilder*) _target_mem);  break;
-        case TCode::KVP:          delete ((KeyValuePair*)  _target_mem);  break;
-        case TCode::STOPWATCH:    delete ((StopWatch*)     _target_mem);  break;
-        case TCode::TIMESERIES:   delete ((TimeSeriesBase*) _target_mem);  break;
-      #if defined(CONFIG_C3P_IDENTITY_SUPPORT)
-        case TCode::IDENTITY:     delete ((Identity*)      _target_mem);  break;
-      #endif
-      #if defined(CONFIG_C3P_IMG_SUPPORT)
-        case TCode::IMAGE:        delete ((Image*)         _target_mem);  break;
-      #endif
-        // No destructor semantics. Just free.
-        // TODO: This is dangerous. clarify the scope of this behavior...
-        default:    free(_target_mem);  break;
+      C3PType* t_helper = getTypeHelper(_TCODE);
+      if ((nullptr == t_helper) || (0 > t_helper->destruct(_target_mem))) {
+        free(_target_mem);  // No destructor semantics. Just free.
       }
     }
+    _target_mem = nullptr;
   }
-  _target_mem = nullptr;
 }
 
 
@@ -320,9 +305,13 @@ bool C3PValue::is_ptr_len() {
 }
 
 
-// TODO: Until the rules are settled, this function translates _target_mem into
-//   the expected reference for the given type. This function should ultimately
-//   reduce into simple flag comparisons.
+
+/**
+* Considers the flags, and makes a choice about the proper memory semantics if
+*   the content is to be read.
+*
+* @return A pointer to the data suitable for the C3PType::get_as() function.
+*/
 void* C3PValue::_type_pun_get() {
   if (_chk_flags(C3PVAL_MEM_FLAG_PUNNED_PTR) & !_chk_flags(C3PVAL_MEM_FLAG_VALUE_BY_REF)) {
     return &_target_mem;
@@ -332,23 +321,13 @@ void* C3PValue::_type_pun_get() {
   }
 }
 
-// TODO: Until the rules are settled, this function translates _target_mem into
-//   the expected reference for the given type. This function should ultimately
-//   reduce into simple flag comparisons.
+/**
+* Considers the flags, and makes a choice about the proper memory semantics if
+*   the content is to be written.
+*
+* @return A pointer to the data suitable for the C3PType::set_from() function.
+*/
 void* C3PValue::_type_pun_set() {
-  switch (_TCODE) {
-    case TCode::VECT_3_INT8:
-    case TCode::VECT_3_INT16:
-    case TCode::VECT_3_INT32:
-    case TCode::VECT_3_UINT8:
-    case TCode::VECT_3_UINT16:
-    case TCode::VECT_3_UINT32:
-    case TCode::VECT_3_FLOAT:
-    case TCode::VECT_3_DOUBLE:
-      return _target_mem;
-    default:  break;
-  }
-
   if (_chk_flags(C3PVAL_MEM_FLAG_PUNNED_PTR)) {
     // Any data that fits into the pointer itself will want a pointer to
     //   _target_mem as its dest argument to a set() fxn.
@@ -1154,9 +1133,15 @@ C3PValue* C3PValueDecoder::_handle_tag(uint32_t* offset, C3PType* t_helper) {
   C3PValue* ret            = nullptr;
 
   if ((INPUT_LEN - local_offset) > 1) {
-    const uint8_t  CTYPE = _in->byteAt(local_offset);  // The next byte must be CBOR map.
-    const uint8_t  MAJOR = (CTYPE >> 5);
-    if (5 == MAJOR) {  // If so, invest the time reading it.
+    // Any C3PValue objects created by this function will be heap-resident, and
+    //   should be marked as such.
+    const uint8_t MEM_FLGS = (C3PVAL_MEM_FLAG_REAP_CNTNR | C3PVAL_MEM_FLAG_REAP_VALUE);
+    const uint8_t CTYPE    = _in->byteAt(local_offset);
+    const uint8_t MAJOR    = (CTYPE >> 5);
+    if (5 == MAJOR) {
+      // If the next byte is a CBOR map, try to parse out a full KVP object. If
+      //   it works, it will be passed to the C3PType::construct() function for
+      //   inflation into a proper object.
       C3PValue* kvp_val = _next(&local_offset);
       if (nullptr != kvp_val) {
         if (kvp_val->has_key()) {
@@ -1164,9 +1149,6 @@ C3PValue* C3PValueDecoder::_handle_tag(uint32_t* offset, C3PType* t_helper) {
           KeyValuePair* kvp = (KeyValuePair*) kvp_val;
           void* obj_ret = nullptr;
           if (0 == t_helper->construct(&obj_ret, (KeyValuePair*) kvp_val)) {
-            // Any C3PValue objects created by this function will be heap-resident, and
-            //   should be marked as such.
-            const uint8_t MEM_FLGS = (C3PVAL_MEM_FLAG_REAP_CNTNR | C3PVAL_MEM_FLAG_REAP_VALUE);
             ret = new C3PValue(t_helper->TCODE, obj_ret, MEM_FLGS);
           }
           else {
@@ -1183,8 +1165,29 @@ C3PValue* C3PValueDecoder::_handle_tag(uint32_t* offset, C3PType* t_helper) {
       }
       // Not enough bytes of input, presumably...
     }
+    else if (6 == MAJOR) {
+      // If it wasn't a map, but was a nested tag, it means we should recurse.
+      local_offset++;
+      local_offset++;
+      C3PValue* inner_tagged_val = _next(&local_offset);
+      if (nullptr != inner_tagged_val) {
+        //StringBuilder tmp_sb;
+        //tmp_sb.concatf("Decoded %s (Nested tag 0x%02x):", t_helper->NAME, CTYPE);
+        //inner_tagged_val->printDebug(&tmp_sb);
+        //c3p_log(LOG_LEV_DEBUG, LOCAL_LOG_TAG, &tmp_sb);
+        ret = new C3PValue(t_helper->TCODE, nullptr, MEM_FLGS);
+        if (nullptr != ret) {
+          // TODO: Hopefully C3PValue knows what to do with this?
+          ret->set(inner_tagged_val);
+        }
+        delete inner_tagged_val;
+      }
+      else {
+        c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "Decoding %s (Nested tag 0x%02x) failed.", t_helper->NAME, CTYPE);
+      }
+    }
     else {
-      c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "Unhandled encoding for %s (0x%02).", t_helper->NAME, CTYPE);
+      c3p_log(LOG_LEV_WARN, LOCAL_LOG_TAG, "Unhandled encoding for %s (0x%02x).", t_helper->NAME, CTYPE);
     }
   }
 

@@ -283,6 +283,18 @@ namespace cbor {
       inline void write_special(uint32_t v) {      write_type_value(7, v);     };
       inline void write_bool(bool v) {             write_type_value(7, (v?21:20));   };
 
+      inline int8_t write_typed_array(const uint8_t* PTR,  const uint32_t COUNT) {  return write_typed_array(64, (const void*) PTR, COUNT);  };
+      inline int8_t write_typed_array(const uint16_t* PTR, const uint32_t COUNT) {  return write_typed_array(65, (const void*) PTR, COUNT);  };
+      inline int8_t write_typed_array(const uint32_t* PTR, const uint32_t COUNT) {  return write_typed_array(66, (const void*) PTR, COUNT);  };
+      inline int8_t write_typed_array(const uint64_t* PTR, const uint32_t COUNT) {  return write_typed_array(67, (const void*) PTR, COUNT);  };
+      inline int8_t write_typed_array(const int8_t* PTR,   const uint32_t COUNT) {  return write_typed_array(72, (const void*) PTR, COUNT);  };
+      inline int8_t write_typed_array(const int16_t* PTR,  const uint32_t COUNT) {  return write_typed_array(73, (const void*) PTR, COUNT);  };
+      inline int8_t write_typed_array(const int32_t* PTR,  const uint32_t COUNT) {  return write_typed_array(74, (const void*) PTR, COUNT);  };
+      inline int8_t write_typed_array(const int64_t* PTR,  const uint32_t COUNT) {  return write_typed_array(75, (const void*) PTR, COUNT);  };
+      inline int8_t write_typed_array(const float* PTR,    const uint32_t COUNT) {  return write_typed_array(81, (const void*) PTR, COUNT);  };
+      inline int8_t write_typed_array(const double* PTR,   const uint32_t COUNT) {  return write_typed_array(82, (const void*) PTR, COUNT);  };
+
+
     private:
       output* _out;
 
@@ -290,6 +302,7 @@ namespace cbor {
       void write_type_value_signed(int32_t value);
       void write_type_value_signed64(int64_t value);
       void write_type_value64(int major_type, uint64_t value);
+      int8_t write_typed_array(const uint32_t TAG_VAL, const void*, const uint32_t COUNT);
   };
 }
 

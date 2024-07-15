@@ -416,7 +416,7 @@ int numeric_helper_tests() {
 
 
 
-typedef struct SIUnit_KAT{
+struct SIUnit_KAT{
   const SIUnit* UNIT_STR;
   const char*   EXPECTED_LONG;
   const char*   EXPECTED_SHORT;

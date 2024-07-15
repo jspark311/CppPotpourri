@@ -354,6 +354,7 @@ int test_KeyValuePair_Value_Placement() {
 
   KeyValuePair arg12(val12);
   KeyValuePair arg13(val13);
+
   KeyValuePair arg30(&val30);
   KeyValuePair arg31(&val31);
   KeyValuePair arg32(&val32);
@@ -405,7 +406,6 @@ int test_KeyValuePair_Value_Placement() {
   Vector3<int8_t>   val34_0((int8_t) randomUInt32(), (int8_t) randomUInt32(), (int8_t) randomUInt32());
   Vector3<int16_t>  val35_0((int16_t) randomUInt32(), (int16_t) randomUInt32(), (int16_t) randomUInt32());
   Vector3<int32_t>  val36_0((int32_t) randomUInt32(), (int32_t) randomUInt32(), (int32_t) randomUInt32());
-
 
   printf("\t\tPlacement of TCode::%s... ", typecodeToStr(arg0.tcode()));
   if (0 == arg0.set(val0)) {
