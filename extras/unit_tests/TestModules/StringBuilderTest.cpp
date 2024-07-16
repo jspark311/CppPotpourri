@@ -83,7 +83,7 @@ int test_strcasecmp() {
 
 
 int test_strcasestr() {
-  int return_value = -1;
+  int ret = -1;
   const char* haystack = "Has Anyone Really Been Far Even as Decided to Use Even Go Want to do Look More Like?";
   const char* needle0  = "ly Been F";    // First find, case insensitive
   const char* needle1  = "aNYoNE";      // Case sensitivity.
@@ -102,7 +102,7 @@ int test_strcasestr() {
             if (nullptr == StringBuilder::strcasestr(nullptr, needle0)) {    // nullptr
               if (nullptr == StringBuilder::strcasestr(haystack, nullptr)) { // nullptr
                 printf("\tstrcasestr() tests pass:\n");
-                return_value = 0;
+                ret = 0;
               }
               else printf("strcasestr() nullptr as arg2 passed and should have failed.\n");
             }
@@ -117,8 +117,121 @@ int test_strcasestr() {
     else printf("strcasestr() test 2 failed and should have passed.\n");
   }
   else printf("strcasestr() test 1 failed and should have passed.\n");
-  return return_value;
+  return ret;
 }
+
+
+/*
+  Tests construction and default object states.
+*/
+int test_sb_basics() {
+  int ret = 0;
+  const uint32_t TEST_STR_LEN = (19 + (randomUInt32() % 31));
+
+  if (0 == ret) {
+    printf("Testing Constructor semantics (Trivial constructor)...\n");
+    ret = -1;
+    StringBuilder constructor_trivial;
+    printf("\tProduces an empty object... ");
+    bool test_passes = (0 == constructor_trivial.length());
+    test_passes     &= (constructor_trivial.isEmpty(false));
+    test_passes     &= (constructor_trivial.isEmpty(true));
+    if (test_passes) {
+      printf("Pass.\n\tTokenizer functions report as expected... ");
+      test_passes &= (0 == constructor_trivial.count());
+      test_passes &= (0 == constructor_trivial.maximumFragmentLength());
+      if (test_passes) {
+        printf("Pass.\n\tmemoryCost() returns a value that is equal to the size of the object alone... ");
+        test_passes &= (sizeof(StringBuilder) == constructor_trivial.memoryCost(true));
+        if (test_passes) {
+          printf("Pass.\n\tbyteAt(0) returns zero, rather than crashing... ");
+          test_passes &= (0 == constructor_trivial.byteAt(0));
+          if (test_passes) {
+            printf("Pass.\n\tstring() will never return nullptr, even for canonically empty strings... ");
+            if (nullptr != constructor_trivial.string()) {
+              printf("Pass.\n\tstring() returns \"\" for canonically empty strings... ");
+              if (0 == strlen((char*) constructor_trivial.string())) {
+                printf("PASS.\n");
+                ret = 0;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 == ret) {
+    printf("Testing Constructor semantics (const char* and char*)...\n");
+    ret = -1;
+    StringBuilder CONTROL_STRING;
+    generate_random_text_buffer(&CONTROL_STRING, TEST_STR_LEN);
+    char* test_str = (char*) CONTROL_STRING.string();
+    const char* test_str_const = test_str;
+    StringBuilder construct_test(test_str);
+    StringBuilder construct_test_const(test_str_const);
+    const uint32_t RESULT_LEN            = construct_test.length();
+    const uint32_t RESULT_LEN_CONST      = construct_test_const.length();
+    const uint32_t RESULT_MEM_COST       = construct_test.memoryCost(true);
+    const uint32_t RESULT_MEM_COST_CONST = construct_test_const.memoryCost(true);
+
+    printf("\tProduces a string with the correct length (%u)... ", TEST_STR_LEN);
+    if (RESULT_LEN == TEST_STR_LEN) {
+      printf("Pass.\n\tConstructing as const produces the same length... ");
+      if (RESULT_LEN == RESULT_LEN_CONST) {
+        printf("Pass.\n\tcount() is equal to 1 (non-fragmented string)... ");
+        if (1 == construct_test.count()) {
+          printf("Pass.\n\tmaximumFragmentLength() matches the full length (non-fragmented string)... ");
+          if (RESULT_LEN == construct_test.maximumFragmentLength()) {
+            printf("Pass.\n\tmemoryCost() matches for both constructors (%u == %u)... ", RESULT_MEM_COST, RESULT_MEM_COST_CONST);
+            if (RESULT_MEM_COST == RESULT_MEM_COST_CONST) {
+              printf("PASS.\n");
+              ret = 0;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 == ret) {
+    printf("Testing Constructor semantics (const uint8_t* and uint8_t*)...\n");
+    ret = -1;
+    uint8_t buf[TEST_STR_LEN];
+    random_fill(buf, TEST_STR_LEN);
+    const uint8_t* TEST_CONST_BUF = buf;
+    StringBuilder construct_test(buf, TEST_STR_LEN);
+    StringBuilder construct_test_const(TEST_CONST_BUF, TEST_STR_LEN);
+    const uint32_t RESULT_LEN       = construct_test.length();
+    const uint32_t RESULT_LEN_CONST = construct_test_const.length();
+    const uint32_t RESULT_MEM_COST       = construct_test.memoryCost(true);
+    const uint32_t RESULT_MEM_COST_CONST = construct_test_const.memoryCost(true);
+
+    printf("\tProduces a string with the correct length (%u)... ", TEST_STR_LEN);
+    if (RESULT_LEN == TEST_STR_LEN) {
+      printf("Pass.\n\tConstructing as const produces the same length... ");
+      if (RESULT_LEN == RESULT_LEN_CONST) {
+        printf("Pass.\n\tcount() is equal to 1 (non-fragmented string)... ");
+        if (1 == construct_test.count()) {
+          printf("Pass.\n\tmaximumFragmentLength() matches the full length (non-fragmented string)... ");
+          if (RESULT_LEN == construct_test.maximumFragmentLength()) {
+            printf("Pass.\n\tmemoryCost() matches for both constructors (%u == %u)... ", RESULT_MEM_COST, RESULT_MEM_COST_CONST);
+            // NOTE: There was differential behavior in the past. Probably never again.
+            if (RESULT_MEM_COST == RESULT_MEM_COST_CONST) {
+              printf("PASS.\n");
+              ret = 0;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {  printf("Fail.\n");  }
+
+  return ret;
+}
+
 
 
 /*
@@ -128,7 +241,7 @@ int test_strcasestr() {
 int test_stringbuilder_chunk() {
   StringBuilder stack_obj;
   int ret = -1;
-  printf("===< Tokenizer tests >====================================\n");
+  printf("Testing chunk(const int), maximumFragmentLength()\n");
   const uint32_t TEST_CHUNK_COUNT  = (3 + (randomUInt32() % 23));
   stack_obj.concat("                 _______  \n");
   stack_obj.concat("                / _____ \\ \n");
@@ -193,12 +306,8 @@ int test_stringbuilder_chunk() {
     }
   }
 
-  if (0 != ret) {
-    printf("Fail.\n");
-  }
-  else {
-    printf("PASS.\n");
-  }
+  if (0 != ret) {  printf("Fail.\n");  }
+  else {           printf("PASS.\n");  }
 
   return ret;
 }
@@ -1013,11 +1122,12 @@ int test_stringbuilder_concat_handoff() {
 int test_stringbuilder_print_buffer() {
   int ret = 0;
   printf("Testing printBuffer(StringBuilder*, uint8_t*, uint32_t, const char*)...\n");
+  const uint32_t TEST_LENGTH_BYTES = (83 + (randomUInt32() % 14));
   StringBuilder log;
-  uint8_t buf[83];
-  random_fill(buf, (uint32_t) sizeof(buf));
+  uint8_t buf[TEST_LENGTH_BYTES];
+  random_fill(buf, TEST_LENGTH_BYTES);
   StringBuilder::printBuffer(&log, nullptr, 0, "\t");
-  StringBuilder::printBuffer(&log, buf, sizeof(buf), "\t");
+  StringBuilder::printBuffer(&log, buf, TEST_LENGTH_BYTES, "\t");
   printf("%s\n", (const char*) log.string());
   return ret;
 }
@@ -1028,56 +1138,81 @@ int test_stringbuilder_print_buffer() {
 */
 int test_stringbuilder_concat_handoff_limit() {
   int ret = -1;
-  printf("Testing concatHandoffLimit(StringBuilder*, unsigned int)...\n");
-  const uint32_t TEST_BUF_LEN = (30 + (randomUInt32() % 10));
+  printf("Testing concatLimit(StringBuilder*, unsigned int)...\n");
+  const uint32_t TEST_BUF_LEN = (40 + (randomUInt32() % 10));
   const uint32_t LIMIT_LEN    = (5 + (randomUInt32() % 5));
   StringBuilder src;
   StringBuilder dest;
-  generate_random_text_buffer(&src, TEST_BUF_LEN);
+  StringBuilder dest_copy;
   printf("\tGenerating test string (%d bytes): %s\n", TEST_BUF_LEN, (char*) src.string());
-  printf("\tconcatHandoffLimit() should take no action if passed a length of 0... ");
-  dest.concatHandoffLimit(&src, 0);
-  if ((dest.length() == 0) & (src.length() == (int) TEST_BUF_LEN)) {
-    printf("Pass.\n\tdest.length() should return %d... ", LIMIT_LEN);
-    dest.concatHandoffLimit(&src, LIMIT_LEN);
-    if (dest.length() == (int) LIMIT_LEN) {
-      const int REMAINING_SRC_LEN = (TEST_BUF_LEN - LIMIT_LEN);
-      printf("Pass.\n\tsrc.length() should return %d... ", REMAINING_SRC_LEN);
-      if (src.length() == REMAINING_SRC_LEN) {
-        printf("Pass.\n\tconcatHandoffLimit() should be able to copy less than the directed length... ");
-        dest.concatHandoffLimit(&src, TEST_BUF_LEN);
-        if (((int) TEST_BUF_LEN == dest.length()) & (0 == src.length())) {
-          printf("Pass.\n");
-          dest.clear();
-          const int      FRAGMENTS_IN_SRC   = 4;
-          const int      FRAGMENTS_TO_MOVE  = 2;
-          const uint32_t LIMIT_LEN_TIMES_4  = (LIMIT_LEN * FRAGMENTS_IN_SRC);
-          printf("\tGenerating fragmented test string (%d bytes over %d fragments)... ", LIMIT_LEN_TIMES_4, FRAGMENTS_IN_SRC);
-          while (src.count() < FRAGMENTS_IN_SRC) {  generate_random_text_buffer(&src, LIMIT_LEN);  }
-          if ((src.length() == (int) LIMIT_LEN_TIMES_4) & (src.count() == FRAGMENTS_IN_SRC)) {
-            printf("Pass.\n\tLimit falling cleanly on the first fragment of a multipart source... ");
-            dest.concatHandoffLimit(&src, LIMIT_LEN);
-            if ((dest.length() == (int) LIMIT_LEN) & (src.length() == (int) (LIMIT_LEN_TIMES_4 - LIMIT_LEN))) {
-              printf("Pass.\n\tAre the source and destimation counts (1 and %d) correct?... ", (FRAGMENTS_IN_SRC - 1));
-              if ((dest.count() == 1) & (src.count() == (FRAGMENTS_IN_SRC - 1))) {
-                printf("Pass.\n\tLimit falling cleanly on a middle fragment boundary... ");
-                dest.clear();
-                while (src.count() < FRAGMENTS_IN_SRC) {  generate_random_text_buffer(&src, LIMIT_LEN);  }
-                dest.concatHandoffLimit(&src, (LIMIT_LEN * FRAGMENTS_TO_MOVE));
-                if ((dest.length() == (int) (LIMIT_LEN * FRAGMENTS_TO_MOVE)) & (src.length() == (int) (LIMIT_LEN_TIMES_4 - (LIMIT_LEN * FRAGMENTS_TO_MOVE)))) {
-                  printf("Pass.\n\tAre the source and destimation counts (%d and %d) correct?... ", (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE), FRAGMENTS_TO_MOVE);
-                  if ((dest.count() == FRAGMENTS_TO_MOVE) & (src.count() == (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE))) {
-                    dest.clear();
-                    while (src.count() < FRAGMENTS_IN_SRC) {  generate_random_text_buffer(&src, LIMIT_LEN);  }
-                    const int BYTES_TO_MOVE = (FRAGMENTS_TO_MOVE * LIMIT_LEN) + (2 + (randomUInt32() % (LIMIT_LEN - 4)));
-                    printf("Pass.\n\tLimit falling in a messy place in the middle (%d byte offset)... ", BYTES_TO_MOVE);
-                    dest.concatHandoffLimit(&src, BYTES_TO_MOVE);
-                    if ((dest.length() == (int) BYTES_TO_MOVE) & (src.length() == (int) (LIMIT_LEN_TIMES_4 - BYTES_TO_MOVE))) {
-                      const int DEST_SPLIT_FRAG_COUNT = (FRAGMENTS_TO_MOVE+1);
-                      printf("Pass.\n\tAre the source and destimation counts (%d and %d) correct?... ", (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE), DEST_SPLIT_FRAG_COUNT);
-                      if ((dest.count() == DEST_SPLIT_FRAG_COUNT) & (src.count() == (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE))) {
-                        printf("Pass.\n\tconcatHandoffLimit(StringBuilder*, unsigned int) passes.\n");
-                        ret = 0;
+  generate_random_text_buffer(&src, TEST_BUF_LEN);
+
+  printf("\tconcatLimit() should take no action if passed a length of 0... ");
+  dest_copy.concatLimit(&src, 0);
+  if (dest_copy.length() == 0) {
+    printf("Pass.\n\tdest_copy.length() should return %d... ", LIMIT_LEN);
+    dest_copy.concatLimit(&src, LIMIT_LEN);
+    if (dest_copy.length() == LIMIT_LEN) {
+      printf("Pass.\n\tconcatLimit() performed its copy into a single fragment in the destination... ");
+      if (dest_copy.count() == 1) {
+        printf("Pass.\n\tconcatLimit() should be able to copy less than the directed length... ");
+        dest_copy.clear();
+        dest_copy.concatLimit(&src, TEST_BUF_LEN + 200);
+        if (dest_copy.length() == TEST_BUF_LEN) {
+          printf("PASS.\n");
+          ret = 0;
+        }
+      }
+    }
+  }
+
+  if (0 == ret) {
+    ret = -1;
+    printf("Testing concatHandoffLimit(StringBuilder*, unsigned int)...\n");
+    printf("\tconcatHandoffLimit() should take no action if passed a length of 0... ");
+    dest.concatHandoffLimit(&src, 0);
+    if ((dest.length() == 0) & (src.length() == (int) TEST_BUF_LEN)) {
+      printf("Pass.\n\tdest.length() should return %d... ", LIMIT_LEN);
+      dest.concatHandoffLimit(&src, LIMIT_LEN);
+      if (dest.length() == (int) LIMIT_LEN) {
+        const int REMAINING_SRC_LEN = (TEST_BUF_LEN - LIMIT_LEN);
+        printf("Pass.\n\tsrc.length() should return %d... ", REMAINING_SRC_LEN);
+        if (src.length() == REMAINING_SRC_LEN) {
+          printf("Pass.\n\tconcatHandoffLimit() should be able to copy less than the directed length... ");
+          dest.concatHandoffLimit(&src, TEST_BUF_LEN);
+          if (((int) TEST_BUF_LEN == dest.length()) & (0 == src.length())) {
+            printf("Pass.\n");
+            dest.clear();
+            const int      FRAGMENTS_IN_SRC   = 4;
+            const int      FRAGMENTS_TO_MOVE  = 2;
+            const uint32_t LIMIT_LEN_TIMES_4  = (LIMIT_LEN * FRAGMENTS_IN_SRC);
+            printf("\tGenerating fragmented test string (%d bytes over %d fragments)... ", LIMIT_LEN_TIMES_4, FRAGMENTS_IN_SRC);
+            while (src.count() < FRAGMENTS_IN_SRC) {  generate_random_text_buffer(&src, LIMIT_LEN);  }
+            if ((src.length() == (int) LIMIT_LEN_TIMES_4) & (src.count() == FRAGMENTS_IN_SRC)) {
+              printf("Pass.\n\tLimit falling cleanly on the first fragment of a multipart source... ");
+              dest.concatHandoffLimit(&src, LIMIT_LEN);
+              if ((dest.length() == (int) LIMIT_LEN) & (src.length() == (int) (LIMIT_LEN_TIMES_4 - LIMIT_LEN))) {
+                printf("Pass.\n\tAre the source and destimation counts (1 and %d) correct?... ", (FRAGMENTS_IN_SRC - 1));
+                if ((dest.count() == 1) & (src.count() == (FRAGMENTS_IN_SRC - 1))) {
+                  printf("Pass.\n\tLimit falling cleanly on a middle fragment boundary... ");
+                  dest.clear();
+                  while (src.count() < FRAGMENTS_IN_SRC) {  generate_random_text_buffer(&src, LIMIT_LEN);  }
+                  dest.concatHandoffLimit(&src, (LIMIT_LEN * FRAGMENTS_TO_MOVE));
+                  if ((dest.length() == (int) (LIMIT_LEN * FRAGMENTS_TO_MOVE)) & (src.length() == (int) (LIMIT_LEN_TIMES_4 - (LIMIT_LEN * FRAGMENTS_TO_MOVE)))) {
+                    printf("Pass.\n\tAre the source and destimation counts (%d and %d) correct?... ", (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE), FRAGMENTS_TO_MOVE);
+                    if ((dest.count() == FRAGMENTS_TO_MOVE) & (src.count() == (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE))) {
+                      dest.clear();
+                      while (src.count() < FRAGMENTS_IN_SRC) {  generate_random_text_buffer(&src, LIMIT_LEN);  }
+                      const int BYTES_TO_MOVE = (FRAGMENTS_TO_MOVE * LIMIT_LEN) + (2 + (randomUInt32() % (LIMIT_LEN - 4)));
+                      printf("Pass.\n\tLimit falling in a messy place in the middle (%d byte offset)... ", BYTES_TO_MOVE);
+                      dest.concatHandoffLimit(&src, BYTES_TO_MOVE);
+                      if ((dest.length() == (int) BYTES_TO_MOVE) & (src.length() == (int) (LIMIT_LEN_TIMES_4 - BYTES_TO_MOVE))) {
+                        const int DEST_SPLIT_FRAG_COUNT = (FRAGMENTS_TO_MOVE+1);
+                        printf("Pass.\n\tAre the source and destimation counts (%d and %d) correct?... ", (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE), DEST_SPLIT_FRAG_COUNT);
+                        if ((dest.count() == DEST_SPLIT_FRAG_COUNT) & (src.count() == (FRAGMENTS_IN_SRC - FRAGMENTS_TO_MOVE))) {
+                          printf("Pass.\n\tconcatHandoffLimit(StringBuilder*, unsigned int) passes.\n");
+                          ret = 0;
+                        }
                       }
                     }
                   }
@@ -1103,6 +1238,131 @@ int test_stringbuilder_concat_handoff_limit() {
   }
   return ret;
 }
+
+
+
+/*
+* concatHandoffPositions(StringBuilder*, unsigned int, unsigned int)
+*/
+int test_stringbuilder_concat_handoff_range() {
+  int ret = -1;
+  printf("Testing concatHandoffPositions(StringBuilder*, unsigned int, unsigned int)...\n");
+  const uint32_t TEST_BUF_LEN = (947 + (randomUInt32() % 104));
+  const uint32_t LIMIT_LEN    = (12 + (randomUInt32() % 5));
+
+  printf("\tGenerating test string (%d bytes) and fragmenting it into (%u byte) chunks... ", TEST_BUF_LEN, LIMIT_LEN);
+  StringBuilder CONTROL_STRING;
+  StringBuilder src;
+  StringBuilder dest;
+  generate_random_text_buffer(&CONTROL_STRING, TEST_BUF_LEN);
+  src.concat(&CONTROL_STRING);
+  const int      CHUNKS    = src.chunk(LIMIT_LEN);
+  const uint32_t RANDOM_START = (1 + (randomUInt32() % 5));
+  const uint32_t RANDOM_COUNT = (((CHUNKS - RANDOM_START) >> 1) + (randomUInt32() % 5));
+  if (CHUNKS > 0) {
+    printf("Pass (%d chunks in source).\n\tconcatHandoffPositions() should take no actions on invalid ranges...\n", CHUNKS);
+    printf("\t\tconcatHandoffPositions(src, %u, 0) should always return 0... ", RANDOM_START);
+    if (0 == dest.concatHandoffPositions(&src, RANDOM_START, 0)) {
+      printf("Pass.\n\t\tOut-of-bounds start should return 0... ");
+      if (0 == dest.concatHandoffPositions(&src, CHUNKS, 1)) {
+        //printf("Pass.\n\t\tOut-of-bounds range should return 0... ");
+        //if (0 == dest.concatHandoffPositions(&src, RANDOM_START, (RANDOM_COUNT+CHUNKS))) {
+        // TODO: No, it shouldn't. It should bail out once it runs out of fragments.
+        //   Write the test that way.
+        {
+          const uint32_t COUNT_S_0 = src.count();
+          printf("Pass.\n\t\tsrc.count() return value indicates no changes (%d == %u)... ", CHUNKS, COUNT_S_0);
+          if (CHUNKS == COUNT_S_0) {
+            printf("PASS.\n\tconcatHandoffPositions(src, %u, %u) should have a return value equal to the final parameter... ", RANDOM_START, RANDOM_COUNT);
+            const int FXN_RET = dest.concatHandoffPositions(&src, RANDOM_START, RANDOM_COUNT);
+            if (RANDOM_COUNT == FXN_RET) {
+              printf("Pass.\n\tsrc.count() fell by %u... ", RANDOM_COUNT);
+              const uint32_t COUNT_S_1 = src.count();
+              if (COUNT_S_1 == (COUNT_S_0 - RANDOM_COUNT)) {
+                printf("Pass.\n\tdest.count() returns the balance... ");
+                const uint32_t COUNT_D_0 = dest.count();
+                if (RANDOM_COUNT == COUNT_D_0) {
+                  printf("PASS.\n");
+                  // TODO: Content check. We can already rely on chunk() and count().
+                  ret = 0;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
+  return ret;
+}
+
+
+/*
+* position(int)
+*/
+int test_stringbuilder_position() {
+  int ret = -1;
+  printf("Testing position_as_int(int)...\n");
+  const char* STR_KAT   = "  Trim-known-answer  \n\t";
+  const char* TRIM_KAT  = "Trim-known-answer";
+  const double   TEST_DOUBLE = -0.747892D;
+  //const uint64_t TEST_UINT64 = generate_random_uint64();
+  StringBuilder sb_0;
+  sb_0.concat(STR_KAT);
+  sb_0.concat("0");
+  sb_0.concat("10");
+  sb_0.concat(20);
+  sb_0.concat(30);
+  sb_0.concat((unsigned int) 40);
+  sb_0.concat((unsigned int) 50);
+  sb_0.concat("60");
+  sb_0.concat("0x46");
+  sb_0.concat("80");
+  sb_0.concat("90");
+  sb_0.concat(TEST_DOUBLE);
+
+  const double RESULT_DOUBLE = sb_0.position_as_double(sb_0.count()-1);
+  printf("\tposition_as_double(int) finds expected value (%f)... ", TEST_DOUBLE);
+  // NOTE: Down-casting for a cheap (hyper-aggressive) rounding. Need to deal with epsilon properly.
+  if ((float) RESULT_DOUBLE == (float) TEST_DOUBLE) {
+    printf("Pass.\n\tposition(0) returns the string that went into that position... ");
+    if (0 == StringBuilder::strcasecmp(STR_KAT, sb_0.position(0))) {
+      printf("Pass.\n\tposition_trimmed(0) returns the same string after trimming... ");
+      if (0 == StringBuilder::strcasecmp(TRIM_KAT, sb_0.position_trimmed(0))) {
+        printf("Pass.\n\tposition(0) is mutated after trimming... ");
+        if (0 != StringBuilder::strcasecmp(STR_KAT, sb_0.position(0))) {
+          printf("Pass.\n\tposition_trimmed() returns an empty string for non-existant positions... ");
+          if (0 == strlen(sb_0.position_trimmed(sb_0.count()))) {
+            printf("Pass.\n\tdrop_position() returns false for non-existant positions... ");
+            if (!sb_0.drop_position(sb_0.count())) {
+              printf("Pass.\n\tdrop_position(0) returns true... ");
+              if (sb_0.drop_position(0)) {
+                printf("Pass.\n\tposition_as_int(int) finds all expected values... ");
+                uint32_t idx = 0;
+                ret = 0;
+                while ((0 == ret) & (10 > idx)) {
+                  ret = ((sb_0.position_as_int(idx) == (idx*10)) ? 0 : -1);
+                  idx++;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  printf((0 != ret) ? "Fail.\n" : "Pass.\n");
+  if (0 != ret) {
+    printf("%s\n", (char*) sb_0.string());
+  }
+  return ret;
+}
+
 
 
 /*
@@ -1215,9 +1475,9 @@ int test_StringBuilder_trim() {
 *   those hidden dependencies, and helps readability of both the tests, and the
 *   results.
 *******************************************************************************/
-#define CHKLST_SB_TEST_STRCASESTR     0x00000001  // strcasestr(const char* haystack, const char* needle)
+#define CHKLST_SB_TEST_BASICS         0x00000001  // Construction and initial state.
+#define CHKLST_SB_TEST_STRCASESTR     0x00000004  // strcasestr(const char* haystack, const char* needle)
 #define CHKLST_SB_TEST_STRCASECMP     0x00000002  // strcasecmp(const char*, const char*)
-#define CHKLST_SB_TEST_BASICS         0x00000004  // concat(uint8_t*, int), prepend(uint8_t*, int), length(), clear()
 #define CHKLST_SB_TEST_CMPBINSTRING   0x00000008  // cmpBinString(uint8_t*, int)
 #define CHKLST_SB_TEST_CASE_CONVERT   0x00000010  // toUpper() and toLower()
 #define CHKLST_SB_TEST_BYTEAT         0x00000020  // byteAt(const int)
@@ -1234,7 +1494,7 @@ int test_StringBuilder_trim() {
 #define CHKLST_SB_TEST_HANDOFFS_1     0x00010000  // concatHandoff(StringBuilder*), prependHandoff(StringBuilder*)
 #define CHKLST_SB_TEST_HANDOFFS_2     0x00020000  // concatHandoff(uint8_t*, int)
 #define CHKLST_SB_TEST_HANDOFFS_3     0x00040000  // concatHandoffLimit(uint8_t*, int)
-#define CHKLST_SB_TEST_COUNT          0x00080000  // count()
+#define CHKLST_SB_TEST_HANDOFFS_4     0x00080000  // concatHandoffPositions(StringBuilder*, unsigned int, unsigned int)
 #define CHKLST_SB_TEST_POSITION       0x00100000  // position(int) functions, and drop_position(unsigned int)
 #define CHKLST_SB_TEST_CONCATF        0x00200000  // concatf(const char* format, va_list)
 #define CHKLST_SB_TEST_PRINTDEBUG     0x00400000  // printDebug(StringBuilder*)
@@ -1244,7 +1504,7 @@ int test_StringBuilder_trim() {
 #define CHKLST_SB_TEST_MISUSE         0x04000000  // Foreseeable misuse tests.
 #define CHKLST_SB_TEST_MISCELLANEOUS  0x08000000  // Scattered small tests.
 #define CHKLST_SB_TEST_TRIM           0x10000000  // Whitespace trim fxns.
-//#define CHKLST_SB_TEST_   0x20000000  //
+#define CHKLST_SB_TEST_COUNT          0x20000000  // count()
 //#define CHKLST_SB_TEST_NUMERIC_PARSE  0x40000000  //
 //#define CHKLST_SB_TEST_MEM_SEMANTICS  0x80000000  // Deep-copy versus transfer.
 
@@ -1255,34 +1515,36 @@ int test_StringBuilder_trim() {
   CHKLST_SB_TEST_CONTAINS_2 | CHKLST_SB_TEST_CULL_1 | CHKLST_SB_TEST_CULL_2 | \
   CHKLST_SB_TEST_SPLIT | CHKLST_SB_TEST_IMPLODE | CHKLST_SB_TEST_CHUNK | \
   CHKLST_SB_TEST_REPLACE | CHKLST_SB_TEST_HANDOFFS_1 | CHKLST_SB_TEST_HANDOFFS_2 | \
-  CHKLST_SB_TEST_HANDOFFS_3 | \
+  CHKLST_SB_TEST_HANDOFFS_3 | CHKLST_SB_TEST_HANDOFFS_4 | \
   CHKLST_SB_TEST_COUNT | CHKLST_SB_TEST_POSITION | CHKLST_SB_TEST_CONCATF | \
   CHKLST_SB_TEST_PRINTDEBUG | CHKLST_SB_TEST_PRINTBUFFER | \
   CHKLST_SB_TEST_MEM_MUTATION | CHKLST_SB_TEST_VIVISECTION | \
   CHKLST_SB_TEST_MISUSE | CHKLST_SB_TEST_MISCELLANEOUS | CHKLST_SB_TEST_TRIM)
 
+
+
 const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
+  { .FLAG         = CHKLST_SB_TEST_BASICS,
+    .LABEL        = "Constructors and initial state",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_sb_basics()) ? 1:-1);  }
+  },
   { .FLAG         = CHKLST_SB_TEST_STRCASESTR,
     .LABEL        = "strcasestr(const char*, const char*)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_BASICS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_strcasestr()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_SB_TEST_STRCASECMP,
     .LABEL        = "strcasecmp(const char*, const char*)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_BASICS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_strcasecmp()) ? 1:-1);  }
   },
-  { .FLAG         = CHKLST_SB_TEST_BASICS,
-    .LABEL        = "concat(uint8_t*, int), prepend(uint8_t*, int), length(), clear()",
-    .DEP_MASK     = (0),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return 1;  }    // TODO: Separate
-  },
   { .FLAG         = CHKLST_SB_TEST_CMPBINSTRING,
     .LABEL        = "cmpBinString(uint8_t*, int)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_BASICS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return 1;  }    // TODO: Separate
   },
@@ -1294,19 +1556,19 @@ const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_SB_TEST_BYTEAT,
     .LABEL        = "byteAt(const int)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_BASICS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_stringbuilder_byteat()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_SB_TEST_ISEMPTY,
     .LABEL        = "isEmpty(const bool)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_BASICS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_stringbuilder_isempty()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_SB_TEST_LOCATE,
     .LABEL        = "locate(const uint8_t*, int len, int)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_ISEMPTY),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_stringbuilder_locate()) ? 1:-1);  }
   },
@@ -1324,25 +1586,25 @@ const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_SB_TEST_CULL_1,
     .LABEL        = "cull(int)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_ISEMPTY),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_StringBuilderCull()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_SB_TEST_CULL_2,
     .LABEL        = "cull(int, int)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_CULL_1),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return 1;  }    // TODO: Separate
   },
   { .FLAG         = CHKLST_SB_TEST_SPLIT,
     .LABEL        = "split(const char*)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_COUNT),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return 1;  }    // TODO: Separate
   },
   { .FLAG         = CHKLST_SB_TEST_IMPLODE,
     .LABEL        = "implode(const char*)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_COUNT),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_stringbuilder_implode()) ? 1:-1);  }
   },
@@ -1360,22 +1622,29 @@ const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_SB_TEST_HANDOFFS_1,
     .LABEL        = "concatHandoff(StringBuilder*), prependHandoff(StringBuilder*)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_COUNT),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_stringbuilder_concat_handoff()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_SB_TEST_HANDOFFS_2,
     .LABEL        = "concatHandoff(uint8_t*, int)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_HANDOFFS_1),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_stringbuilder_concat_handoff_raw()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_SB_TEST_HANDOFFS_3,
     .LABEL        = "concatHandoffLimit(StringBuilder*, unsigned int)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_HANDOFFS_2),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_stringbuilder_concat_handoff_limit()) ? 1:-1);  }
   },
+  { .FLAG         = CHKLST_SB_TEST_HANDOFFS_4,
+    .LABEL        = "concatHandoffPositions(StringBuilder*, unsigned int, unsigned int)",
+    .DEP_MASK     = (CHKLST_SB_TEST_HANDOFFS_3 | CHKLST_SB_TEST_CHUNK | CHKLST_SB_TEST_COUNT),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_stringbuilder_concat_handoff_range()) ? 1:-1);  }
+  },
+
   { .FLAG         = CHKLST_SB_TEST_COUNT,
     .LABEL        = "count()",
     .DEP_MASK     = (CHKLST_SB_TEST_BASICS),
@@ -1386,23 +1655,24 @@ const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
     .LABEL        = "position(int) / drop_position(unsigned int)",
     .DEP_MASK     = (CHKLST_SB_TEST_COUNT),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return 1;  }    // TODO: Separate
+    .POLL_FXN     = []() { return ((0 == test_stringbuilder_position()) ? 1:-1);  }
   },
+
   { .FLAG         = CHKLST_SB_TEST_CONCATF,
     .LABEL        = "concatf(const char*, va_list)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_BASICS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return 1;  }    // TODO: Separate
   },
   { .FLAG         = CHKLST_SB_TEST_PRINTDEBUG,
     .LABEL        = "printDebug(StringBuilder*)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_BASICS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return 1;  }    // TODO: Separate
   },
   { .FLAG         = CHKLST_SB_TEST_PRINTBUFFER,
     .LABEL        = "printBuffer(StringBuilder*, uint8*, uint32, const char*)",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_BASICS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_stringbuilder_print_buffer()) ? 1:-1);  }
   },
@@ -1426,13 +1696,13 @@ const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_SB_TEST_TRIM,
     .LABEL        = "trim()",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_BASICS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_StringBuilder_trim()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_SB_TEST_MISCELLANEOUS,
     .LABEL        = "Scattered small tests",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_SB_TEST_BASICS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_StringBuilder()) ? 1:-1);  }
   },

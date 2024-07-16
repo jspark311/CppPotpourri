@@ -363,10 +363,12 @@ uint8_t* StringBuilder::string() {
 */
 uint8_t StringBuilder::byteAt(const int OFFSET) {
   uint8_t ret = 0;
-  int offset = OFFSET;
-  StrLL* ll_with_byte = _get_ll_containing_offset(_root, &offset);
-  if (nullptr != ll_with_byte) {
-    ret = *(ll_with_byte->str + offset);
+  if (_root) {
+    int offset = OFFSET;
+    StrLL* ll_with_byte = _get_ll_containing_offset(_root, &offset);
+    if (nullptr != ll_with_byte) {
+      ret = *(ll_with_byte->str + offset);
+    }
   }
   return ret;
 }
@@ -577,14 +579,12 @@ char* StringBuilder::position_trimmed(int pos){
 bool StringBuilder::drop_position(unsigned int pos) {
   StrLL* current = _root;
   StrLL* prior   = nullptr;
-  unsigned int i = 0;
-  while ((i != pos) && (current != nullptr)){
+  while ((0 < pos--) && (nullptr != current)){
     prior = current;
     current = current->next;
-    i++;
   }
-  if (current != nullptr) {
-    if (prior == nullptr) {
+  if (nullptr != current) {
+    if (nullptr == prior) {
       _root = current->next;
       current->next = nullptr;
       _destroy_str_ll(current);
@@ -637,7 +637,7 @@ void StringBuilder::concatHandoff(StringBuilder* donar) {
 * @param pos is the fragment index to drop.
 * @param pos is the fragment index to drop.
 * @param count is the number of fragments to transfer, and defaults to 1.
-* @returns The number of fragments moved to the recipient
+* @returns The number of fragments moved to the recipient (this object).
 */
 int StringBuilder::concatHandoffPositions(StringBuilder* donar, unsigned int pos, unsigned int count) {
   int ret = 0;
