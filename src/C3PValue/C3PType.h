@@ -240,7 +240,7 @@ class C3PType {
     virtual int      serialize(void* obj, StringBuilder*, const TCode FORMAT)  =0;
     virtual int      deserialize(void* obj, StringBuilder*, const TCode FORMAT, const uint32_t OFFSET) =0;
 
-    // TODO: Schizophrenic API, option #2 (flag accessors buiried within a C3PType instance)
+    // TODO: Schizophrenic API, option #2 (flag accessors buried within a C3PType instance)
     const bool legal_for_encoding() {  return _all_flags_set(TCODE_FLAG_LEGAL_FOR_ENCODING);  };
     const bool null_terminated() {     return _all_flags_set(TCODE_FLAG_NULL_TERMIMNATED);    };
     const bool value_by_copy() {       return _all_flags_set(TCODE_FLAG_VALUE_BY_COPY);       };

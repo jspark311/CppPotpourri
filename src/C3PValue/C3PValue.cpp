@@ -148,7 +148,7 @@ C3PValue::C3PValue(const TCode TC, void* ptr, uint8_t mem_flgs)
             // TODO: Until this is resolved, it will be burdensome for the
             //   caller to detect a memory fault, and whatever initialization
             //   value was passed in will not be recorded.
-            if (0 > t_helper->set_from(_target_mem, _TCODE, ptr)) {
+            if (0 > t_helper->set_from(_type_pun_set(), _TCODE, ptr)) {
               _set_mem_fault();
             }
           }
@@ -1167,8 +1167,8 @@ C3PValue* C3PValueDecoder::_handle_tag(uint32_t* offset, C3PType* t_helper) {
     }
     else if (6 == MAJOR) {
       // If it wasn't a map, but was a nested tag, it means we should recurse.
-      local_offset++;
-      local_offset++;
+      local_offset++;  // TODO: This is not correct, and only works because of coincidence.
+      local_offset++;  //   Need to handle differrent tag lengths differently.
       C3PValue* inner_tagged_val = _next(&local_offset);
       if (nullptr != inner_tagged_val) {
         //StringBuilder tmp_sb;

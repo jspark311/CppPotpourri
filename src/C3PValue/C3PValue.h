@@ -139,14 +139,14 @@ class C3PValue {
     C3PValue(StringBuilder* v) : C3PValue(TCode::STR_BUILDER,   (void*) v) {};
     C3PValue(uint8_t*, uint32_t len);
 
-    C3PValue(Vector3u32* val)  : C3PValue(TCode::VECT_3_UINT32, (void*) val) {};
-    C3PValue(Vector3u16* val)  : C3PValue(TCode::VECT_3_UINT16, (void*) val) {};
-    C3PValue(Vector3u8*  val)  : C3PValue(TCode::VECT_3_UINT8,  (void*) val) {};
-    C3PValue(Vector3i32* val)  : C3PValue(TCode::VECT_3_INT32,  (void*) val) {};
-    C3PValue(Vector3i16* val)  : C3PValue(TCode::VECT_3_INT16,  (void*) val) {};
-    C3PValue(Vector3i8*  val)  : C3PValue(TCode::VECT_3_INT8,   (void*) val) {};
-    C3PValue(Vector3f*   val)  : C3PValue(TCode::VECT_3_FLOAT,  (void*) val) {};
-    C3PValue(Vector3f64* val)  : C3PValue(TCode::VECT_3_DOUBLE, (void*) val) {};
+    C3PValue(Vector3u32* val)  : C3PValue(TCode::VECT_3_UINT32, (void*) val) {  set(val);  };
+    C3PValue(Vector3u16* val)  : C3PValue(TCode::VECT_3_UINT16, (void*) val) {  set(val);  };
+    C3PValue(Vector3u8*  val)  : C3PValue(TCode::VECT_3_UINT8,  (void*) val) {  set(val);  };
+    C3PValue(Vector3i32* val)  : C3PValue(TCode::VECT_3_INT32,  (void*) val) {  set(val);  };
+    C3PValue(Vector3i16* val)  : C3PValue(TCode::VECT_3_INT16,  (void*) val) {  set(val);  };
+    C3PValue(Vector3i8*  val)  : C3PValue(TCode::VECT_3_INT8,   (void*) val) {  set(val);  };
+    C3PValue(Vector3f*   val)  : C3PValue(TCode::VECT_3_FLOAT,  (void*) val) {  set(val);  };
+    C3PValue(Vector3f64* val)  : C3PValue(TCode::VECT_3_DOUBLE, (void*) val) {  set(val);  };
     C3PValue(Identity* val)    : C3PValue(TCode::IDENTITY,      (void*) val) {};
     C3PValue(KeyValuePair* val) : C3PValue(TCode::KVP,          (void*) val) {};
     C3PValue(StopWatch* val)    : C3PValue(TCode::STOPWATCH,    (void*) val) { _target_mem = val; };
