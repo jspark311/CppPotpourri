@@ -69,12 +69,6 @@ void AsyncSequencer::printDebug(StringBuilder* output, const char* hdr) {
 * Semantic breakouts for flags.
 *******************************************************************************/
 
-void AsyncSequencer::_mark_step_for_rerun(const uint32_t MASK) {
-  _steps_complete.clear(MASK);
-  _steps_passed.clear(MASK);
-}
-
-
 void AsyncSequencer::_mark_step_dispatched(const uint32_t MASK) {
   _steps_complete.clear(MASK);
   _steps_passed.clear(MASK);
@@ -86,14 +80,6 @@ void AsyncSequencer::_mark_step_complete(const uint32_t MASK, const bool PASSED)
   _steps_running.clear(MASK);
   _steps_complete.set(MASK);
   _steps_passed.set(MASK, PASSED);
-}
-
-
-void AsyncSequencer::_reset_failed_steps(const bool INC_RUNNING) {
-  const uint32_t SCOPE_MASK = (INC_RUNNING ? _steps_runnable.raw : _steps_complete.raw);
-  const uint32_t RESET_MASK = (SCOPE_MASK & !_steps_passed.raw);
-  _steps_running.clear(RESET_MASK);
-  _steps_complete.clear(RESET_MASK);
 }
 
 
@@ -160,31 +146,43 @@ int8_t AsyncSequencer::_poll_steps(const uint32_t POLL_MASK) {
 * @return The number of state transitions, or -1 on failure.
 */
 int8_t AsyncSequencer::poll() {
-  int8_t ret = 0;
+  int8_t ret = -1;
   const uint32_t PRERUN_POLL = _steps_running.raw;
   const uint32_t PRERUN_COMP = _steps_complete.raw;
   // The incomplete steps that are runnable and not running.
   const uint32_t PRERUN_DISPATCH = _steps_runnable.raw & ~(PRERUN_COMP) & ~(PRERUN_POLL);
+  //const uint32_t PRERUN_FAILBOAT = failed_steps(true);
 
   _check_dependencies();
   _dispatch_steps(PRERUN_DISPATCH);
   _poll_steps(_steps_running.raw);
 
-  // Capture the mutated flag states...
-  const uint32_t POSTRUN_POLL     = _steps_running.raw;
-  const uint32_t POSTRUN_COMP     = _steps_complete.raw;
-  const uint32_t POSTRUN_DISPATCH = _steps_runnable.raw & ~(POSTRUN_COMP) & ~(POSTRUN_POLL);
-  // ...diff them against the initial states...
-  const uint32_t DIFF_POLL        = (PRERUN_POLL ^ POSTRUN_POLL);
-  const uint32_t DIFF_COMP        = (PRERUN_COMP ^ POSTRUN_COMP);
-  const uint32_t DIFF_DISPATCH    = (PRERUN_DISPATCH ^ POSTRUN_DISPATCH);
+  //if (PRERUN_FAILBOAT != failed_steps(true)) {
+  //  // If any steps boarded the failboat this polling cycle, return -1. The
+  //  //   checklist will continue to poll normally, and non-failed steps will
+  //  //   still respond as expected. But by returning -1 we give the called a
+  //  //   chance to intervene before the next polling cycle.
+  //}
+  //else {
+    // If nothing failed this time, calculate the number of state changes that
+    //   happened this cycle.
+    ret = 0;
+    // Capture the mutated flag states...
+    const uint32_t POSTRUN_POLL     = _steps_running.raw;
+    const uint32_t POSTRUN_COMP     = _steps_complete.raw;
+    const uint32_t POSTRUN_DISPATCH = _steps_runnable.raw & ~(POSTRUN_COMP) & ~(POSTRUN_POLL);
+    // ...diff them against the initial states...
+    const uint32_t DIFF_POLL        = (PRERUN_POLL ^ POSTRUN_POLL);
+    const uint32_t DIFF_COMP        = (PRERUN_COMP ^ POSTRUN_COMP);
+    const uint32_t DIFF_DISPATCH    = (PRERUN_DISPATCH ^ POSTRUN_DISPATCH);
 
-  // ...and count the bits of difference between them. This is our return value.
-  for (uint8_t i = 0; i < 32; i++) {
-    ret += ((DIFF_POLL >> i) & 1);
-    ret += ((DIFF_COMP >> i) & 1);
-    ret += ((DIFF_DISPATCH >> i) & 1);
-  }
+    // ...and count the bits of difference between them. This is our return value.
+    for (uint8_t i = 0; i < 32; i++) {
+      ret += ((DIFF_POLL >> i) & 1);
+      ret += ((DIFF_COMP >> i) & 1);
+      ret += ((DIFF_DISPATCH >> i) & 1);
+    }
+  //}
   return ret;
 }
 

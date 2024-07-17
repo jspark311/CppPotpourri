@@ -29,22 +29,33 @@ This program runs tests against the RingBuffer template.
 
 /*
 * Tests:
-* int insert(T*, unsigned int)
 * int vacancy()
+* int isEmpty()
+* int insert(T*, unsigned int)
+* int peek(T*, unsigned int)
+* int cull(unsigned int)
+* int get(T*, unsigned int)
 */
-int test_RingBuffer_multiple_insert() {
+int test_RingBuffer_multiple_element_api() {
   int ret = -1;
   printf("Testing insert(T*, unsigned int)...\n");
-  const int TEST_SIZE = 29;
-  RingBuffer<uint32_t> a(TEST_SIZE);
-  printf("\tvacant() and capacity() should return the same number for an empty buffer... ");
+  const uint32_t TEST_SIZE   = (67 + (randomUInt32() % 53));
+  const uint32_t JUNK_SIZE   = (TEST_SIZE << 1);
+  const uint32_t PEEK_SIZE   = ((TEST_SIZE >> 1) - (randomUInt32() % 12));
+  const uint32_t GET_SIZE    = (TEST_SIZE - PEEK_SIZE);
+  RingBuffer<int16_t> a(TEST_SIZE);
+  int16_t junk_field[JUNK_SIZE];
+  int16_t result_field[TEST_SIZE];
+  for (uint32_t i = 0; i < JUNK_SIZE; i++) {  junk_field[i]   = (int16_t) randomUInt32();  }
+  for (uint32_t i = 0; i < TEST_SIZE; i++) {  result_field[i] = 0;  }
+
+  printf("\tvacancy() and capacity() should return the same number for an empty buffer... ");
   if (a.capacity() == a.vacancy()) {
     printf("Pass.\n\tinsert(T*, unsigned int) takes all elements offered... ");
     const int MORE_THAN_HALF        = (TEST_SIZE >> 1) + 1;
     const int EXPECTED_PARTIAL_TAKE = (TEST_SIZE - MORE_THAN_HALF);
     // Generate a field of junk twice the size that we need and try to
     //   bulk-add more than half of it...
-    uint32_t junk_field[TEST_SIZE << 1];
     int first_take_count = a.insert(junk_field, MORE_THAN_HALF);
     if (MORE_THAN_HALF == first_take_count) {
       // Try to overfill...
@@ -61,7 +72,62 @@ int test_RingBuffer_multiple_insert() {
               return -1;
             }
           }
-          ret = 0;
+          printf("Pass.\n\tThe ring is once again empty... ");
+          if (a.isEmpty()) {
+            printf("Pass.\n\tpeek(%u) fails on an empty ring by returning 0... ", PEEK_SIZE);
+            if (0 == a.peek(result_field, PEEK_SIZE)) {
+              printf("Pass.\n\tcull(%u) fails on an empty ring by returning 0... ", PEEK_SIZE);
+              if (0 == a.cull(PEEK_SIZE)) {
+                printf("Pass.\n\tget(%u) fails on an empty ring by returning 0... ", GET_SIZE);
+                if (0 == a.get(result_field, PEEK_SIZE)) {
+                  printf("Pass.\n\tRe-filling the ring in a single call for the next test... ");
+                  if (TEST_SIZE == a.insert(junk_field, TEST_SIZE)) {
+                    printf("Pass.\n\tpeek(0) fails on an full ring by returning -1... ");
+                    if (-1 == a.peek(result_field, 0)) {
+                      printf("Pass.\n\tcull(0) fails on an full ring by returning -1... ");
+                      if (-1 == a.cull(0)) {
+                        printf("Pass.\n\tget(0) fails on an full ring by returning -1... ");
+                        if (-1 == a.get(result_field, 0)) {
+                          // The rest of this test wil be trying to re-assemble the
+                          //   junk_field in result_field with only the multi-element API.
+                          printf("PASS.\n");
+                          ret = 0;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 == ret) {
+    ret = -1;
+    printf("\tpeek(%u) succeeds by returning its count argument... ", PEEK_SIZE);
+    if (PEEK_SIZE == a.peek(result_field, PEEK_SIZE)) {
+      printf("Pass.\n\tThe ring didn't change... ");
+      if (0 == a.vacancy()) {
+        printf("Pass.\n\tcull(%u) succeeds by returning its count argument... ", PEEK_SIZE);
+        if (PEEK_SIZE == a.cull(PEEK_SIZE)) {
+          printf("Pass.\n\tThe ring now has the expected amount of vacancy()... ");
+          if (PEEK_SIZE == a.vacancy()) {
+            printf("Pass.\n\tget(%u) succeeds by returning its count argument... ", GET_SIZE);
+            if (GET_SIZE == a.get(&result_field[PEEK_SIZE], GET_SIZE)) {
+              printf("Checking results...\n");
+              for (uint32_t i = 0; i < TEST_SIZE; i++) {
+                if (result_field[i] != junk_field[i]) {
+                  printf("Failed: result_field[%u] != junk_field[%u]: %u / %u.\n", i, i, result_field[i], junk_field[i]);
+                  return -1;
+                }
+              }
+              printf("PASS.\n");
+              ret = 0;
+            }
+          }
         }
       }
     }
@@ -72,6 +138,8 @@ int test_RingBuffer_multiple_insert() {
   }
   return ret;
 }
+
+
 
 
 /*
@@ -234,7 +302,7 @@ int ringbuffer_main() {
 
   if (0 == test_RingBuffer_general()) {
     if (0 == test_RingBuffer_contains()) {
-      if (0 == test_RingBuffer_multiple_insert()) {
+      if (0 == test_RingBuffer_multiple_element_api()) {
         ret = 0;
       }
     }

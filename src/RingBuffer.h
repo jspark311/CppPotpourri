@@ -55,8 +55,6 @@ template <class T> class RingBuffer {
     inline unsigned int capacity() {   return _CAPAC;              };
     inline unsigned int heap_use() {   return (_E_SIZE * _CAPAC);  };
     inline unsigned int vacancy() {    return (_CAPAC - _count);   };
-
-    /* Returns an integer representing how many items are buffered. */
     inline unsigned int count() {      return _count;              };
     inline bool         isEmpty() {    return (0 == _count);       };
 
@@ -88,7 +86,7 @@ template <class T> class RingBuffer {
 */
 template <class T> RingBuffer<T>::~RingBuffer() {
   _count = 0;
-  free(_pool);
+  if (nullptr != _pool) {  free(_pool);  }
   _pool = nullptr;
 }
 
@@ -132,14 +130,11 @@ template <class T> void RingBuffer<T>::clear() {
 * @returns the number of elements dropped.
 */
 template <class T> int RingBuffer<T>::cull(const unsigned int CULL_COUNT) {
-  int ret = 0;
-  if (allocated()) {
-    const uint32_t SAFE_CULL_COUNT = strict_min((uint32_t) CULL_COUNT, (uint32_t) _count);
-    _r = ((_r + SAFE_CULL_COUNT) % _CAPAC);
-    _count -= SAFE_CULL_COUNT;
-    ret = SAFE_CULL_COUNT;
-  }
-  return ret;
+  if (!allocated() || (0 == CULL_COUNT)) {  return -1;  }
+  const uint32_t SAFE_CULL_COUNT = strict_min((uint32_t) CULL_COUNT, (uint32_t) _count);
+  _r = ((_r + SAFE_CULL_COUNT) % _CAPAC);
+  _count -= SAFE_CULL_COUNT;
+  return SAFE_CULL_COUNT;
 }
 
 
@@ -270,7 +265,7 @@ template <class T> int RingBuffer<T>::get(T* buf, unsigned int len) {
   }
   const uint32_t XFER_LEN = strict_min((uint32_t) _count, (uint32_t) len);
   for (uint32_t i = 0; i < XFER_LEN; i++) {
-    *(buf + i) = get();
+    *(buf + i) = get();   // TODO: This could be made much faster.
   }
   return (int) XFER_LEN;
 }
@@ -289,7 +284,7 @@ template <class T> int RingBuffer<T>::peek(T* buf, unsigned int len) {
   }
   const uint32_t XFER_LEN = strict_min((uint32_t) _count, (uint32_t) len);
   for (uint32_t i = 0; i < XFER_LEN; i++) {
-    *(buf + i) = peek(i);
+    *(buf + i) = peek(i);   // TODO: This could be made much faster.
   }
   return (int) XFER_LEN;
 }

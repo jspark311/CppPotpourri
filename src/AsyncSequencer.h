@@ -4,15 +4,16 @@
 * @author    J. Ian Lindsay
 * @date      2023.02.17
 *
+* The most common way to deploy this class is as a checklist.
 */
-
-#include "FlagContainer.h"
-#include "StringBuilder.h"
-#include <functional>
 
 #ifndef __STATE_SEQUENCER_H_
 #define __STATE_SEQUENCER_H_
 
+#include <functional>
+#include "FlagContainer.h"
+
+class StringBuilder;
 
 /*
 * A type to keep a const list of named steps, their dependencies, and lambdas
@@ -70,10 +71,8 @@ class AsyncSequencer {
     FlagContainer32 _steps_complete;  // If set, the step has been done.
     FlagContainer32 _steps_passed;    // If set, the step passes.
 
-    void     _mark_step_for_rerun(const uint32_t MASK);
     void     _mark_step_dispatched(const uint32_t MASK);
     void     _mark_step_complete(const uint32_t MASK, const bool PASSED);
-    void     _reset_failed_steps(const bool INC_RUNNING = false);
     void     _check_dependencies();
     uint32_t _get_dependency_mask(const uint32_t, uint8_t limiter = 0);
     int8_t   _dispatch_steps(const uint32_t);

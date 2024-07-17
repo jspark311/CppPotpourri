@@ -58,10 +58,6 @@ This program tests AsyncSequencer.
   ASYNC_SEQ_TEST_FLAG_03)
 
 
-
-/*******************************************************************************
-* Now for lambdas and conditionals that form the logical basis of the sequence.
-*******************************************************************************/
 // We hand-manipulate some globals in order to test that the result of the poll
 //   and dispatch functions is being properly taken into account when evolving
 //   state within the sequencer.
@@ -80,6 +76,10 @@ int8_t async_09_p_count  = 0;
 int8_t async_13_d_count  = 0;
 int8_t async_13_p_count  = 0;
 
+
+/*******************************************************************************
+* Now for lambdas and conditionals that form the logical basis of the sequence.
+*******************************************************************************/
 
 const StepSequenceList ASYNC_SEQ_SELF_DIAGNOSTIC[] = {
   { .FLAG         = ASYNC_SEQ_TEST_FLAG_00,
@@ -138,7 +138,7 @@ const StepSequenceList ASYNC_SEQ_SELF_DIAGNOSTIC[] = {
   },
   { .FLAG         = ASYNC_SEQ_TEST_FLAG_09,
     .LABEL        = "FLAG_09",
-    .DEP_MASK     = (ASYNC_SEQ_TEST_FLAG_05),
+    .DEP_MASK     = (ASYNC_SEQ_TEST_FLAG_06 | ASYNC_SEQ_TEST_FLAG_00),
     .DISPATCH_FXN = []() { async_09_d_count++;  return async_09_dispatch;  },
     .POLL_FXN     = []() { async_09_p_count++;  return async_09_poll;  }
   },
@@ -174,7 +174,10 @@ const StepSequenceList ASYNC_SEQ_SELF_DIAGNOSTIC[] = {
   },
 };
 
-AsyncSequencer async_seq_unit_tests(ASYNC_SEQ_SELF_DIAGNOSTIC, (sizeof(ASYNC_SEQ_SELF_DIAGNOSTIC) / sizeof(ASYNC_SEQ_SELF_DIAGNOSTIC[0])));
+// And with that, we can declare an operational checklist.
+const uint32_t REAL_STEP_COUNT = (sizeof(ASYNC_SEQ_SELF_DIAGNOSTIC) / sizeof(ASYNC_SEQ_SELF_DIAGNOSTIC[0]));
+AsyncSequencer async_seq_unit_tests(ASYNC_SEQ_SELF_DIAGNOSTIC, REAL_STEP_COUNT);
+
 
 
 /*******************************************************************************
@@ -208,8 +211,11 @@ int async_seq_run_until_stagnant() {
 /* Reset the sequencer back to its reset state, and verify. */
 int async_seq_impose_initial_state() {
   int ret = -1;
+  printf("Testing resetSequencer() and initial state... ");
   async_seq_unit_tests.resetSequencer();
+  printf("\tThere should be no steps running... ");
   if (!async_seq_unit_tests.steps_running()) {
+    printf("Pass.\n\trequest_fulfilled() should return true at this point... ");
     ret--;
     if (async_seq_unit_tests.request_fulfilled()) {
       async_04_dispatch = 0;
@@ -224,15 +230,50 @@ int async_seq_impose_initial_state() {
       async_09_p_count  = 0;
       async_13_d_count  = 0;
       async_13_p_count  = 0;
+      printf("Pass.\n");
       ret = 0;
     }
-    else printf("request_fulfilled() should return true at this point.\n");
   }
-  else printf("There should be no steps running.\n");
 
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
   return ret;
 }
 
+
+/* Reset the sequencer back to its reset state, and verify. */
+int async_seq_impose_initial_state_via_reset_steps() {
+  int ret = -1;
+  printf("Testing resetSteps() and initial state... ");
+  async_seq_unit_tests.resetSteps(ASYNC_SEQ_TEST_ALL_FLAGS);
+  printf("\tThere should be no steps running... ");
+  if (!async_seq_unit_tests.steps_running()) {
+    printf("Pass.\n\trequest_fulfilled() should return true at this point... ");
+    ret--;
+    if (async_seq_unit_tests.request_fulfilled()) {
+      async_04_dispatch = 0;
+      async_04_poll     = 0;
+      async_09_dispatch = 0;
+      async_09_poll     = 0;
+      async_13_dispatch = 0;
+      async_13_poll     = 0;
+      async_04_d_count  = 0;
+      async_04_p_count  = 0;
+      async_09_d_count  = 0;
+      async_09_p_count  = 0;
+      async_13_d_count  = 0;
+      async_13_p_count  = 0;
+      printf("Pass.\n");
+      ret = 0;
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+  }
+  return ret;
+}
 
 
 /*******************************************************************************
@@ -287,7 +328,7 @@ int async_seq_test_simple_advancement() {
                               bool final_state_chk = async_seq_unit_tests.request_completed();
                               final_state_chk &= async_seq_unit_tests.request_fulfilled();
                               final_state_chk &= !async_seq_unit_tests.steps_running();
-                              if (basis_sound) {
+                              if (final_state_chk) {
                                 if (!async_seq_unit_tests.all_steps_have_passed(ASYNC_SEQ_TEST_FLAG_06)) {
                                   ret = 0;
                                 }
@@ -329,24 +370,66 @@ int async_seq_test_simple_advancement() {
 }
 
 
+/* This is substantially the same test as above, but with failures. */
 int async_seq_test_simple_failures() {
   int ret = -1;
   int ret_local = 0;
+  printf("Testing checklist failure handling... ");
+  printf("\tResetting checklist... ");
   if (0 == async_seq_impose_initial_state()) {
-    // FLAG_14 ultimately has all manipulated steps as dependencies. So if any
-    //   of these values is some value other than 1 (success), or 0 (defer), the
-    //   sequence will fail to complete.
+    printf("Pass.\n\tThe checklist fails... ");
     async_04_dispatch = 1;   // FLAG_04 will dispatch, but fail to poll.
     async_04_poll     = -1;
     async_09_dispatch = -1;  // FLAG_09 will fail to dispatch, but will poll successfully.
     async_09_poll     = 1;
-    async_13_dispatch = -1;  // FLAG_13 will fail to dispatch and poll.
+    async_13_dispatch = -1;  // FLAG_13 will fail to either dispatch or poll.
     async_13_poll     = -1;
+    // FLAG_14 ultimately has all manipulated steps as dependencies. So if any
+    //   of these values is some value other than 1 (success), or 0 (defer), the
+    //   sequence will fail to complete.
     async_seq_unit_tests.requestSteps(ASYNC_SEQ_TEST_FLAG_14);
-
-    ret = 0;
+    async_seq_run_until_stagnant();
+    const uint32_t FAILED_0 = async_seq_unit_tests.failed_steps(true);
+    if (0 != FAILED_0) {
+      printf("Pass.\n\tAll steps that should have failed did so... ");
+      const uint32_t FAIL_BOAT_0 = (ASYNC_SEQ_TEST_FLAG_04 | ASYNC_SEQ_TEST_FLAG_09 | ASYNC_SEQ_TEST_FLAG_13);
+      if (FAILED_0 == FAIL_BOAT_0) {
+        printf("Pass.\n\tSteps failed at the expected places... \n");
+        const bool PEDANTIC_FAIL_CHECK_04 = ((1 == async_04_d_count) & (1 == async_04_p_count));
+        const bool PEDANTIC_FAIL_CHECK_09 = ((1 == async_09_d_count) & (0 == async_09_p_count));
+        const bool PEDANTIC_FAIL_CHECK_13 = ((1 == async_13_d_count) & (0 == async_13_p_count));
+        printf("\t\tFLAG_04 passed DISPATCH, and therefore POLL'd... %s\n", (PEDANTIC_FAIL_CHECK_04 ? "Pass":"Fail"));
+        printf("\t\tFLAG_09 failed DISPATCH, and therefore did not POLL... %s\n", (PEDANTIC_FAIL_CHECK_09 ? "Pass":"Fail"));
+        printf("\t\tFLAG_13 failed DISPATCH, and therefore did not POLL... %s\n", (PEDANTIC_FAIL_CHECK_13 ? "Pass":"Fail"));
+        if (PEDANTIC_FAIL_CHECK_04 & PEDANTIC_FAIL_CHECK_09 & PEDANTIC_FAIL_CHECK_13) {
+          printf("Pass.\n\tResetting the failed steps marks them as having not been run... ");
+          async_seq_unit_tests.resetSteps(FAIL_BOAT_0);
+          bool pedantic_reset_check = !async_seq_unit_tests.all_steps_have_run(ASYNC_SEQ_TEST_FLAG_04);
+          pedantic_reset_check &= !async_seq_unit_tests.all_steps_have_run(ASYNC_SEQ_TEST_FLAG_09);
+          pedantic_reset_check &= !async_seq_unit_tests.all_steps_have_run(ASYNC_SEQ_TEST_FLAG_13);
+          if (pedantic_reset_check) {
+            printf("Pass.\n\tChecklist succeeds this time... ");
+            async_04_poll     = 1;  // FLAG_04 will now succeed.
+            async_09_dispatch = 1;  // FLAG_09 will now succeed.
+            async_13_dispatch = 1;  // FLAG_13 will now succeed.
+            async_13_poll     = 1;
+            async_seq_unit_tests.requestSteps(FAIL_BOAT_0);
+            async_seq_run_until_stagnant();
+            if (async_seq_unit_tests.request_fulfilled()) {
+              printf("PASS.\n");
+              ret = 0;
+            }
+          }
+        }
+      }
+    }
   }
-  else printf("Failed to impose the initial state prior to test.\n");
+
+  if (0 != ret) {
+    printf("Fail.\n");
+    async_seq_dump_to_printf();
+  }
+
   return ret;
 }
 
@@ -356,7 +439,7 @@ int async_seq_test_simple_failures() {
 int async_seq_test_full_execution() {
   int ret = -1;
   int ret_local = 0;
-  if (0 == async_seq_impose_initial_state()) {
+  if (0 == async_seq_impose_initial_state_via_reset_steps()) {
     async_04_dispatch = 1;
     async_04_poll     = 1;
     async_09_dispatch = 1;
@@ -395,6 +478,68 @@ int async_seq_test_full_execution() {
 }
 
 
+int async_seq_test_key_listing() {
+  int ret = -1;
+  const uint32_t STEP_COUNT = async_seq_unit_tests.stepCount();
+  StringBuilder tmp_sb;
+  printf("Testing stepList() and stepCount()... ");
+  printf("\tstepCount() returns (%u)... ", REAL_STEP_COUNT);
+  if (REAL_STEP_COUNT == STEP_COUNT) {
+    const uint32_t SL_COUNT = async_seq_unit_tests.stepList(&tmp_sb);
+    printf("Pass.\n\tstepList() should also return (%u)... ", REAL_STEP_COUNT);
+    if (REAL_STEP_COUNT == SL_COUNT) {
+      printf("Pass.\n\tThe StringBuilder written by stepList() should have a matching count()... ");
+      if (REAL_STEP_COUNT == tmp_sb.count()) {
+        printf("Pass.\n");
+        ret = 0;
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+    async_seq_dump_to_printf();
+  }
+  return ret;
+}
+
+
+
+int async_seq_test_explicit_set() {
+  int ret = -1;
+  const uint32_t SET_REQ      = randomUInt32();
+  const uint32_t SET_RUNABLE  = randomUInt32();
+  const uint32_t SET_RUNNING  = randomUInt32();
+  const uint32_t SET_COMPLETE = randomUInt32();
+  const uint32_t SET_PASSED   = randomUInt32();
+  uint32_t get_req      = 0;
+  uint32_t get_runable  = 0;
+  uint32_t get_running  = 0;
+  uint32_t get_complete = 0;
+  uint32_t get_passed   = 0;
+
+  printf("Testing setState() and getState()... ");
+  printf("\tgetState() returns all zeroes immediately after reset... ");
+  async_seq_unit_tests.resetSequencer();
+  async_seq_unit_tests.getState(&get_req, &get_runable, &get_running, &get_complete, &get_passed);
+  if ((0 == get_req) & (0 == get_runable) & (0 == get_running) & (0 == get_complete) & (0 == get_passed)) {
+    printf("Pass.\n\tsetState(%u, %u, %u, %u, %u) imparts the proper values... ", get_req, get_runable, get_running, get_complete, get_passed);
+    async_seq_unit_tests.setState(SET_REQ, SET_RUNABLE, SET_RUNNING, SET_COMPLETE, SET_PASSED);
+    async_seq_unit_tests.getState(&get_req, &get_runable, &get_running, &get_complete, &get_passed);
+    if ((SET_REQ == get_req) & (SET_RUNABLE == get_runable) & (SET_RUNNING == get_running) & (SET_COMPLETE == get_complete) & (SET_PASSED == get_passed)) {
+      printf("Pass.\n");
+      ret = 0;
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail.\n");
+    async_seq_dump_to_printf();
+  }
+  return ret;
+}
+
+
 int async_seq_test_abuse() {
   int ret = -1;
   ret = 0; // TODO: Test failures induced by programmer mistakes.
@@ -404,7 +549,8 @@ int async_seq_test_abuse() {
 
 
 void print_types_async_sequencer() {
-  printf("\tAsyncSequencer        %u\t%u\n", sizeof(AsyncSequencer),  alignof(AsyncSequencer));
+  printf("\tAsyncSequencer        %u\t%u\n", sizeof(AsyncSequencer),    alignof(AsyncSequencer));
+  printf("\tStepSequenceList      %u\t%u\n", sizeof(StepSequenceList),  alignof(StepSequenceList));
 }
 
 
@@ -420,8 +566,12 @@ int async_seq_test_main() {
     if (0 == async_seq_test_simple_advancement()) {
       if (0 == async_seq_test_simple_failures()) {
         if (0 == async_seq_test_full_execution()) {
-          if (0 == async_seq_test_abuse()) {
-            ret = 0;
+          if (0 == async_seq_test_key_listing()) {
+            if (0 == async_seq_test_explicit_set()) {
+              if (0 == async_seq_test_abuse()) {
+                ret = 0;
+              }
+            }
           }
         }
       }
