@@ -450,7 +450,7 @@ int8_t C3PLogger::print(uint8_t severity, const char* tag, StringBuilder* msg) {
       if (_tag_ident < LOG_TAG_MAX_LEN) {
         _tag_ident = strict_min(_tag_ident, strict_min((uint8_t) LOG_TAG_MAX_LEN, TAG_LEN));
       }
-      const uint MAX_FMT_STR_SZ = 12;
+      const uint32_t MAX_FMT_STR_SZ = 12;
       char ufmt_str[MAX_FMT_STR_SZ];
       memset(ufmt_str, 0, MAX_FMT_STR_SZ);
       sprintf(ufmt_str, "%%%ds ", _tag_ident);

@@ -98,7 +98,7 @@ int8_t DataRecord::save(char* name) {
         uint8_t rec_desc[DESCRIPTOR_SIZE];
         memset(rec_desc, 0, DESCRIPTOR_SIZE);
 
-        if (nullptr != rec_desc) {
+        if (true) { // TODO: holdover from older API: if (nullptr != rec_desc) {
           ret--;
           StorageBlock* first_blk = _blocks.get(0);
           uint32_t _this_addr     = first_blk->this_offset;

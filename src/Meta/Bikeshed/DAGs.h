@@ -50,7 +50,7 @@ template <class T> class C3PnTree {
     C3PnTree(T d) : data(d) {};
     ~C3PnTree() {
       if (branches) {
-        for (uint i = 0; i < _weight_allocated; i++) {
+        for (uint32_t i = 0; i < _weight_allocated; i++) {
           if (nullptr != branches[i]) {
             _weight_occupied--;
             delete branches[i];

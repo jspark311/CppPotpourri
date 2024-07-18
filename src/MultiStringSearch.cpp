@@ -191,7 +191,7 @@ int MultiStringSearch::continueSearch() {
       // For any searches still running, find the next occurance.
       if (_sdef_pool[i].enabled) {
         const int REMAINING_SEARCH_LEN = (INPUT_LEN - _sdef_pool[i].offset_start);
-        const int NEEDLE_COMPARE_LEN   = strict_min(REMAINING_SEARCH_LEN, _sdef_pool[i].SEARCH_STR_LEN);
+        const int NEEDLE_COMPARE_LEN   = strict_min((int32_t) REMAINING_SEARCH_LEN, (int32_t) _sdef_pool[i].SEARCH_STR_LEN);
         locate_results[i] = _src->locate(_sdef_pool[i].SEARCH_STR, NEEDLE_COMPARE_LEN, _sdef_pool[i].offset_start);
         if (-1 < locate_results[i]) {
           // There was a match on a needle. Was it complete?
@@ -210,7 +210,7 @@ int MultiStringSearch::continueSearch() {
           else if (longest_match == locate_results[i]) {      // If it is tied for longest, we
             longest_match_is_partial |= !WAS_COMPLETE_MATCH;  //   may be done with the search.
           }
-          longest_match = strict_max(longest_match, locate_results[i]);
+          longest_match = strict_max((int32_t) longest_match, (int32_t) locate_results[i]);
           matches_this_run++;
         }
       }
@@ -307,7 +307,7 @@ int MultiStringSearch::resolvedLength() {
       if (_sdef_pool[i].searchRunning()) {
         // Adjust downward to account for needles that are still unresolved.
         const int TEMP_OFFSET = _sdef_pool[i].offset_start;
-        downward_revision = (0 == downward_revision) ? TEMP_OFFSET : strict_min(downward_revision, TEMP_OFFSET);
+        downward_revision = (0 == downward_revision) ? TEMP_OFFSET : strict_min((int32_t) downward_revision, (int32_t) TEMP_OFFSET);
       }
     }
     // Rearrange the term to better suit our naming and preferred algebra...
@@ -321,7 +321,7 @@ int MultiStringSearch::resolvedLength() {
 int MultiStringSearch::minNeedleLength() {
   int ret = (_defs_added > 0) ? _sdef_pool[0].SEARCH_STR_LEN : 0;
   for (uint8_t i = 1; i < _defs_added; i++) {
-    ret = strict_min(ret, _sdef_pool[i].SEARCH_STR_LEN);
+    ret = strict_min((int32_t) ret, (int32_t) _sdef_pool[i].SEARCH_STR_LEN);
   }
   return ret;
 }
@@ -330,7 +330,7 @@ int MultiStringSearch::minNeedleLength() {
 int MultiStringSearch::maxNeedleLength() {
   int ret = 0;
   for (uint8_t i = 0; i < _defs_added; i++) {
-    ret = strict_max(ret, _sdef_pool[i].SEARCH_STR_LEN);
+    ret = strict_max((int32_t) ret, (int32_t) _sdef_pool[i].SEARCH_STR_LEN);
   }
   return ret;
 }

@@ -48,6 +48,7 @@ Thank you, Bill and Michael!
 #include <inttypes.h>
 #include <stdint.h>
 #include <math.h>
+#include <type_traits>
 
 
 /*
@@ -70,19 +71,16 @@ enum class GnomonType : uint8_t {
   LH_NEG_Z       = 0b00001111    //
 };
 
-
-template <class T> class Vector3 {
+//requires std::is_arithmetic<T>
+template <typename T> class Vector3 {
   public:
     T x, y, z;
 
-    // trivial ctor
-    Vector3<T>(): x(0),y(0),z(0) {}
+    // setting ctor
+    Vector3(const T x0 = T(0), const T y0 = T(0), const T z0 = T(0)): x(x0), y(y0), z(z0) {};
 
     // setting ctor
-    Vector3<T>(const T x0, const T y0, const T z0): x(x0), y(y0), z(z0) {}
-
-    // setting ctor
-    Vector3<T>(const Vector3<T>* existing): x(existing->x), y(existing->y), z(existing->z) {}
+    Vector3(const Vector3<T>* existing): x(existing->x), y(existing->y), z(existing->z) {};
 
     // function call operator
     void operator ()(const T x0, const T y0, const T z0)

@@ -58,7 +58,7 @@ uint32_t randomUInt32() {
 }
 
 int8_t random_fill(uint8_t* buf, uint32_t len) {
-  uint i = 0;
+  uint32_t i = 0;
   while (i < len) {
     *(buf + i++) = ((uint8_t) rand());
   }
