@@ -26,15 +26,7 @@ TODO: This class (and its children) are treading an uncomfortable line between
 #ifndef __SENSOR_FILTER_H__
 #define __SENSOR_FILTER_H__
 
-#include <inttypes.h>
-#include <stdint.h>
-
-#include "StringBuilder.h"
-#include "EnumeratedTypeCodes.h"
-#include "Vector3.h"
-
-#include "Meta/Rationalizer.h"
-#include "C3PValue/KeyValuePair.h"
+#include "TimeSeries.h"
 
 
 enum class FilteringStrategy : uint8_t {

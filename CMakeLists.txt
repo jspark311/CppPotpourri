@@ -32,6 +32,7 @@ idf_component_register(
   SRC_DIRS "${src_dirs}"
   INCLUDE_DIRS "${includes}"
   PRIV_INCLUDE_DIRS "src"
+  REQUIRES ManuvrPlatform
 )
 
 target_compile_options(${COMPONENT_LIB} PUBLIC -Wno-ignored-qualifiers -Wno-implicit-fallthrough)
