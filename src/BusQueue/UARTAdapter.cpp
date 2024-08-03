@@ -7,6 +7,25 @@ Date:   2020.06.10
 #include "../AbstractPlatform.h"
 #include "UARTAdapter.h"
 
+/*******************************************************************************
+* Statics
+*******************************************************************************/
+
+const char* const UARTAdapter::flowCtrlStr(const UARTFlowControl FC) {
+  switch (FC) {
+    case UARTFlowControl::NONE:     return "NONE";
+    case UARTFlowControl::RTS:      return "RTS";
+    case UARTFlowControl::CTS:      return "CTS";
+    case UARTFlowControl::RTS_CTS:  return "RTS_CTS";
+    default:                        return "<UNKNOWN>";
+  }
+}
+
+
+/*******************************************************************************
+* Class boilerplate. All UARTAdapters on any given platform will have at least
+*   this much in common.
+*******************************************************************************/
 
 UARTAdapter::UARTAdapter(
   const uint8_t adapter,
@@ -112,13 +131,6 @@ void UARTAdapter::printDebug(StringBuilder* output) {
     case UARTParityBit::FORCE_1:    str_par = (char*) "FORCE_1";  break;
     default: break;
   }
-  switch (_opts.flow_control) {
-    case UARTFlowControl::NONE:     str_flw = (char*) "NONE";     break;
-    case UARTFlowControl::RTS:      str_flw = (char*) "RTS";      break;
-    case UARTFlowControl::CTS:      str_flw = (char*) "CTS";      break;
-    case UARTFlowControl::RTS_CTS:  str_flw = (char*) "RTS_CTS";  break;
-    default: break;
-  }
   switch (_opts.stop_bits) {
     case UARTStopBit::STOP_1:       str_stp = (char*) "1";        break;
     case UARTStopBit::STOP_1_5:     str_stp = (char*) "1.5";      break;
@@ -137,7 +149,7 @@ void UARTAdapter::printDebug(StringBuilder* output) {
   output->concatf("\tStart bits:\t%u\n",     _opts.start_bits);
   output->concatf("\tStop bits:\t%s\n",      str_stp);
   output->concatf("\tParity:\t\t%s\n",       str_par);
-  output->concatf("\tFlow CTRL:\t%s\n\n",    str_flw);
+  output->concatf("\tFlow CTRL:\t%s\n\n",    flowCtrlStr(_opts.flow_control));
 
   if (initialized()) {
     if (rxCapable()) {

@@ -117,6 +117,9 @@ class UARTAdapter : public BufferAccepter, public C3PPollable {
     inline const uint8_t rtsPin() {   return _RTS_PIN;   };
 
 
+    static const char* const flowCtrlStr(const UARTFlowControl);
+
+
   protected:
     const uint8_t   ADAPTER_NUM;              // The platform-relatable index of the adapter.
     const uint8_t   _TXD_PIN;                 // Pin assignment for TXD.

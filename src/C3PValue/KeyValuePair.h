@@ -266,11 +266,9 @@ class KeyValuePair : public C3PValue {
       void on_null();
       void on_undefined();
       void on_error(const char* error);
-
-      void on_extra_integer(unsigned long long value, int sign);
-      void on_extra_integer(long long value, int sign);
-      void on_extra_tag(unsigned long long tag);
-      void on_extra_special(unsigned long long tag);
+      void on_extra_integer(uint64_t value, int sign);
+      void on_extra_tag(uint64_t tag);
+      void on_extra_special(uint64_t tag);
 
     private:
       KeyValuePair** built               = nullptr;

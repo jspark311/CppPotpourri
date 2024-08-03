@@ -524,10 +524,9 @@ void CBORArgListener::on_map(int size) {
   }
 };
 
-void CBORArgListener::on_extra_integer(unsigned long long value, int sign) {}
-void CBORArgListener::on_extra_integer(long long value, int sign) {}
-void CBORArgListener::on_extra_tag(unsigned long long tag) {}
-void CBORArgListener::on_extra_special(unsigned long long tag) {}
+void CBORArgListener::on_extra_integer(uint64_t value, int sign) {}
+void CBORArgListener::on_extra_tag(uint64_t tag) {}
+void CBORArgListener::on_extra_special(uint64_t tag) {}
 
 
 KeyValuePair* CBORArgListener::_inflate_c3p_type(uint8_t* data, int size, const TCode TC) {

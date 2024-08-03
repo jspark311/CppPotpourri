@@ -91,9 +91,9 @@ namespace cbor {
       virtual void on_null()                         =0;
       virtual void on_undefined()                    =0;
       virtual void on_error(const char *error)       =0;
-      virtual void on_extra_integer(uint64_t value, int sign) {}
-      virtual void on_extra_tag(uint64_t tag) {}
-      virtual void on_extra_special(uint64_t tag) {}
+      virtual void on_extra_integer(uint64_t value, int sign) =0;
+      virtual void on_extra_tag(uint64_t tag)        =0;
+      virtual void on_extra_special(uint64_t tag)    =0;
   };
 
 

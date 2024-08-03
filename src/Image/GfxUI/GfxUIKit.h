@@ -16,6 +16,8 @@ These classes are built on top of the GfxUI classes, and implement higher-level
 #ifndef __C3P_GFXUI_KIT_H
 #define __C3P_GFXUI_KIT_H
 
+class UARTAdapter;
+
 #include "../Image.h"
 #include "../ImageUtils.h"
 #include "../../AsyncSequencer.h"
@@ -25,7 +27,6 @@ These classes are built on top of the GfxUI classes, and implement higher-level
 #include "../../Storage/RecordTypes/ConfRecord.h"
 #include "../../Pipes/TripleAxisPipe/TripleAxisPipe.h"
 #include "../../TimerTools/C3PScheduler.h"
-
 
 /*******************************************************************************
 * Non-interacting utility shims. These are invisibile classes used to
@@ -527,6 +528,27 @@ class GfxUIDataRecord : public GfxUITabbedContentPane {
 
   private:
     SimpleDataRecord* _record;
+};
+
+
+
+/*******************************************************************************
+* A graphical representation of various hardware buses
+*******************************************************************************/
+
+/* A GUI object to represent a UART. */
+class GfxUIUART : public GfxUIElement {
+  public:
+    GfxUIUART(UARTAdapter*, const GfxUILayout, const GfxUIStyle, uint32_t f = 0);
+    ~GfxUIUART() {};
+
+    /* Implementation of GfxUIElement. */
+    virtual int  _render(UIGfxWrapper* ui_gfx);
+    virtual bool _notify(const GfxUIEvent GFX_EVNT, PixUInt x, PixUInt y, PriorityQueue<GfxUIElement*>* change_log);
+
+
+  private:
+    UARTAdapter*  _uart;
 };
 
 
