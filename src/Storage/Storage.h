@@ -257,7 +257,7 @@ class DataRecord {
     int8_t buffer_offer_from_storage(uint32_t* addr, uint8_t* buf, uint32_t* len);     // Storage requesting data from a write request.
     inline LinkedList<StorageBlock*>* getBlockList() {  return &_blocks;  };
 
-    static const char* recordTypeStr(const StorageRecordType);
+    static const char* const recordTypeStr(const StorageRecordType);
 
 
   protected:

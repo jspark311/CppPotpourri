@@ -25,7 +25,7 @@ This is the basal implementation of a DataRecord to be used with Storage.
 #include "../cbor-cpp/cbor.h"
 
 
-const char* DataRecord::recordTypeStr(const StorageRecordType e) {
+const char* const DataRecord::recordTypeStr(const StorageRecordType e) {
   switch (e) {
     case StorageRecordType::UNINIT:           return "UNINIT";
     case StorageRecordType::ROOT:             return "ROOT";

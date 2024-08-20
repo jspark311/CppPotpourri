@@ -308,3 +308,61 @@ int8_t ConfRecord::deserialize(StringBuilder* raw, TCode format) {
   }
   return ret;  // TODO: Return contract spec'd where?
 }
+
+
+
+int ConfRecord::console_handler(StringBuilder* text_return, StringBuilder* args) {
+  int   ret   = -1;
+  char* key   = args->position_trimmed(0);
+  char* val   = args->position_trimmed(1);
+  text_return->concat("\n");
+
+  if (0 == StringBuilder::strcasecmp(key, "pack")) {
+    // Tool for serializing conf into buffers. Should support CBOR and BINARY,
+    //   for interchange and local storage, respectively.
+    StringBuilder ser_out;
+    TCode fmt = TCode::BINARY;
+    int8_t ret = 0;
+    if (3 == args->count()) {
+      if (0 == StringBuilder::strcasecmp(val, "cbor")) {
+        fmt = TCode::CBOR;
+      }
+      else if (0 == StringBuilder::strcasecmp(val, "bin")) {
+        fmt = TCode::BINARY;
+      }
+      else {
+        ret = -1;
+      }
+      if (0 == ret) {
+        ret = serialize(&ser_out, fmt);
+        text_return->concatf("Conf serializer returned %d.\n", ret);
+      }
+    }
+
+    if (0 < ser_out.length()) {
+      text_return->concatf("\n---< \"%s\" (%s) >-------------------------------\n", _record_name(), DataRecord::recordTypeStr(recordType()));
+      StringBuilder::printBuffer(text_return, ser_out.string(), ser_out.length(), "\t");
+    }
+    else {
+      text_return->concat("Usage: pack [cbor|bin]\n");
+    }
+  }
+  else if (0 == StringBuilder::strcasecmp(key, "save")) {
+    //text_return->concatf("Saving %s returned %d.\n", _record_name(), save());
+  }
+  else if (0 == StringBuilder::strcasecmp(key, "load")) {
+    if (1 == args->count()) {
+      //text_return->concatf("Loading %s returned %d.\n", _record_name(), load());
+    }
+  }
+  else if (1 < args->count()) {
+    text_return->concatf(
+      "Setting key %s to %s returns %d.\n",
+      key, val, setConf((const char*) key, val)
+    );
+  }
+  else {
+    printConfRecord(text_return, (1 == args->count()) ? key : nullptr);
+  }
+  return ret;
+}

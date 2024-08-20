@@ -98,6 +98,9 @@ class ConfRecord : public SimpleDataRecord {
     bool allocated(bool force_allocate = false);
     void printConfRecord(StringBuilder*, const char* KEY = nullptr);
 
+    /* If a console is in use, provide a breakout. */
+    int console_handler(StringBuilder* log, StringBuilder* args);
+
 
   protected:
     // This member should never be exposed publicly, or the validation layer

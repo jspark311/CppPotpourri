@@ -142,7 +142,7 @@ enum class TCode : uint8_t {
   GEOLOCATION   = 0xE5,    // A pointer to a location class
   STOPWATCH     = 0xE6,    // A pointer to a StopWatch class
   TRACE         = 0xE7,    // A pointer to a C3PTrace.
-  //CHECKLIST     = 0xE8,    // A pointer to an AsyncSequencer.
+  CHECKLIST     = 0xE8,    // A pointer to an AsyncSequencer.
   TIMESERIES    = 0xE9,    // A pointer to a unit-controlled TimeSeries.
 
   RESERVED      = 0xFE,    // Reserved for custom extension.
