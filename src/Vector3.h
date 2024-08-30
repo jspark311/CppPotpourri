@@ -54,6 +54,10 @@ Thank you, Bill and Michael!
 /*
 * If used in the context of gravity, means: "Which axis is up?"
 * If used in the context of magnetism, means: "Which axis is North?"
+*
+* TODO: This enum is trying to do two things at once, and was a shunt for
+*   non-knowledge while something was being built. It should be reduced to a
+*   LH/RH flag in classes that make this distinction.
 */
 enum class GnomonType : uint8_t {
   UNDEFINED      = 0b00000000,   //

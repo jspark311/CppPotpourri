@@ -90,7 +90,7 @@ class TripleAxisPipe {
     *        -1 on non-terminal rejection of vector (try again later).
     *        -2 on terminal rejection of vector.
     */
-    virtual int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr) =0;
+    virtual int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0) =0;
     // TODO: Make alternate calling conventions to support double[3]. Might need flag support.
     virtual void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity) =0;
 
@@ -102,7 +102,8 @@ class TripleAxisPipe {
 * Some TAPs will want flag space and some inline accessors to support common
 *   behaviors.
 */
-#define TRIPAX_FLAG_RELAY_MASK              0x00000FFF  // Relay map. See notes.
+#define TRIPAX_FLAG_ACCEPT_MASK             0x00000FFF  // Relay map. See notes.
+#define TRIPAX_FLAG_RELAY_MASK              0x00FFF000  // Accept map. See notes.
 #define TRIPAX_FLAG_ASYNC_BREAK_UNTIL_POLL  0x40000000  // Don't send efferent data synchronously.
 
 class TripleAxisPipeWithFlags : public TripleAxisPipe {
@@ -139,8 +140,7 @@ class TripleAxisPipeWithFlags : public TripleAxisPipe {
 */
 class TripleAxisFork : public TripleAxisPipe {
   public:
-    TripleAxisFork() {};
-    TripleAxisFork(TripleAxisPipe* l, TripleAxisPipe* r) : _LEFT(l), _RIGHT(r) {};
+    TripleAxisFork(TripleAxisPipe* l = nullptr, TripleAxisPipe* r = nullptr) : _LEFT(l), _RIGHT(r) {};
     ~TripleAxisFork() {};
 
     inline void setLeft(TripleAxisPipe* l) {   _LEFT  = l;  };
@@ -151,13 +151,13 @@ class TripleAxisFork : public TripleAxisPipe {
     *
     * @return 0 on sucess on both sides of the fork, -1 on one failure, or -2 on two failures.
     */
-    int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr);
+    int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
     void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
 
   private:
-    TripleAxisPipe* _LEFT  = nullptr;
-    TripleAxisPipe* _RIGHT = nullptr;
+    TripleAxisPipe* _LEFT;
+    TripleAxisPipe* _RIGHT;
 };
 
 
@@ -191,7 +191,7 @@ class TripleAxisConvention : public TripleAxisPipe {
     *
     * @return -2 on null NXT, or return code from downstream pushVector() fxn.
     */
-    int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr);
+    int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
     void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
 
@@ -239,7 +239,7 @@ class TripleAxisTerminus : public TripleAxisPipe {
     *
     * @return 0 on success, or -1 on sense mis-match.
     */
-    int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr);
+    int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
     void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
     /**
@@ -318,7 +318,7 @@ class TripleAxisSingleFilter : public TripleAxisPipe, public SensorFilter3<float
     *
     * @return -2 on push failure, -4 never, -3 on memory error, -1 on null NXT, or return code from downstream pushVector() fxn.
     */
-    int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr);
+    int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
     void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
 
@@ -360,7 +360,7 @@ class TripleAxisOrientation : public TripleAxisPipe {
     TripleAxisOrientation(TripleAxisPipe* nxt) : _NXT(nxt) {};
     ~TripleAxisOrientation() {};
 
-    int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
+    int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
     void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
     // Accessors for calibrating this 3AP node.

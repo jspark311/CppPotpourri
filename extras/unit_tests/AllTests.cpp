@@ -160,6 +160,12 @@ double generate_random_double() {
   return ((double) generate_random_uint64() / (double) generate_random_uint64());
 }
 
+Vector3<float> generate_random_vect3f() {
+  Vector3<float> ret(generate_random_float(), generate_random_float(), generate_random_float());
+  return ret;
+}
+
+
 
 void dump_c3pvalue(C3PValue* a) {
   if (a) {

@@ -51,12 +51,12 @@ const char* TripleAxisPipe::spatialSenseStr(SpatialSense s) {
 *
 * @return 0 on sucess on both sides of the fork, -1 on one failure, or -2 on two failures.
 */
-FAST_FUNC int8_t TripleAxisFork::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error) {
+FAST_FUNC int8_t TripleAxisFork::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error, uint32_t seq_num) {
   int8_t ret = -2;
-  if ((nullptr != _LEFT) && (0 == _LEFT->pushVector(s, data, error))) {
+  if ((nullptr != _LEFT) && (0 == _LEFT->pushVector(s, data, error, seq_num))) {
     ret++;
   }
-  if ((nullptr != _RIGHT) && (0 == _RIGHT->pushVector(s, data, error))) {
+  if ((nullptr != _RIGHT) && (0 == _RIGHT->pushVector(s, data, error, seq_num))) {
     ret++;
   }
   return ret;
@@ -66,14 +66,16 @@ FAST_FUNC int8_t TripleAxisFork::pushVector(const SpatialSense s, Vector3f* data
 void TripleAxisFork::printPipe(StringBuilder* output, uint8_t stage, uint8_t verbosity) {
   StringBuilder indent;
   for (uint8_t i = 0; i < stage; i++) {    indent.concat("    ");    }
-  output->concatf("%s+-< 3AxisPipe: Fork >-------------------\n", (char*) indent.string());
-  indent.clear();
+  indent.concat("+-< 3AxisPipe: Fork >-------------------\n");
+
   if ((verbosity > 0) && (nullptr != _LEFT)) {
-    _LEFT->printPipe(output, stage+1, verbosity);
+    _LEFT->printPipe(&indent, stage+1, verbosity);
   }
   if ((verbosity > 0) && (nullptr != _RIGHT)) {
-    _RIGHT->printPipe(output, stage+1, verbosity);
+    _RIGHT->printPipe(&indent, stage+1, verbosity);
   }
+  indent.string();
+  output->concatHandoff(&indent);
 }
 
 
@@ -88,7 +90,7 @@ void TripleAxisFork::printPipe(StringBuilder* output, uint8_t stage, uint8_t ver
 *
 * @return -2 on null NXT, or return code from downstream pushVector() fxn.
 */
-FAST_FUNC int8_t TripleAxisConvention::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error) {
+FAST_FUNC int8_t TripleAxisConvention::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error, uint32_t seq_num) {
   Vector3f stacked_dat;
   Vector3f stacked_err;
   float inversion = 1.0;
@@ -128,7 +130,7 @@ FAST_FUNC int8_t TripleAxisConvention::pushVector(const SpatialSense s, Vector3f
         }
         break;
     }
-    if (0 == _NXT->pushVector(s, &stacked_dat, (nullptr != error) ? &stacked_err : nullptr)) {
+    if (0 == _NXT->pushVector(s, &stacked_dat, (nullptr != error) ? &stacked_err : nullptr, seq_num)) {
       ret = 0;
     }
   }
@@ -139,8 +141,8 @@ FAST_FUNC int8_t TripleAxisConvention::pushVector(const SpatialSense s, Vector3f
 void TripleAxisConvention::printPipe(StringBuilder* output, uint8_t stage, uint8_t verbosity) {
   StringBuilder indent;
   for (uint8_t i = 0; i < stage; i++) {    indent.concat("    ");    }
-  output->concatf("%s+-< 3AxisPipe: Convention >-------------\n", (char*) indent.string());
-  indent.clear();
+  output->concat(&indent);
+  output->concat("+-< 3AxisPipe: Convention >-------------\n");
   if ((verbosity > 0) && (nullptr != _NXT)) {
     _NXT->printPipe(output, stage+1, verbosity);
   }
@@ -180,7 +182,7 @@ int8_t TripleAxisTerminus::getDataWithErr(Vector3f* d, Vector3f* e, uint32_t* c)
 *
 * @return 0 on refresh, or -1 on sense mis-match.
 */
-FAST_FUNC int8_t TripleAxisTerminus::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error) {
+FAST_FUNC int8_t TripleAxisTerminus::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error, uint32_t seq_num) {
   int8_t ret = -1;
   if (_SENSE == s) {
     _last_update = millis();
@@ -191,7 +193,7 @@ FAST_FUNC int8_t TripleAxisTerminus::pushVector(const SpatialSense s, Vector3f* 
       _has_error = true;
     }
     if (nullptr != _CALLBACK) {
-      _fresh_data = (0 != _CALLBACK(_SENSE, &_DATA, (_has_error ? &_ERR : nullptr), _update_count));
+      _fresh_data = (0 != _CALLBACK(_SENSE, &_DATA, (_has_error ? &_ERR : nullptr), seq_num));
     }
     else {
       _fresh_data = true;
@@ -217,15 +219,22 @@ void TripleAxisTerminus::reset() {
 void TripleAxisTerminus::printPipe(StringBuilder* output, uint8_t stage, uint8_t verbosity) {
   StringBuilder indent;
   for (uint8_t i = 0; i < stage; i++) {    indent.concat("    ");    }
-  output->concatf("%s+-< 3AxisPipe: Terminus >---------------\n", (char*) indent.string());
-  output->concatf("%s| Has callback:   %c\n", (char*) indent.string(), (nullptr != _CALLBACK)?'y':'n');
-  output->concatf("%s| Seq number:     %u\n", (char*) indent.string(), _update_count);
-  output->concatf("%s| SpatialSense:   %s\n", (char*) indent.string(), TripleAxisPipe::spatialSenseStr(_SENSE));
-  output->concatf("%s| Value %s:    (%.3f, %.3f, %.3f)\n", (char*) indent.string(), (_fresh_data?"FRESH":"STALE"), (double) _DATA.x, (double) _DATA.y, (double) _DATA.z);
+  indent.string();
+  output->concat(&indent);
+  output->concat("+-< 3AxisPipe: Terminus >---------------\n");
+  output->concat(&indent);
+  output->concatf("| Has callback:   %c\n", (nullptr != _CALLBACK)?'y':'n');
+  output->concat(&indent);
+  output->concatf("| Seq number:     %u\n", _update_count);
+  output->concat(&indent);
+  output->concatf("| SpatialSense:   %s\n", TripleAxisPipe::spatialSenseStr(_SENSE));
+  output->concat(&indent);
+  output->concatf("| Value %s:    (%.3f, %.3f, %.3f)\n", (_fresh_data?"FRESH":"STALE"), (double) _DATA.x, (double) _DATA.y, (double) _DATA.z);
+  output->concat(&indent);
   if (_has_error) {
-    output->concatf("%s| Error:          (%.3f, %.3f, %.3f)\n", (char*) indent.string(), (double) _ERR.x, (double) _ERR.y, (double) _ERR.z);
+    output->concatf("| Error:          (%.3f, %.3f, %.3f)\n", (double) _ERR.x, (double) _ERR.y, (double) _ERR.z);
   }
-  output->concatf("%s| Last update:    %u\n", (char*) indent.string(), _last_update);
+  output->concatf("| Last update:    %u\n", _last_update);
 }
 
 
@@ -261,7 +270,7 @@ int8_t TripleAxisSingleFilter::getDataWithErr(Vector3f* d, Vector3f* e) {
 *
 * @return 0 on refresh, or -1 on sense mis-match, -3 on uninitialized.
 */
-FAST_FUNC int8_t TripleAxisSingleFilter::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error) {
+FAST_FUNC int8_t TripleAxisSingleFilter::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error, uint32_t seq_num) {
   int8_t ret = -3;
 
   if (!initialized()) {
@@ -306,7 +315,7 @@ FAST_FUNC int8_t TripleAxisSingleFilter::pushVector(const SpatialSense s, Vector
           if (nullptr != _NXT) {
             // If the vector was pushed downstream, we consider it noted. If it
             //   was rejected, we leave the class marked dirty.
-            _filter_dirty = (0 > _NXT->pushVector(s, value(), &_ERR));
+            _filter_dirty = (0 > _NXT->pushVector(s, value(), &_ERR, seq_num));
           }
           break;
         default:   // Catch-all error case. Should never happen with the earlier init().
@@ -316,7 +325,7 @@ FAST_FUNC int8_t TripleAxisSingleFilter::pushVector(const SpatialSense s, Vector
     }
     else {
       // We blindly relay vectors of SpatialSense's we aren't configured for.
-      if (0 == _NXT->pushVector(s, data, error)) {
+      if (0 == _NXT->pushVector(s, data, error, seq_num)) {
         ret = -5;
       }
     }
@@ -329,14 +338,19 @@ void TripleAxisSingleFilter::printPipe(StringBuilder* output, uint8_t stage, uin
   bool was_dirty = dirty();
   StringBuilder indent;
   for (uint8_t i = 0; i < stage; i++) {    indent.concat("    ");    }
-  output->concatf("%s+-< 3AxisPipe: SingleFilter >-----------\n", (char*) indent.string());
-  output->concatf("%s| SpatialSense:   %s\n", (char*) indent.string(), TripleAxisPipe::spatialSenseStr(_SENSE));
+  indent.string();
+  output->concat(&indent);
+  output->concat("+-< 3AxisPipe: SingleFilter >-----------\n");
+  output->concat(&indent);
+  output->concatf("| SpatialSense:   %s\n", TripleAxisPipe::spatialSenseStr(_SENSE));
   if (verbosity > 5) {
     SensorFilter3<float>::printFilter(output);
   }
-  output->concatf("%s| Value %s:    (%.3f, %.3f, %.3f)\n", (char*) indent.string(), (was_dirty?"FRESH":"STALE"), (double) value()->x, (double) value()->y, (double) value()->z);
+  output->concat(&indent);
+  output->concatf("| Value %s:    (%.3f, %.3f, %.3f)\n", (was_dirty?"FRESH":"STALE"), (double) value()->x, (double) value()->y, (double) value()->z);
   if (_has_error) {
-    output->concatf("%s| Error:          (%.3f, %.3f, %.3f)\n", (char*) indent.string(), (double) _ERR.x, (double) _ERR.y, (double) _ERR.z);
+    output->concat(&indent);
+    output->concatf("| Error:          (%.3f, %.3f, %.3f)\n", (double) _ERR.x, (double) _ERR.y, (double) _ERR.z);
   }
   if ((verbosity > 0) && (nullptr != _NXT)) {
     _NXT->printPipe(output, stage+1, verbosity);

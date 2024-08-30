@@ -19,7 +19,7 @@
 *
 * @return 0 on acceptance, or -1 on sense mis-match.
 */
-int8_t TripleAxisOrientation::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error) {
+int8_t TripleAxisOrientation::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error, uint32_t seq_num) {
   uint32_t tmp_millis = millis();
   int8_t ret = 0;
   switch (s) {
@@ -59,7 +59,7 @@ int8_t TripleAxisOrientation::pushVector(const SpatialSense s, Vector3f* data, V
           // If the vector was pushed downstream, we consider it noted. If it
           //   was rejected, we leave the class marked dirty.
           //_filter_dirty = (0 > _NXT->pushVector(SpatialSense::EULER_ANG, &_gravity, &_ERR));
-          ret = _NXT->pushVector(SpatialSense::EULER_ANG, &_gravity, &_ERR_ACC);
+          ret = _NXT->pushVector(SpatialSense::EULER_ANG, &_gravity, &_ERR_ACC, seq_num);
         }
         if (!_flags.value(TRIPAX_ORIENT_FLAG_VALUE_DIRTY)) {
           _flags.set(TRIPAX_ORIENT_FLAG_VALUE_DIRTY, (0 > ret));
