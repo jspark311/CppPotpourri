@@ -176,14 +176,10 @@ class TripleAxisFork : public TripleAxisPipe {
 class TripleAxisConvention : public TripleAxisPipe {
   public:
     TripleAxisConvention() {};
-    TripleAxisConvention(TripleAxisPipe* nxt, GnomonType ag, GnomonType eg) : _NXT(nxt), _SRC_FMT(ag), _NXT_FMT(eg) {};
+    TripleAxisConvention(TripleAxisPipe* nxt) : _NXT(nxt) {};
     ~TripleAxisConvention() {};
 
     inline void setNext(TripleAxisPipe* n) {          _NXT  = n;        };
-    inline GnomonType afferentGnomon() {              return _SRC_FMT;  };
-    inline void       afferentGnomon(GnomonType n) {  _SRC_FMT  = n;    };
-    inline GnomonType efferentGnomon() {              return _NXT_FMT;  };
-    inline void       efferentGnomon(GnomonType n) {  _NXT_FMT  = n;    };
 
     /**
     * Behavior: Refreshes this instance's state and calls callback, if defined.
@@ -197,8 +193,6 @@ class TripleAxisConvention : public TripleAxisPipe {
 
   private:
     TripleAxisPipe* _NXT = nullptr;
-    GnomonType      _SRC_FMT = GnomonType::RH_POS_Z;  // Defaults to no operation.
-    GnomonType      _NXT_FMT = GnomonType::RH_POS_Z;  // Defaults to no operation.
 };
 
 
@@ -253,7 +247,6 @@ class TripleAxisTerminus : public TripleAxisPipe {
     const SpatialSense         _SENSE;
     bool     _has_error    = false;   // TODO: Move bools below into an integer field for alignment authority.
     bool     _fresh_data   = false;   // TODO: Move bools below into an integer field for alignment authority.
-    uint16_t _PADDING      = 0;
     uint32_t _last_update  = 0;
     uint32_t _update_count = 0;
     Vector3f _DATA;

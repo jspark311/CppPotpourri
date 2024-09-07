@@ -51,30 +51,6 @@ Thank you, Bill and Michael!
 #include <type_traits>
 
 
-/*
-* If used in the context of gravity, means: "Which axis is up?"
-* If used in the context of magnetism, means: "Which axis is North?"
-*
-* TODO: This enum is trying to do two things at once, and was a shunt for
-*   non-knowledge while something was being built. It should be reduced to a
-*   LH/RH flag in classes that make this distinction.
-*/
-enum class GnomonType : uint8_t {
-  UNDEFINED      = 0b00000000,   //
-  RH_POS_X       = 0b00000001,   //
-  RH_POS_Y       = 0b00000010,   //
-  RH_POS_Z       = 0b00000011,   //
-  RH_NEG_X       = 0b00000101,   //
-  RH_NEG_Y       = 0b00000110,   //
-  RH_NEG_Z       = 0b00000111,   //
-  LH_POS_X       = 0b00001001,   //
-  LH_POS_Y       = 0b00001010,   //
-  LH_POS_Z       = 0b00001011,   //
-  LH_NEG_X       = 0b00001101,   //
-  LH_NEG_Y       = 0b00001110,   //
-  LH_NEG_Z       = 0b00001111    //
-};
-
 //requires std::is_arithmetic<T>
 template <typename T> class Vector3 {
   public:

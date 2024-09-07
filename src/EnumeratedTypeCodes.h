@@ -101,10 +101,26 @@ enum class SIUnit : uint8_t {
   CELCIUS           = 0x4C,
 
   /* Constants and ratios */
-  CONSTANT_PI       = 0xC0,  //
-  CONSTANT_EULER    = 0xC1,  //
+  CONSTANT_PI       = 0xC0,  // pi
+  CONSTANT_EULER    = 0xC1,  // e
   CONSTANT_C        = 0xC2,  // Speed of light in a vacuum.
-  CONSTANT_G        = 0xC3,  // Universal Gravitational Constant
+  CONSTANT_G        = 0xC3,  // Universal Gravitational Constant.
+
+  /*
+  * Reduction of common idioms. Unit definitions should prefer to use one of
+  *   these single-byte idioms, as opposed to spelling them out with
+  *   more-general codes.
+  * IE: These two unit strings both express acceleration, but the former is
+  *   preferable to reduce load and bugs.
+  *   {METERS, PER_SECOND_SQUARE, 0}
+  *   {METERS, OPERATOR_DIVIDED, OPERATOR_GROUP_LEFT, SECONDS, OPERATOR_EXPONENT, 2, OPERATOR_GROUP_RIGHT, 0}
+  *
+  * TODO: Not sure if it is a good idea to do this, but it has clear advantages.
+  *   Doing it until it either works out, or collapses.
+  */
+  PER_SECOND        = 0xE0,  // Rate
+  PER_SECOND_SQUARE = 0xE1,  // Acceleration
+  PER_SECOND_CUBE   = 0xE2,  // Jerk
 
   /*
   * Operator and meta UCodes for internal unit grammar support.
@@ -139,6 +155,7 @@ enum class SIUnit : uint8_t {
   OPERATOR_GROUP_RIGHT       = 0xFE, // ")"
   INVALID                    = 0xFF  // An invalid catch-all enum.
 };
+
 
 
 /* Quick inlines to facilitate moving into and out of serialization. */

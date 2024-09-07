@@ -21,8 +21,7 @@ limitations under the License.
 This program runs tests against our timer-related utilities.
 */
 
-typedef void (*sleepFunction)(uint32_t);
-
+#include "TimerTools/C3PTrace.h"
 
 /*******************************************************************************
 * Globals
@@ -43,6 +42,10 @@ void printStopWatches() {
 }
 
 
+/*
+* PeriodicTimeout is an interface class to the system timers via millis() and
+*   micros(). The relevant calls are wrapped into the two child classes.
+*/
 int test_PeriodicTimeout() {
   stopwatch_0.markStart();
   int test_state = 0;
@@ -57,14 +60,12 @@ int test_PeriodicTimeout() {
         test_type_string = (char*) "MillisTimeout";
         timeout_period = (20 + (randomUInt32() % 80));
         timeout_obj = new MillisTimeout(timeout_period);
-        //sleepFunction = sleep_ms;
         break;
       case 1:
         test_type_string = (char*) "MicrosTimeout";
         timeout_period = (11804 + (randomUInt32() % 10000));
         timeout_obj = new MicrosTimeout(timeout_period);
         timeout_obj->reset();
-        //sleepFunction = sleep_us;
         break;
       default:  return -1;
     }
@@ -129,6 +130,9 @@ int test_PeriodicTimeout() {
 
 
 
+/*
+* StopWatch is used to profile a single code pathway.
+*/
 int test_StopWatch() {
   stopwatch_1.markStart();
   int ret = 0;
@@ -142,8 +146,21 @@ int test_StopWatch() {
 }
 
 
+
+/*
+* C3PTrace is used to build timing profiles within live programs.
+*/
+int test_c3ptrace_basics() {
+  int ret = 0;
+  return ret;
+}
+
+
 void print_types_timer_utils() {
   printf("\tStopWatch                %u\t%u\n", sizeof(StopWatch),       alignof(StopWatch));
+  printf("\tC3PTrace                 %u\t%u\n", sizeof(C3PTrace),        alignof(C3PTrace));
+  printf("\tTracePath                %u\t%u\n", sizeof(TracePath),       alignof(TracePath));
+  printf("\tTracePoint               %u\t%u\n", sizeof(TracePoint),      alignof(TracePoint));
   printf("\tPeriodicTimeout          %u\t%u\n", sizeof(PeriodicTimeout), alignof(PeriodicTimeout));
   printf("\tMicrosTimeout            %u\t%u\n", sizeof(MicrosTimeout),   alignof(MicrosTimeout));
   printf("\tMillisTimeout            %u\t%u\n", sizeof(MillisTimeout),   alignof(MillisTimeout));
@@ -151,19 +168,59 @@ void print_types_timer_utils() {
 
 
 /*******************************************************************************
-* The main functions.
+* Test plan
+*******************************************************************************/
+#define CHKLST_TIMER_UTIL_TEST_TIMEOUT      0x00000001  //
+#define CHKLST_TIMER_UTIL_TEST_STOPWATCH    0x00000002  //
+#define CHKLST_TIMER_UTIL_TEST_TRACE_BASIC  0x00000004  //
+
+#define CHKLST_TIMER_UTIL_TESTS_ALL ( \
+  CHKLST_TIMER_UTIL_TEST_TIMEOUT | CHKLST_TIMER_UTIL_TEST_STOPWATCH | \
+  CHKLST_TIMER_UTIL_TEST_TRACE_BASIC)
+
+
+const StepSequenceList TOP_LEVEL_TIMER_UTIL_TEST_LIST[] = {
+  { .FLAG         = CHKLST_TIMER_UTIL_TEST_TIMEOUT,
+    .LABEL        = "PeriodicTimeout",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_PeriodicTimeout()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_TIMER_UTIL_TEST_STOPWATCH,
+    .LABEL        = "StopWatch",
+    .DEP_MASK     = (CHKLST_TIMER_UTIL_TEST_TIMEOUT),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_StopWatch()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_TIMER_UTIL_TEST_TRACE_BASIC,
+    .LABEL        = "C3PTrace",
+    .DEP_MASK     = (CHKLST_TIMER_UTIL_TEST_STOPWATCH),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_c3ptrace_basics()) ? 1:-1);  }
+  },
+};
+
+AsyncSequencer timer_util_test_plan(TOP_LEVEL_TIMER_UTIL_TEST_LIST, (sizeof(TOP_LEVEL_TIMER_UTIL_TEST_LIST) / sizeof(TOP_LEVEL_TIMER_UTIL_TEST_LIST[0])));
+
+
+
+/*******************************************************************************
+* The main function
 *******************************************************************************/
 
-
 int timer_utilities_main() {
-  int ret = 1;   // Failure is the default result.
   const char* const MODULE_NAME = "Timer Utils";
   printf("===< %s >=======================================\n", MODULE_NAME);
-  if (0 == test_PeriodicTimeout()) {
-    if (0 == test_StopWatch()) {
-      ret = 0;
-    }
+
+  timer_util_test_plan.requestSteps(CHKLST_TIMER_UTIL_TESTS_ALL);
+  while (!timer_util_test_plan.request_completed() && (0 == timer_util_test_plan.failed_steps(false))) {
+    timer_util_test_plan.poll();
   }
+  int ret = (timer_util_test_plan.request_fulfilled() ? 0 : 1);
+
+  StringBuilder report_output;
+  timer_util_test_plan.printDebug(&report_output, "Timer Utils test report");
+  printf("%s\n", (char*) report_output.string());
 
   return ret;
 }

@@ -19,12 +19,12 @@ limitations under the License.
 
 
 "Trace" (proper noun) is a debugging tool that helps us chart program behavior
-  under conditions of real-world workloads. As a noun, "trace" will refer to
+  under conditions of real-world workloads.
 As a verb, "trace" will be the act of collecting data points from program
   execution. These points and their embroidary constitute a "trace" (noun).
+
 We need good metaphor for what this class does, so that we can contain the
   low-level language.
-
 For our purposes here, computer source code is a 2D plane with "file ID" and
   "line number" forming the axes. The act of compiling it into object code
   maps the source plane onto a object plane (which hardware can execute, but

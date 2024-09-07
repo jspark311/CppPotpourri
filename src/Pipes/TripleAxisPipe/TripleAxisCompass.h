@@ -43,13 +43,77 @@ enum class CompassErr : int8_t {
 #define COMPASS_FLAG_QUANTIZER_MASK   0x00000300  // Quantization flag mask
 
 
+
+/* Performs a scaling transform on the vector stream. */
+class TripleAxisScaling : public TripleAxisPipe {
+  public:
+    TripleAxisScaling(const TripleAxisTerminalCB cb = nullptr) : _CALLBACK(cb) {};
+    ~TripleAxisScaling() {};
+
+    int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
+    void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
+
+
+  private:
+    const TripleAxisPipe* _CALLBACK;
+    Vector3f  _scaling_vector;   // Soft iron correction
+    Vector3f* _cal_table = nullptr;
+    bool      _should_free_cal_table = false;
+};
+
+
+/* Performs an offset transform on the vector stream. */
+class TripleAxisOffset : public TripleAxisPipe {
+  public:
+    TripleAxisOffset(const TripleAxisPipe* cb = nullptr) : _CALLBACK(cb) {};
+    ~TripleAxisOffset() {};
+
+    int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
+    void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
+
+
+  private:
+    const TripleAxisPipe* _CALLBACK;
+    Vector3f _offset_vector;    // Hard iron correction
+};
+
+
+
+/*
+* A TripleAxisPipe that finds as many of the following as possible from 3-axis
+*   inputs.
+*   MAGNETIC_NORTH
+*   MAGNETIC_DIP
+*   TRUE_NORTH
+*/
+class TripleAxisOmniCompass : public TripleAxisPipe {
+  public:
+    TripleAxisOmniCompass(const TripleAxisTerminalCB cb = nullptr) : _CALLBACK(cb) {};
+    ~TripleAxisOmniCompass() {};
+
+    /**
+    * Behavior: If sense parameter matches the local class sense, refreshes
+    *   this instance's state and calls callback, if defined. Marks the data
+    *   as fresh if the callback is either absent, or returns nonzero.
+    *
+    * @return 0 on success, or -1 on sense mis-match.
+    */
+    int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
+    void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
+
+
+  private:
+    const TripleAxisTerminalCB _CALLBACK;
+};
+
+
+
 /*
 * An instantiable TripleAxisPipe that implements a sink for magnetometer data.
 */
-class TripleAxisCompass : public TripleAxisPipe {
+class TripleAxisMagCompass : public TripleAxisPipe {
   public:
-    TripleAxisCompass() : _CALLBACK(nullptr) {};
-    TripleAxisCompass(const TripleAxisTerminalCB cb) : _CALLBACK(cb) {};
+    TripleAxisCompass(const TripleAxisTerminalCB cb = nullptr) : _CALLBACK(cb) {};
     ~TripleAxisCompass() {};
 
     /**

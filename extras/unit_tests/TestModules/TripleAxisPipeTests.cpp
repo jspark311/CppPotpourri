@@ -129,8 +129,19 @@ int test_3ap_terminus() {
         if (*(terminal.getData()) == src_val) {
           printf("Pass.\n\tThe error held in the terminal is correct (%.3f, %.3f, %.3f)... ", err_val.x, err_val.y, err_val.z);
           if (*(terminal.getError()) == err_val) {
-            printf("PASS.\n");
-            ret = 0;
+            printf("Pass.\n\treset() returns the class to its default state... ");
+            terminal.reset();
+            Vector3<float> zero_val;
+            bool in_reset_state = (0 == terminal.updateCount());
+            in_reset_state &= (0 == terminal.lastUpdate());
+            in_reset_state &= (!terminal.haveError());
+            in_reset_state &= (!terminal.dataFresh());
+            in_reset_state &= (*(terminal.getData()) == zero_val);
+            in_reset_state &= (*(terminal.getError()) == zero_val);
+            if (in_reset_state) {
+              printf("PASS.\n");
+              ret = 0;
+            }
           }
         }
       }

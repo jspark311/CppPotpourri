@@ -97,39 +97,39 @@ FAST_FUNC int8_t TripleAxisConvention::pushVector(const SpatialSense s, Vector3f
   int8_t ret = -2;
   if (nullptr != _NXT) {
     ret++;
-    switch (_SRC_FMT) {
-      case GnomonType::RH_NEG_X:
-      case GnomonType::LH_POS_X:
-        inversion = -1.0;
-      case GnomonType::RH_POS_X:
-      case GnomonType::LH_NEG_X:
-      case GnomonType::UNDEFINED:  // Undefinition results in no transform.
-        stacked_dat(inversion * data->x, data->y, data->z);
-        if (nullptr != error) {
-          stacked_err(inversion * error->x, error->y, error->z);
-        }
-        break;
-      case GnomonType::RH_NEG_Y:
-      case GnomonType::LH_POS_Y:
-        inversion = -1.0;
-      case GnomonType::RH_POS_Y:
-      case GnomonType::LH_NEG_Y:
-        stacked_dat(inversion * data->y, data->z, data->x);
-        if (nullptr != error) {
-          stacked_err(inversion * error->y, error->z, error->x);
-        }
-        break;
-      case GnomonType::RH_NEG_Z:
-      case GnomonType::LH_POS_Z:
-        inversion = -1.0;
-      case GnomonType::RH_POS_Z:
-      case GnomonType::LH_NEG_Z:
-        stacked_dat(inversion * data->z, data->x, data->y);
-        if (nullptr != error) {
-          stacked_err(inversion * error->z, error->x, error->y);
-        }
-        break;
-    }
+    // switch (_SRC_FMT) {
+    //   case GnomonType::RH_NEG_X:
+    //   case GnomonType::LH_POS_X:
+    //     inversion = -1.0;
+    //   case GnomonType::RH_POS_X:
+    //   case GnomonType::LH_NEG_X:
+    //   case GnomonType::UNDEFINED:  // Undefinition results in no transform.
+    //     stacked_dat(inversion * data->x, data->y, data->z);
+    //     if (nullptr != error) {
+    //       stacked_err(inversion * error->x, error->y, error->z);
+    //     }
+    //     break;
+    //   case GnomonType::RH_NEG_Y:
+    //   case GnomonType::LH_POS_Y:
+    //     inversion = -1.0;
+    //   case GnomonType::RH_POS_Y:
+    //   case GnomonType::LH_NEG_Y:
+    //     stacked_dat(inversion * data->y, data->z, data->x);
+    //     if (nullptr != error) {
+    //       stacked_err(inversion * error->y, error->z, error->x);
+    //     }
+    //     break;
+    //   case GnomonType::RH_NEG_Z:
+    //   case GnomonType::LH_POS_Z:
+    //     inversion = -1.0;
+    //   case GnomonType::RH_POS_Z:
+    //   case GnomonType::LH_NEG_Z:
+    //     stacked_dat(inversion * data->z, data->x, data->y);
+    //     if (nullptr != error) {
+    //       stacked_err(inversion * error->z, error->x, error->y);
+    //     }
+    //     break;
+    // }
     if (0 == _NXT->pushVector(s, &stacked_dat, (nullptr != error) ? &stacked_err : nullptr, seq_num)) {
       ret = 0;
     }
