@@ -30,7 +30,7 @@ This file contains the implementation of type constraints for our wrapped types.
 #include "../TimerTools/TimerTools.h"
 
 /* CBOR support should probably be required to parse/pack. */
-#if defined(CONFIG_C3P_CBOR)
+#if defined(__BUILD_HAS_CBOR)
   #include "../cbor-cpp/cbor.h"
 #endif
 
@@ -91,7 +91,7 @@ static const C3PTypeConstraint<TimeSeriesBase*>  c3p_type_helper_timeseries(   "
 // Type-indirected handlers (parameter binders).
 static const C3PTypeConstraint<C3PBinBinder>    c3p_type_helper_ptrlen(       "BINARY",       0,  TCode::BINARY,       (TCODE_FLAG_PTR_LEN_TYPE | TCODE_FLAG_LEGAL_FOR_ENCODING));
 
-#if defined(CONFIG_C3P_CBOR)
+#if defined(__BUILD_HAS_CBOR)
   static const C3PTypeConstraint<C3PBinBinder>  c3p_type_helper_cbor(         "CBOR",         0,  TCode::CBOR,         (TCODE_FLAG_PTR_LEN_TYPE | TCODE_FLAG_LEGAL_FOR_ENCODING));
 #endif
 
@@ -164,7 +164,7 @@ static const C3PType* _get_type_def(const TCode TC) {
     case TCode::TIMESERIES:      return (const C3PType*) &c3p_type_helper_timeseries;
     case TCode::BINARY:          return (const C3PType*) &c3p_type_helper_ptrlen;
 
-    #if defined(CONFIG_C3P_CBOR)
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:            return (const C3PType*) &c3p_type_helper_cbor;
     #endif
 
@@ -364,6 +364,8 @@ int C3PType::_type_blind_serialize(void* obj, StringBuilder* out, const TCode FO
       case TCode::BINARY:
         //out->concat(*((const char**) obj));
         break;
+
+      #if defined(__BUILD_HAS_CBOR)
       case TCode::CBOR:
         {
           cbor::output_stringbuilder output(out);
@@ -377,6 +379,7 @@ int C3PType::_type_blind_serialize(void* obj, StringBuilder* out, const TCode FO
           ret = 0;   // TODO: Safe SB API.
         }
         break;
+      #endif  // __BUILD_HAS_CBOR
       default:  break;
     }
   }
@@ -535,6 +538,7 @@ template <> int         C3PTypeConstraint<int8_t>::serialize(void* obj, StringBu
       //out->concat((uint8_t*) obj, length());
       break;
 
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         cbor::output_stringbuilder output(out);
@@ -543,6 +547,7 @@ template <> int         C3PTypeConstraint<int8_t>::serialize(void* obj, StringBu
         ret = 0;   // TODO: Safe SB API.
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -553,6 +558,12 @@ template <> int         C3PTypeConstraint<int8_t>::deserialize(void* obj, String
   int8_t ret = -1;
   return ret;
 }
+
+    #if defined(__BUILD_HAS_CBOR)
+    #endif  // __BUILD_HAS_CBOR
+
+
+
 
 
 
@@ -679,6 +690,7 @@ template <> int         C3PTypeConstraint<int16_t>::serialize(void* obj, StringB
       //out->concat((uint8_t*) obj, length());
       break;
 
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         cbor::output_stringbuilder output(out);
@@ -687,6 +699,7 @@ template <> int         C3PTypeConstraint<int16_t>::serialize(void* obj, StringB
         ret = 0;   // TODO: Safe SB API.
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -824,6 +837,7 @@ template <> int         C3PTypeConstraint<int32_t>::serialize(void* obj, StringB
       //out->concat((uint8_t*) obj, length());
       break;
 
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         cbor::output_stringbuilder output(out);
@@ -833,6 +847,7 @@ template <> int         C3PTypeConstraint<int32_t>::serialize(void* obj, StringB
         ret = 0;   // TODO: Safe SB API.
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -968,6 +983,7 @@ template <> int         C3PTypeConstraint<int64_t>::serialize(void* obj, StringB
       //out->concat((uint8_t*) obj, length());
       break;
 
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         cbor::output_stringbuilder output(out);
@@ -977,6 +993,7 @@ template <> int         C3PTypeConstraint<int64_t>::serialize(void* obj, StringB
         ret = 0;   // TODO: Safe SB API.
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -1096,6 +1113,7 @@ template <> int         C3PTypeConstraint<uint8_t>::serialize(void* obj, StringB
       //out->concat((uint8_t*) obj, length());
       break;
 
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         cbor::output_stringbuilder output(out);
@@ -1104,6 +1122,7 @@ template <> int         C3PTypeConstraint<uint8_t>::serialize(void* obj, StringB
         ret = 0;   // TODO: Safe SB API.
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -1230,6 +1249,7 @@ template <> int         C3PTypeConstraint<uint16_t>::serialize(void* obj, String
       //out->concat((uint8_t*) obj, length());
       break;
 
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         cbor::output_stringbuilder output(out);
@@ -1238,6 +1258,7 @@ template <> int         C3PTypeConstraint<uint16_t>::serialize(void* obj, String
         ret = 0;   // TODO: Safe SB API.
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -1370,6 +1391,7 @@ template <> int         C3PTypeConstraint<uint32_t>::serialize(void* obj, String
       //out->concat((uint8_t*) obj, length());
       break;
 
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         cbor::output_stringbuilder output(out);
@@ -1378,6 +1400,7 @@ template <> int         C3PTypeConstraint<uint32_t>::serialize(void* obj, String
         ret = 0;   // TODO: Safe SB API.
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -1522,6 +1545,7 @@ template <> int         C3PTypeConstraint<uint64_t>::serialize(void* obj, String
       //out->concat((uint8_t*) obj, length());
       break;
 
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         cbor::output_stringbuilder output(out);
@@ -1531,6 +1555,7 @@ template <> int         C3PTypeConstraint<uint64_t>::serialize(void* obj, String
         ret = 0;   // TODO: Safe SB API.
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -1623,6 +1648,7 @@ template <> int         C3PTypeConstraint<bool>::serialize(void* obj, StringBuil
       //out->concat((uint8_t*) obj, length());
       break;
 
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         cbor::output_stringbuilder output(out);
@@ -1631,6 +1657,7 @@ template <> int         C3PTypeConstraint<bool>::serialize(void* obj, StringBuil
         ret = 0;   // TODO: Safe SB API.
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -1711,6 +1738,7 @@ template <> int         C3PTypeConstraint<float>::serialize(void* obj, StringBui
       //out->concat((uint8_t*) obj, length());
       break;
 
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         cbor::output_stringbuilder output(out);
@@ -1720,6 +1748,7 @@ template <> int         C3PTypeConstraint<float>::serialize(void* obj, StringBui
         ret = 0;   // TODO: Safe SB API.
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -1801,6 +1830,7 @@ template <> int         C3PTypeConstraint<double>::serialize(void* obj, StringBu
       //out->concat((uint8_t*) obj, length());
       break;
 
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         cbor::output_stringbuilder output(out);
@@ -1810,6 +1840,7 @@ template <> int         C3PTypeConstraint<double>::serialize(void* obj, StringBu
         ret = 0;   // TODO: Safe SB API.
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -1865,6 +1896,7 @@ template <> int8_t      C3PTypeConstraint<Vector3f64>::get_as(void* src, const T
 template <> int         C3PTypeConstraint<Vector3f64>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         StringBuilder tmp_sb;
@@ -1881,6 +1913,7 @@ template <> int         C3PTypeConstraint<Vector3f64>::serialize(void* obj, Stri
         }
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -1931,6 +1964,7 @@ template <> int8_t      C3PTypeConstraint<Vector3u8>::get_as(void* src, const TC
 template <> int         C3PTypeConstraint<Vector3u8>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         StringBuilder tmp_sb;
@@ -1947,6 +1981,7 @@ template <> int         C3PTypeConstraint<Vector3u8>::serialize(void* obj, Strin
         }
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -1997,6 +2032,7 @@ template <> int8_t      C3PTypeConstraint<Vector3i8>::get_as(void* src, const TC
 template <> int         C3PTypeConstraint<Vector3i8>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         StringBuilder tmp_sb;
@@ -2013,6 +2049,7 @@ template <> int         C3PTypeConstraint<Vector3i8>::serialize(void* obj, Strin
         }
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -2068,6 +2105,7 @@ template <> int8_t      C3PTypeConstraint<Vector3f>::get_as(void* src, const TCo
 template <> int         C3PTypeConstraint<Vector3f>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         StringBuilder tmp_sb;
@@ -2084,6 +2122,7 @@ template <> int         C3PTypeConstraint<Vector3f>::serialize(void* obj, String
         }
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -2152,6 +2191,7 @@ template <> int8_t      C3PTypeConstraint<Vector3u32>::get_as(void* src, const T
 template <> int         C3PTypeConstraint<Vector3u32>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         StringBuilder tmp_sb;
@@ -2168,6 +2208,7 @@ template <> int         C3PTypeConstraint<Vector3u32>::serialize(void* obj, Stri
         }
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -2218,6 +2259,7 @@ template <> int8_t      C3PTypeConstraint<Vector3i32>::get_as(void* src, const T
 template <> int         C3PTypeConstraint<Vector3i32>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         StringBuilder tmp_sb;
@@ -2234,6 +2276,7 @@ template <> int         C3PTypeConstraint<Vector3i32>::serialize(void* obj, Stri
         }
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -2284,6 +2327,7 @@ template <> int8_t      C3PTypeConstraint<Vector3u16>::get_as(void* src, const T
 template <> int         C3PTypeConstraint<Vector3u16>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         StringBuilder tmp_sb;
@@ -2300,6 +2344,7 @@ template <> int         C3PTypeConstraint<Vector3u16>::serialize(void* obj, Stri
         }
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -2350,6 +2395,7 @@ template <> int8_t      C3PTypeConstraint<Vector3i16>::get_as(void* src, const T
 template <> int         C3PTypeConstraint<Vector3i16>::serialize(void* obj, StringBuilder* out, const TCode FORMAT) {
   int8_t ret = -1;
   switch (FORMAT) {
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         StringBuilder tmp_sb;
@@ -2366,6 +2412,7 @@ template <> int         C3PTypeConstraint<Vector3i16>::serialize(void* obj, Stri
         }
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -2439,6 +2486,7 @@ template <> int         C3PTypeConstraint<char*>::serialize(void* obj, StringBui
           //out->concat(o);
           break;
 
+    #if defined(__BUILD_HAS_CBOR)
         case TCode::CBOR:
           {
             cbor::output_stringbuilder output(out);
@@ -2447,6 +2495,7 @@ template <> int         C3PTypeConstraint<char*>::serialize(void* obj, StringBui
             ret = 0;   // TODO: Safe SB API.
           }
           break;
+    #endif  // __BUILD_HAS_CBOR
 
         default:  break;
       }
@@ -2539,6 +2588,7 @@ template <> int         C3PTypeConstraint<StringBuilder*>::serialize(void* obj, 
       //out->concat(*((const char**) obj));
       break;
 
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         cbor::output_stringbuilder output(out);
@@ -2549,6 +2599,7 @@ template <> int         C3PTypeConstraint<StringBuilder*>::serialize(void* obj, 
         ret = 0;   // TODO: Safe SB API.
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -2606,6 +2657,10 @@ template <> int8_t      C3PTypeConstraint<C3PBinBinder>::get_as(void* src, const
     //C3PBinBinder s = _load_from_mem(src);
     switch (DEST_TYPE) {
       case TCode::BINARY:    memcpy(dest, src, sizeof(C3PBinBinder));  return 0;
+
+      #if defined(__BUILD_HAS_CBOR)
+      #endif  // __BUILD_HAS_CBOR
+
       default:  break;
     }
   }
@@ -2646,6 +2701,7 @@ template <> int         C3PTypeConstraint<Identity*>::serialize(void* obj, Strin
     case TCode::BINARY:
       break;
 
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         uint16_t i_len = ident->length();
@@ -2659,6 +2715,7 @@ template <> int         C3PTypeConstraint<Identity*>::serialize(void* obj, Strin
         }
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }
@@ -2831,6 +2888,7 @@ template <> int         C3PTypeConstraint<Image*>::serialize(void* obj, StringBu
     case TCode::BINARY:
       break;
 
+    #if defined(__BUILD_HAS_CBOR)
     case TCode::CBOR:
       {
         uint32_t sz_buf = img->bytesUsed();
@@ -2849,6 +2907,7 @@ template <> int         C3PTypeConstraint<Image*>::serialize(void* obj, StringBu
         }
       }
       break;
+    #endif  // __BUILD_HAS_CBOR
 
     default:  break;
   }

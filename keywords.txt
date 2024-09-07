@@ -171,7 +171,6 @@ tcodes_str_4       LITERAL1
 tcodes_float_1     LITERAL1
 
 # Constants (Vector3)
-GnomonType         LITERAL1
 
 # Constants (Battery)
 BatteryChemistry   LITERAL1
