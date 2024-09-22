@@ -62,15 +62,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "../CppPotpourri.h"
 #include "../StringBuilder.h"
 
-// Do some pre-processor work to not waste memory on storing pixel addresses.
-// Some programs only need 8x8 pixel images, and some are desktop applications.
-// In any case, if the build options don't specify, we'll have 16-bit pixel
-//   addresses. No one has a gigapizel monitor, and this class isn't being used
-//   to stitch many images together.
-#if !defined(CONFIG_C3P_IMG_COORD_BITS)
-  #define CONFIG_C3P_IMG_COORD_BITS  16
-#endif
-
 // Once the bit-width is defined, assign properly-sized integer types to our
 //   wrapped types.
 // TODO: PixInt might be wrong-headed. Might be better to just up-case to int32
@@ -144,8 +135,10 @@ class PixAddr {
     PixUInt y;   // Y-coordinate (vertical axis, larger values are further down)
 
     PixAddr(const PixAddr& src) : x(src.x), y(src.y) {};    // Copy-constructor
-    PixAddr(const PixUInt X, const PixUInt Y) : x(X), y(Y) {};
-    PixAddr() : x(0), y(0) {};
+    PixAddr(const PixUInt X = 0, const PixUInt Y = 0) : x(X), y(Y) {};
+
+    // TODO: Add some basic point functions?
+    // PixInt distanceTo(const PixAddr);
 };
 
 /* A representation of a bounding-box within the Image. */
@@ -167,16 +160,23 @@ class PixBoundingBox : PixAddr {
 
 
 
-/* Class flags */
-#define C3P_IMG_FLAG_BUFFER_OURS     0x01  // We are responsible for freeing the buffer.
-#define C3P_IMG_FLAG_BUFFER_LOCKED   0x02  // Buffer should not be modified when set.
-#define C3P_IMG_FLAG_IS_FRAMEBUFFER  0x04  // This class holds the framebuffer for some piece of hardware.
-#define C3P_IMG_FLAG_IS_FB_DIRTY     0x08  // This image is dirty for the purposes of rendering.
-#define C3P_IMG_FLAG_IS_TEXT_WRAP    0x10  // If set, 'wrap' text at right edge of display
-#define C3P_IMG_FLAG_IS_STRICT_CP437 0x20  // If set, use correct CP437 charset (default is off)
-#define C3P_IMG_FLAG_FLIP_X          0x40  // If set, flip along the X-axis.
-#define C3P_IMG_FLAG_FLIP_Y          0x80  // If set, flip along the Y-axis.
-
+/*
+* Class flags
+* NOTE: The first byte is special, and forms the input to a switch/case demux
+*   for the sake of transforming between coordinates and buffer indicies.
+*/
+#define C3P_IMG_FLAG_ORIENTATION_MASK 0x0003  // The lowest 2-bits hold the orientation enum.
+#define C3P_IMG_FLAG_FORMAT_MASK      0x003C  // Mask for the image format.
+#define C3P_IMG_FLAG_FLIP_X           0x0040  // If set, flip along the X-axis.
+#define C3P_IMG_FLAG_FLIP_Y           0x0080  // If set, flip along the Y-axis.
+#define C3P_IMG_FLAG_TXT_WRAPS        0x0100  // If set, text wraps at the right edge of the frame.
+#define C3P_IMG_FLAG_TXT_WRAPS_TO_0   0x0200  // If set, when text wraps, it wraps to the left-edge of the frame.
+#define C3P_IMG_FLAG_IS_STRICT_CP437  0x0400  // If set, use correct CP437 charset (default is off).
+#define C3P_IMG_FLAG_BUFFER_OURS      0x0800  // We are responsible for freeing the buffer.
+#define C3P_IMG_FLAG_BUFFER_LOCKED    0x1000  // Buffer should not be modified when set.
+#define C3P_IMG_FLAG_IS_FRAMEBUFFER   0x2000  // This class holds the framebuffer for some piece of hardware.
+#define C3P_IMG_FLAG_IS_FB_DIRTY      0x4000  // This image is dirty for the purposes of rendering.
+#define C3P_IMG_FLAG_ENDIAN_FLIP      0x8000  // If set, perform an endian swap on the pixel data when writing.
 
 
 /*******************************************************************************
@@ -212,7 +212,7 @@ class Image {
     uint32_t getPixel(PixUInt x, PixUInt y);
     uint32_t getPixelAsFormat(PixUInt x, PixUInt y, ImgBufferFormat);
     bool     setPixel(PixUInt x, PixUInt y, uint32_t color);
-    bool     setPixel(PixUInt x, PixUInt y, uint8_t r, uint8_t g, uint8_t b);
+    //bool     setPixel(PixUInt x, PixUInt y, uint8_t r, uint8_t g, uint8_t b);
 
     inline PixUInt         x() {              return _x;                                     };
     inline PixUInt         y() {              return _y;                                     };
@@ -225,7 +225,7 @@ class Image {
     inline bool            isFrameBuffer() {  return _img_flag(C3P_IMG_FLAG_IS_FRAMEBUFFER); };
     inline bool            locked() {         return _img_flag(C3P_IMG_FLAG_BUFFER_LOCKED);  };
 
-    inline ImgOrientation  orientation() {    return _rotation;                              };
+    inline ImgOrientation  orientation() {    return (ImgOrientation) (_imgflags & C3P_IMG_FLAG_ORIENTATION_MASK);  };
     inline bool            flipX() {          return _img_flag(C3P_IMG_FLAG_FLIP_X);         };
     inline bool            flipY() {          return _img_flag(C3P_IMG_FLAG_FLIP_Y);         };
     void  orientation(ImgOrientation);
@@ -270,22 +270,24 @@ class Image {
     inline PixUInt  getCursorX() const {          return _cursor_x;           };
     inline PixUInt  getCursorY() const {          return _cursor_y;           };
 
-    inline void textWrap(bool x) {  _img_set_flag(C3P_IMG_FLAG_IS_TEXT_WRAP, x);      };
-    inline bool textWrap() {        return _img_flag(C3P_IMG_FLAG_IS_TEXT_WRAP);      };
+    inline void textWrap(bool x) {  _img_set_flag(C3P_IMG_FLAG_TXT_WRAPS, x);         };
+    inline bool textWrap() {        return _img_flag(C3P_IMG_FLAG_TXT_WRAPS);         };
     inline void cp437(bool x) {     _img_set_flag(C3P_IMG_FLAG_IS_STRICT_CP437, x);   };
     inline bool cp437() {           return _img_flag(C3P_IMG_FLAG_IS_STRICT_CP437);   };
     /* END ADAFRUIT GFX SPLICE */
+    inline void textWrapsToZero(bool x) {  _img_set_flag(C3P_IMG_FLAG_TXT_WRAPS_TO_0, x);         };
+    inline bool textWrapsToZero() {        return _img_flag(C3P_IMG_FLAG_TXT_WRAPS_TO_0);         };
+    inline bool endianFlip() {              return _img_flag(C3P_IMG_FLAG_ENDIAN_FLIP);         };
+    void bigEndian(bool x);
 
     static const char* const formatString(const ImgBufferFormat);
     static const float rotationAngle(const ImgOrientation);
 
 
   protected:
+    uint8_t*        _buffer   = nullptr;
     PixUInt         _x        = 0;
     PixUInt         _y        = 0;
-    uint8_t*        _buffer   = nullptr;
-    ImgBufferFormat _buf_fmt  = ImgBufferFormat::UNALLOCATED;
-    ImgOrientation  _rotation = ImgOrientation::ROTATION_0;
 
     inline uint8_t _bits_per_pixel() {     return _bits_per_pixel(_buf_fmt);    };
     inline bool _is_dirty() {              return _img_flag(C3P_IMG_FLAG_IS_FB_DIRTY);     };
@@ -295,31 +297,18 @@ class Image {
 
 
   private:
-    uint8_t  _imgflags     = 0;
-    uint8_t  _textsize     = 0;       // Desired magnification of text to print()
-    GFXfont* _gfxFont      = nullptr; // Pointer to font
-    PixUInt  _cursor_x     = 0;       // x location to start print()ing text
-    PixUInt  _cursor_y     = 0;       // y location to start print()ing text
-    uint32_t _textcolor    = 0;       // Background color for text
-    uint32_t _textbgcolor  = 0;       // Text color
+    uint16_t        _imgflags    = 0;
+    ImgBufferFormat _buf_fmt  = ImgBufferFormat::UNALLOCATED;  // TODO: Merge this into the flags.
+    uint8_t         _textsize    = 0;       // Desired magnification of text to print()
+    GFXfont*        _gfxFont     = nullptr; // Pointer to font
+    PixUInt         _cursor_x    = 0;       // x location to start print()ing text
+    PixUInt         _cursor_y    = 0;       // y location to start print()ing text
+    uint32_t        _textcolor   = 0;       // Text color
+    uint32_t        _textbgcolor = 0;       // Background color for text
 
     void _char_bounds(char c, PixUInt* x, PixUInt* y, PixUInt* minx, PixUInt* miny, PixUInt* maxx, PixUInt* maxy);
     int8_t _buffer_allocator();
     void _remap_for_orientation(PixUInt* x, PixUInt* y);
-
-    inline void _set_pixel_32(PixUInt x, PixUInt y, uint32_t c) {
-      *((uint32_t*) (_buffer + (_pixel_number(x, y) << 2))) = c;
-    };
-    inline void _set_pixel_24(PixUInt x, PixUInt y, uint32_t c) {
-      // TODO: Wrong.
-      *((uint32_t*) (_buffer + (_pixel_number(x, y) << 2))) = c;
-    };
-    inline void _set_pixel_16(PixUInt x, PixUInt y, uint32_t c) {
-      *((uint16_t*) (_buffer + (_pixel_number(x, y) << 1))) = (uint16_t) c;
-    };
-    inline void _set_pixel_8(PixUInt x, PixUInt y, uint32_t c) {
-      *(_buffer + _pixel_number(x, y)) = (uint8_t) c;
-    };
 
     /* Linearizes the X/y value in preparation for array indexing. */
     inline uint32_t _pixel_number(uint32_t x, uint32_t y) {      return ((y * _x) + x);    };
@@ -330,12 +319,12 @@ class Image {
     inline bool  _is_ours() {     return _img_flag(C3P_IMG_FLAG_BUFFER_OURS); };
     inline void  _ours(bool l) {  _img_set_flag(C3P_IMG_FLAG_BUFFER_OURS, l); };
 
-    inline uint8_t _img_flags() {                return _imgflags;            };
-    inline bool _img_flag(uint8_t _flag) {       return (_imgflags & _flag);  };
-    inline void _img_flip_flag(uint8_t _flag) {  _imgflags ^= _flag;          };
-    inline void _img_clear_flag(uint8_t _flag) { _imgflags &= ~_flag;         };
-    inline void _img_set_flag(uint8_t _flag) {   _imgflags |= _flag;          };
-    inline void _img_set_flag(uint8_t _flag, bool nu) {
+    inline uint16_t _img_flags() {               return _imgflags;            };
+    inline bool _img_flag(uint16_t _flag) {       return (_imgflags & _flag);  };
+    inline void _img_flip_flag(uint16_t _flag) {  _imgflags ^= _flag;          };
+    inline void _img_clear_flag(uint16_t _flag) { _imgflags &= ~_flag;         };
+    inline void _img_set_flag(uint16_t _flag) {   _imgflags |= _flag;          };
+    inline void _img_set_flag(uint16_t _flag, bool nu) {
       if (nu) _imgflags |= _flag;
       else    _imgflags &= ~_flag;
     };

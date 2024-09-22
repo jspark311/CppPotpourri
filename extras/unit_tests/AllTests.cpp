@@ -213,6 +213,18 @@ void dump_strbldr(StringBuilder* a) {
 }
 
 
+void dump_image(Image* a) {
+  if (a) {
+    StringBuilder log;
+    a->printImageInfo(&log, true);
+    printf("%s\n", (char*) log.string());
+  }
+  else {
+    printf("dump_image() was passed a nullptr.\n");
+  }
+}
+
+
 
 /*******************************************************************************
 * Something terrible.

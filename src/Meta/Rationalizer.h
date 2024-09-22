@@ -302,4 +302,22 @@ C3P wants the following capabilities, which will probably implicate this file.
 #endif
 
 
+/*******************************************************************************
+* Class configurations.
+* TODO: These might sensibly be relocated to their respective scopes of concern.
+*   There is a slight reliability advantage to having them here. Namely, that
+*   disorganized inclusion patterns might otherwise end up with conflicting
+*   definitions without the compiler noticing. Whereas having them here will
+*   fail the build if this header has not been pulled in to the compile.
+*******************************************************************************/
+
+// Do some pre-processor work to not waste memory on storing pixel addresses.
+// Some programs only need 8x8 pixel images, and some are desktop applications.
+// In any case, if the build options don't specify, we'll have 16-bit pixel
+//   addresses. No one has a gigapizel monitor, and this class isn't being used
+//   to stitch many images together.
+#if !defined(CONFIG_C3P_IMG_COORD_BITS)
+  #define CONFIG_C3P_IMG_COORD_BITS  16
+#endif
+
 #endif  // BUILD_RATIONALIZER_META_HEADER

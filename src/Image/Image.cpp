@@ -625,7 +625,7 @@ int8_t Image::serialize(StringBuilder* out) {
   if (ImgBufferFormat::UNALLOCATED != _buf_fmt) {
     if (allocated()) {
       uint32_t sz = bytesUsed();
-      uint8_t buf[10];
+      uint8_t buf[11];
       buf[0] = (uint8_t) (_x >> 24) & 0xFF;
       buf[1] = (uint8_t) (_x >> 16) & 0xFF;
       buf[2] = (uint8_t) (_x >> 8) & 0xFF;
@@ -635,8 +635,9 @@ int8_t Image::serialize(StringBuilder* out) {
       buf[6] = (uint8_t) (_y >> 8) & 0xFF;
       buf[7] = (uint8_t) _y & 0xFF;
       buf[8] = (uint8_t) _buf_fmt;
-      buf[9] = _imgflags;
-      out->concat(buf, 10);
+      buf[9] = (uint8_t) (_imgflags);
+      buf[10] = (uint8_t) (_imgflags >> 8);
+      out->concat(buf, sizeof(buf));
       out->concat(_buffer, sz);
       return 0;
     }
@@ -661,9 +662,10 @@ int8_t Image::serialize(uint8_t* buf, uint32_t* len) {
       *(buf + 6) = (uint8_t) (_y >> 8) & 0xFF;
       *(buf + 7) = (uint8_t) _y & 0xFF;
       *(buf + 8) = (uint8_t) _buf_fmt;
-      *(buf + 9) = _imgflags;
-      memcpy((buf + 10), _buffer, sz);
-      *len = (10+sz);
+      *(buf + 9) = (uint8_t) _imgflags;
+      *(buf + 10) = (uint8_t) (_imgflags >> 8);
+      memcpy((buf + 11), _buffer, sz);
+      *len = (11+sz);
       return 0;
     }
   }
@@ -689,8 +691,9 @@ int8_t Image::serializeWithoutBuffer(uint8_t* buf, uint32_t* len) {
       *(buf + 6) = (uint8_t) (_y >> 8) & 0xFF;
       *(buf + 7) = (uint8_t) _y & 0xFF;
       *(buf + 8) = (uint8_t) _buf_fmt;
-      *(buf + 9) = _imgflags;
-      *len = 10;
+      *(buf + 9) = (uint8_t) _imgflags;
+      *(buf + 10) = (uint8_t) (_imgflags >> 8);
+      *len = 11;
       return 0;
     }
   }
@@ -749,6 +752,17 @@ void Image::printImageInfo(StringBuilder* out, const bool DETAIL) {
 /*******************************************************************************
 * Color functions
 *******************************************************************************/
+/*
+* NOTE: This is not an inline to avoid notions of platform in the Image.h file.
+* If the platform's endianness differs from the desired endiannesss, we flip the
+*   byte order of color data before writing it to the buffer.
+*/
+void Image::bigEndian(bool x) {
+  const uint16_t TEST = 0xAA55;
+  const bool PF_IS_BIG_ENDIAN = (0xAA == *((uint8_t*) &TEST));
+  _img_set_flag(C3P_IMG_FLAG_ENDIAN_FLIP, (PF_IS_BIG_ENDIAN ^ x));
+}
+
 
 /**
 *
@@ -854,8 +868,8 @@ void Image::flipY(bool f) {
 }
 
 void Image::orientation(ImgOrientation nu) {
-  if (_rotation != nu) {
-    _rotation = nu;
+  if (orientation() != nu) {
+    _imgflags = (_imgflags & ~C3P_IMG_FLAG_ORIENTATION_MASK) | ((uint16_t) nu);
     if (nullptr != _buffer) {
       // TODO:
       // If we already have a buffer allocated, apply the transform to the
@@ -865,6 +879,11 @@ void Image::orientation(ImgOrientation nu) {
 }
 
 
+/*
+* This function is called internally to remap the given coordinate to a new
+*   coordinate that accounts for all of the spatial transforms implied by the
+*   settings.
+*/
 void Image::_remap_for_orientation(PixUInt* xn, PixUInt* yn) {
   switch (orientation()) {
     case ImgOrientation::ROTATION_270:
@@ -883,18 +902,12 @@ void Image::_remap_for_orientation(PixUInt* xn, PixUInt* yn) {
       break;
   }
 
-  if (flipX()) {
-    *xn = (x() - 1) - *xn;
-  }
-  if (flipY()) {
-    *yn = (y() - 1) - *yn;
-  }
+  if (flipX()) {    *xn = (x() - 1) - *xn;  }
+  if (flipY()) {    *yn = (y() - 1) - *yn;  }
 }
 
 
 /**
-* TODO: This class presumes a big-endian buffer to facilitate DMA to
-*   framebuffers. This assumption is bad.
 */
 uint32_t Image::getPixel(PixUInt x, PixUInt y) {
   uint32_t ret = 0;
@@ -905,21 +918,36 @@ uint32_t Image::getPixel(PixUInt x, PixUInt y) {
   if (offset < sz) {
     switch (_buf_fmt) {
       case ImgBufferFormat::R8_G8_B8_ALPHA:    // 32-bit color
-        // TODO: Presumption of little-endian framebuffer.
-        ret  = ((uint32_t) *(_buffer + offset + 0));
-        ret |= ((uint32_t) *(_buffer + offset + 1) << 8);
-        ret |= ((uint32_t) *(_buffer + offset + 2) << 16);
-        ret |= ((uint32_t) *(_buffer + offset + 3) << 24);
+        if (endianFlip()) {
+          ret  = ((uint32_t) *(_buffer + offset + 3));
+          ret |= ((uint32_t) *(_buffer + offset + 2) << 8);
+          ret |= ((uint32_t) *(_buffer + offset + 1) << 16);
+          ret |= ((uint32_t) *(_buffer + offset + 0) << 24);
+        }
+        else {
+          ret  = ((uint32_t) *(_buffer + offset + 0));
+          ret |= ((uint32_t) *(_buffer + offset + 1) << 8);
+          ret |= ((uint32_t) *(_buffer + offset + 2) << 16);
+          ret |= ((uint32_t) *(_buffer + offset + 3) << 24);
+        }
         break;
       case ImgBufferFormat::GREY_24:           // 24-bit greyscale   TODO: Wrong. Has to be.
       case ImgBufferFormat::R8_G8_B8:          // 24-bit color
-        // TODO: Presumption of big-endian framebuffer.
-        ret = ((uint32_t)*(_buffer + offset + 0) << 16) | ((uint32_t)*(_buffer + offset + 1) << 8) | (uint32_t)*(_buffer + offset + 2);
+        if (endianFlip()) {
+          ret = ((uint32_t)*(_buffer + offset + 0) << 16) | ((uint32_t)*(_buffer + offset + 1) << 8) | (uint32_t)*(_buffer + offset + 2);
+        }
+        else {
+          ret = ((uint32_t)*(_buffer + offset + 2) << 16) | ((uint32_t)*(_buffer + offset + 1) << 8) | (uint32_t)*(_buffer + offset + 0);
+        }
         break;
       case ImgBufferFormat::GREY_16:           // 16-bit greyscale   TODO: Wrong. Has to be.
       case ImgBufferFormat::R5_G6_B5:          // 16-bit color
-        // TODO: Presumption of big-endian framebuffer.
-        ret = ((uint32_t) *(_buffer + offset + 0) << 8) | (uint32_t) *(_buffer + offset + 1);
+        if (endianFlip()) {
+          ret = ((uint32_t) *(_buffer + offset + 0) << 8) | (uint32_t) *(_buffer + offset + 1);
+        }
+        else {
+          ret = ((uint32_t) *(_buffer + offset + 1) << 8) | (uint32_t) *(_buffer + offset + 0);
+        }
         break;
       case ImgBufferFormat::GREY_8:            // 8-bit greyscale    TODO: Wrong. Has to be.
       case ImgBufferFormat::R3_G3_B2:          // 8-bit color
@@ -942,6 +970,7 @@ uint32_t Image::getPixel(PixUInt x, PixUInt y) {
   }
   return ret;
 }
+
 
 
 uint32_t Image::getPixelAsFormat(PixUInt x, PixUInt y, ImgBufferFormat target_fmt) {
@@ -1042,70 +1071,35 @@ uint32_t Image::getPixelAsFormat(PixUInt x, PixUInt y, ImgBufferFormat target_fm
 */
 bool Image::setPixel(PixUInt x, PixUInt y, uint32_t c) {
   _remap_for_orientation(&x, &y);
-  switch (_buf_fmt) {
-    case ImgBufferFormat::R3_G3_B2:          // 8-bit color
-    case ImgBufferFormat::GREY_8:            // 8-bit greyscale
-      _set_pixel_8(x, y, c);
-      break;
-    case ImgBufferFormat::R5_G6_B5:          // 16-bit color
-    case ImgBufferFormat::GREY_16:           // 16-bit greyscale
-      _set_pixel_16(x, y, c);
-      break;
-    case ImgBufferFormat::R8_G8_B8_ALPHA:    // 32-bit color
-      _set_pixel_32(x, y, c);
-      break;
-    case ImgBufferFormat::R8_G8_B8:          // 24-bit color
-    case ImgBufferFormat::GREY_24:           // 24-bit greyscale
-      _set_pixel_24(x, y, c);
-      break;
-    case ImgBufferFormat::MONOCHROME:        // Monochrome
-      {
-        const PixUInt term0 = (_y >> 3);
-        const uint32_t offset = x * term0 + (term0 - (y >> 3) - 1);
-        const uint8_t bit_mask = 1 << (7 - (y & 0x07));
-        uint8_t byte_group = *(_buffer + offset);
-        *(_buffer + offset) = (byte_group & ~bit_mask) | ((0 == c) ? 0 : bit_mask);
-      }
-      break;
-    case ImgBufferFormat::UNALLOCATED:       // Buffer unallocated
-    default:
-      break;;
-  }
-  return false;
-}
-
-
-/**
-* Takes a color in discrete RGB values. Squeezes it into the buffer's format, discarding low bits as appropriate.
-*/
-bool Image::setPixel(PixUInt x, PixUInt y, uint8_t r, uint8_t g, uint8_t b) {
-  _remap_for_orientation(&x, &y);
-  uint32_t sz = bytesUsed();
-  uint32_t offset = _pixel_offset(x, y);
-  if (offset < sz) {
+  const uint32_t SZ     = bytesUsed();
+  const uint32_t OFFSET = _pixel_offset(x, y);
+  if (OFFSET < SZ) {
     switch (_buf_fmt) {
-      case ImgBufferFormat::GREY_24:           // 24-bit greyscale   TODO: Wrong. Has to be.
-      case ImgBufferFormat::R8_G8_B8:          // 24-bit color
-        *(_buffer + offset + 0) = r;
-        *(_buffer + offset + 1) = g;
-        *(_buffer + offset + 2) = b;
-        break;
-      case ImgBufferFormat::GREY_16:           // 16-bit greyscale   TODO: Wrong. Has to be.
-      case ImgBufferFormat::R5_G6_B5:          // 16-bit color
-        *(_buffer + offset + 0) = ((uint16_t) ((r << 3) & 0xF8) << 8) | ((g >> 3) & 0x07);
-        *(_buffer + offset + 1) = ((uint16_t) ((g << 5) & 0xE0) << 8) | ((b >> 3) & 0x1F);
-        break;
-      case ImgBufferFormat::GREY_8:            // 8-bit greyscale    TODO: Wrong. Has to be.
       case ImgBufferFormat::R3_G3_B2:          // 8-bit color
-        *(_buffer + offset) = ((uint8_t) (r << 6) & 0xE0) | ((uint8_t) (g << 2) & 0x1C) | (b & 0x07);
+      case ImgBufferFormat::GREY_8:            // 8-bit greyscale
+        *(_buffer + OFFSET) = (uint8_t) c;
+        break;
+      case ImgBufferFormat::R5_G6_B5:          // 16-bit color
+      case ImgBufferFormat::GREY_16:           // 16-bit greyscale
+        *((uint16_t*) (_buffer + OFFSET)) = (uint16_t) (endianFlip() ? (endianSwap32(c) >> 16) : c);
+        break;
+      case ImgBufferFormat::R8_G8_B8_ALPHA:    // 32-bit color
+        *((uint32_t*) (_buffer + OFFSET)) = (endianFlip() ? endianSwap32(c) : c);
+        break;
+      case ImgBufferFormat::R8_G8_B8:          // 24-bit color
+      case ImgBufferFormat::GREY_24:           // 24-bit greyscale
+        {
+          const uint32_t COLOR_BYTES = (endianFlip() ? (endianSwap32(c) >> 8) : c);
+          memcpy((_buffer + OFFSET), (void*) &COLOR_BYTES, 3);
+        }
         break;
       case ImgBufferFormat::MONOCHROME:        // Monochrome
         {
           const PixUInt term0 = (_y >> 3);
+          const uint32_t offset = x * term0 + (term0 - (y >> 3) - 1);
           const uint8_t bit_mask = 1 << (7 - (y & 0x07));
-          offset = x * term0 + (term0 - (y >> 3) - 1);
           uint8_t byte_group = *(_buffer + offset);
-          *(_buffer + offset) = (byte_group & ~bit_mask) | ((0 == ((uint16_t) r + g + b)) ? 0 : bit_mask);
+          *(_buffer + offset) = (byte_group & ~bit_mask) | ((0 == c) ? 0 : bit_mask);
         }
         break;
       case ImgBufferFormat::UNALLOCATED:       // Buffer unallocated
@@ -1114,11 +1108,56 @@ bool Image::setPixel(PixUInt x, PixUInt y, uint8_t r, uint8_t g, uint8_t b) {
     }
     return true;
   }
-  else {
-    // Addressed pixel is out-of-bounds
-  }
   return false;
 }
+
+
+/**
+* Takes a color in discrete RGB values. Squeezes it into the buffer's format, discarding low bits as appropriate.
+*/
+// Needless API complication. If this is really desired, it should be a shim that does
+//   color conversion and calls setPixel(PixUInt x, PixUInt y, uint32_t c).
+//bool Image::setPixel(PixUInt x, PixUInt y, uint8_t r, uint8_t g, uint8_t b) {
+//  _remap_for_orientation(&x, &y);
+//  uint32_t sz = bytesUsed();
+//  uint32_t offset = _pixel_offset(x, y);
+//  if (offset < sz) {
+//    switch (_buf_fmt) {
+//      case ImgBufferFormat::GREY_24:           // 24-bit greyscale   TODO: Wrong. Has to be.
+//      case ImgBufferFormat::R8_G8_B8:          // 24-bit color
+//        *(_buffer + offset + 0) = r;
+//        *(_buffer + offset + 1) = g;
+//        *(_buffer + offset + 2) = b;
+//        break;
+//      case ImgBufferFormat::GREY_16:           // 16-bit greyscale   TODO: Wrong. Has to be.
+//      case ImgBufferFormat::R5_G6_B5:          // 16-bit color
+//        *(_buffer + offset + 0) = ((uint16_t) ((r << 3) & 0xF8) << 8) | ((g >> 3) & 0x07);
+//        *(_buffer + offset + 1) = ((uint16_t) ((g << 5) & 0xE0) << 8) | ((b >> 3) & 0x1F);
+//        break;
+//      case ImgBufferFormat::GREY_8:            // 8-bit greyscale    TODO: Wrong. Has to be.
+//      case ImgBufferFormat::R3_G3_B2:          // 8-bit color
+//        *(_buffer + offset) = ((uint8_t) (r << 6) & 0xE0) | ((uint8_t) (g << 2) & 0x1C) | (b & 0x07);
+//        break;
+//      case ImgBufferFormat::MONOCHROME:        // Monochrome
+//        {
+//          const PixUInt term0 = (_y >> 3);
+//          const uint8_t bit_mask = 1 << (7 - (y & 0x07));
+//          offset = x * term0 + (term0 - (y >> 3) - 1);
+//          uint8_t byte_group = *(_buffer + offset);
+//          *(_buffer + offset) = (byte_group & ~bit_mask) | ((0 == ((uint16_t) r + g + b)) ? 0 : bit_mask);
+//        }
+//        break;
+//      case ImgBufferFormat::UNALLOCATED:       // Buffer unallocated
+//      default:
+//        return false;
+//    }
+//    return true;
+//  }
+//  else {
+//    // Addressed pixel is out-of-bounds
+//  }
+//  return false;
+//}
 
 
 
