@@ -35,19 +35,16 @@ enum class CompassErr : int8_t {
 #define COMPASS_FLAG_GIVEN_ACC_ERR    0x00000008  // We have error bars for ACC.
 #define COMPASS_FLAG_GIVEN_MAG_ERR    0x00000010  // We have error bars for MAG.
 #define COMPASS_FLAG_COMPASS_FRESH    0x00000020  // Compass is freshly-updated.
-#define COMPASS_FLAG_QUANT_4          0x00000100  // Quantize the compass into 4 cardinal directions.
-#define COMPASS_FLAG_QUANT_8          0x00000200  // Quantize the compass into 8 cardinal directions.
-#define COMPASS_FLAG_QUANT_16         0x00000300  // Quantize the compass into 16 cardinal directions.
+#define COMPASS_FLAG_QUANTIZER_MASK   0x00000700  // Quantization flag mask
 
 #define COMPASS_FLAG_HAVE_ERR_MASK    (COMPASS_FLAG_GIVEN_ACC_ERR | COMPASS_FLAG_GIVEN_MAG_ERR)
-#define COMPASS_FLAG_QUANTIZER_MASK   0x00000300  // Quantization flag mask
 
 
 
 /* Performs a scaling transform on the vector stream. */
 class TripleAxisScaling : public TripleAxisPipe {
   public:
-    TripleAxisScaling(const TripleAxisTerminalCB cb = nullptr) : _CALLBACK(cb) {};
+    TripleAxisScaling(const TripleAxisPipe* nxt = nullptr) : _nxt(nxt) {};
     ~TripleAxisScaling() {};
 
     int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
@@ -55,7 +52,7 @@ class TripleAxisScaling : public TripleAxisPipe {
 
 
   private:
-    const TripleAxisPipe* _CALLBACK;
+    const TripleAxisPipe* _nxt;
     Vector3f  _scaling_vector;   // Soft iron correction
     Vector3f* _cal_table = nullptr;
     bool      _should_free_cal_table = false;
@@ -65,7 +62,7 @@ class TripleAxisScaling : public TripleAxisPipe {
 /* Performs an offset transform on the vector stream. */
 class TripleAxisOffset : public TripleAxisPipe {
   public:
-    TripleAxisOffset(const TripleAxisPipe* cb = nullptr) : _CALLBACK(cb) {};
+    TripleAxisOffset(const TripleAxisPipe* nxt = nullptr) : _nxt(nxt) {};
     ~TripleAxisOffset() {};
 
     int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
@@ -73,7 +70,7 @@ class TripleAxisOffset : public TripleAxisPipe {
 
 
   private:
-    const TripleAxisPipe* _CALLBACK;
+    const TripleAxisPipe* _nxt;
     Vector3f _offset_vector;    // Hard iron correction
 };
 
@@ -111,7 +108,7 @@ class TripleAxisOmniCompass : public TripleAxisPipe {
 /*
 * An instantiable TripleAxisPipe that implements a sink for magnetometer data.
 */
-class TripleAxisMagCompass : public TripleAxisPipe {
+class TripleAxisCompass : public TripleAxisPipe {
   public:
     TripleAxisCompass(const TripleAxisTerminalCB cb = nullptr) : _CALLBACK(cb) {};
     ~TripleAxisCompass() {};

@@ -559,12 +559,6 @@ template <> int         C3PTypeConstraint<int8_t>::deserialize(void* obj, String
   return ret;
 }
 
-    #if defined(__BUILD_HAS_CBOR)
-    #endif  // __BUILD_HAS_CBOR
-
-
-
-
 
 
 ////////////////////////////////////////////////////////////////////////////////

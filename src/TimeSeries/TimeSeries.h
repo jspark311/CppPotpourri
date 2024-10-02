@@ -222,8 +222,8 @@ template <class T> class TimeSeries : public TimeSeriesBase {
 ******************************************************************************/
 template <class T> class TimeSeries3 : public TimeSeriesBase {
   public:
-    TimeSeries3(T* buf, uint32_t ws);
-    TimeSeries3(uint32_t ws) : TimeSeries3(nullptr, tcodeForType(T(0)), ws) {};
+    TimeSeries3(Vector3<T>* buf, uint32_t ws);
+    TimeSeries3(uint32_t ws) : TimeSeries3(nullptr, ws) {};
     virtual ~TimeSeries3();
 
     int8_t feedSeries(Vector3<T>*);
@@ -245,7 +245,7 @@ template <class T> class TimeSeries3 : public TimeSeriesBase {
     inline uint32_t    memUsed() {   return (windowSize() * sizeof(Vector3<T>));  };
 
 
-  private:
+  protected:
     Vector3<T>* samples;
     Vector3<T>  _min_value;
     Vector3<T>  _max_value;
@@ -255,6 +255,7 @@ template <class T> class TimeSeries3 : public TimeSeriesBase {
     Vector3f64  _stdev;
     Vector3f64  _snr;
 
+    void*   _mem_raw_ptr() {    return ((void*) samples);    };
     int8_t  _reallocate_sample_window(uint32_t);
     int8_t  _zero_samples();
     void    _print_series(StringBuilder*);
@@ -670,8 +671,8 @@ template <class T> int8_t TimeSeries<T>::_calculate_snr() {
 /*
 * Constructor.
 */
-template <class T> TimeSeries3<T>::TimeSeries3(T* buf, uint32_t ws) :
-  TimeSeriesBase(tcodeForType(T(0)), ws, ((nullptr != buf) ? 0:TIMESERIES_FLAG_SELF_ALLOC)),
+template <class T> TimeSeries3<T>::TimeSeries3(Vector3<T>* buf, uint32_t ws) :
+  TimeSeriesBase(tcodeForType(buf), ws, ((nullptr != buf) ? 0:TIMESERIES_FLAG_SELF_ALLOC)),
   samples(buf) {}
 
 
@@ -736,7 +737,7 @@ template <class T> int8_t TimeSeries3<T>::_reallocate_sample_window(uint32_t win
         samples = nullptr;
       }
       if (win > 0) {
-        samples = (T*) malloc(win * sizeof(Vector3<T>));
+        samples = (Vector3<T>*) malloc(win * sizeof(Vector3<T>));
         if (nullptr != samples) {
           _window_size = win;
           ret = _zero_samples();
@@ -952,7 +953,7 @@ template <class T> int8_t TimeSeries3<T>::_calculate_stdev() {
   if ((_window_size > 1) & windowFull()) {
     ret = 0;
     Vector3f64 deviation_sum;
-    if (_stale_mean) _calculate_mean();
+    if (_stale_mean()) _calculate_mean();
     for (uint32_t i = 0; i < _window_size; i++) {
       Vector3f64 temp{(double) samples[i].x, (double) samples[i].y, (double) samples[i].z};
       temp -= _mean;

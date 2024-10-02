@@ -44,6 +44,7 @@ class StringBuilder;
 #define SPEED_OF_LIGHT         299792458  // Given in vacuum in m/s
 #define PRESSURE_AT_SEA_LEVEL  101325.0f  // Given in Pascals
 #define MEAN_RADIUS_OF_EARTH     6371009  // Given in meters (IUGG recommend value).
+#define EARTH_SURFACE_GRAVITY   9.80665f  // Given in meters/sec/sec.
 
 /* Ensure that we have a definition of pi. */
 #ifndef PI

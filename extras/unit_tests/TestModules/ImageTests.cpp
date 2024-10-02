@@ -43,6 +43,14 @@ C3PImgTestObjs test_obj = {
   .img_r3g3b2     = nullptr
 };
 
+template <class T> bool test_img_list_contains_value(const T* BASE_PTR, const uint32_t LEN, const T VAL) {
+  for (uint32_t i = 0; i < LEN; i++) {
+    if (*(BASE_PTR + i) == VAL) return true;
+  }
+  return false;
+}
+
+
 
 /*
 * The Image API uses a binder type for locations in a pixel map. This makes
@@ -77,7 +85,7 @@ int test_img_pixaddr() {
 *   within a larger pixel map, thereby eliminating the need for locally-scoped
 *   drawing code to do absolute pixel arithmetic.
 */
-int test_img_pixboundingbox() {
+int test_img_subframe() {
   int ret = -1;
   return ret;
 }
@@ -263,13 +271,90 @@ int test_img_color() {
 }
 
 
+
 int test_img_pixel_level() {
   int ret = -1;
+  printf("Testing pixel manipulation and bounds-checking...\n");
+  const PixUInt  TEST_X_SZ      = (PixUInt)  (97 + (randomUInt32() % 151));
+  const PixUInt  TEST_Y_SZ      = (PixUInt)  (97 + (randomUInt32() % 151));
+  const uint16_t TEST_PIX_COUNT = (uint16_t) (17 + (randomUInt32() % 23));
+  PixUInt  pix_list_x[TEST_PIX_COUNT] = {0};
+  PixUInt  pix_list_y[TEST_PIX_COUNT] = {0};
+  uint32_t pix_list_color[TEST_PIX_COUNT] = {0};
+  printf("\tCreating test image of size (%u x %u)... ", TEST_X_SZ, TEST_Y_SZ);
+
+  Image test_img(TEST_X_SZ, TEST_Y_SZ, ImgBufferFormat::R8_G8_B8);    // 16-bit color
+  if (test_img.reallocate()) {
+    printf("Done.\n\tGenerating %u test values... ", TEST_PIX_COUNT);
+    for (uint32_t i = 0; i < TEST_PIX_COUNT; i++) {
+      PixUInt  test_x     = (PixUInt) (randomUInt32() % TEST_X_SZ);
+      PixUInt  test_y     = (PixUInt) (randomUInt32() % TEST_Y_SZ);
+      uint32_t test_color = (0x00FFFFFF & randomUInt32());
+
+      // Spin through the arrays to ensure no duplicate values, and re-roll as needed.
+      // TODO: X/Y not handled as a pair. Brittle. Dishonest. Not checking dupes on Y
+      //   will give slightly better results. Fix it when it matters.
+      while (test_img_list_contains_value(pix_list_x,     TEST_PIX_COUNT, test_x)) {      test_x = (PixUInt) (randomUInt32() % TEST_X_SZ);  }
+      //while (test_img_list_contains_value(pix_list_y,     TEST_PIX_COUNT, test_y)) {      test_y = (PixUInt) (randomUInt32() % TEST_Y_SZ);  }
+      while (test_img_list_contains_value(pix_list_color, TEST_PIX_COUNT, test_color)) {  test_color = (0x00FFFFFF & randomUInt32());       }
+
+      pix_list_x[i] = test_x;
+      pix_list_y[i] = test_y;
+      pix_list_color[i] = test_color;
+    }
+    printf("Done.\n\tSetting pixels... ");
+    ret = (-1 * TEST_PIX_COUNT);
+    for (uint32_t i = 0; i < TEST_PIX_COUNT; i++) {
+      if (!test_img.setPixel(pix_list_x[i], pix_list_y[i], pix_list_color[i])) {
+        printf("Failed at case %u: (%u, %u).\n", i, pix_list_x[i], pix_list_y[i]);
+        break;
+      }
+      ret++;
+    }
+    if (0 == ret) {
+      printf("Pass.\n\tChecking pixels... ");
+      ret = (-1 * TEST_PIX_COUNT);
+      for (uint32_t i = 0; i < TEST_PIX_COUNT; i++) {
+        if (pix_list_color[i] != test_img.getPixel(pix_list_x[i], pix_list_y[i])) {
+          break;
+        }
+        ret++;
+      }
+      if (0 == ret) {
+        ret = -1;
+        printf("Pass.\n\tsetPixel() should return failure for out-of-bounds Y values... ");
+        const PixUInt TEST_SAFE_X = (PixUInt) (TEST_X_SZ-1);
+        const PixUInt TEST_SAFE_Y = (PixUInt) (TEST_Y_SZ >> 1);
+        if (!test_img.setPixel(TEST_SAFE_X, TEST_Y_SZ, 0)) {
+          printf("Pass.\n\tsetPixel() should return failure for out-of-bounds X values... ");
+          // We are going to attempt a pixel write that will naturally wrap an
+          //   overflow of the X coord into subsequent rows. We will check that
+          //   this is being prevented by noting the original pixel color.
+          const uint32_t PIX_ORIG_COLOR = test_img.getPixel(0, (TEST_SAFE_Y+1));
+          const uint32_t TEST_COLOR = (PIX_ORIG_COLOR ^ randomUInt32());
+          if (!test_img.setPixel(TEST_X_SZ, TEST_SAFE_Y, TEST_COLOR)) {
+            printf("Pass.\n\tOut-of-bounds X values do not wrap to unintended Y values... ");
+            if (PIX_ORIG_COLOR == test_img.getPixel(0, (TEST_SAFE_Y+1))) {
+              ret = 0;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 == ret) {
+    printf("PASS.\n");
+  }
+  else {
+    printf("Fail.\n");
+    dump_image(&test_img);
+  }
   return ret;
 }
 
 
-int test_img_mirroring() {
+int test_img_axis_flip() {
   int ret = -1;
   return ret;
 }
@@ -341,7 +426,7 @@ int test_img_txt_geo_derived() {
 #define CHKLST_IMG_TEST_REALLOCATE         0x00000004  // reallocate()
 #define CHKLST_IMG_TEST_COLOR_CONVERSION   0x00000008  // Does the color handling make sense?
 #define CHKLST_IMG_TEST_PIXEL_MANIPULATION 0x00000010  // Can pixels be read and written?
-#define CHKLST_IMG_TEST_MIRRORING          0x00000020  //
+#define CHKLST_IMG_TEST_AXIS_FLIP          0x00000020  //
 #define CHKLST_IMG_TEST_ROTATION           0x00000040  //
 #define CHKLST_IMG_TEST_PARSE_PACK         0x00000080  // Can image metadata and content be moved over a wire?
 #define CHKLST_IMG_TEST_BITMAP_DRAW        0x00000100  // Can bitmaps be drawn?
@@ -353,19 +438,19 @@ int test_img_txt_geo_derived() {
 #define CHKLST_IMG_TEST_TEXT_ABUSE         0x00004000  // Mis-use of the API.
 #define CHKLST_IMG_TEST_GEO_DERIVED        0x00008000  // More sophisticated geometry fxns.
 #define CHKLST_IMG_TEST_PIXADDR            0x00010000  // Tests the PixAddr class.
-#define CHKLST_IMG_TEST_PIXBOUNDINGBOX     0x00020000  // Tests the PixBoundingBox class.
+#define CHKLST_IMG_TEST_SUBFRAME        0x00020000  // Tests the ImageSubframe class.
 #define CHKLST_IMG_TEST_ENDIAN_FLIP        0x00040000  // Framebuffers often need a specific storage order.
 
 #define CHKLST_IMG_TESTS_ALL ( \
   CHKLST_IMG_TEST_ALLOCATION | CHKLST_IMG_TEST_SET_BUF_BY_COPY | \
   CHKLST_IMG_TEST_REALLOCATE | CHKLST_IMG_TEST_COLOR_CONVERSION | \
-  CHKLST_IMG_TEST_PIXEL_MANIPULATION | CHKLST_IMG_TEST_MIRRORING | \
+  CHKLST_IMG_TEST_PIXEL_MANIPULATION | CHKLST_IMG_TEST_AXIS_FLIP | \
   CHKLST_IMG_TEST_ROTATION | CHKLST_IMG_TEST_PARSE_PACK | \
   CHKLST_IMG_TEST_BITMAP_DRAW | CHKLST_IMG_TEST_FRAMEBUFFER_LOCK | \
   CHKLST_IMG_TEST_GEO_PRIMITIVES | CHKLST_IMG_TEST_TEXT_BASICS | \
   CHKLST_IMG_TEST_TEXT_PLACEMENT | CHKLST_IMG_TEST_TEXT_FONT | \
   CHKLST_IMG_TEST_TEXT_ABUSE | CHKLST_IMG_TEST_GEO_DERIVED | \
-  CHKLST_IMG_TEST_PIXADDR | CHKLST_IMG_TEST_PIXBOUNDINGBOX)
+  CHKLST_IMG_TEST_PIXADDR | CHKLST_IMG_TEST_SUBFRAME)
 
 
 const StepSequenceList TOP_LEVEL_IMG_TEST_LIST[] = {
@@ -412,23 +497,23 @@ const StepSequenceList TOP_LEVEL_IMG_TEST_LIST[] = {
   //
   { .FLAG         = CHKLST_IMG_TEST_PIXEL_MANIPULATION,
     .LABEL        = "Pixel manipulation",
-    .DEP_MASK     = (CHKLST_IMG_TEST_COLOR_CONVERSION),
+    .DEP_MASK     = (CHKLST_IMG_TEST_PIXADDR | CHKLST_IMG_TEST_ALLOCATION),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_img_pixel_level()) ? 1:-1);  }
   },
 
   //
-  { .FLAG         = CHKLST_IMG_TEST_MIRRORING,
+  { .FLAG         = CHKLST_IMG_TEST_AXIS_FLIP,
     .LABEL        = "Mirroring",
     .DEP_MASK     = (CHKLST_IMG_TEST_PIXEL_MANIPULATION),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == test_img_mirroring()) ? 1:-1);  }
+    .POLL_FXN     = []() { return ((0 == test_img_axis_flip()) ? 1:-1);  }
   },
 
   //
   { .FLAG         = CHKLST_IMG_TEST_ROTATION,
     .LABEL        = "Rotation",
-    .DEP_MASK     = (CHKLST_IMG_TEST_MIRRORING),
+    .DEP_MASK     = (CHKLST_IMG_TEST_AXIS_FLIP),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_img_rotation()) ? 1:-1);  }
   },
@@ -506,11 +591,11 @@ const StepSequenceList TOP_LEVEL_IMG_TEST_LIST[] = {
   },
 
   //
-  { .FLAG         = CHKLST_IMG_TEST_PIXBOUNDINGBOX,
-    .LABEL        = "PixBoundingBox",
+  { .FLAG         = CHKLST_IMG_TEST_SUBFRAME,
+    .LABEL        = "ImageSubframe",
     .DEP_MASK     = (CHKLST_IMG_TEST_PIXADDR),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == test_img_pixboundingbox()) ? 1:-1);  }
+    .POLL_FXN     = []() { return ((0 == test_img_subframe()) ? 1:-1);  }
   },
 };
 
@@ -533,7 +618,7 @@ int c3p_image_test_main() {
   const char* const MODULE_NAME = "Image";
   printf("===< %s >=======================================\n", MODULE_NAME);
 
-  img_test_plan.requestSteps(CHKLST_IMG_TEST_ALLOCATION | CHKLST_IMG_TEST_ENDIAN_FLIP);
+  img_test_plan.requestSteps(CHKLST_IMG_TEST_ENDIAN_FLIP);
   //img_test_plan.requestSteps(CHKLST_IMG_TESTS_ALL);
   while (!img_test_plan.request_completed() && (0 == img_test_plan.failed_steps(false))) {
     img_test_plan.poll();

@@ -49,17 +49,12 @@ const char* TripleAxisPipe::spatialSenseStr(SpatialSense s) {
 /*
 * Behavior: Pushes left first. Then right, regardless of failure on left.
 *
-* @return 0 on sucess on both sides of the fork, -1 on one failure, or -2 on two failures.
+* @return 0 on success if either side of the fork reports success, -1 on failure.
 */
 FAST_FUNC int8_t TripleAxisFork::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error, uint32_t seq_num) {
-  int8_t ret = -2;
-  if ((nullptr != _LEFT) && (0 == _LEFT->pushVector(s, data, error, seq_num))) {
-    ret++;
-  }
-  if ((nullptr != _RIGHT) && (0 == _RIGHT->pushVector(s, data, error, seq_num))) {
-    ret++;
-  }
-  return ret;
+  const bool LEFT_SUCCESS  = ((nullptr != _LEFT) && (0 == _LEFT->pushVector(s, data, error, seq_num)));
+  const bool RIGHT_SUCCESS = ((nullptr != _RIGHT) && (0 == _RIGHT->pushVector(s, data, error, seq_num)));
+  return ((LEFT_SUCCESS | RIGHT_SUCCESS) ? 0 : -1);
 };
 
 
@@ -81,7 +76,7 @@ void TripleAxisFork::printPipe(StringBuilder* output, uint8_t stage, uint8_t ver
 
 
 /*******************************************************************************
-* TripleAxisConvention
+* TripleAxisRemapper
 *******************************************************************************/
 
 /*
@@ -90,47 +85,47 @@ void TripleAxisFork::printPipe(StringBuilder* output, uint8_t stage, uint8_t ver
 *
 * @return -2 on null NXT, or return code from downstream pushVector() fxn.
 */
-FAST_FUNC int8_t TripleAxisConvention::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error, uint32_t seq_num) {
-  Vector3f stacked_dat;
-  Vector3f stacked_err;
-  float inversion = 1.0;
+FAST_FUNC int8_t TripleAxisRemapper::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error, uint32_t seq_num) {
   int8_t ret = -2;
   if (nullptr != _NXT) {
+    Vector3f tmp_err(0.0f, 0.0f, 0.0f);
+    Vector3f tmp_dat(
+      (data->x * (_invert_0 ? -1.0f : 1.0f)),
+      (data->y * (_invert_1 ? -1.0f : 1.0f)),
+      (data->z * (_invert_2 ? -1.0f : 1.0f))
+    );
+
+    if (nullptr != error) {
+      tmp_err.set(
+        (error->x * (_invert_0 ? -1.0f : 1.0f)),
+        (error->y * (_invert_1 ? -1.0f : 1.0f)),
+        (error->z * (_invert_2 ? -1.0f : 1.0f))
+      );
+    }
+
+    Vector3f stacked_err(0.0f, 0.0f, 0.0f);
+    Vector3f stacked_dat(0.0f, 0.0f, 0.0f);
+
     ret++;
-    // switch (_SRC_FMT) {
-    //   case GnomonType::RH_NEG_X:
-    //   case GnomonType::LH_POS_X:
-    //     inversion = -1.0;
-    //   case GnomonType::RH_POS_X:
-    //   case GnomonType::LH_NEG_X:
-    //   case GnomonType::UNDEFINED:  // Undefinition results in no transform.
-    //     stacked_dat(inversion * data->x, data->y, data->z);
-    //     if (nullptr != error) {
-    //       stacked_err(inversion * error->x, error->y, error->z);
-    //     }
-    //     break;
-    //   case GnomonType::RH_NEG_Y:
-    //   case GnomonType::LH_POS_Y:
-    //     inversion = -1.0;
-    //   case GnomonType::RH_POS_Y:
-    //   case GnomonType::LH_NEG_Y:
-    //     stacked_dat(inversion * data->y, data->z, data->x);
-    //     if (nullptr != error) {
-    //       stacked_err(inversion * error->y, error->z, error->x);
-    //     }
-    //     break;
-    //   case GnomonType::RH_NEG_Z:
-    //   case GnomonType::LH_POS_Z:
-    //     inversion = -1.0;
-    //   case GnomonType::RH_POS_Z:
-    //   case GnomonType::LH_NEG_Z:
-    //     stacked_dat(inversion * data->z, data->x, data->y);
-    //     if (nullptr != error) {
-    //       stacked_err(inversion * error->z, error->x, error->y);
-    //     }
-    //     break;
-    // }
-    if (0 == _NXT->pushVector(s, &stacked_dat, (nullptr != error) ? &stacked_err : nullptr, seq_num)) {
+    switch (_ef_0) {
+      case AxisID::X:  stacked_dat.x = tmp_dat.x;  stacked_err.x = tmp_err.x;  break;
+      case AxisID::Y:  stacked_dat.y = tmp_dat.x;  stacked_err.y = tmp_err.x;  break;
+      case AxisID::Z:  stacked_dat.z = tmp_dat.x;  stacked_err.z = tmp_err.x;  break;
+      default:         break;
+    }
+    switch (_ef_1) {
+      case AxisID::X:  stacked_dat.x = tmp_dat.y;  stacked_err.x = tmp_err.y;  break;
+      case AxisID::Y:  stacked_dat.y = tmp_dat.y;  stacked_err.y = tmp_err.y;  break;
+      case AxisID::Z:  stacked_dat.z = tmp_dat.y;  stacked_err.z = tmp_err.y;  break;
+      default:         break;
+    }
+    switch (_ef_2) {
+      case AxisID::X:  stacked_dat.x = tmp_dat.z;  stacked_err.x = tmp_err.z;  break;
+      case AxisID::Y:  stacked_dat.y = tmp_dat.z;  stacked_err.y = tmp_err.z;  break;
+      case AxisID::Z:  stacked_dat.z = tmp_dat.z;  stacked_err.z = tmp_err.z;  break;
+      default:         break;
+    }
+    if (0 == _NXT->pushVector(s, &stacked_dat, &stacked_err, seq_num)) {
       ret = 0;
     }
   }
@@ -138,14 +133,29 @@ FAST_FUNC int8_t TripleAxisConvention::pushVector(const SpatialSense s, Vector3f
 }
 
 
-void TripleAxisConvention::printPipe(StringBuilder* output, uint8_t stage, uint8_t verbosity) {
+void TripleAxisRemapper::printPipe(StringBuilder* output, uint8_t stage, uint8_t verbosity) {
   StringBuilder indent;
   for (uint8_t i = 0; i < stage; i++) {    indent.concat("    ");    }
   output->concat(&indent);
-  output->concat("+-< 3AxisPipe: Convention >-------------\n");
+  output->concat("+-< 3AxisPipe: Remapper >-------------\n");
   if ((verbosity > 0) && (nullptr != _NXT)) {
     _NXT->printPipe(output, stage+1, verbosity);
   }
+}
+
+
+bool TripleAxisRemapper::mapAffernt(
+  AxisID AXIS_EF_0, AxisID AXIS_EF_1, AxisID AXIS_EF_2,
+  bool INV_X, bool INV_Y, bool INV_Z
+)
+{
+  _ef_0     = AXIS_EF_0;
+  _ef_1     = AXIS_EF_1;
+  _ef_2     = AXIS_EF_2;
+  _invert_0 = INV_X;
+  _invert_1 = INV_Y;
+  _invert_2 = INV_Z;
+  return true;
 }
 
 
@@ -185,6 +195,7 @@ int8_t TripleAxisTerminus::getDataWithErr(Vector3f* d, Vector3f* e, uint32_t* c)
 FAST_FUNC int8_t TripleAxisTerminus::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error, uint32_t seq_num) {
   int8_t ret = -1;
   if (_SENSE == s) {
+    ret = 0;
     _last_update = millis();
     _update_count++;
     _DATA.set(data);
@@ -239,9 +250,8 @@ void TripleAxisTerminus::printPipe(StringBuilder* output, uint8_t stage, uint8_t
 
 
 /*******************************************************************************
-* TripleAxisSingleFilter
+* TripleAxisTimeSeries
 *******************************************************************************/
-
 
 /*
 * Atomic accessor with freshness management and return indication.
@@ -249,18 +259,33 @@ void TripleAxisTerminus::printPipe(StringBuilder* output, uint8_t stage, uint8_t
 * @return 0 on success with stale data.
 * @return 1 on success with fresh data.
 */
-int8_t TripleAxisSingleFilter::getDataWithErr(Vector3f* d, Vector3f* e) {
+int8_t TripleAxisTimeSeries::getDataWithErr(Vector3f* d, Vector3f* e) {
   int8_t ret = dirty() ? 1 : 0;
   d->set(value());
   if (nullptr != e) {
-    // TODO: This class might do extensive massaging of data, and it will certainly
-    //   impact not only the value of the error, but also what the value _means_.
-    //   Carefully review this for accurate processing once things are working.
-    e->set(&_ERR);
+    if (_has_error) {
+      // TODO: This class might do extensive massaging of data, and it will certainly
+      //   impact not only the value of the error, but also what the value _means_.
+      //   Carefully review this for accurate processing once things are working.
+      // NOTE: Any incoming error figure will be multiplied by the standard error
+      //   cofactor associated with the depth of the window.
+      // TODO: Assumes error is constant between samples. If it isn't,
+      //   the true error figure of the data will converge to the value
+      //   reported to the filter. If the error figure changes from
+      //   upstream, it might be best to clear the filter, rather than
+      //   allow epistemologically unsound data to pass.
+      // NOTE: Assumes error represents an even distribution with no
+      //   correlation between samples. I believe that this would make
+      //   the reported error figure more conservative than may be
+      //   warranted from a given source.
+      e->set(_ERR / _error_cofactor);
+    }
+    else {
+      e->zero();
+    }
   }
   return ret;
 }
-
 
 
 /*
@@ -268,73 +293,62 @@ int8_t TripleAxisSingleFilter::getDataWithErr(Vector3f* d, Vector3f* e) {
 *   this instance's state and calls callback, if defined. Marks the data
 *   as fresh if the callback is either absent, or returns nonzero.
 *
-* @return 0 on refresh, or -1 on sense mis-match, -3 on uninitialized.
+* @return -2 on push failure, -1 on broken pipe, or 0 on success.
 */
-FAST_FUNC int8_t TripleAxisSingleFilter::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error, uint32_t seq_num) {
-  int8_t ret = -3;
-
-  if (!initialized()) {
-    init();  // Init memory on first-use. See class notes.
-  }
-  if (initialized()) {
-    ret = -1;
-    if (_SENSE == s) {
-      Vector3f tmp_err(error);
-      ret = 0;
-      switch (feedFilter(data)) {
-        case 0:    // Value accepted into filter. No new result.
-          break;
+FAST_FUNC int8_t TripleAxisTimeSeries::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error, uint32_t seq_num) {
+  int8_t ret = -1;
+  if (_SENSE == s) {
+    if (!initialized()) {
+      init();  // Init memory on first-use. See class notes.
+    }
+    ret = -2;
+    if (initialized()) {
+      switch (feedSeries(data)) {
         case 1:    // Value accepted into filter. New result ready.
           if (nullptr != error) {
-            _has_error = true;
-            switch (strategy()) {
-              case FilteringStrategy::RAW:
-                _ERR.set(&tmp_err);
-                break;
-              case FilteringStrategy::MOVING_AVG:
-              case FilteringStrategy::HARMONIC_MEAN:    // TODO: Still epistemologically correct?
-              case FilteringStrategy::GEOMETRIC_MEAN:   // TODO: Still epistemologically correct?
-                // Arithmetic mean applies the inverse square of the variance to the given error figure.
-                // TODO: Assumes error is constant between samples. If it isn't,
-                //   the true error figure of the data will converge to the value
-                //   reported to the filter. If the error figure changes from
-                //   upstream, it might be best to clear the filter, rather than
-                //   allow epistemologically unsound data to pass.
-                // NOTE: Assumes error represents an even distribution with no
-                //   correlation between samples. I believe that this would make
-                //   the reported error figure more conservative than may be
-                //   warranted from a given source.
-                tmp_err /= (float) (windowSize() * windowSize());
-                _ERR.set(&tmp_err);
-                break;
-              default:    // TODO: How to account for the other cases? Do something obviously wrong for now.
-                _ERR.set(error);   // Wrong.
-                break;
+            // We will retain the afferant error figure. Adjusting this figure for
+            //   efferant push() will be done at that time. Doing it this way will
+            //   avoid destroying information about past incoming error figures,
+            //   which is important for detecting changes.
+            if (_has_error) {
+              // TODO: Which we aren't yet doing.
+            }
+            else {
+              _ERR.set(error);
+              _error_cofactor = sqrt(windowSize());
+              _has_error = true;
             }
           }
-          if (nullptr != _NXT) {
-            // If the vector was pushed downstream, we consider it noted. If it
-            //   was rejected, we leave the class marked dirty.
-            _filter_dirty = (0 > _NXT->pushVector(s, value(), &_ERR, seq_num));
+          if (_fwd_from_backside && (nullptr != _NXT)) {
+            Vector3f tmp_err;
+            Vector3f tmp_dat = value();
+            if (_has_error) {
+              tmp_err = (_ERR / _error_cofactor);
+            }
+            ret = _NXT->pushVector(_SENSE, &tmp_dat, &tmp_err, seq_num);
           }
+          // NOTE: No break;
+        case 0:    // Value accepted into filter. No new result.
+          ret = 0;
           break;
-        default:   // Catch-all error case. Should never happen with the earlier init().
-          ret = -4;
+        default:  // Anything else is an error.
           break;
       }
     }
-    else {
-      // We blindly relay vectors of SpatialSense's we aren't configured for.
-      if (0 == _NXT->pushVector(s, data, error, seq_num)) {
-        ret = -5;
-      }
+    if (_fwd_matched_afferants & (nullptr != _NXT)) {
+      ret = _NXT->pushVector(s, data, error, seq_num);
     }
   }
+  else if (_fwd_mismatches & (nullptr != _NXT)) {
+    // We relay vectors of SpatialSense's we aren't configured for.
+    ret = _NXT->pushVector(s, data, error, seq_num);
+  }
+
   return ret;
 }
 
 
-void TripleAxisSingleFilter::printPipe(StringBuilder* output, uint8_t stage, uint8_t verbosity) {
+void TripleAxisTimeSeries::printPipe(StringBuilder* output, uint8_t stage, uint8_t verbosity) {
   bool was_dirty = dirty();
   StringBuilder indent;
   for (uint8_t i = 0; i < stage; i++) {    indent.concat("    ");    }
@@ -344,10 +358,11 @@ void TripleAxisSingleFilter::printPipe(StringBuilder* output, uint8_t stage, uin
   output->concat(&indent);
   output->concatf("| SpatialSense:   %s\n", TripleAxisPipe::spatialSenseStr(_SENSE));
   if (verbosity > 5) {
-    SensorFilter3<float>::printFilter(output);
+    _print_series(output);
   }
   output->concat(&indent);
-  output->concatf("| Value %s:    (%.3f, %.3f, %.3f)\n", (was_dirty?"FRESH":"STALE"), (double) value()->x, (double) value()->y, (double) value()->z);
+  Vector3f val = value();
+  output->concatf("| Value %s:    (%.3f, %.3f, %.3f)\n", (was_dirty?"FRESH":"STALE"), (double) val.x, (double) val.y, (double) val.z);
   if (_has_error) {
     output->concat(&indent);
     output->concatf("| Error:          (%.3f, %.3f, %.3f)\n", (double) _ERR.x, (double) _ERR.y, (double) _ERR.z);

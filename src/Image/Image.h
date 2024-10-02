@@ -62,6 +62,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "../CppPotpourri.h"
 #include "../StringBuilder.h"
 
+class Image;
+
 // Once the bit-width is defined, assign properly-sized integer types to our
 //   wrapped types.
 // TODO: PixInt might be wrong-headed. Might be better to just up-case to int32
@@ -141,21 +143,23 @@ class PixAddr {
     // PixInt distanceTo(const PixAddr);
 };
 
-/* A representation of a bounding-box within the Image. */
-class PixBoundingBox : PixAddr {
+/* A representation of an area within an Image. */
+class ImageSubframe {
   public:
-    PixUInt w;   // Width
-    PixUInt h;   // Height
-
-    PixBoundingBox(const PixBoundingBox& src) : PixAddr(src.x, src.y), w(src.w), h(src.h) {};   // Copy-constructor
-    PixBoundingBox(const PixUInt X, const PixUInt Y, const PixUInt W, const PixUInt H) : PixAddr(X, Y), w(W), h(H) {};
-    PixBoundingBox(const PixUInt W, const PixUInt H) : PixAddr(0, 0), w(W), h(H) {};
-    PixBoundingBox() : PixAddr(0, 0), w(0), h(0) {};
+    ImageSubframe(const ImageSubframe& src) : _img(src._img), _addr(src._addr), _width(src._width), _height(src._height) {};   // Copy-constructor
+    ImageSubframe(Image* i, const PixAddr A, const PixUInt W, const PixUInt H) : _img(i), _addr(A), _width(W), _height(H) {};
+    ImageSubframe() : ImageSubframe(nullptr, (0, 0), 0, 0) {};
 
     // Pass an optional OFFSET value to arrive at an absolute location.
-    PixUInt extentX(const PixUInt OFFSET = 0) {     return (OFFSET + w + x);  };
-    PixUInt extentY(const PixUInt OFFSET = 0) {     return (OFFSET + h + y);  };
-    PixAddr extent() {                     return PixAddr((w + x), (h + y));  };
+    PixUInt extentX(const PixUInt OFFSET = 0) {       return (OFFSET + _addr.x);  };
+    PixUInt extentY(const PixUInt OFFSET = 0) {       return (OFFSET + _addr.y);  };
+    PixAddr extent() {  return PixAddr((_width + _addr.x), (_height + _addr.y));  };
+
+  protected:
+    Image*  _img;            // Target Image
+    PixAddr _addr;   // The pixel in the target image that is our upper-left corner.
+    PixUInt _width;  // The width of this frame.
+    PixUInt _height; // The height of this frame.
 };
 
 

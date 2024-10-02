@@ -66,12 +66,10 @@ template <typename T> class Vector3 {
     void operator ()(const T x0, const T y0, const T z0)
     {  x= x0; y= y0; z= z0;  }
 
-    // setting fxn
-    void set(Vector3<T>* existing) {
-      x = (existing->x);
-      y = (existing->y);
-      z = (existing->z);
-    }
+    // setting fxns
+    void set(Vector3<T>* existing) { x = (existing->x); y = (existing->y); z = (existing->z); }
+    void set(Vector3<T> existing) {  x = (existing.x);  y = (existing.y);  z = (existing.z);  }
+    void zero() {    x = T(0); y = T(0); z = T(0);  };
 
     // test for equality
     bool operator==(const Vector3<T> &v)
@@ -183,6 +181,9 @@ template <typename T> class Vector3 {
 
     // projects this vector onto v
     void project(const Vector3<T> &v) {  *this= v * (*this * v)/(v*v);  }
+
+    // Is this the zero vector?
+    bool isZero() {  return (x==T(0) && y==T(0) && z==T(0));  };
 
     // returns this vector projected onto v
     Vector3<T> projected(const Vector3<T> &v) {  return v * (*this * v)/(v*v); }
