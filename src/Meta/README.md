@@ -10,9 +10,9 @@ Nothing in `Meta` is built. But some things are included. Any CPP files under
 `Meta` are either illustrations only, or are to be handled according to where
 specifically they are (details below).
 
-Top-level header files in this directory _are_ included near the base of the
+Top-level header files in this directory _are_ included near the top of the
 inclusion hierarchy. Inclusion of CppPotpourri.h activates this inclusion chain
-reliably, but other abstraction layers near the base (or platform packages) may
+reliably, but other abstraction layers near the top (or platform packages) may
 also do so. Header logic must thus strive for idempotency in its consequences,
 or at least make careful notes where this is idempotency is not reliable.
 
@@ -28,7 +28,7 @@ and sanitize them. This is where build-wide option flags are controlled for the
 benefit of their reliability elsewhere in this library (and possibly others).
 
 This is also the file that sets certain platform-level defaults that C3P must
-take as assumptions if it is built independently of a notion of a  platform that
+take as assumptions if it is built independently of a notion of a platform that
 constrains such assumptions. This includes, but is not limited to...
 
   * Threading model (if any)
@@ -40,6 +40,12 @@ constrains such assumptions. This includes, but is not limited to...
 
 This header contains special support for compiler-specific macros, idioms,
 section assignments, and so forth.
+
+### `AntiMacro.h`
+
+C3P provides real inline implementations of common functions that are
+  traditionally implemented as macros. Those functions, and their rationales,
+  are given here.
 
 ### `Intrinsics.h`
 

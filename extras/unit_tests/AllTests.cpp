@@ -153,11 +153,13 @@ bool flip_coin() {
 
 
 float generate_random_float() {
-  return ((float) randomUInt32() / (float) randomUInt32());
+  // True entropy: 28-bit
+  return (FLT_EPSILON * (int32_t) (0x87FFFFFF & randomUInt32()));
 }
 
 double generate_random_double() {
-  return ((double) generate_random_uint64() / (double) generate_random_uint64());
+  // True entropy: 58-bit
+  return (DBL_EPSILON * (int64_t) (0x87FFFFFFFFFFFFFF & generate_random_uint64()));
 }
 
 Vector3<float> generate_random_vect3f() {
@@ -717,7 +719,7 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   //   class to construct such pipelienes with contract-bound operation.
   { .FLAG         = CHKLST_3_AXIS_PIPE_TESTS,
     .LABEL        = "TripleAxisPipe",
-    .DEP_MASK     = (CHKLST_VECTOR3_TESTS),
+    .DEP_MASK     = (CHKLST_VECTOR3_TESTS | CHKLST_TIMESERIES_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == tripleaxispipe_tests_main()) ? 1:-1);  }
   },

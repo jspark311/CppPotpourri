@@ -32,6 +32,16 @@ The library was originally written under GCC, but others have reported broad
 
 #include "Meta/Rationalizer.h"     // Include build options checking.
 
+/*******************************************************************************
+* Inclusions from the standard library that typically come packaged with the
+*   toolchain. To the extent that these are not uniform across compilers and
+*   environments, they should not be globally included from this file.
+*******************************************************************************/
+#include <inttypes.h>
+#include <stdint.h>
+#include <math.h>
+#include <float.h>
+
 
 /*******************************************************************************
 * GCC

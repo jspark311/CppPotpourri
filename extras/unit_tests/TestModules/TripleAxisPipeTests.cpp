@@ -30,33 +30,24 @@ This program runs tests against the Vector3 pipeline contract, and the utility
 * 3-axis callbacks
 * We use the callback function to monitor for correct respoonse and content.
 *******************************************************************************/
-uint32_t snum_acc     = 0;
-uint32_t snum_gyr     = 0;
-uint32_t snum_mag     = 0;
-uint32_t snum_euler   = 0;
-uint32_t snum_bearing = 0;
-Vector3f last_vec_acc;
-Vector3f last_vec_gyr;
-Vector3f last_vec_mag;
-Vector3f last_vec_euler;
-Vector3f last_vec_bearing;
 
-StopWatch stopwatch_vec_acc;
-StopWatch stopwatch_vec_gyr;
-StopWatch stopwatch_vec_mag;
-StopWatch stopwatch_vec_euler;
-StopWatch stopwatch_vec_bearing;
-
+StopWatch stopwatch_term;
+StopWatch stopwatch_remapper;
+StopWatch stopwatch_fork;
+StopWatch stopwatch_offset;
+StopWatch stopwatch_integrator;
+StopWatch stopwatch_scaling;
+StopWatch stopwatch_timeseries;
 
 
 FAST_FUNC int8_t callback_3axis_left(const SpatialSense S, Vector3f* dat, Vector3f* err, uint32_t seq_num) {
   c3p_log(LOG_LEV_INFO, "callback_3axis(%s, seq %u)", "(%.6f, %.6f, %.6f)", TripleAxisPipe::spatialSenseStr(S), seq_num, dat->x, dat->y, dat->z);
   switch (S) {
-    case SpatialSense::ACC:        stopwatch_vec_acc.markStart();        last_vec_acc.set(dat);        snum_acc     = seq_num;    break;
-    case SpatialSense::GYR:        stopwatch_vec_gyr.markStart();        last_vec_gyr.set(dat);        snum_gyr     = seq_num;    break;
-    case SpatialSense::MAG:        stopwatch_vec_mag.markStart();        last_vec_mag.set(dat);        snum_mag     = seq_num;    break;
-    case SpatialSense::EULER_ANG:  stopwatch_vec_euler.markStart();      last_vec_euler.set(dat);      snum_euler   = seq_num;    break;
-    case SpatialSense::BEARING:    stopwatch_vec_bearing.markStart();    last_vec_bearing.set(dat);    snum_bearing = seq_num;    break;
+    case SpatialSense::ACC:
+    case SpatialSense::GYR:
+    case SpatialSense::MAG:
+    case SpatialSense::EULER_ANG:
+    case SpatialSense::BEARING:
     default:    break;
   }
   return 0;
@@ -66,46 +57,20 @@ FAST_FUNC int8_t callback_3axis_left(const SpatialSense S, Vector3f* dat, Vector
 FAST_FUNC int8_t callback_3axis_right(const SpatialSense S, Vector3f* dat, Vector3f* err, uint32_t seq_num) {
   c3p_log(LOG_LEV_INFO, "callback_3axis(%s, seq %u)", "(%.6f, %.6f, %.6f)", TripleAxisPipe::spatialSenseStr(S), seq_num, dat->x, dat->y, dat->z);
   switch (S) {
-    case SpatialSense::ACC:        if (seq_num == snum_acc    ) {  stopwatch_vec_acc.markStop();      }    break;
-    case SpatialSense::GYR:        if (seq_num == snum_gyr    ) {  stopwatch_vec_gyr.markStop();      }    break;
-    case SpatialSense::MAG:        if (seq_num == snum_mag    ) {  stopwatch_vec_mag.markStop();      }    break;
-    case SpatialSense::EULER_ANG:  if (seq_num == snum_euler  ) {  stopwatch_vec_euler.markStop();    }    break;
-    case SpatialSense::BEARING:    if (seq_num == snum_bearing) {  stopwatch_vec_bearing.markStop();  }    break;
+    case SpatialSense::ACC:
+    case SpatialSense::GYR:
+    case SpatialSense::MAG:
+    case SpatialSense::EULER_ANG:
+    case SpatialSense::BEARING:
     default:    break;
   }
   return 0;
 }
 
 
-// The basic pipeline that we will use for testing.
-
-TripleAxisTerminus     tap_term_left(SpatialSense::ACC, callback_3axis_left);
-TripleAxisTerminus     tap_term_right(SpatialSense::ACC, callback_3axis_right);
-TripleAxisFork         tap_profiling_fork(&tap_term_left, &tap_term_right);
-
-
-
-
 /*******************************************************************************
 * Test routines
 *******************************************************************************/
-
-/*
-*/
-int test_3ap_flags() {
-  int ret = -1;
-  return ret;
-}
-
-
-/*
-*/
-int test_3ap_relay() {
-  int ret = -1;
-  return ret;
-}
-
-
 /*
 */
 int test_3ap_terminus() {
@@ -118,9 +83,15 @@ int test_3ap_terminus() {
   const uint32_t     IN_THE_PAST = (uint32_t) millis();
   printf("\tlastUpdate() and updateCount() both return zero for a fresh object... ");
   if ((0 == terminal.lastUpdate()) & (0 == terminal.updateCount())) {
+    stopwatch_term.markStart();
     terminal.pushVector(SpatialSense::GYR, &src_val, &err_val, 1);
+    stopwatch_term.markStop();
+    stopwatch_term.markStart();
     terminal.pushVector(SpatialSense::MAG, &trash_val, &trash_val, 1);
+    stopwatch_term.markStop();
+    stopwatch_term.markStart();
     terminal.pushVector(SpatialSense::EULER_ANG, &trash_val, &trash_val, 1);
+    stopwatch_term.markStop();
     printf("Pass.\n\tThere was a single value update following a single valid pushVector() call... ");
     if (1 == terminal.updateCount()) {
       printf("Pass.\n\tThe timestamp in the terminal is plausibly correct... ");
@@ -141,7 +112,9 @@ int test_3ap_terminus() {
               printf("Pass.\n\tgetDataWithErr() return indicates fresh data... ");
               src_val = generate_random_vect3f();
               err_val = generate_random_vect3f();
+              stopwatch_term.markStart();
               terminal.pushVector(SpatialSense::GYR, &src_val, &err_val, 1);
+              stopwatch_term.markStop();
               Vector3<float> tmp_dat;
               Vector3<float> tmp_err;
               uint32_t seq = 0;
@@ -168,10 +141,136 @@ int test_3ap_terminus() {
   if (0 != ret) {
     printf("Fail.\n");
     StringBuilder output;
-    terminal.printPipe(&output, 0, LOG_LEV_DEBUG);
+    terminal.printPipe(&output, 1, LOG_LEV_DEBUG);
     printf("%s\n", (char*) output.string());
     ret = -1;
   }
+  return ret;
+}
+
+
+/*
+*/
+int test_3ap_offset() {
+  const uint32_t TEST_CYCLES = (107 + (randomUInt32() % 111));
+  int ret = -1;
+  TripleAxisTerminus term(SpatialSense::UNITLESS);
+  TripleAxisOffset  test_obj(&term);
+  Vector3<float> src_val;
+  Vector3<float> test_offset = generate_random_vect3f();
+  test_obj.offsetVector(test_offset);
+  printf("TripleAxisOffset...\n");
+  printf("\tVectors can be pushed into the test object... ");
+  if (0 == test_obj.pushVector(SpatialSense::UNITLESS, &src_val, nullptr, 0)) {
+    printf("Pass.\n\tA vector arrived at the terminal... ");
+    if (1 == term.updateCount()) {
+      printf("Pass.\n\tThe produced vector equals the offset vector when (0, 0, 0) is passed in... ");
+      if (*(term.getData()) == test_offset) {
+        printf("Pass.\n\tIssuing %u vectors as input... ", TEST_CYCLES);
+        ret = 0;
+        for (uint32_t i = 0; i < TEST_CYCLES; i++) {
+          src_val = generate_random_vect3f();
+          test_offset = generate_random_vect3f();
+          test_obj.offsetVector(test_offset);
+          stopwatch_offset.markStart();
+          const bool PUSH_PASS = (0 == test_obj.pushVector(SpatialSense::UNITLESS, &src_val, nullptr, i));
+          stopwatch_offset.markStop();
+          Vector3<float> result = *(term.getData());
+          Vector3<float> recomputed = (result - test_offset);
+          // TODO: Promote into vector? Arbitrary epsilon.
+          const bool COMPARE_PASS = (
+            nearly_equal(src_val.x, recomputed.x, 0.00001) & \
+            nearly_equal(src_val.y, recomputed.y, 0.00001) & \
+            nearly_equal(src_val.z, recomputed.z, 0.00001)
+          );
+          if (!(COMPARE_PASS & PUSH_PASS)) {   ret--;  printf("%u ", i);  break;  }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail\n");
+  }
+  else {
+    printf("PASS\n");
+  }
+  StringBuilder output;
+  test_obj.printPipe(&output, 1, LOG_LEV_DEBUG);
+  printf("%s\n", (char*) output.string());
+  return ret;
+}
+
+
+/*
+*/
+int test_3ap_scaling() {
+  const uint32_t TEST_CYCLES = (107 + (randomUInt32() % 111));
+  int ret = -1;
+  TripleAxisTerminus term(SpatialSense::UNITLESS);
+  TripleAxisScaling test_obj(&term);
+  Vector3<float> src_val = generate_random_vect3f();
+  printf("TripleAxisScaling...\n");
+  printf("\tVectors can be pushed into the test object... ");
+  if (0 == test_obj.pushVector(SpatialSense::UNITLESS, &src_val, nullptr, 0)) {
+    printf("Pass.\n\tA vector arrived at the terminal... ");
+    if (1 == term.updateCount()) {
+      printf("Pass.\n\tWithout setting a scaling parameter, the produced vector is normalized... ");
+      if (nearly_equal(1.0f, term.getData()->length(), 0.00001)) {
+        printf("Pass.\n\tSetting a single-value scaling parameter results in a uniformly-scaled result (%u cycles)... ", TEST_CYCLES);
+        ret = 0;
+        for (uint32_t i = 0; i < TEST_CYCLES; i++) {
+          float scale_float = generate_random_float();
+          test_obj.scaling(scale_float);
+          src_val = generate_random_vect3f();
+          src_val.normalize();
+          stopwatch_scaling.markStart();
+          const bool PUSH_PASS = (0 == test_obj.pushVector(SpatialSense::UNITLESS, &src_val, nullptr, i));
+          stopwatch_scaling.markStop();
+          Vector3<float> result = *(term.getData());
+          Vector3<float> recomputed = (result / scale_float);
+          // TODO: Promote into vector? Arbitrary epsilon.
+          const bool COMPARE_PASS = (
+            nearly_equal(src_val.x, recomputed.x, 0.00001) & \
+            nearly_equal(src_val.y, recomputed.y, 0.00001) & \
+            nearly_equal(src_val.z, recomputed.z, 0.00001)
+          );
+          if (!(COMPARE_PASS & PUSH_PASS)) {   ret--;  printf("%u ", i);  break;  }
+        }
+        if (0 == ret) {
+          printf("Pass.\n\tSetting a single-value scaling parameter results in a nonuniformly-scaled result (%u cycles)... ", TEST_CYCLES);
+          Vector3<float> error_figure(0.0024f, 0.0024f, 0.0024f);
+          for (uint32_t i = 0; i < TEST_CYCLES; i++) {
+            Vector3<float> scale_vect = generate_random_vect3f();
+            test_obj.scaling(scale_vect);
+            src_val = generate_random_vect3f();
+            src_val.normalize();
+            stopwatch_scaling.markStart();
+            const bool PUSH_PASS = (0 == test_obj.pushVector(SpatialSense::UNITLESS, &src_val, &error_figure, i));
+            stopwatch_scaling.markStop();
+            Vector3<float> result = *(term.getData());
+            // TODO: Promote into vector? Arbitrary epsilon.
+            const bool COMPARE_PASS = (
+              nearly_equal(result.x, (src_val.x * scale_vect.x), 0.00001) & \
+              nearly_equal(result.y, (src_val.y * scale_vect.y), 0.00001) & \
+              nearly_equal(result.z, (src_val.z * scale_vect.z), 0.00001)
+            );
+            if (!(COMPARE_PASS & PUSH_PASS)) {   ret--;  printf("%u ", i);  break;  }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail\n");
+  }
+  else {
+    printf("PASS\n");
+  }
+  StringBuilder output;
+  test_obj.printPipe(&output, 1, LOG_LEV_DEBUG);
+  printf("%s\n", (char*) output.string());
   return ret;
 }
 
@@ -190,7 +289,9 @@ int test_3ap_fork() {
   uint32_t timer_deadlock = 1000000;
   while ((term_left.lastUpdate() >= term_right.lastUpdate()) && (timer_deadlock)) {
     src_val = generate_random_vect3f();
+    stopwatch_fork.markStart();
     fork.pushVector(SpatialSense::UNITLESS, &src_val, nullptr, 1);
+    stopwatch_fork.markStop();
     timer_deadlock--;
   }
 
@@ -211,7 +312,7 @@ int test_3ap_fork() {
   if (0 != ret) {
     printf("Fail.\n");
     StringBuilder output;
-    fork.printPipe(&output, 0, LOG_LEV_DEBUG);
+    fork.printPipe(&output, 1, LOG_LEV_DEBUG);
     printf("%s\n", (char*) output.string());
     ret = -1;
   }
@@ -237,8 +338,8 @@ int test_3ap_axis_remapper() {
   //   transform is being done correctly...
 
   printf("\tNo re-mapping... ");
-  remapper_noninv.mapAffernt(AxisID::X, AxisID::Y, AxisID::Z, false, false, false);
-  remapper_inv.mapAffernt(   AxisID::X, AxisID::Y, AxisID::Z, true, true, true);
+  remapper_noninv.mapAfferent(AxisID::X, AxisID::Y, AxisID::Z, false, false, false);
+  remapper_inv.mapAfferent(   AxisID::X, AxisID::Y, AxisID::Z, true, true, true);
   for (uint32_t i = 0; i < TEST_CYCLES; i++) {
     Vector3<float> src_val     = generate_random_vect3f();
     Vector3<float> src_val_inv(
@@ -254,13 +355,15 @@ int test_3ap_axis_remapper() {
   }
 
   if (0 == ret) {
-    printf("Pass\n\tRe-mapping to mute the afferant... ");
+    printf("Pass\n\tRe-mapping to mute the afferent... ");
     term_noninv.reset();  term_inv.reset();
-    remapper_noninv.mapAffernt(AxisID::NONE, AxisID::NONE, AxisID::NONE, false, false, false);
-    remapper_inv.mapAffernt(   AxisID::NONE, AxisID::NONE, AxisID::NONE, true, true, true);
+    remapper_noninv.mapAfferent(AxisID::NONE, AxisID::NONE, AxisID::NONE, false, false, false);
+    remapper_inv.mapAfferent(   AxisID::NONE, AxisID::NONE, AxisID::NONE, true, true, true);
     for (uint32_t i = 0; i < TEST_CYCLES; i++) {
       Vector3<float> src_val = generate_random_vect3f();
+      stopwatch_remapper.markStart();
       remapper.pushVector(SpatialSense::UNITLESS, &src_val, &error_figure, 1);
+      stopwatch_remapper.markStop();
       if (*(term_noninv.getData()) != ZERO_VECTOR) {   ret--;  }
       if (*(term_inv.getData()) != ZERO_VECTOR) {      ret--;  }
     }
@@ -269,11 +372,13 @@ int test_3ap_axis_remapper() {
   if (0 == ret) {
     printf("Pass\n\tRotating vector components (X to Y), (Y to Z), and (Z to X)... ");
     term_noninv.reset();  term_inv.reset();
-    remapper_noninv.mapAffernt(AxisID::Y, AxisID::Z, AxisID::X, false, false, false);
-    remapper_inv.mapAffernt(   AxisID::Y, AxisID::Z, AxisID::X, true, true, true);
+    remapper_noninv.mapAfferent(AxisID::Y, AxisID::Z, AxisID::X, false, false, false);
+    remapper_inv.mapAfferent(   AxisID::Y, AxisID::Z, AxisID::X, true, true, true);
     for (uint32_t i = 0; i < TEST_CYCLES; i++) {
       Vector3<float> src_val = generate_random_vect3f();
+      stopwatch_remapper.markStart();
       remapper.pushVector(SpatialSense::UNITLESS, &src_val, &error_figure, 1);
+      stopwatch_remapper.markStop();
       Vector3<float> result_noninv = *(term_noninv.getData());
       Vector3<float> result_inv    = *(term_inv.getData());
       if (src_val.x != result_noninv.y) {   ret--;  }
@@ -286,11 +391,13 @@ int test_3ap_axis_remapper() {
   if (0 == ret) {
     printf("Pass\n\tRotating vector components (X to Z), (Y to X), and (Z to Y)... ");
     term_noninv.reset();  term_inv.reset();
-    remapper_noninv.mapAffernt(AxisID::Z, AxisID::X, AxisID::Y, false, false, false);
-    remapper_inv.mapAffernt(   AxisID::Z, AxisID::X, AxisID::Y, true, true, true);
+    remapper_noninv.mapAfferent(AxisID::Z, AxisID::X, AxisID::Y, false, false, false);
+    remapper_inv.mapAfferent(   AxisID::Z, AxisID::X, AxisID::Y, true, true, true);
     for (uint32_t i = 0; i < TEST_CYCLES; i++) {
       Vector3<float> src_val = generate_random_vect3f();
+      stopwatch_remapper.markStart();
       remapper.pushVector(SpatialSense::UNITLESS, &src_val, &error_figure, 1);
+      stopwatch_remapper.markStop();
       Vector3<float> result_noninv = *(term_noninv.getData());
       Vector3<float> result_inv    = *(term_inv.getData());
       if (src_val.x != result_noninv.z) {   ret--;  }
@@ -299,7 +406,6 @@ int test_3ap_axis_remapper() {
     }
   }
 
-
   if (0 != ret) {
     printf("Fail\n");
   }
@@ -307,7 +413,7 @@ int test_3ap_axis_remapper() {
     printf("PASS\n");
   }
   StringBuilder output;
-  remapper.printPipe(&output, 0, LOG_LEV_DEBUG);
+  remapper.printPipe(&output, 1, LOG_LEV_DEBUG);
   printf("%s\n", (char*) output.string());
   return ret;
 }
@@ -333,7 +439,9 @@ int test_3ap_timeseries() {
   bool pushes_all_pass = true;
   for (uint32_t i = 0; i < (TEST_DEPTH-1); i++) {
     src_val = generate_random_vect3f();
+    stopwatch_timeseries.markStart();
     pushes_all_pass &= (0 == timeseries.pushVector(SpatialSense::UNITLESS, &src_val, &error_figure, i));
+    stopwatch_timeseries.markStop();
   }
 
   if (pushes_all_pass) {
@@ -344,8 +452,10 @@ int test_3ap_timeseries() {
       if (-1 == timeseries.pushVector(SpatialSense::GYR, &src_val, &error_figure, TEST_DEPTH)) {
         printf("Pass.\n\tPushing non-matching data passed (fwd_mismatches = true)... ");
         src_val = generate_random_vect3f();
-        timeseries.forwardMismatchedAfferants(true);
+        timeseries.forwardMismatchedAfferents(true);
+        stopwatch_timeseries.markStart();
         if (0 == timeseries.pushVector(SpatialSense::GYR, &src_val, &error_figure, TEST_DEPTH)) {
+          stopwatch_timeseries.markStop();
           printf("Pass.\n\tThe timeseries window remains unfilled... ");
           if (!timeseries.windowFull()) {
             printf("Pass.\n\tThe non-matching terminal object has a single sample... ");
@@ -356,7 +466,9 @@ int test_3ap_timeseries() {
                 if (0 == term.updateCount()) {
                   printf("Pass.\n\tPushing the last value into the timeseries returns as expected... ");
                   src_val = generate_random_vect3f();
+                  stopwatch_timeseries.markStart();
                   if (0 == timeseries.pushVector(SpatialSense::UNITLESS, &src_val, &error_figure, TEST_DEPTH)) {
+                    stopwatch_timeseries.markStop();
                     printf("Pass.\n\tThe timeseries window is now filled... ");
                     if (timeseries.windowFull()) {
                       printf("Pass.\n\tThe matching terminal object has a single sample... ");
@@ -386,11 +498,60 @@ int test_3ap_timeseries() {
     printf("PASS\n");
   }
   StringBuilder output;
-  timeseries.printPipe(&output, 0, LOG_LEV_DEBUG);
+  timeseries.printPipe(&output, 1, LOG_LEV_DEBUG);
   printf("%s\n", (char*) output.string());
   return ret;
 }
 
+
+/*
+*/
+int test_3ap_integrator() {
+  Vector3<float> error_figure(0.001f, 0.001f, 0.001f);
+  const uint32_t TEST_DEPTH = (107 + (randomUInt32() % 111));
+  int ret = -1;
+  TripleAxisTerminus term(SpatialSense::ACC);
+  TripleAxisIntegrator integrator(SpatialSense::ACC, &term);
+  Vector3<float> src_val;
+
+  printf("TripleAxisIntegrator (depth of %u)...\n", TEST_DEPTH);
+  printf("\tAll calls to pushVector() succeed... ");
+
+  bool pushes_all_pass = true;
+  for (uint32_t i = 0; i < TEST_DEPTH; i++) {
+    src_val = generate_random_vect3f();
+    src_val.normalize();
+    stopwatch_integrator.markStart();
+    pushes_all_pass &= (0 == integrator.pushVector(SpatialSense::ACC, &src_val, &error_figure, i));
+    stopwatch_integrator.markStop();
+  }
+
+  if (pushes_all_pass) {
+    printf("Pass.\n\tThe integrator has the correct sample count... ");
+    if (integrator.updateCount() == TEST_DEPTH) {
+      ret = 0;
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail\n");
+  }
+  else {
+    printf("PASS\n");
+  }
+  StringBuilder output;
+  integrator.printPipe(&output, 1, LOG_LEV_DEBUG);
+  printf("%s\n", (char*) output.string());
+  return ret;
+}
+
+
+/*
+*/
+int test_3ap_relay() {
+  int ret = -1;
+  return ret;
+}
 
 
 /*
@@ -405,29 +566,24 @@ int test_3ap_orientation() {
 /*******************************************************************************
 * Test plan
 *******************************************************************************/
-#define CHKLST_3AP_TEST_WITH_FLAGS   0x00000001  // Ensures that TripleAxisPipeWithFlags behaves correctly.
-#define CHKLST_3AP_TEST_RELAY        0x00000002  // Tests the fork utility class.
-//#define CHKLST_3AP_TEST_  0x00000004  //
-//#define CHKLST_3AP_TEST_  0x00000008  //
-//#define CHKLST_3AP_TEST_  0x00000010  //
-//#define CHKLST_3AP_TEST_  0x00000020  //
-//#define CHKLST_3AP_TEST_  0x00000040  //
-//#define CHKLST_3AP_TEST_  0x00000080  //
-#define CHKLST_3AP_TEST_FORK          0x00000100  // The fork utility class.
-#define CHKLST_3AP_TEST_CONV          0x00000200  // The axis reference converter.
-#define CHKLST_3AP_TEST_TERMINUS      0x00000400  // Tests the pipelien terminator class.
-#define CHKLST_3AP_TEST_TIMESERIES    0x00000800  // Tests the 3AP time-series class.
-#define CHKLST_3AP_TEST_ORIENTATION   0x00001000  // Tests the orientation filter.
-
-#define CHKLST_3AP_TEST_DUMP_STATS    0x80000000  // Dumps profiler to test results.
-
+#define CHKLST_3AP_TEST_TERMINUS     0x00000001  // Tests the pipelien terminator class.
+#define CHKLST_3AP_TEST_FORK         0x00000002  // The fork utility class.
+#define CHKLST_3AP_TEST_OFFSET       0x00000004  // Offset class.
+#define CHKLST_3AP_TEST_SCALING      0x00000008  // Scaling classes.
+#define CHKLST_3AP_TEST_RELAY        0x00000010  // Tests the relay and filter class.
+#define CHKLST_3AP_TEST_INTEGRATOR   0x00000020  // The integrator class.
+#define CHKLST_3AP_TEST_CONV         0x00000040  // The axis reference converter.
+#define CHKLST_3AP_TEST_TIMESERIES   0x00000080  // Tests the 3AP time-series class.
+#define CHKLST_3AP_TEST_ORIENTATION  0x00000100  // Tests the orientation filter.
+#define CHKLST_3AP_TEST_DUMP_STATS   0x80000000  // Dumps profiler to test results.
 
 #define CHKLST_3AP_TESTS_ALL ( \
-  CHKLST_3AP_TEST_CONV | CHKLST_3AP_TEST_TERMINUS | \
-  CHKLST_3AP_TEST_TIMESERIES | \
-  CHKLST_3AP_TEST_DUMP_STATS | CHKLST_3AP_TEST_FORK)
-//  CHKLST_3AP_TEST_WITH_FLAGS | CHKLST_3AP_TEST_RELAY | \
-//  CHKLST_3AP_TEST_TIMESERIES | CHKLST_3AP_TEST_ORIENTATION | \
+  CHKLST_3AP_TEST_CONV | CHKLST_3AP_TEST_TERMINUS | CHKLST_3AP_TEST_FORK | \
+  CHKLST_3AP_TEST_OFFSET | CHKLST_3AP_TEST_SCALING | \
+  CHKLST_3AP_TEST_INTEGRATOR | CHKLST_3AP_TEST_TIMESERIES | \
+  CHKLST_3AP_TEST_DUMP_STATS)
+//  CHKLST_3AP_TEST_RELAY |
+//  CHKLST_3AP_TEST_ORIENTATION |
 
 
 const StepSequenceList TOP_LEVEL_3AP_TEST_LIST[] = {
@@ -443,6 +599,18 @@ const StepSequenceList TOP_LEVEL_3AP_TEST_LIST[] = {
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_3ap_fork()) ? 1:-1);  }
   },
+  { .FLAG         = CHKLST_3AP_TEST_OFFSET,
+    .LABEL        = "TripleAxisOffset",
+    .DEP_MASK     = (CHKLST_3AP_TEST_TERMINUS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_3ap_offset()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_3AP_TEST_SCALING,
+    .LABEL        = "TripleAxisScaling",
+    .DEP_MASK     = (CHKLST_3AP_TEST_TERMINUS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_3ap_scaling()) ? 1:-1);  }
+  },
   { .FLAG         = CHKLST_3AP_TEST_CONV,
     .LABEL        = "TripleAxisRemapper",
     .DEP_MASK     = (CHKLST_3AP_TEST_FORK),
@@ -451,16 +619,17 @@ const StepSequenceList TOP_LEVEL_3AP_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_3AP_TEST_TIMESERIES,
     .LABEL        = "TripleAxisTimeSeries",
-    .DEP_MASK     = (CHKLST_3AP_TEST_TERMINUS),
+    .DEP_MASK     = (CHKLST_3AP_TEST_TERMINUS | CHKLST_3AP_TEST_FORK),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_3ap_timeseries()) ? 1:-1);  }
   },
-  { .FLAG         = CHKLST_3AP_TEST_WITH_FLAGS,
-    .LABEL        = "TripleAxisPipeWithFlags",
-    .DEP_MASK     = (0),
+  { .FLAG         = CHKLST_3AP_TEST_INTEGRATOR,
+    .LABEL        = "TripleAxisIntegrator",
+    .DEP_MASK     = (CHKLST_3AP_TEST_TERMINUS | CHKLST_3AP_TEST_FORK),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == test_3ap_flags()) ? 1:-1);  }
+    .POLL_FXN     = []() { return ((0 == test_3ap_integrator()) ? 1:-1);  }
   },
+
   { .FLAG         = CHKLST_3AP_TEST_RELAY,
     .LABEL        = "Relay flag handling",
     .DEP_MASK     = (0),
@@ -475,17 +644,18 @@ const StepSequenceList TOP_LEVEL_3AP_TEST_LIST[] = {
   },
   { .FLAG         = CHKLST_3AP_TEST_DUMP_STATS,
     .LABEL        = "Dump stats",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_3AP_TESTS_ALL & ~CHKLST_3AP_TEST_DUMP_STATS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() {
       StringBuilder output;
-      tap_profiling_fork.printPipe(&output, 0, LOG_LEV_DEBUG);
       StopWatch::printDebugHeader(&output);
-      stopwatch_vec_acc.printDebug("acc",         &output);
-      stopwatch_vec_gyr.printDebug("gyr",         &output);
-      stopwatch_vec_mag.printDebug("mag",         &output);
-      stopwatch_vec_euler.printDebug("euler",     &output);
-      stopwatch_vec_bearing.printDebug("bearing", &output);
+      stopwatch_term.printDebug(      "term",       &output);
+      stopwatch_remapper.printDebug(  "remapper",   &output);
+      stopwatch_fork.printDebug(      "fork",       &output);
+      stopwatch_offset.printDebug(    "offset",     &output);
+      stopwatch_integrator.printDebug("integrator", &output);
+      stopwatch_scaling.printDebug(   "scaling",    &output);
+      stopwatch_timeseries.printDebug("timeseries", &output);
       printf("%s\n", (char*) output.string());
       return 1;
     }
@@ -500,9 +670,13 @@ AsyncSequencer tap_test_plan(TOP_LEVEL_3AP_TEST_LIST, (sizeof(TOP_LEVEL_3AP_TEST
 * The main function
 *******************************************************************************/
 void print_types_3ap() {
-  printf("\tTripleAxisFork            %u\t%u\n", sizeof(TripleAxisFork),        alignof(TripleAxisFork));
-  printf("\tTripleAxisRemapper        %u\t%u\n", sizeof(TripleAxisRemapper),    alignof(TripleAxisRemapper));
+  printf("\tTripleAxisSenseFilter     %u\t%u\n", sizeof(TripleAxisSenseFilter), alignof(TripleAxisSenseFilter));
   printf("\tTripleAxisTerminus        %u\t%u\n", sizeof(TripleAxisTerminus),    alignof(TripleAxisTerminus));
+  printf("\tTripleAxisFork            %u\t%u\n", sizeof(TripleAxisFork),        alignof(TripleAxisFork));
+  printf("\tTripleAxisScaling         %u\t%u\n", sizeof(TripleAxisScaling),     alignof(TripleAxisScaling));
+  printf("\tTripleAxisOffset          %u\t%u\n", sizeof(TripleAxisOffset),      alignof(TripleAxisOffset));
+  printf("\tTripleAxisIntegrator      %u\t%u\n", sizeof(TripleAxisIntegrator),  alignof(TripleAxisIntegrator));
+  printf("\tTripleAxisRemapper        %u\t%u\n", sizeof(TripleAxisRemapper),    alignof(TripleAxisRemapper));
   printf("\tTripleAxisTimeSeries      %u\t%u\n", sizeof(TripleAxisTimeSeries),  alignof(TripleAxisTimeSeries));
   printf("\tTripleAxisOrientation     %u\t%u\n", sizeof(TripleAxisOrientation), alignof(TripleAxisOrientation));
 }

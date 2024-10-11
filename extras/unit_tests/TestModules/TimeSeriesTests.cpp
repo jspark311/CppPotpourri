@@ -145,25 +145,6 @@ int timeseries_initial_conditions() {
 
 
 
-// Substantially taken from StackOverflow. Thank you, Daniel Laügt.
-// https://stackoverflow.com/questions/12278523/comparing-double-values-in-c
-// Reworked for assignment vs equality assurance and removal of short-circuit,
-//   and const usage.
-bool nearly_equal(const double A, const double B, const int FACTOR_OF_EPSILON) {
-  const double MIN_A = (A - (A - std::nextafter(A, std::numeric_limits<double>::lowest())) * FACTOR_OF_EPSILON);
-  const double MAX_A = (A + (std::nextafter(A, std::numeric_limits<double>::max()) - A) * FACTOR_OF_EPSILON);
-  return ((MIN_A <= B) & (MAX_A >= B));
-}
-
-// TODO: Using this mess for now until I tighten up my precision enough for the
-//   good version to work. These known answers were arrived at
-bool nearly_equal(const double A, const double B, const double PRECISION) {
-  const double MIN_A = (A - PRECISION);
-  const double MAX_A = (A + PRECISION);
-  return ((MIN_A <= B) & (MAX_A >= B));
-}
-
-
 /*
 * Tests the statistical functions using a handful of KATs.
 * This test needs to be phrased as a known-answer test to avoid comparison

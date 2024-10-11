@@ -21,3 +21,4 @@ extras/unit_tests/build/
 
 # Editor cruft
 *.bak
+.vscode/

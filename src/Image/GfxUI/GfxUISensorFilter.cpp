@@ -41,8 +41,6 @@ template <> int GfxUITimeSeries<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
 
     }
 
-
-
     const uint32_t  LEFTMOST_SAMPLE_IDX  = (_filter->totalSamples() - (DATA_SIZE - _left_most_data_idx));
     trace_settings.offset_x = (_opt_x_labels_sample ? _filter->indexIsWhichSample(LEFTMOST_SAMPLE_IDX) : (LEFTMOST_SAMPLE_IDX % DATA_SIZE));
 

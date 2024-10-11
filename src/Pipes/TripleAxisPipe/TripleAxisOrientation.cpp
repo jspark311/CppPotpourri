@@ -136,19 +136,6 @@ Vector3f* TripleAxisOrientation::value() {
 *const float TripleAxisMadgwick::beta = ((float)sqrt(3.0f / 4.0f)) * TripleAxisMadgwick::GyroMeasError;   // compute beta
 *******************************************************************************/
 
-
-/*******************************************************************************
-*      _______.___________.    ___   .___________. __    ______     _______.
-*     /       |           |   /   \  |           ||  |  /      |   /       |
-*    |   (----`---|  |----`  /  ^  \ `---|  |----`|  | |  ,----'  |   (----`
-*     \   \       |  |      /  /_\  \    |  |     |  | |  |        \   \
-* .----)   |      |  |     /  _____  \   |  |     |  | |  `----.----)   |
-* |_______/       |__|    /__/     \__\  |__|     |__|  \______|_______/
-*
-* Static members and initializers should be located here.
-*******************************************************************************/
-static const Vector3<float> ZERO_VECTOR;
-
 #if 0
 
 /*******************************************************************************
@@ -162,9 +149,9 @@ static const Vector3<float> ZERO_VECTOR;
 
 TripleAxisMadgwick::TripleAxisMadgwick() : _complete(CONFIG_INTEGRATOR_Q_DEPTH), _pending(CONFIG_INTEGRATOR_Q_DEPTH) {
   // Values for 9 DoF fusion and AHRS (Attitude and Heading Reference System)
-  //GyroMeasError = 3.1415926535f * (40.0f / 180.0f);  // gyroscope measurement error in rads/s (shown as 3 deg/s)
-  GyroMeasDrift = 3.1415926535f * (0.0f / 180.0f);   // gyroscope measurement drift in rad/s/s (shown as 0.0 deg/s/s)
-  //beta = 0.866025404f * (3.1415926535f * GyroMeasError);   // compute beta
+  //GyroMeasError = PI * (40.0f / 180.0f);  // gyroscope measurement error in rads/s (shown as 3 deg/s)
+  GyroMeasDrift = PI * (0.0f / 180.0f);   // gyroscope measurement drift in rad/s/s (shown as 0.0 deg/s/s)
+  //beta = 0.866025404f * (PI * GyroMeasError);   // compute beta
   beta = 0.2f;
 }
 
@@ -172,9 +159,7 @@ TripleAxisMadgwick::TripleAxisMadgwick() : _complete(CONFIG_INTEGRATOR_Q_DEPTH),
 void TripleAxisMadgwick::reset() {
   delta_t   = 0;
   rangeBind(false);
-
   _grav.set(0.0f, 0.0f, 0.0f);
-
   grav_scalar = 0.0f;
 }
 

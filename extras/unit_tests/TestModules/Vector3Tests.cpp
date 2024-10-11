@@ -175,6 +175,10 @@ int vector3_float_test() {
 }
 
 
+
+/*******************************************************************************
+* The main function
+*******************************************************************************/
 void print_types_vector3() {
   printf("\tVector3<uint8>           %u\t%u\n", sizeof(Vector3<uint8_t>),  alignof(Vector3<uint8_t>));
   printf("\tVector3<int32>           %u\t%u\n", sizeof(Vector3<int32_t>),  alignof(Vector3<int32_t>));
@@ -182,12 +186,6 @@ void print_types_vector3() {
   printf("\tVector3<double>          %u\t%u\n", sizeof(Vector3<double>),  alignof(Vector3<double>));
 }
 
-
-
-
-/*******************************************************************************
-* The main function
-*******************************************************************************/
 
 int vector3_test_main() {
   int ret = 1;   // Failure is the default result.

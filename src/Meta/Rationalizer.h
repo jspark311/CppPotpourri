@@ -138,6 +138,7 @@ C3P wants the following capabilities, which will probably implicate this file.
   #define MANUVR_PLATFORM_TIMER_PERIOD_MS 1
 #endif
 
+
 #if defined(__BUILD_HAS_THREADS)
   // If we have threads, set the latency of the idle state. This is a choice
   //   between power usage and event response latency. Any program built on
@@ -145,7 +146,7 @@ C3P wants the following capabilities, which will probably implicate this file.
   //   will be used.
   // Local modules are free to NOT use this value for any threads they create,
   //   but modules that specify thread idle thresholds too-tightly will drain
-  //   power and CPU time faster than necessary. So modules that specify thier
+  //   power and CPU time faster than necessary. So modules that specify their
   //   own threading idle times should still consult this value, and ensure that
   //   their own choices are greater than this number.
   // The default value of 20 is fairly easy to meet on $10 linux systems that
@@ -157,7 +158,10 @@ C3P wants the following capabilities, which will probably implicate this file.
 #endif
 
 
-// What is the granularity of our system timer?
+// What is the granularity of our system timer? The default of 10ms reflects the
+//   classsic Linux kernel setting for context-switch period, and is highly
+//   conservative. This value should be 1 for basically any arrangements where
+//   millis() and micros() have direct hardware underpinnings.
 #ifndef CONFIG_C3P_TIMER_PERIOD_MS
   #define CONFIG_C3P_TIMER_PERIOD_MS 10
 #endif
@@ -282,7 +286,7 @@ C3P wants the following capabilities, which will probably implicate this file.
 
 
 /*******************************************************************************
-* Supported type support for C3PValue.
+* Type support for C3PValue.
 * These options govern which high-level types can be handled by C3P's
 *   type-interchange layer. These choices will impact support for parsing and
 *   packing specific types.
@@ -314,8 +318,8 @@ C3P wants the following capabilities, which will probably implicate this file.
 // Do some pre-processor work to not waste memory on storing pixel addresses.
 // Some programs only need 8x8 pixel images, and some are desktop applications.
 // In any case, if the build options don't specify, we'll have 16-bit pixel
-//   addresses. No one has a gigapizel monitor, and this class isn't being used
-//   to stitch many images together.
+//   addresses. No one has a gigapixel monitor, and the Image class isn't being
+//   used to stitch many images together.
 #if !defined(CONFIG_C3P_IMG_COORD_BITS)
   #define CONFIG_C3P_IMG_COORD_BITS  16
 #endif

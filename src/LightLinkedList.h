@@ -18,59 +18,93 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 
-Template for a linked list.
+TODO: This entire file should eventually contain all the linked-list fundamental
+  datastructs, and be renamed to C3PLinkedList.h.
 
+Some functions are #pragma'd to stop the compiler from complaining about nullptr being
+  interpreted as a non-pointer. This is to enable the use of this template to carry
+  (doubles, floats, ints, etc) without polluting the build log.
 */
 
+#ifndef __C3P_DAGS_H
+#define __C3P_DAGS_H
 
+#include "CppPotpourri.h"
 
-#ifndef __MANUVR_DS_LINKED_LIST_H
-#define __MANUVR_DS_LINKED_LIST_H
-
-#if defined(ARDUINO)
-  #include <Arduino.h>
-#else
-  #include <stdlib.h>
-#endif
-
-/* This is the class that holds a datum in the list. */
+/* This is a linked-list element with a slot for data. */
 template <class T> class Node{
   public:
-    Node<T> *next;
+    Node<T>* next;
     T data;
 };
 
+/* This is the class that holds a datum with a priority slot. */
+template <class T> class PriorityNode{
+  public:
+    PriorityNode<T>* next;
+    T data;
+    int priority;
+};
 
-/**
-* This is a linked-list element with a slot for data.
-*/
+
+
+/*******************************************************************************
+* Template for a linked list interface.
+* TODO: LinkedList and PriorityQueue should both extend this.
+*******************************************************************************/
+//template <class T> class C3P_LL {
+//  public:
+//    C3P_LL();
+//    ~C3P_LL();
+//
+//    int  count();                   // Returns the number of elements in this list.
+//    int  insert(T);                 // Returns the index of the data, or -1 on failure.
+//    T    get(int position = 0);     // Returns the data from the element at the given position.
+//    int  remove(T);                 // Removes any elements with this data. Returns the number of elements removed.
+//    T    remove(int position = 0);  // Removes the element at the given position of the list. Return true on success.
+//    bool hasNext();                 // Returns false if this list is empty. True otherwise.
+//    bool contains(T);               // Returns true if this list contains the given data. False if not.
+//    int  clear();                   // Returns the number of elements purged from the list.
+//
+//  protected:
+//    int _element_count;             // Cached element count to speed access.
+//    int _count_elements();          // Counts the elements in the list without reliance on stored value. Slower...
+//
+//    Node<T>* _allocate_node(T) =0;  // Type-specific allocation of node objects.
+//
+//  private:
+//    // This is a reference to the general list node. It will be type-punned into
+//    //   a more nuanced version of the basse class by classes that extend the
+//    //   basic linked-list.
+//    Node<T>* _root;
+//};
+
+
+/*******************************************************************************
+* Template for an instantiable linked list.
+*******************************************************************************/
 template <class T> class LinkedList {
-
   public:
     LinkedList(void);
     ~LinkedList(void);
 
-    int insert(T);                   // Returns the ID of the data, or -1 on failure. Makes only a reference to the payload.
-    int insertAtHead(T);             // Returns the ID of the data, or -1 on failure. Makes only a reference to the payload.
-
     int size(void);                  // Returns the number of elements in this list.
-
+    int insert(T);                   // Returns the ID of the data, or -1 on failure. Makes only a reference to the payload.
+    T get(void);                     // Returns the data from the first element.
+    T get(int position);             // Returns the data from the element at the given position.
     T remove(void);                  // Removes the first element of the list. Return true on success.
     bool remove(T);                  // Removes any elements with this data.
     T remove(int position);          // Removes the element at the given position of the list. Return true on success.
-
-    int clear(void);                 // Returns the number of elements purged from the list.
-
-    //bool move(int old_position, int new_position);
-
-    T get(void);                     // Returns the data from the first element.
-    T get(int position);             // Returns the data from the element at the given position.
     bool hasNext(void);              // Returns false if this list is empty. True otherwise.
     bool contains(T);                // Returns true if this list contains the given data. False if not.
+    int clear(void);                 // Returns the number of elements purged from the list.
+
+    int insertAtHead(T);             // Returns the ID of the data, or -1 on failure. Makes only a reference to the payload.
+    //bool move(int old_position, int new_position);
 
 
   private:
-    Node<T> *root;
+    Node<T>* root;
     Node<T>* getLast(void);          // Returns the last element in the list. Returns the WHOLE element, not just the data it holds.
     int element_count;               // Call this member if you are pressed for time and haven't changed the list recently.
     int count(void);                 // Counts the elements in the list without reliance on stored value. Slower...
@@ -341,4 +375,10 @@ template <class T> bool LinkedList<T>::contains(T test_data) {
 }
 
 
-#endif  // __MANUVR_DS_LINKED_LIST_H
+/*******************************************************************************
+* Template for a priority queue implemented on top of a linked-list.
+* Highest-priority nodes are stored closest to the beginning of the list.
+*******************************************************************************/
+
+
+#endif  // __C3P_DAGS_H

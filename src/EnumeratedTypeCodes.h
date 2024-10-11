@@ -50,7 +50,8 @@ class StringBuilder;
 #ifndef PI
   #define PI 3.14159265358979323846264338327950288419716939937510
 #endif
-#define COFACTOR_RADIAN_TO_DEGREE  (180/PI)
+#define COFACTOR_RADIAN_TO_DEGREE  (180.0f / PI)
+#define STERADIANS_IN_A_SPHERE     (4.0f * PI)
 
 
 /*******************************************************************************

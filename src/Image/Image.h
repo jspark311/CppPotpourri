@@ -148,7 +148,7 @@ class ImageSubframe {
   public:
     ImageSubframe(const ImageSubframe& src) : _img(src._img), _addr(src._addr), _width(src._width), _height(src._height) {};   // Copy-constructor
     ImageSubframe(Image* i, const PixAddr A, const PixUInt W, const PixUInt H) : _img(i), _addr(A), _width(W), _height(H) {};
-    ImageSubframe() : ImageSubframe(nullptr, (0, 0), 0, 0) {};
+    ImageSubframe() : ImageSubframe(nullptr, PixAddr(0, 0), 0, 0) {};
 
     // Pass an optional OFFSET value to arrive at an absolute location.
     PixUInt extentX(const PixUInt OFFSET = 0) {       return (OFFSET + _addr.x);  };
@@ -156,7 +156,7 @@ class ImageSubframe {
     PixAddr extent() {  return PixAddr((_width + _addr.x), (_height + _addr.y));  };
 
   protected:
-    Image*  _img;            // Target Image
+    Image*  _img;    // Target Image
     PixAddr _addr;   // The pixel in the target image that is our upper-left corner.
     PixUInt _width;  // The width of this frame.
     PixUInt _height; // The height of this frame.

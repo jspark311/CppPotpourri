@@ -21,15 +21,13 @@ limitations under the License.
 Template for a priority queue implemented on top of a linked-list.
 Highest-priority nodes are stored closest to the beginning of the list.
 
-Some functions are #pragma'd to stop the compiler from complaining about nullptr being
-  interpreted as a non-pointer. This is to enable the use of this template to carry
-  (doubles, floats, ints, etc) without polluting the log.
 */
 
 #ifndef __C3P_PRIORITY_QUEUE_H__
 #define __C3P_PRIORITY_QUEUE_H__
 
-#include <stdint.h>
+
+#include "LightLinkedList.h"
 
 #if defined(ARDUINO)
   #include <Arduino.h>
@@ -38,18 +36,7 @@ Some functions are #pragma'd to stop the compiler from complaining about nullptr
   #include <pthread.h>
 #elif defined(__BUILD_HAS_FREERTOS)
   #include "freertos/FreeRTOS.h"
-#else
-  #include <stdlib.h>
 #endif
-
-
-/* This is the class that holds a datum in the list. */
-template <class T> class PriorityNode{
-  public:
-    PriorityNode<T> *next;
-    T data;
-    int priority;
-};
 
 
 /*

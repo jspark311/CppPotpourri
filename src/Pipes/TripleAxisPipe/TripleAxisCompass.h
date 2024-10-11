@@ -41,68 +41,39 @@ enum class CompassErr : int8_t {
 
 
 
-/* Performs a scaling transform on the vector stream. */
-class TripleAxisScaling : public TripleAxisPipe {
-  public:
-    TripleAxisScaling(const TripleAxisPipe* nxt = nullptr) : _nxt(nxt) {};
-    ~TripleAxisScaling() {};
-
-    int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
-    void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
-
-
-  private:
-    const TripleAxisPipe* _nxt;
-    Vector3f  _scaling_vector;   // Soft iron correction
-    Vector3f* _cal_table = nullptr;
-    bool      _should_free_cal_table = false;
-};
-
-
-/* Performs an offset transform on the vector stream. */
-class TripleAxisOffset : public TripleAxisPipe {
-  public:
-    TripleAxisOffset(const TripleAxisPipe* nxt = nullptr) : _nxt(nxt) {};
-    ~TripleAxisOffset() {};
-
-    int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
-    void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
-
-
-  private:
-    const TripleAxisPipe* _nxt;
-    Vector3f _offset_vector;    // Hard iron correction
-};
-
-
-
 /*
-* A TripleAxisPipe that finds as many of the following as possible from 3-axis
-*   inputs.
-*   MAGNETIC_NORTH
-*   MAGNETIC_DIP
-*   TRUE_NORTH
+* Scales the vector stream according to a map of empirical calibration data.
+* This is useful for correcting for static local magnetic fields, or generally
+*   any case that involves deforming a vector stream.
+*
+* The calibration map is interpreted as a table of scaling vectors, indexed by
+*   the theta-phi (polar-azimuthal) displacement of the original vector from the
+*   unit vector with the X-axis as the standard basis.
+* This implies that the calibration data must have...
+*   1) 360-degree coverage in two planes.
+*   2) Spherically symmetrical sample spacing.
+*   3) A defined granularity (given in steradians), within which each sample
+*      will be considered t0 intersect the apex of the resulting spherical cap.
+*      This value is referred to as omega.
 */
-class TripleAxisOmniCompass : public TripleAxisPipe {
+class TripleAxisDeform : public TripleAxisPipeWithEfferent {
   public:
-    TripleAxisOmniCompass(const TripleAxisTerminalCB cb = nullptr) : _CALLBACK(cb) {};
-    ~TripleAxisOmniCompass() {};
+    TripleAxisDeform(TripleAxisPipe* nxt = nullptr) : TripleAxisPipeWithEfferent(nxt) {};
+    ~TripleAxisDeform() {};
 
-    /**
-    * Behavior: If sense parameter matches the local class sense, refreshes
-    *   this instance's state and calls callback, if defined. Marks the data
-    *   as fresh if the callback is either absent, or returns nonzero.
-    *
-    * @return 0 on success, or -1 on sense mis-match.
-    */
-    int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
+    // Obligate implementation of TripleAxisPipe.
+    int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
     void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
 
   private:
-    const TripleAxisTerminalCB _CALLBACK;
+    Vector3f  _scaling_vector;
+    Vector3f* _cal_table = nullptr;
+    float     _cal_omega = 0.0f;
+    uint32_t  _cal_count = 0;
+    bool      _should_free_cal_table = false;
+    bool      _interpolate_cal_table = false;
 };
-
 
 
 /*
@@ -110,7 +81,7 @@ class TripleAxisOmniCompass : public TripleAxisPipe {
 */
 class TripleAxisCompass : public TripleAxisPipe {
   public:
-    TripleAxisCompass(const TripleAxisTerminalCB cb = nullptr) : _CALLBACK(cb) {};
+    TripleAxisCompass(TripleAxisTerminalCB cb = nullptr) : _CALLBACK(cb) {};
     ~TripleAxisCompass() {};
 
     /**
@@ -120,7 +91,7 @@ class TripleAxisCompass : public TripleAxisPipe {
     *
     * @return 0 on success, or -1 on sense mis-match.
     */
-    int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr);
+    int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
     void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
     CompassErr calibrate();

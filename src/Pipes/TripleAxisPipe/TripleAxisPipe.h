@@ -78,7 +78,7 @@ typedef int8_t (*TripleAxisTerminalCB)(SpatialSense, Vector3f* dat, Vector3f* er
 
 /*
 * Pure virtual class to define a uniform interface between sensors that produce
-*   and process 3-axis data.
+*   and process 3-axis data. This interface is for afferent vectors.
 */
 class TripleAxisPipe {
   public:
@@ -93,8 +93,8 @@ class TripleAxisPipe {
     *        -1 on non-terminal rejection of vector (try again later).
     *        -2 on terminal rejection of vector.
     */
-    virtual int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0) =0;
     // TODO: Make alternate calling conventions to support double[3]. Might need flag support.
+    virtual int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0) =0;
     virtual void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity) =0;
 
     static const char* spatialSenseStr(SpatialSense);
@@ -102,33 +102,52 @@ class TripleAxisPipe {
 
 
 /*
-* Some TAPs will want flag space and some inline accessors to support common
-*   behaviors.
+* Pure virtual that implements an efferent side, in addition to the afferent.
+* Implements the base class printPipe().
 */
-#define TRIPAX_FLAG_ACCEPT_MASK             0x00000FFF  // Relay map. See notes.
-#define TRIPAX_FLAG_RELAY_MASK              0x00FFF000  // Accept map. See notes.
-#define TRIPAX_FLAG_ASYNC_BREAK_UNTIL_POLL  0x40000000  // Don't send efferent data synchronously.
-
-class TripleAxisPipeWithFlags : public TripleAxisPipe {
+class TripleAxisPipeWithEfferent : public TripleAxisPipe {
   public:
-    /* TripleAxisPipe interface */
-    //virtual int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr) =0;
-    //virtual void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity) =0;
+    inline void next3AP(TripleAxisPipe* n) {  _NXT  = n;    };
+    inline TripleAxisPipe* next3AP() {        return _NXT;  };
 
-    inline bool relaySense(const SpatialSense E) {
-      return _flags.value((1 << (uint8_t) E) & TRIPAX_FLAG_RELAY_MASK);
-    };
-    inline void relaySense(const SpatialSense E, bool relay) {
-      _flags.set((1 << (uint8_t) E) & TRIPAX_FLAG_RELAY_MASK, relay);
-    };
+    void printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
+
+  protected:
+    TripleAxisPipe* _NXT;
+    TripleAxisPipeWithEfferent(TripleAxisPipe* next = nullptr) : _NXT(next) {};
+
+    virtual void _print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity) =0;
+};
+
+
+/*
+* Virtual that implements SpatialSense filtering, in addition to the efferent and
+*   afferent sides. It also comes with logic to dictate forwarding policy for
+*   the incoming vector stream.
+*/
+class TripleAxisSenseFilter : public TripleAxisPipeWithEfferent {
+  public:
+    int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
+
+    inline void forwardMismatchedAfferents(bool x) {  _fwd_mismatches = x;          };
+    inline void forwardMatchedAfferents(bool x) {     _fwd_matched_afferents = x;   };
+    inline bool forwardMismatchedAfferents() {      return _fwd_mismatches;         };
+    inline bool forwardMatchedAfferents() {         return _fwd_matched_afferents;  };
 
 
   protected:
-    FlagContainer32 _flags;
-    TripleAxisPipeWithFlags(uint32_t f = 0) : _flags(f) {};
+    const SpatialSense _SENSE;
+    bool _fwd_mismatches        = false;   // Should the class forward SpatialSense mismatches?
+    bool _fwd_matched_afferents = false;   // Should the class forward SpatialSense matches that it receives?
 
-    //int8_t _base_vector_relay();
+    TripleAxisSenseFilter(const SpatialSense s, TripleAxisPipe* next) : TripleAxisPipeWithEfferent(next), _SENSE(s) {};
+
+    // These functions should be overridden for implementing non-trivial behaviors
+    //   of the child class.
+    virtual int8_t _filtered_push(Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0) {  return 0;  };
+    virtual void _print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity);
 };
+
 
 
 
@@ -137,9 +156,8 @@ class TripleAxisPipeWithFlags : public TripleAxisPipe {
 *******************************************************************************/
 
 /**
-* An instantiable TripleAxisPipe that forks a single afferent into two
-*   efferents. Retains no state apart from refs to its two efferent pathways,
-*   denoted "left" and "right".
+* Forks a single afferent into two efferents. Retains no state apart from refs
+*   to its two efferent pathways, denoted "left" and "right".
 */
 class TripleAxisFork : public TripleAxisPipe {
   public:
@@ -155,7 +173,7 @@ class TripleAxisFork : public TripleAxisPipe {
     * @return 0 on sucess on both sides of the fork, -1 on one failure, or -2 on two failures.
     */
     int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
-    void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
+    void printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
 
   private:
@@ -166,9 +184,8 @@ class TripleAxisFork : public TripleAxisPipe {
 
 
 /**
-* An instantiable TripleAxisPipe that performs a coordinate transform on
-*   afferent data to convert it into the conventions of aircraft principal axes
-*   before forwarding it onward. Does not mutate the provided data.
+* Performs a coordinate transform on afferents to convert it into a different
+*   convention before forwarding it onward. Does not mutate the provided data.
 *
 * NOTE: This class should probably be the first stage after the source in any
 *   pipeline where all of the following conditions are true of the afferent data:
@@ -176,15 +193,13 @@ class TripleAxisFork : public TripleAxisPipe {
 *   2) Native axis arrangement does not match the desired arrangement.
 *   3) Native axis arrangement differs from any other 3-axis data with which it might be muxed.
 */
-class TripleAxisRemapper : public TripleAxisPipe {
+class TripleAxisRemapper : public TripleAxisPipeWithEfferent {
   public:
     TripleAxisRemapper(TripleAxisPipe* nxt = nullptr) :
-      _NXT(nxt),
+      TripleAxisPipeWithEfferent(nxt),
       _ef_0(AxisID::NONE), _ef_1(AxisID::NONE), _ef_2(AxisID::NONE),
       _invert_0(false), _invert_1(false), _invert_2(false) {};
     ~TripleAxisRemapper() {};
-
-    inline void setNext(TripleAxisPipe* n) {          _NXT  = n;        };
 
     /**
     * Behavior: Refreshes this instance's state and calls callback, if defined.
@@ -193,23 +208,104 @@ class TripleAxisRemapper : public TripleAxisPipe {
     * @return -2 on null NXT, or return code from downstream pushVector() fxn.
     */
     int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
-    void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
-    bool mapAffernt(
+    bool mapAfferent(
       AxisID AXIS_EF_0, AxisID AXIS_EF_1, AxisID AXIS_EF_2,
       bool INV_X = false, bool INV_Y = false, bool INV_Z = false
     );
 
-
-  private:
-    TripleAxisPipe* _NXT;
+  protected:
     AxisID _ef_0;
     AxisID _ef_1;
     AxisID _ef_2;
     bool   _invert_0;
     bool   _invert_1;
     bool   _invert_2;
+
+    void _print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity);
 };
+
+
+
+/*
+* Performs scaling on the vector stream.
+* If the scaling vector is the zero vector, the incoming vector will be
+*   normalized.
+* If the scaling vector is (1, 1, 1), the incoming vector will be unchanged.
+* If the scaling vector components are all equal, the incoming vector will be
+*   scaled isotropically (uniformly). Otherwise, scaling will be anisotropic.
+*/
+class TripleAxisScaling : public TripleAxisPipeWithEfferent {
+  public:
+    TripleAxisScaling(TripleAxisPipe* nxt = nullptr) : TripleAxisPipeWithEfferent(nxt) {};
+    ~TripleAxisScaling() {};
+
+    // Obligate implementation of TripleAxisPipe.
+    int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
+
+    inline void     scaling(Vector3f sv) {  _scaling_vector.set(sv);       };
+    inline void     scaling(float s) {      _scaling_vector.set(s, s, s);  };  // Shorthand for uniform scaling.
+    inline Vector3f scaling() {             return _scaling_vector;        };
+
+
+  protected:
+    Vector3f  _scaling_vector;
+
+    void _print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity);
+};
+
+
+/*
+* Performs an offset transform on the vector stream.
+* If the offset vector is the zero vector, the incoming vector will be
+*   unchanged.
+*/
+class TripleAxisOffset : public TripleAxisPipeWithEfferent {
+  public:
+    TripleAxisOffset(TripleAxisPipe* nxt = nullptr) : TripleAxisPipeWithEfferent(nxt) {};
+    ~TripleAxisOffset() {};
+
+    // Obligate implementation of TripleAxisPipe.
+    int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
+
+    inline void     offsetVector(Vector3f ov) {    _offset_vector.set(ov);   };
+    inline Vector3f offsetVector() {               return _offset_vector;    };
+
+
+  protected:
+    Vector3f _offset_vector;
+
+    void _print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity);
+};
+
+
+/*
+* For incoming vectors of a matching SpatialSense, performs a running addition
+*   and corresponding error adjustment followed by an efferent push.
+*/
+class TripleAxisIntegrator : public TripleAxisSenseFilter {
+  public:
+    TripleAxisIntegrator(const SpatialSense s, TripleAxisPipe* nxt = nullptr) :
+      TripleAxisSenseFilter(s, nxt) {};
+    ~TripleAxisIntegrator() {};
+
+    void nullify();
+    inline void     setData(Vector3f ov) {  _integrated.set(ov);     };
+    inline Vector3f getData() {             return _integrated;      };
+    inline Vector3f getError() {            return _err;             };
+    inline uint32_t updateCount() {         return _update_count;    };
+
+
+  protected:
+    uint32_t _update_count = 0;
+    Vector3f _integrated;
+    Vector3f _err;
+
+    // Implementation of TripleAxisSenseFilter.
+    int8_t _filtered_push(Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
+    void   _print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity);
+};
+
 
 
 
@@ -270,53 +366,34 @@ class TripleAxisTerminus : public TripleAxisPipe {
 };
 
 
-/**
-* TODO:
-* Latin: All ends
-* An instantiable TripleAxisPipe that functions as a storage and change-notice
-*   sink at the end of a pipeline, and which handles all SpatialSense types it
-*   receives.
-*
-* NOTE: Requires dynamic memory, but might be a lower-overhead choice versus
-*   three independent copies of TripleAxisTerminus to represent a 9-DoF sensor.
-*/
-//class TripleAxisOmnitermini : public TripleAxisPipe {
-//};
-
 
 /**
 * An instantiable TripleAxisPipe that accumulates data from a single sense.
 * By default, this class will ignore (and decline to relay) all non-matching
 *   senses. But this behavior can be changed to ignore-with-relay.
-* By default, this class absorbs matching afferent data and re-emits from the
-*   back-side of the accumulator once it becomes full with the same SpatialSense. But this
-*   behavior can be changed to relay the afferent data, and enrich the pipeline
-*   with a novel SpatialSense, as an orientation filter would.
-* The filtering functionality is provided by SensorFilter3.
+* The buffering functionality is provided by TimeSeries3.
+*
+* Behavior: If afferent data matches the SpatialSense the class was constructed with...
+*   1) Adds the afferent vector to the filter's input without relaying it.
+*   2) Sends the filter's output (if any is ready) to the efferent connection.
 */
-class TripleAxisTimeSeries : public TripleAxisPipe, public TimeSeries3<float> {
+class TripleAxisTimeSeries : public TripleAxisSenseFilter, public TimeSeries3<float> {
   public:
     TripleAxisTimeSeries(
       const SpatialSense s,    // Only feed these to the filter.
       TripleAxisPipe* nxt,     // The efferent connection.
       int window_size = 0      // Optional
-    ) : TimeSeries3<float>(window_size), _SENSE(s), _NXT(nxt) {};
+    ) : TripleAxisSenseFilter(s, nxt), TimeSeries3<float>(window_size) {};
 
     ~TripleAxisTimeSeries() {};
 
-    inline void setNext(TripleAxisPipe* n) {        _NXT  = n;      };
     inline Vector3f     getData() {        return value();          };
     inline Vector3f     getError() {       return _ERR;             };
     inline bool         haveError() {      return _has_error;       };
     inline bool         dataFresh() {      return dirty();          };
 
-    inline void forwardMismatchedAfferants(bool x) {  _fwd_mismatches = x;          };
     inline void forwardWhenFull(bool x) {             _fwd_from_backside = x;       };
-    inline void forwardMatchedAfferants(bool x) {     _fwd_matched_afferants = x;   };
-
-    inline bool forwardMismatchedAfferants() {      return _fwd_mismatches;         };
     inline bool forwardWhenFull() {                 return _fwd_from_backside;      };
-    inline bool forwardMatchedAfferants() {         return _fwd_matched_afferants;  };
 
     /**
     * Atomic accessor with freshness management and return.
@@ -326,29 +403,19 @@ class TripleAxisTimeSeries : public TripleAxisPipe, public TimeSeries3<float> {
     */
     int8_t getDataWithErr(Vector3f* d, Vector3f* e);
 
-    /**
-    * Behavior: If afferent data matches the SpatialSense the class was constructed with...
-    *   1) Adds the afferent vector to the filter's input without relaying it.
-    *   2) Sends the filter's output (if any is ready) to the efferent connection.
-    *
-    * @return -2 on push failure, -1 on broken pipe, or 0 on success.
-    */
-    int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
-    void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
-
-  private:
-    const SpatialSense _SENSE;
+  protected:
     // TODO: Move bools below into an integer field for alignment authority.
     //bool _ready_for_intake  = false;   // Is this object ready to accept vectors?
     bool _has_error             = false;   // Does this object have an error figure?
-    bool _fwd_mismatches        = false;   // Should the class forward SpatialSense mismatches?
     bool _fwd_from_backside     = false;   // Should the class forward SpatialSense matches as they fall out of memory?
-    bool _fwd_matched_afferants = false;   // Should the class forward SpatialSense matches that it receives?
-    TripleAxisPipe* _NXT;
     Vector3f _ERR;
     double   _error_cofactor = 1.0D;
+
+    int8_t _filtered_push(Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
+    void   _print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity);
 };
+
 
 
 /**
@@ -375,9 +442,9 @@ class TripleAxisTimeSeries : public TripleAxisPipe, public TimeSeries3<float> {
 *   reduce branching. But efferent data should be converted to Euler angles for
 *   insertion into the pipeline.
 */
-class TripleAxisOrientation : public TripleAxisPipe {
+class TripleAxisOrientation : public TripleAxisPipeWithEfferent {
   public:
-    TripleAxisOrientation(TripleAxisPipe* nxt = nullptr) : _NXT(nxt) {};
+    TripleAxisOrientation(TripleAxisPipe* nxt = nullptr) : TripleAxisPipeWithEfferent(nxt) {};
     ~TripleAxisOrientation() {};
 
     int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
@@ -393,8 +460,7 @@ class TripleAxisOrientation : public TripleAxisPipe {
     inline float roll() {         return _gravity.y;        };
 
 
-  private:
-    TripleAxisPipe* _NXT;
+  protected:
     uint32_t _update_count = 0;
     uint32_t _last_update  = 0;  // millis() when the field was last updated.
     uint32_t _data_period  = 0;  // How many ms between vector updates?
@@ -411,23 +477,23 @@ class TripleAxisOrientation : public TripleAxisPipe {
 
 
 
-class TripleAxisMadgwick : public TripleAxisPipe {
+class TripleAxisMadgwick : public TripleAxisPipeWithEfferent {
   public:
-    TripleAxisMadgwick(TripleAxisPipe* nxt = nullptr) : _NXT(nxt) {};
+    TripleAxisMadgwick(TripleAxisPipe* nxt = nullptr) : TripleAxisPipeWithEfferent(nxt) {};
     ~TripleAxisMadgwick() {};
 
     void reset();
 
     int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
-    void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
 
-  private:
-    TripleAxisPipe* _NXT;
+  protected:
     uint32_t _update_count = 0;
     uint32_t _last_update  = 0;  // millis() when the field was last updated.
     uint32_t _data_period  = 0;  // How many ms between vector updates?
     float    _mag_discard_threshold = 0.8f;  // In Gauss.
+
+    void   _print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity);
 };
 
 #endif // __TRIPLE_AXIS_PIPE_H__

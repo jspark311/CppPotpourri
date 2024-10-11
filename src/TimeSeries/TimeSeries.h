@@ -39,9 +39,10 @@ See the README.md file for module-level documentation.
 /* Class flags */
 #define TIMESERIES_FLAG_FILTER_INITD   0x01  // Timeseries is initialized and ready.
 #define TIMESERIES_FLAG_SELF_ALLOC     0x02  // Memory holding the values is owned by this class.
-#define TIMESERIES_FLAG_VALID_SNR      0x04  // Statistical measurement i s valid.
+
+#define TIMESERIES_FLAG_VALID_SNR      0x04  // Statistical measurement is valid.
 #define TIMESERIES_FLAG_VALID_MINMAX   0x08  // Statistical measurement is valid.
-#define TIMESERIES_FLAG_VALID_MEAN     0x10  // Statistical measurement i s valid.
+#define TIMESERIES_FLAG_VALID_MEAN     0x10  // Statistical measurement is valid.
 #define TIMESERIES_FLAG_VALID_RMS      0x20  // Statistical measurement is valid.
 #define TIMESERIES_FLAG_VALID_STDEV    0x40  // Statistical measurement is valid.
 #define TIMESERIES_FLAG_VALID_MEDIAN   0x80  // Statistical measurement is valid.
@@ -50,6 +51,24 @@ See the README.md file for module-level documentation.
   TIMESERIES_FLAG_VALID_MINMAX | TIMESERIES_FLAG_VALID_MEAN | \
   TIMESERIES_FLAG_VALID_RMS | TIMESERIES_FLAG_VALID_STDEV | \
   TIMESERIES_FLAG_VALID_MEDIAN | TIMESERIES_FLAG_VALID_SNR)
+
+
+/*
+* The TimeSeries class comes with functions to support basic statistics. Some
+*   classes will use these enums as selectors for derived data from the series.
+*/
+enum class TimeSeriesStat : uint8_t {
+  RAW       = 0,  // Unprocessed value from the tail of the buffer.
+  MEAN      = 1,  // Arithmetic mean
+  MEDIAN    = 2,  // Median
+  MIN       = 3,  // Minimum value presently in the series
+  MAX       = 4,  // Maximum value presently in the series
+  RMS       = 5,  // Root mean square
+  STDEV     = 6,  // Standard deviation
+  STERR     = 7,  // Standard error
+  SNR       = 8,  // Signal-to-noise ratio
+  ENUM_SZ   = 9   // The number of possible enums. This must be the end value.
+};
 
 
 /******************************************************************************
@@ -140,8 +159,11 @@ class TimeSeriesBase {
     virtual int8_t _zero_samples() =0;
     virtual void   _print_series(StringBuilder*) =0;
 
-    virtual void   _serialize_value(cbor::encoder*, uint32_t idx)    =0;
-    virtual void   _deserialize_value(cbor::encoder*, uint32_t idx)  =0;
+    // TODO: This should be handled differently, rather than pulling in the CBOR namespace.
+    #if defined(__BUILD_HAS_CBOR)
+      virtual void   _serialize_value(cbor::encoder*, uint32_t idx)    =0;
+      virtual void   _deserialize_value(cbor::encoder*, uint32_t idx)  =0;
+    #endif
 
 
   private:

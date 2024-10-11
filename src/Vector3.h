@@ -56,40 +56,27 @@ template <typename T> class Vector3 {
   public:
     T x, y, z;
 
-    // setting ctor
+    // Constructors
     Vector3(const T x0 = T(0), const T y0 = T(0), const T z0 = T(0)): x(x0), y(y0), z(z0) {};
-
-    // setting ctor
     Vector3(const Vector3<T>* existing): x(existing->x), y(existing->y), z(existing->z) {};
 
     // function call operator
-    void operator ()(const T x0, const T y0, const T z0)
-    {  x= x0; y= y0; z= z0;  }
-
-    // setting fxns
-    void set(Vector3<T>* existing) { x = (existing->x); y = (existing->y); z = (existing->z); }
-    void set(Vector3<T> existing) {  x = (existing.x);  y = (existing.y);  z = (existing.z);  }
-    void zero() {    x = T(0); y = T(0); z = T(0);  };
+    void operator ()(const T x0, const T y0, const T z0) {  x= x0; y= y0; z= z0;  };
 
     // test for equality
-    bool operator==(const Vector3<T> &v)
-    {  return (x==v.x && y==v.y && z==v.z);  }
+    bool operator==(const Vector3<T> &v) {  return (x==v.x && y==v.y && z==v.z);  }
 
     // test for inequality
-    bool operator!=(const Vector3<T> &v)
-    {  return (x!=v.x || y!=v.y || z!=v.z);  }
+    bool operator!=(const Vector3<T> &v) {  return (x!=v.x || y!=v.y || z!=v.z);  }
 
     // negation
-    Vector3<T> operator -(void) const
-    {  return Vector3<T>(-x,-y,-z);  }
+    Vector3<T> operator -(void) const {     return Vector3<T>(-x,-y,-z);  }
 
     // addition
-    Vector3<T> operator +(const Vector3<T> &v) const
-    {   return Vector3<T>(x+v.x, y+v.y, z+v.z);   }
+    Vector3<T> operator +(const Vector3<T> &v) const {   return Vector3<T>(x+v.x, y+v.y, z+v.z);   }
 
     // subtraction
-    Vector3<T> operator -(const Vector3<T> &v) const
-    {   return Vector3<T>(x-v.x, y-v.y, z-v.z);   }
+    Vector3<T> operator -(const Vector3<T> &v) const {   return Vector3<T>(x-v.x, y-v.y, z-v.z);   }
 
     // uniform scaling
     Vector3<T> operator *(const T num) const {
@@ -135,6 +122,11 @@ template <typename T> class Vector3 {
       Vector3<T> temp(y*v.z - z*v.y, z*v.x - x*v.z, x*v.y - y*v.x);
       return temp;
     }
+
+    // setting fxns
+    void set(Vector3<T>* existing) { x = (existing->x); y = (existing->y); z = (existing->z); };
+    void set(Vector3<T> existing) {  x = (existing.x);  y = (existing.y);  z = (existing.z);  };
+    void zero() {    x = T(0); y = T(0); z = T(0);  };
 
     // gets the length of this vector squared
     T length_squared() const {  return (T)(*this * *this);       }
