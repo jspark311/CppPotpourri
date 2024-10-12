@@ -63,6 +63,52 @@ void TripleAxisPipeWithEfferent::printPipe(StringBuilder* output, uint8_t stage,
 
 
 /*******************************************************************************
+* TripleAxisSenseFilter
+*******************************************************************************/
+
+/*
+* Behavior: If sense parameter matches the local class sense, refreshes
+*   this instance's state and calls callback, if defined. Marks the data
+*   as fresh if the callback is either absent, or returns nonzero.
+*
+* @return -2 on push failure, -1 on broken pipe, or 0 on success.
+*/
+FAST_FUNC int8_t TripleAxisSenseFilter::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error, uint32_t seq_num) {
+  int8_t ret = -1;   // Defaults to a broken pipe error.
+  if (_SENSE == s) {
+    ret = _filtered_push(data, error, seq_num);
+    if (_fwd_matched_afferents & (nullptr != _NXT)) {
+      ret = _NXT->pushVector(s, data, error, seq_num);
+    }
+  }
+  else if (_fwd_mismatches & (nullptr != _NXT)) {
+    // We relay vectors of SpatialSense's we aren't configured for.
+    ret = _NXT->pushVector(s, data, error, seq_num);
+  }
+  return ret;
+}
+
+
+/*
+* Middle implementation to print the filter and forward behavior.
+*/
+void TripleAxisSenseFilter::_print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity) {
+  output->concat(indent);
+  output->concatf("| SpatialSense:   %s (forwards ", TripleAxisPipe::spatialSenseStr(_SENSE));
+  uint8_t aff_sel = (_fwd_matched_afferents ? 0 : 1);
+  aff_sel += (_fwd_mismatches ? 0 : 2);
+  switch (aff_sel) {
+    case 0:  output->concat("no");           break;
+    case 1:  output->concat("matching");     break;
+    case 2:  output->concat("mismatched");   break;
+    case 3:  output->concat("all");          break;
+  }
+  output->concat(" afferents)\n");
+}
+
+
+
+/*******************************************************************************
 * TripleAxisFork
 *******************************************************************************/
 
@@ -75,7 +121,7 @@ FAST_FUNC int8_t TripleAxisFork::pushVector(const SpatialSense s, Vector3f* data
   const bool LEFT_SUCCESS  = ((nullptr != _LEFT) && (0 == _LEFT->pushVector(s, data, error, seq_num)));
   const bool RIGHT_SUCCESS = ((nullptr != _RIGHT) && (0 == _RIGHT->pushVector(s, data, error, seq_num)));
   return ((LEFT_SUCCESS | RIGHT_SUCCESS) ? 0 : -1);
-};
+}
 
 
 void TripleAxisFork::printPipe(StringBuilder* output, uint8_t stage, uint8_t verbosity) {
@@ -175,7 +221,23 @@ bool TripleAxisRemapper::mapAfferent(
 
 
 /*******************************************************************************
-* TripleAxisTerminus
+* TripleAxisTerminalCallback
+*******************************************************************************/
+FAST_FUNC int8_t TripleAxisTerminalCallback::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error, uint32_t seq_num) {
+  return ((nullptr == _CALLBACK) ? -2 : _CALLBACK(s, data, error, seq_num));
+}
+
+void TripleAxisTerminalCallback::printPipe(StringBuilder* output, uint8_t stage, uint8_t verbosity) {
+  StringBuilder indent;
+  for (uint8_t i = 0; i < stage; i++) {    indent.concat(TAP_INDENT_STRING);    }
+  indent.string();
+  output->concatHandoff(&indent);
+  output->concat("+-< 3AxisPipe: TerminalCallback >-------------\n");
+}
+
+
+/*******************************************************************************
+* TripleAxisStorage
 *******************************************************************************/
 
 /*
@@ -184,7 +246,7 @@ bool TripleAxisRemapper::mapAfferent(
 * @return 0 on success with stale data.
 * @return 1 on success with fresh data.
 */
-int8_t TripleAxisTerminus::getDataWithErr(Vector3f* d, Vector3f* e, uint32_t* c) {
+int8_t TripleAxisStorage::getDataWithErr(Vector3f* d, Vector3f* e, uint32_t* c) {
   int8_t ret = _fresh_data ? 1 : 0;
   _fresh_data = false;
   d->set(&_DATA);
@@ -198,39 +260,30 @@ int8_t TripleAxisTerminus::getDataWithErr(Vector3f* d, Vector3f* e, uint32_t* c)
 }
 
 
-/*
-* Behavior: If sense parameter matches the local class sense, refreshes
-*   this instance's state and calls callback, if defined. Marks the data
-*   as fresh if the callback is either absent, or returns nonzero.
+/**
+* Behavior: Refreshes this instance's state. Marks the data as fresh.
+* Does not push an efferent, since the base implementation does no transform on
+*   the afferent, and the superclass will already forwardOnMatch() if desired.
 *
-* @return 0 on refresh, or -1 on sense mis-match.
+* @return 0 always.
 */
-FAST_FUNC int8_t TripleAxisTerminus::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error, uint32_t seq_num) {
-  int8_t ret = -1;
-  if (_SENSE == s) {
-    ret = 0;
-    _last_update = millis();
-    _update_count++;
-    _DATA.set(data);
-    if (nullptr != error) {
-      _ERR.set(error);
-      _has_error = true;
-    }
-    if (nullptr != _CALLBACK) {
-      _fresh_data = (0 != _CALLBACK(_SENSE, &_DATA, (_has_error ? &_ERR : nullptr), seq_num));
-    }
-    else {
-      _fresh_data = true;
-    }
+FAST_FUNC int8_t TripleAxisStorage::_filtered_push(Vector3f* data, Vector3f* error, uint32_t seq_num) {
+  _DATA.set(data);
+  if (nullptr != error) {
+    _ERR.set(error);
+    _has_error = true;
   }
-  return ret;
+  _last_update = seq_num;
+  _update_count++;
+  _fresh_data = true;
+  return 0;
 }
 
 
 /*
 * Resets the class to zero.
 */
-void TripleAxisTerminus::reset() {
+void TripleAxisStorage::reset() {
   _has_error    = false;
   _fresh_data   = false;
   _last_update  = 0;
@@ -240,27 +293,57 @@ void TripleAxisTerminus::reset() {
 }
 
 
-void TripleAxisTerminus::printPipe(StringBuilder* output, uint8_t stage, uint8_t verbosity) {
-  StringBuilder indent;
-  for (uint8_t i = 0; i < stage; i++) {    indent.concat(TAP_INDENT_STRING);    }
-  indent.string();
-  output->concat(&indent);
-  output->concatf("+-< 3AxisPipe: Terminus (%s)>---------------\n", TripleAxisPipe::spatialSenseStr(_SENSE));
-  output->concat(&indent);
-  output->concatf("| Has callback:   %c\n", (nullptr != _CALLBACK)?'y':'n');
-  output->concat(&indent);
+void TripleAxisStorage::_print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity) {
+  output->concat(indent);
+  output->concatf("+-< 3AxisPipe: Storage >---------------\n");
+  TripleAxisSenseFilter::_print_pipe(output, indent, verbosity);
+  output->concat(indent);
   output->concatf("| Seq number:     %u\n", _update_count);
-  output->concat(&indent);
-  output->concatf("| SpatialSense:   %s\n", TripleAxisPipe::spatialSenseStr(_SENSE));
-  output->concat(&indent);
+  output->concat(indent);
+  output->concatf("| Last update:    %u\n", _last_update);
+  output->concat(indent);
   output->concatf("| Value %s:    (%.3f, %.3f, %.3f)\n", (_fresh_data?"FRESH":"STALE"), (double) _DATA.x, (double) _DATA.y, (double) _DATA.z);
   if (_has_error) {
-    output->concat(&indent);
+    output->concat(indent);
     output->concatf("| Error:          (%.3f, %.3f, %.3f)\n", (double) _ERR.x, (double) _ERR.y, (double) _ERR.z);
   }
-  output->concatHandoff(&indent);
-  output->concatf("| Last update:    %u\n", _last_update);
 }
+
+
+
+/*******************************************************************************
+* TripleAxisIntegrator
+*******************************************************************************/
+
+/*
+*
+* @return -2 on push failure, -1 on broken pipe, or 0 on success.
+*/
+FAST_FUNC int8_t TripleAxisIntegrator::_filtered_push(Vector3f* data, Vector3f* error, uint32_t seq_num) {
+  int8_t ret = 0;
+  Vector3f  local_dat = (_DATA + (*data));
+  Vector3f* local_err = error;
+  if (nullptr != error) {
+    _ERR  += (*error);
+    local_err = &_ERR;
+  }
+
+  // Store the result in the Storage class.
+  TripleAxisStorage::_filtered_push(&local_dat, local_err, seq_num);
+
+  if (nullptr != _NXT) {
+    ret = _NXT->pushVector(_SENSE, &_DATA, &_ERR, _update_count);
+  }
+  return ret;
+}
+
+
+void TripleAxisIntegrator::_print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity) {
+  output->concat(indent);
+  output->concat("+-< 3AxisPipe: Integrator >-----------\n");
+  TripleAxisStorage::_print_pipe(output, indent, verbosity);
+}
+
 
 
 /*******************************************************************************
@@ -443,93 +526,4 @@ void TripleAxisOffset::_print_pipe(StringBuilder* output, StringBuilder* indent,
   output->concat("+-< 3AxisPipe: Offset >-----------\n");
   output->concat(indent);
   output->concatf("| Offset:   (%.3f, %.3f, %.3f)\n", (double) _offset_vector.x, (double) _offset_vector.y, (double) _offset_vector.z);
-}
-
-
-
-/*******************************************************************************
-* TripleAxisSenseFilter
-*******************************************************************************/
-
-/*
-* Behavior: If sense parameter matches the local class sense, refreshes
-*   this instance's state and calls callback, if defined. Marks the data
-*   as fresh if the callback is either absent, or returns nonzero.
-*
-* @return -2 on push failure, -1 on broken pipe, or 0 on success.
-*/
-FAST_FUNC int8_t TripleAxisSenseFilter::pushVector(const SpatialSense s, Vector3f* data, Vector3f* error, uint32_t seq_num) {
-  int8_t ret = -1;   // Defaults to a broken pipe error.
-  if (_SENSE == s) {
-    ret = _filtered_push(data, error, seq_num);
-    if (_fwd_matched_afferents & (nullptr != _NXT)) {
-      ret = _NXT->pushVector(s, data, error, seq_num);
-    }
-  }
-  else if (_fwd_mismatches & (nullptr != _NXT)) {
-    // We relay vectors of SpatialSense's we aren't configured for.
-    ret = _NXT->pushVector(s, data, error, seq_num);
-  }
-  return ret;
-}
-
-
-/*
-* Middle implementation to print the filter and forward behavior.
-*/
-void TripleAxisSenseFilter::_print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity) {
-  output->concat(indent);
-  output->concatf("| SpatialSense:   %s (forwards ", TripleAxisPipe::spatialSenseStr(_SENSE));
-  uint8_t aff_sel = (_fwd_matched_afferents ? 0 : 1);
-  aff_sel += (_fwd_mismatches ? 0 : 2);
-  switch (aff_sel) {
-    case 0:  output->concat("no");           break;
-    case 1:  output->concat("matching");     break;
-    case 2:  output->concat("mismatched");   break;
-    case 3:  output->concat("all");          break;
-  }
-  output->concat(" afferents)\n");
-}
-
-
-/*******************************************************************************
-* TripleAxisIntegrator
-*******************************************************************************/
-
-/*
-* Behavior: If sense parameter matches the local class sense, refreshes
-*   this instance's state and calls callback, if defined. Marks the data
-*   as fresh if the callback is either absent, or returns nonzero.
-*
-* @return -2 on push failure, -1 on broken pipe, or 0 on success.
-*/
-FAST_FUNC int8_t TripleAxisIntegrator::_filtered_push(Vector3f* data, Vector3f* error, uint32_t seq_num) {
-  int8_t ret = 0;
-  _integrated += (*data);
-  _err        += (*error);
-  _update_count++;
-  if (nullptr != _NXT) {
-    ret = _NXT->pushVector(_SENSE, &_integrated, &_err, _update_count);
-  }
-  return ret;
-}
-
-
-void TripleAxisIntegrator::_print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity) {
-  output->concat(indent);
-  output->concat("+-< 3AxisPipe: Integrator >-----------\n");
-  TripleAxisSenseFilter::_print_pipe(output, indent, verbosity);
-  output->concat(indent);
-  output->concatf("| Value:    (%.3f, %.3f, %.3f) after %u samples\n", (double) _integrated.x, (double) _integrated.y, (double) _integrated.z, _update_count);
-  if (!_err.isZero()) {
-    output->concat(indent);
-    output->concatf("| Error:    (%.3f, %.3f, %.3f)\n", (double) _err.x, (double) _err.y, (double) _err.z);
-  }
-}
-
-
-inline void TripleAxisIntegrator::nullify() {
-  _update_count = 0;
-  _integrated.zero();
-  _err.zero();
 }
