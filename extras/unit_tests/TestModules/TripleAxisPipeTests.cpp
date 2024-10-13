@@ -53,8 +53,16 @@ Vector3f tap_last_mag;
 Vector3f tap_last_euler;
 Vector3f tap_last_bearing;
 
-bool tap_test_left_micros  = 0;
-bool tap_test_right_micros = 0;
+Vector3f tap_cb_dat_left;
+Vector3f tap_cb_dat_right;
+Vector3f tap_cb_err_left;
+Vector3f tap_cb_err_right;
+uint32_t tap_cb_seq_num_left   = 0;
+uint32_t tap_cb_seq_num_right  = 0;
+uint32_t tap_cb_updates_left   = 0;
+uint32_t tap_cb_updates_right  = 0;
+bool     tap_test_left_micros  = false;
+bool     tap_test_right_micros = false;
 
 
 FAST_FUNC int8_t callback_3axis_term_test(const SpatialSense S, Vector3f* dat, Vector3f* err, uint32_t seq_num) {
@@ -67,10 +75,10 @@ FAST_FUNC int8_t callback_3axis_term_test(const SpatialSense S, Vector3f* dat, V
   );
 
   if (nullptr != err) {
-    log_line.concatf(" +/-(%.3f, %.3f, %.3f)\n", (double) err->x, (double) err->y, (double) err->z);
+    log_line.concatf(" +/-(%.3f, %.3f, %.3f)", (double) err->x, (double) err->y, (double) err->z);
   }
   else {
-    log_line.concat(" (no error vector)\n");
+    log_line.concat(" (no error vector)");
   }
   c3p_log(LOG_LEV_INFO, "callback_3axis()", &log_line);
 
@@ -88,16 +96,44 @@ FAST_FUNC int8_t callback_3axis_term_test(const SpatialSense S, Vector3f* dat, V
 
 FAST_FUNC int8_t callback_3axis_fork_left(const SpatialSense S, Vector3f* dat, Vector3f* err, uint32_t seq_num) {
   tap_test_left_micros = micros();
+  tap_cb_dat_left.set(dat);
+  if (nullptr != err) {  tap_cb_err_left.set(err);  }
+  else {  tap_cb_err_left.zero();  }
+  tap_cb_seq_num_left = seq_num;
+  tap_cb_updates_left++;
   return 0;
 }
 
 
 FAST_FUNC int8_t callback_3axis_fork_right(const SpatialSense S, Vector3f* dat, Vector3f* err, uint32_t seq_num) {
   tap_test_right_micros = micros();
+  tap_cb_dat_right.set(dat);
+  if (nullptr != err) {  tap_cb_err_right.set(err);  }
+  else {  tap_cb_err_right.zero();  }
+  tap_cb_seq_num_right = seq_num;
+  tap_cb_updates_right++;
   return 0;
 }
 
 
+void tap_test_reset_callback_tracker() {
+  tap_last_unitless.zero();
+  tap_last_acc.zero();
+  tap_last_gyr.zero();
+  tap_last_mag.zero();
+  tap_last_euler.zero();
+  tap_last_bearing.zero();
+  tap_cb_dat_left.zero();
+  tap_cb_dat_right.zero();
+  tap_cb_err_left.zero();
+  tap_cb_err_right.zero();
+  tap_cb_seq_num_left  = 0;
+  tap_cb_seq_num_right = 0;
+  tap_cb_updates_left  = 0;
+  tap_cb_updates_right = 0;
+  tap_test_left_micros  = false;
+  tap_test_right_micros = false;
+}
 
 /*******************************************************************************
 * Test routines
@@ -156,11 +192,11 @@ int test_3ap_terminal_callback() {
 int test_3ap_storage() {
   printf("TripleAxisStorage...\n");
   int ret = -1;
+  const uint32_t RND_SEQ_NUM = (uint32_t) millis();
   TripleAxisStorage terminal(SpatialSense::GYR);
-  Vector3<float>     src_val     = generate_random_vect3f();
-  Vector3<float>     err_val     = generate_random_vect3f();
-  Vector3<float>     trash_val   = generate_random_vect3f();
-  const uint32_t     RND_SEQ_NUM = (uint32_t) millis();
+  Vector3f src_val     = generate_random_vect3f();
+  Vector3f err_val     = generate_random_vect3f();
+  Vector3f trash_val   = generate_random_vect3f();
   printf("\tlastUpdate() and updateCount() both return zero for a fresh object... ");
   if ((0 == terminal.lastUpdate()) & (0 == terminal.updateCount())) {
     stopwatch_term.markStart();
@@ -367,10 +403,9 @@ int test_3ap_fork() {
   // Callbacks are used to track timing.
   TripleAxisTerminalCallback cb_left(callback_3axis_fork_left);
   TripleAxisTerminalCallback cb_right(callback_3axis_fork_right);
-  TripleAxisStorage term_left(SpatialSense::UNITLESS, &cb_left);
-  TripleAxisStorage term_right(SpatialSense::UNITLESS, &cb_right);
-  TripleAxisFork     fork(&term_left, &term_right);
+  TripleAxisFork     fork(&cb_left, &cb_right);
   Vector3<float>     src_val;
+  tap_test_reset_callback_tracker();    // Reset the globals used by the test.
 
   printf("\tVerifying that the fork processes left-first... ");
   uint32_t timer_deadlock = 1000000;
@@ -383,12 +418,12 @@ int test_3ap_fork() {
   }
 
   if (timer_deadlock > 0) {
-    printf("Passed after %u iterations.\n", term_left.updateCount());
+    printf("Passed after %u iterations.\n", tap_cb_updates_left);
     printf("\tThe fork's left and right sides match (%.3f, %.3f, %.3f)... ", src_val.x, src_val.y, src_val.z);
-    if (term_left.getData() == src_val) {
-      if (term_right.getData() == src_val) {
+    if (tap_cb_dat_left == src_val) {
+      if (tap_cb_dat_right == src_val) {
         printf("Pass.\n\tupdateCount() matches on the left and right... ");
-        if (term_left.updateCount() == term_right.updateCount()) {
+        if (tap_cb_updates_left == tap_cb_updates_right) {
           printf("PASS.\n");
           ret = 0;
         }
@@ -515,16 +550,17 @@ int test_3ap_sense_filter() {
   const SpatialSense SENSE_TO_FILTER_0 = SpatialSense::BEARING;
   const SpatialSense SENSE_TO_FILTER_1 = SpatialSense::MAG;
   int ret = -1;
+  Vector3f error_figure(0.065f, 0.065f, 0.065f);
+  Vector3f src_val;
   printf("TripleAxisSenseFilter (%u cycles)...\n", TEST_CYCLES);
-  Vector3<float> error_figure(0.065f, 0.065f, 0.065f);
-  Vector3<float> src_val;
 
   // This test is conducted by forking the vector stream, and attaching a filter
   //   to each side. Fork-left is whitelist and fork-right is blacklist.
-  TripleAxisStorage    term_match(SENSE_TO_FILTER_0);
-  TripleAxisStorage    term_nonmatch(SENSE_TO_FILTER_1);
-  TripleAxisSenseFilter filt_match(SENSE_TO_FILTER_0, &term_match);
-  TripleAxisSenseFilter filt_nonmatch(SENSE_TO_FILTER_0, &term_nonmatch);
+  tap_test_reset_callback_tracker();    // Reset the globals used by the test.
+  TripleAxisTerminalCallback cb_left(callback_3axis_fork_left);
+  TripleAxisTerminalCallback cb_right(callback_3axis_fork_right);
+  TripleAxisSenseFilter filt_match(SENSE_TO_FILTER_0, &cb_left);
+  TripleAxisSenseFilter filt_nonmatch(SENSE_TO_FILTER_0, &cb_right);
   TripleAxisFork        fork(&filt_match, &filt_nonmatch);
 
   filt_match.forwardMatchedAfferents(true);        //
@@ -541,9 +577,9 @@ int test_3ap_sense_filter() {
 
   if (pushes_all_pass) {
     printf("Pass.\n\tThe correct number of vectors (%u) passed through filt_match... ", TEST_CYCLES);
-    if (TEST_CYCLES == term_match.updateCount()) {
+    if (TEST_CYCLES == tap_cb_updates_left) {
       printf("Pass.\n\tThe correct number of vectors (0) passed through filt_nonmatch... ");
-      if (0 == term_nonmatch.updateCount()) {
+      if (0 == tap_cb_updates_right) {
         printf("Pass.\n\tpushVector() succeeds for %s... ", TripleAxisPipe::spatialSenseStr(SENSE_TO_FILTER_1));
         const uint32_t TEST_CYCLES_OVER_TWO = (TEST_CYCLES >> 1);
         for (uint32_t i = 0; i < TEST_CYCLES_OVER_TWO; i++) {
@@ -552,20 +588,17 @@ int test_3ap_sense_filter() {
         }
         if (pushes_all_pass) {
           printf("Pass.\n\tThe number of vectors in filt_match is unchanged... ");
-          if (TEST_CYCLES == term_match.updateCount()) {
+          if (TEST_CYCLES == tap_cb_updates_left) {
             printf("Pass.\n\tThe correct number of vectors (%u) passed through filt_nonmatch... ", TEST_CYCLES_OVER_TWO);
-            if (TEST_CYCLES_OVER_TWO == term_nonmatch.updateCount()) {
-              printf("Pass.\n\tPushing a vector of an unhandled sense (globally in the pipeline) gives an error... ");
-              if (0 != fork.pushVector(SpatialSense::ACC, &src_val, &error_figure, 0)) {
-                printf("Pass.\n\tThe filter can be muted... ");
-                filt_match.forwardMatchedAfferents(false);
-                filt_match.forwardMismatchedAfferents(false);
-                for (uint32_t i = 0; i < TEST_CYCLES; i++) {
-                  fork.pushVector(SENSE_TO_FILTER_0, &src_val, &error_figure, 0);
-                }
-                if (TEST_CYCLES == term_match.updateCount()) {
-                  ret = 0;
-                }
+            if (TEST_CYCLES_OVER_TWO == tap_cb_updates_right) {
+              printf("Pass.\n\tThe filter can be muted... ");
+              filt_match.forwardMatchedAfferents(false);
+              filt_match.forwardMismatchedAfferents(false);
+              for (uint32_t i = 0; i < TEST_CYCLES; i++) {
+                fork.pushVector(SENSE_TO_FILTER_0, &src_val, &error_figure, 0);
+              }
+              if (TEST_CYCLES == tap_cb_updates_left) {
+                ret = 0;
               }
             }
           }
@@ -829,9 +862,21 @@ const StepSequenceList TOP_LEVEL_3AP_TEST_LIST[] = {
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_3ap_terminal_callback()) ? 1:-1);  }
   },
+  { .FLAG         = CHKLST_3AP_TEST_FORK,
+    .LABEL        = "TripleAxisFork",
+    .DEP_MASK     = (CHKLST_3AP_TEST_TERMINAL_CB),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_3ap_fork()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_3AP_SENSE_FILTER,
+    .LABEL        = "TripleAxisSenseFilter",
+    .DEP_MASK     = (CHKLST_3AP_TEST_FORK),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_3ap_sense_filter()) ? 1:-1);  }
+  },
   { .FLAG         = CHKLST_3AP_TEST_STORAGE,
     .LABEL        = "TripleAxisStorage",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_3AP_SENSE_FILTER),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_3ap_storage()) ? 1:-1);  }
   },
@@ -847,39 +892,27 @@ const StepSequenceList TOP_LEVEL_3AP_TEST_LIST[] = {
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_3ap_scaling()) ? 1:-1);  }
   },
-  { .FLAG         = CHKLST_3AP_TEST_FORK,
-    .LABEL        = "TripleAxisFork",
-    .DEP_MASK     = (CHKLST_3AP_TEST_TERMINAL_CB | CHKLST_3AP_TEST_STORAGE),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == test_3ap_fork()) ? 1:-1);  }
-  },
   { .FLAG         = CHKLST_3AP_TEST_CONV,
     .LABEL        = "TripleAxisRemapper",
-    .DEP_MASK     = (CHKLST_3AP_TEST_FORK),
+    .DEP_MASK     = (CHKLST_3AP_TEST_STORAGE),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_3ap_axis_remapper()) ? 1:-1);  }
   },
-  { .FLAG         = CHKLST_3AP_SENSE_FILTER,
-    .LABEL        = "TripleAxisSenseFilter",
-    .DEP_MASK     = (CHKLST_3AP_TEST_FORK),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == test_3ap_sense_filter()) ? 1:-1);  }
-  },
   { .FLAG         = CHKLST_3AP_TEST_TIMESERIES,
     .LABEL        = "TripleAxisTimeSeries",
-    .DEP_MASK     = (CHKLST_3AP_SENSE_FILTER),
+    .DEP_MASK     = (CHKLST_3AP_TEST_STORAGE),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_3ap_timeseries()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_3AP_TEST_INTEGRATOR,
     .LABEL        = "TripleAxisIntegrator",
-    .DEP_MASK     = (CHKLST_3AP_SENSE_FILTER),
+    .DEP_MASK     = (CHKLST_3AP_TEST_STORAGE),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_3ap_integrator()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_3AP_TEST_DIFF,
     .LABEL        = "TripleAxisDifferentiator",
-    .DEP_MASK     = (CHKLST_3AP_SENSE_FILTER),
+    .DEP_MASK     = (CHKLST_3AP_TEST_STORAGE),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_3ap_differentiator()) ? 1:-1);  }
   },
