@@ -34,6 +34,7 @@ StopWatch stopwatch_remapper;
 StopWatch stopwatch_fork;
 StopWatch stopwatch_offset;
 StopWatch stopwatch_integrator;
+StopWatch stopwatch_diff;
 StopWatch stopwatch_scaling;
 StopWatch stopwatch_timeseries;
 
@@ -677,18 +678,21 @@ int test_3ap_timeseries() {
 */
 int test_3ap_integrator() {
   Vector3<float> error_figure(0.001f, 0.001f, 0.001f);
-  const uint32_t TEST_DEPTH = (107 + (randomUInt32() % 111));
+  const uint32_t TEST_CYCLES = (107 + (randomUInt32() % 111));
   int ret = -1;
   TripleAxisStorage term(SpatialSense::ACC);
   TripleAxisIntegrator integrator(SpatialSense::ACC, &term);
-  Vector3<float> src_val;
+  Vector3f src_val;
 
-  printf("TripleAxisIntegrator (depth of %u)...\n", TEST_DEPTH);
+  printf("TripleAxisIntegrator (%u cycles)...\n", TEST_CYCLES);
   printf("\tAll calls to pushVector() succeed... ");
 
   bool pushes_all_pass = true;
-  for (uint32_t i = 0; i < TEST_DEPTH; i++) {
+  for (uint32_t i = 0; i < TEST_CYCLES; i++) {
     src_val = generate_random_vect3f();
+    // To avoid also testing the error limits of the float type, we will limit
+    //   the size of the input vector. This concern would normally be handled
+    //   elsewhere.
     src_val.normalize();
     stopwatch_integrator.markStart();
     pushes_all_pass &= (0 == integrator.pushVector(SpatialSense::ACC, &src_val, &error_figure, i));
@@ -697,7 +701,7 @@ int test_3ap_integrator() {
 
   if (pushes_all_pass) {
     printf("Pass.\n\tThe integrator has the correct sample count... ");
-    if (integrator.updateCount() == TEST_DEPTH) {
+    if (integrator.updateCount() == TEST_CYCLES) {
       ret = 0;
     }
   }
@@ -713,6 +717,77 @@ int test_3ap_integrator() {
   printf("%s\n", (char*) output.string());
   return ret;
 }
+
+
+
+/*
+*/
+int test_3ap_differentiator() {
+  Vector3<float> error_figure(0.085f, 0.085f, 0.085f);
+  const uint32_t TEST_CYCLES = (107 + (randomUInt32() % 111));
+  int ret = -1;
+  TripleAxisDifferentiator test_obj(SpatialSense::ACC);
+  printf("TripleAxisDifferentiator (%u cycles)...\n", TEST_CYCLES);
+
+  printf("\tAll calls to pushVector() succeed... ");
+  bool pushes_all_pass = true;   // Carefull...
+  bool correct_result  = true;   // Carefull...
+  bool error_scaled    = true;   // Carefull...
+  bool first_push_dead = false;
+  Vector3f most_recent_push;
+  for (uint32_t i = 0; i < TEST_CYCLES; i++) {
+    Vector3f src_val    = generate_random_vect3f();
+    stopwatch_diff.markStart();
+    pushes_all_pass &= (0 == test_obj.pushVector(SpatialSense::ACC, &src_val, &error_figure, i));
+    stopwatch_diff.markStop();
+    if (0 == i) {
+      // Since two points are required to take a derivative, the first push
+      //   should succeed, but not produce an efferent or leave an update trace.
+      first_push_dead  = (test_obj.updateCount() == 0);
+      first_push_dead &= !(test_obj.dataFresh());
+    }
+    else {
+      Vector3f result_dat;
+      Vector3f result_err;
+      uint32_t seq;
+      // After the second push, the class should begin updating. Check its values.
+      correct_result &= (0 < test_obj.getDataWithErr(&result_dat, &result_err, &seq));
+      correct_result &= ((src_val - most_recent_push) == result_dat);
+      error_scaled   &= ((error_figure * 2) == result_err);
+    }
+
+    if (!(pushes_all_pass & correct_result & error_scaled & first_push_dead)) {  break;  }
+    most_recent_push = src_val;
+  }
+
+  if (pushes_all_pass) {
+    printf("Pass.\n\tThe first call to pushVector() did not produce an efferent... ");
+    if (first_push_dead) {
+      printf("Pass.\n\tSubsequent afferents produce correct results... ");
+      if (correct_result) {
+        printf("Pass.\n\tSubsequent afferents produce scaled error vectors... ");
+        if (error_scaled) {
+          printf("Pass.\n\tThe differentiator has the correct sample count... ");
+          if (test_obj.updateCount() == (TEST_CYCLES-1)) {
+            ret = 0;
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("Fail\n");
+  }
+  else {
+    printf("PASS\n");
+  }
+  StringBuilder output;
+  test_obj.printPipe(&output, 1, LOG_LEV_DEBUG);
+  printf("%s\n", (char*) output.string());
+  return ret;
+}
+
 
 
 /*
@@ -737,14 +812,14 @@ int test_3ap_orientation() {
 #define CHKLST_3AP_TEST_TIMESERIES   0x00000080  // Tests the 3AP time-series class.
 #define CHKLST_3AP_TEST_ORIENTATION  0x00000100  // Tests the orientation filter.
 #define CHKLST_3AP_TEST_STORAGE      0x00000200  // TripleAxisStorage
+#define CHKLST_3AP_TEST_DIFF         0x00000400  // TripleAxisDifferentiator
 #define CHKLST_3AP_TEST_DUMP_STATS   0x80000000  // Dumps profiler to test results.
 
 #define CHKLST_3AP_TESTS_ALL ( \
   CHKLST_3AP_TEST_CONV | CHKLST_3AP_TEST_STORAGE | CHKLST_3AP_TEST_FORK | \
   CHKLST_3AP_TEST_OFFSET | CHKLST_3AP_TEST_SCALING | CHKLST_3AP_SENSE_FILTER | \
-  CHKLST_3AP_TEST_INTEGRATOR | CHKLST_3AP_TEST_TIMESERIES | \
+  CHKLST_3AP_TEST_INTEGRATOR | CHKLST_3AP_TEST_TIMESERIES | CHKLST_3AP_TEST_DIFF | \
   CHKLST_3AP_TEST_TERMINAL_CB | CHKLST_3AP_TEST_DUMP_STATS)
-//  CHKLST_3AP_TEST_ORIENTATION |
 
 
 const StepSequenceList TOP_LEVEL_3AP_TEST_LIST[] = {
@@ -802,6 +877,13 @@ const StepSequenceList TOP_LEVEL_3AP_TEST_LIST[] = {
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_3ap_integrator()) ? 1:-1);  }
   },
+  { .FLAG         = CHKLST_3AP_TEST_DIFF,
+    .LABEL        = "TripleAxisDifferentiator",
+    .DEP_MASK     = (CHKLST_3AP_SENSE_FILTER),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_3ap_differentiator()) ? 1:-1);  }
+  },
+
   { .FLAG         = CHKLST_3AP_TEST_ORIENTATION,
     .LABEL        = "TripleAxisOrientation",
     .DEP_MASK     = (CHKLST_3AP_TEST_FORK),
@@ -820,6 +902,7 @@ const StepSequenceList TOP_LEVEL_3AP_TEST_LIST[] = {
       stopwatch_fork.printDebug(      "fork",       &output);
       stopwatch_offset.printDebug(    "offset",     &output);
       stopwatch_integrator.printDebug("integrator", &output);
+      stopwatch_diff.printDebug("diff", &output);
       stopwatch_scaling.printDebug(   "scaling",    &output);
       stopwatch_timeseries.printDebug("timeseries", &output);
       printf("%s\n", (char*) output.string());
@@ -842,6 +925,7 @@ void print_types_3ap() {
   printf("\tTripleAxisScaling         %u\t%u\n", sizeof(TripleAxisScaling),     alignof(TripleAxisScaling));
   printf("\tTripleAxisOffset          %u\t%u\n", sizeof(TripleAxisOffset),      alignof(TripleAxisOffset));
   printf("\tTripleAxisIntegrator      %u\t%u\n", sizeof(TripleAxisIntegrator),  alignof(TripleAxisIntegrator));
+  printf("\tTripleAxisDifferentiator  %u\t%u\n", sizeof(TripleAxisDifferentiator),  alignof(TripleAxisDifferentiator));
   printf("\tTripleAxisRemapper        %u\t%u\n", sizeof(TripleAxisRemapper),    alignof(TripleAxisRemapper));
   printf("\tTripleAxisTimeSeries      %u\t%u\n", sizeof(TripleAxisTimeSeries),  alignof(TripleAxisTimeSeries));
   printf("\tTripleAxisOrientation     %u\t%u\n", sizeof(TripleAxisOrientation), alignof(TripleAxisOrientation));

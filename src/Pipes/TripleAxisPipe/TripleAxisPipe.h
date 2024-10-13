@@ -35,7 +35,7 @@ limitations under the License.
 * @section overview Overview
 *
 * TripleAxisPipe (or 3AP, for short) is a vector processing pipeline with
-*   semantic tagging and optional error propagation. It's purpose is to
+*   semantic tagging and optional error propagation. Its purpose is to
 *   facilitate use of common sensors for practical problems in 3-space.
 *
 * Many of the mid-level problems involving spatial modeling from sensors are
@@ -166,16 +166,11 @@ class TripleAxisFork : public TripleAxisPipe {
     TripleAxisFork(TripleAxisPipe* l = nullptr, TripleAxisPipe* r = nullptr) : _LEFT(l), _RIGHT(r) {};
     ~TripleAxisFork() {};
 
-    inline void setLeft(TripleAxisPipe* l) {   _LEFT  = l;  };
-    inline void setRight(TripleAxisPipe* r) {  _RIGHT = r;  };
-
-    /**
-    * Behavior: Pushes left first. Then right, regardless of failure on left.
-    *
-    * @return 0 on sucess on both sides of the fork, -1 on one failure, or -2 on two failures.
-    */
     int8_t pushVector(const SpatialSense, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
     void printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
+
+    inline void setLeft(TripleAxisPipe* l) {   _LEFT  = l;  };
+    inline void setRight(TripleAxisPipe* r) {  _RIGHT = r;  };
 
 
   private:
@@ -344,6 +339,8 @@ class TripleAxisStorage : public TripleAxisSenseFilter {
     inline uint32_t updateCount() {        return _update_count;  };
     inline bool     haveError() {          return _has_error;     };
     inline bool     dataFresh() {          return _fresh_data;    };
+    //inline void     asyncBreak(bool x) {   _async_break = x;      };
+    //inline bool     asyncBreak() {         return _async_break;   };
 
     /**
     * Atomic accessor with freshness management and return.
@@ -353,15 +350,15 @@ class TripleAxisStorage : public TripleAxisSenseFilter {
     */
     int8_t getDataWithErr(Vector3f* d, Vector3f* e, uint32_t* seq_num);
 
-    /**
-    * Resets the class to zero.
-    */
+    /** Resets the class to zero. */
     void reset();
 
 
   protected:
+  // TODO: Move bools below into an integer field for alignment authority.
     bool     _has_error    = false;   // TODO: Move bools below into an integer field for alignment authority.
     bool     _fresh_data   = false;   // TODO: Move bools below into an integer field for alignment authority.
+    //bool     _async_break  = false;   //
     uint32_t _last_update  = 0;
     uint32_t _update_count = 0;
     Vector3f _DATA;
@@ -384,8 +381,34 @@ class TripleAxisIntegrator : public TripleAxisStorage {
       TripleAxisStorage(s, nxt) {};
     ~TripleAxisIntegrator() {};
 
+    //inline bool     overflow() {       return _has_overflow;     };
+
 
   protected:
+    //bool     _has_overflow   = false;
+
+    // Implementation of TripleAxisSenseFilter.
+    virtual int8_t _filtered_push(Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
+    virtual void   _print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity);
+};
+
+
+/*
+* For incoming vectors of a matching SpatialSense, computes the instantaneous
+*   rate of change and corresponding error adjustment followed by an efferent
+*   push.
+*/
+class TripleAxisDifferentiator : public TripleAxisStorage {
+  public:
+    TripleAxisDifferentiator(const SpatialSense s, TripleAxisPipe* nxt = nullptr) :
+      TripleAxisStorage(s, nxt) {};
+    ~TripleAxisDifferentiator() {};
+
+
+  protected:
+    Vector3f _prior_afferant;
+    bool     _primed = false;
+
     // Implementation of TripleAxisSenseFilter.
     virtual int8_t _filtered_push(Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
     virtual void   _print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity);

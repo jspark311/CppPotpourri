@@ -95,8 +95,8 @@ FAST_FUNC int8_t TripleAxisSenseFilter::pushVector(const SpatialSense s, Vector3
 void TripleAxisSenseFilter::_print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity) {
   output->concat(indent);
   output->concatf("| SpatialSense:   %s (forwards ", TripleAxisPipe::spatialSenseStr(_SENSE));
-  uint8_t aff_sel = (_fwd_matched_afferents ? 0 : 1);
-  aff_sel += (_fwd_mismatches ? 0 : 2);
+  uint8_t aff_sel = (_fwd_matched_afferents ? 1 : 0);
+  aff_sel += (_fwd_mismatches ? 2 : 0);
   switch (aff_sel) {
     case 0:  output->concat("no");           break;
     case 1:  output->concat("matching");     break;
@@ -265,6 +265,13 @@ int8_t TripleAxisStorage::getDataWithErr(Vector3f* d, Vector3f* e, uint32_t* c) 
 * Does not push an efferent, since the base implementation does no transform on
 *   the afferent, and the superclass will already forwardOnMatch() if desired.
 *
+* NOTE: This is the most-basal implementations of _filtered_push(), and the only
+*   reason it is not pure virtual is to allow direct-instantiation of this
+*   class. _filtered_push() does not actually push an efferant. All it does is
+*   store the given vector/error/seq and updates class state to reflect new data.
+* This is easy enough to do with repeat code in a child class, but it is also
+*   acceptable to "call super" in this case.
+*
 * @return 0 always.
 */
 FAST_FUNC int8_t TripleAxisStorage::_filtered_push(Vector3f* data, Vector3f* error, uint32_t seq_num) {
@@ -314,9 +321,7 @@ void TripleAxisStorage::_print_pipe(StringBuilder* output, StringBuilder* indent
 /*******************************************************************************
 * TripleAxisIntegrator
 *******************************************************************************/
-
 /*
-*
 * @return -2 on push failure, -1 on broken pipe, or 0 on success.
 */
 FAST_FUNC int8_t TripleAxisIntegrator::_filtered_push(Vector3f* data, Vector3f* error, uint32_t seq_num) {
@@ -341,6 +346,50 @@ FAST_FUNC int8_t TripleAxisIntegrator::_filtered_push(Vector3f* data, Vector3f* 
 void TripleAxisIntegrator::_print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity) {
   output->concat(indent);
   output->concat("+-< 3AxisPipe: Integrator >-----------\n");
+  TripleAxisStorage::_print_pipe(output, indent, verbosity);
+}
+
+
+
+/*******************************************************************************
+* TripleAxisDifferentiator
+*******************************************************************************/
+/*
+* @return -2 on push failure, -1 on broken pipe, or 0 on success.
+*/
+FAST_FUNC int8_t TripleAxisDifferentiator::_filtered_push(Vector3f* data, Vector3f* error, uint32_t seq_num) {
+  int8_t ret = 0;
+
+  if (_primed) {
+    Vector3f  local_dat = (_DATA + (*data));
+    Vector3f* local_err = error;
+    if (nullptr != error) {
+      // Error is doubled because: two datapoints produced the efferent.
+      // TODO: Open your engineering textbooks and review error propagation through
+      //   differentiation. 2x the input sounds logical, but there is a splinter in
+      //   my brain that it is not correct. Verify.
+      _ERR  = ((*error) * 2);
+      local_err = &_ERR;
+    }
+    local_dat = ((*data) - _prior_afferant);
+    // Store the result in the Storage class.
+    TripleAxisStorage::_filtered_push(&local_dat, local_err, seq_num);
+
+    if (nullptr != _NXT) {
+      ret = _NXT->pushVector(_SENSE, &_DATA, &_ERR, _update_count);
+    }
+  }
+  else {
+    _primed = true;
+  }
+  _prior_afferant.set(data);
+  return ret;
+}
+
+
+void TripleAxisDifferentiator::_print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity) {
+  output->concat(indent);
+  output->concat("+-< 3AxisPipe: Differentiator >-----------\n");
   TripleAxisStorage::_print_pipe(output, indent, verbosity);
 }
 
