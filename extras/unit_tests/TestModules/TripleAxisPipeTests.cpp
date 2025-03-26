@@ -837,15 +837,14 @@ int test_3ap_orientation() {
 *******************************************************************************/
 #define CHKLST_3AP_TEST_TERMINAL_CB  0x00000001  // Tests the pipeline terminator class.
 #define CHKLST_3AP_TEST_FORK         0x00000002  // The fork utility class.
-#define CHKLST_3AP_TEST_OFFSET       0x00000004  // Offset class.
+#define CHKLST_3AP_TEST_CONV         0x00000004  // The axis reference converter.
 #define CHKLST_3AP_TEST_SCALING      0x00000008  // Scaling classes.
-#define CHKLST_3AP_SENSE_FILTER      0x00000010  // Tests the SpatialSense filter.
-#define CHKLST_3AP_TEST_INTEGRATOR   0x00000020  // The integrator class.
-#define CHKLST_3AP_TEST_CONV         0x00000040  // The axis reference converter.
+#define CHKLST_3AP_TEST_OFFSET       0x00000010  // Offset class.
+#define CHKLST_3AP_SENSE_FILTER      0x00000020  // Tests the SpatialSense filter.
+#define CHKLST_3AP_TEST_STORAGE      0x00000040  // TripleAxisStorage
 #define CHKLST_3AP_TEST_TIMESERIES   0x00000080  // Tests the 3AP time-series class.
-#define CHKLST_3AP_TEST_ORIENTATION  0x00000100  // Tests the orientation filter.
-#define CHKLST_3AP_TEST_STORAGE      0x00000200  // TripleAxisStorage
-#define CHKLST_3AP_TEST_DIFF         0x00000400  // TripleAxisDifferentiator
+#define CHKLST_3AP_TEST_INTEGRATOR   0x00000100  // The integrator class.
+#define CHKLST_3AP_TEST_DIFF         0x00000200  // TripleAxisDifferentiator
 #define CHKLST_3AP_TEST_DUMP_STATS   0x80000000  // Dumps profiler to test results.
 
 #define CHKLST_3AP_TESTS_ALL ( \
@@ -952,15 +951,15 @@ AsyncSequencer tap_test_plan(TOP_LEVEL_3AP_TEST_LIST, (sizeof(TOP_LEVEL_3AP_TEST
 * The main function
 *******************************************************************************/
 void print_types_3ap() {
-  printf("\tTripleAxisSenseFilter     %u\t%u\n", sizeof(TripleAxisSenseFilter), alignof(TripleAxisSenseFilter));
-  printf("\tTripleAxisStorage         %u\t%u\n", sizeof(TripleAxisStorage),    alignof(TripleAxisStorage));
   printf("\tTripleAxisFork            %u\t%u\n", sizeof(TripleAxisFork),        alignof(TripleAxisFork));
   printf("\tTripleAxisScaling         %u\t%u\n", sizeof(TripleAxisScaling),     alignof(TripleAxisScaling));
   printf("\tTripleAxisOffset          %u\t%u\n", sizeof(TripleAxisOffset),      alignof(TripleAxisOffset));
+  printf("\tTripleAxisRemapper        %u\t%u\n", sizeof(TripleAxisRemapper),    alignof(TripleAxisRemapper));
+  printf("\tTripleAxisSenseFilter     %u\t%u\n", sizeof(TripleAxisSenseFilter), alignof(TripleAxisSenseFilter));
+  printf("\tTripleAxisTimeSeries      %u\t%u\n", sizeof(TripleAxisTimeSeries),  alignof(TripleAxisTimeSeries));
+  printf("\tTripleAxisStorage         %u\t%u\n", sizeof(TripleAxisStorage),    alignof(TripleAxisStorage));
   printf("\tTripleAxisIntegrator      %u\t%u\n", sizeof(TripleAxisIntegrator),  alignof(TripleAxisIntegrator));
   printf("\tTripleAxisDifferentiator  %u\t%u\n", sizeof(TripleAxisDifferentiator),  alignof(TripleAxisDifferentiator));
-  printf("\tTripleAxisRemapper        %u\t%u\n", sizeof(TripleAxisRemapper),    alignof(TripleAxisRemapper));
-  printf("\tTripleAxisTimeSeries      %u\t%u\n", sizeof(TripleAxisTimeSeries),  alignof(TripleAxisTimeSeries));
   printf("\tTripleAxisOrientation     %u\t%u\n", sizeof(TripleAxisOrientation), alignof(TripleAxisOrientation));
 }
 
