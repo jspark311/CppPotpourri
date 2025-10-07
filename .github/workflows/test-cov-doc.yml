@@ -26,7 +26,7 @@ jobs:
     - name: make
       run: cd extras/unit_tests; make alltests check
     - name: package-results
-      run: cd cd extras/unit_tests/build; tar -cvf ../../../test-cov-doc.tar .
+      run: cd extras/unit_tests/build; tar -cvf ../../../test-cov-doc.tar .
     - uses: actions/upload-artifact@v4
       with:
         name: results
