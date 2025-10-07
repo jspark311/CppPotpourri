@@ -13,14 +13,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/upload-artifact@v4
-      with:
-        name: results
-        path:  test-cov-doc.tar
-        if-no-files-found: error
-        compression-level: 6
-        overwrite: false
-        include-hidden-files: false
     - name: cd-unit-test
       run: cd extras/unit_tests
     - name: make
@@ -29,4 +21,11 @@ jobs:
       run: ./build/AllTests > ./build/test-output-`date +%Y-%m-%d-%H.%M.%S`.log
     - name: package-results
       run: cd build; tar -cvf ../test-cov-doc.tar .
-
+    - uses: actions/upload-artifact@v4
+      with:
+        name: results
+        path:  test-cov-doc.tar
+        if-no-files-found: error
+        compression-level: 6
+        overwrite: false
+        include-hidden-files: false
