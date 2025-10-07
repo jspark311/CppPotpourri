@@ -13,6 +13,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    
+    # This library is most-commonly run on 32-bit targets. So we need to put together
+    #   a GCC environment that supports it.
+    - name: Set up GCC
+      uses: egor-tensin/setup-gcc@v1
+      with:
+        version: latest
+        platform: x86
+        
     - name: make
       run: cd extras/unit_tests; make coverage check
     - name: run-tests
@@ -27,3 +36,5 @@ jobs:
         compression-level: 6
         overwrite: false
         include-hidden-files: false
+
+
