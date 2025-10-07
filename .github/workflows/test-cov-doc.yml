@@ -23,9 +23,7 @@ jobs:
         platform: x86
         
     - name: make
-      run: cd extras/unit_tests; make coverage check
-    - name: run-tests
-      run: ./extras/unit_tests/build/AllTests > extras/unit_tests/build/test-output-`date +%Y-%m-%d-%H.%M.%S`.log
+      run: cd extras/unit_tests; make alltesets check
     - name: package-results
       run: cd cd extras/unit_tests/build; tar -cvf ../../../test-cov-doc.tar .
     - uses: actions/upload-artifact@v4
