@@ -1,0 +1,32 @@
+name: TestCovAndDoc
+  uses: actions/upload-artifact@v4.6.2
+  with:
+    name: results
+    path:  test-cov-doc.tar
+    if-no-files-found: error
+    compression-level: 6
+    overwrite: false
+    include-hidden-files: false
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: cd-unit-test
+      run: cd extras/unit_tests
+    - name: make
+      run: make coverage check
+    - name: run-tests
+      run: ./build/AllTests > ./build/test-output-`date +%Y-%m-%d-%H.%M.%S`.log
+    - name: package-results
+      run: cd build; tar -cvf ../test-cov-doc.tar .
+
