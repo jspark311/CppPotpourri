@@ -13,14 +13,12 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: cd-unit-test
-      run: cd extras/unit_tests
     - name: make
-      run: make coverage check
+      run: cd extras/unit_tests; make coverage check
     - name: run-tests
-      run: ./build/AllTests > ./build/test-output-`date +%Y-%m-%d-%H.%M.%S`.log
+      run: ./extras/unit_tests/build/AllTests > extras/unit_tests/build/test-output-`date +%Y-%m-%d-%H.%M.%S`.log
     - name: package-results
-      run: cd build; tar -cvf ../test-cov-doc.tar .
+      run: cd cd extras/unit_tests/build; tar -cvf ../../../test-cov-doc.tar .
     - uses: actions/upload-artifact@v4
       with:
         name: results
