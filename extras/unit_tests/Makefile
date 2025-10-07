@@ -142,7 +142,7 @@ GCOV_FLAGS += --object-directory $(COVERAGE_PATH)
 #GCOV_FLAGS += --preserve-paths
 GCOV_FLAGS += --branch-probabilities
 GCOV_FLAGS += --branch-counts
-GCOV_FLAGS += --display-progress
+#GCOV_FLAGS += --display-progress
 GCOV_FLAGS += --function-summaries
 GCOV_FLAGS += --relative-only
 
@@ -181,18 +181,20 @@ lib: outputpath $(OBJS)
 # 32-bit tests
 alltests: lib
 	@$(foreach test,$(TESTS),$(CXX) -Wl,--gc-sections $(CXXFLAGS) $(LIBS) $(OBJS) $(test).cpp -o $(OUTPUT_PATH)/$(test);)
-	@echo 'Beginning test execution...'
-	#@$(foreach test,$(TESTS),$(OUTPUT_PATH)/$(test);)
-	@$(foreach test,$(TESTS),$(OUTPUT_PATH)/$(test) >> $(OUTPUT_PATH)/$(test).log;)
 	@echo 'Built tests:  $(TESTS)'
+
+# Run the test binaries and move their coverage files.
+gencoverage: alltests
+	@echo 'Beginning test execution...'
+	@$(foreach test,$(TESTS),$(OUTPUT_PATH)/$(test) >> $(OUTPUT_PATH)/$(test).log;)
+	# Coverage files are in an inconvenient location. Put them all into one path.
+	mv $(OUTPUT_PATH)/AllTests-AllTests.gcno $(COVERAGE_PATH)/AllTests.gcno
+	mv $(OUTPUT_PATH)/AllTests-AllTests.gcda $(COVERAGE_PATH)/AllTests.gcda
+	-mv $(OUTPUT_PATH)/*.gcov $(GCOV_FILES) $(GCNO_FILES) $(GCDA_FILES) $(COVERAGE_PATH) 2> /dev/null
 	@echo 'Unit testing complete.'
 
-coverage: alltests
-	mv $(OUTPUT_PATH)/AllTests-AllTests.gcno $(COVERAGE_PATH)/AllTests.gcno &2> /dev/null
-	mv $(OUTPUT_PATH)/AllTests-AllTests.gcda $(COVERAGE_PATH)/AllTests.gcda &2> /dev/null
-	mv $(OUTPUT_PATH)/*.gcno $(GCOV_FILES) $(GCNO_FILES) $(GCDA_FILES) $(COVERAGE_PATH) &2> /dev/null
+coverage: gencoverage
 	$(GCOV) $(GCOV_FLAGS) $(SOURCES_CPP) AllTests.cpp
-
 	lcov --capture --ignore-errors gcov --directory $(COVERAGE_PATH) --output-file $(COVERAGE_PATH)/coverage.info
 	genhtml $(COVERAGE_PATH)/coverage.info --output-directory $(COVERAGE_PATH)
 	@echo 'Coverage measurement complete.'
