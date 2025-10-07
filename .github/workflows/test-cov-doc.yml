@@ -1,12 +1,4 @@
 name: TestCovAndDoc
-  uses: actions/upload-artifact@v4.6.2
-  with:
-    name: results
-    path:  test-cov-doc.tar
-    if-no-files-found: error
-    compression-level: 6
-    overwrite: false
-    include-hidden-files: false
 
 on:
   push:
@@ -21,6 +13,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - uses: actions/upload-artifact@v4.6.2
+        with:
+        name: results
+        path:  test-cov-doc.tar
+        if-no-files-found: error
+        compression-level: 6
+        overwrite: false
+        include-hidden-files: false
     - name: cd-unit-test
       run: cd extras/unit_tests
     - name: make
