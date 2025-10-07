@@ -21,7 +21,8 @@ jobs:
       with:
         version: latest
         platform: x86
-        
+    - name: Install tools
+      run: sudo apt install -y cppcheck lcov graphviz doxygen
     - name: make
       run: cd extras/unit_tests; make alltests check
     - name: package-results
