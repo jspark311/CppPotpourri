@@ -21,13 +21,14 @@ jobs:
       with:
         version: latest
         platform: x86
-        
+    - name: Install tools
+      run: sudo apt install -y cppcheck lcov graphviz doxygen
     - name: make
       run: cd extras/unit_tests; make coverage check
     - name: build-doc
       run: doxygen Doxyfile
     - name: package-results
-      run: cd cd extras/unit_tests/build; tar -cvf ../../../test-cov-doc.tar .
+      run: cd extras/unit_tests/build; tar -cvf ../../../test-cov-doc.tar .
     - uses: actions/upload-artifact@v4
       with:
         name: results
