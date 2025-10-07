@@ -56,6 +56,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "../Meta/Rationalizer.h"
 #include "../EnumeratedTypeCodes.h"
@@ -124,6 +125,13 @@ enum class ImgOrientation : uint8_t {
   ROTATION_270 = 0x03   // 270-degrees
 };
 
+enum class BlendMode : uint8_t {
+  NONE         = 0,  // Noise overwrites the target image.
+  ADD_SAT      = 1,  // Saturated addition.
+  SUB_SAT      = 2,  // Saturated subtracion.
+  SCALE        = 3   // Scale by noise.
+};
+
 
 
 /*******************************************************************************
@@ -139,9 +147,50 @@ class PixAddr {
     PixAddr(const PixAddr& src) : x(src.x), y(src.y) {};    // Copy-constructor
     PixAddr(const PixUInt X = 0, const PixUInt Y = 0) : x(X), y(Y) {};
 
-    // TODO: Add some basic point functions?
-    // PixInt distanceTo(const PixAddr);
+
+    // Saturated addition
+    PixAddr& operator+=(const PixAddr& rhs) {
+      const PixUInt MAXV = std::numeric_limits<PixUInt>::max();
+      x = (rhs.x > (MAXV - x)) ? MAXV : (x + rhs.x);
+      y = (rhs.y > (MAXV - y)) ? MAXV : (y + rhs.y);
+      return *this;
+    };
+
+    PixAddr operator+(const PixAddr& rhs) const {
+      PixAddr tmp(*this);
+      tmp += rhs;
+      return tmp;
+    };
+
+    // Saturated subtraction
+    PixAddr& operator-=(const PixAddr& rhs) {
+      x = (rhs.x > x) ? 0 : (x - rhs.x);
+      y = (rhs.y > y) ? 0 : (y - rhs.y);
+      return *this;
+    };
+
+    PixAddr operator-(const PixAddr& rhs) const {
+      PixAddr tmp(*this);
+      tmp -= rhs;
+      return tmp;
+    };
+
+    // Constraining pixel bounds is a very common thing to do.
+    PixAddr constrainTo(const PixAddr& constraint) const {
+      PixAddr ret(
+        ((constraint.x > x) ? x : constraint.x),
+        ((constraint.y > y) ? y : constraint.y)
+      );
+      return ret;
+    };
+
+    float distanceTo(const PixAddr& other) const {
+      const float dx = (float)x - (float)other.x;
+      const float dy = (float)y - (float)other.y;
+      return std::sqrt(dx*dx + dy*dy);
+    };
 };
+
 
 /* A representation of an area within an Image. */
 class ImageSubframe {
@@ -150,10 +199,15 @@ class ImageSubframe {
     ImageSubframe(Image* i, const PixAddr A, const PixUInt W, const PixUInt H) : _img(i), _addr(A), _width(W), _height(H) {};
     ImageSubframe() : ImageSubframe(nullptr, PixAddr(0, 0), 0, 0) {};
 
+
     // Pass an optional OFFSET value to arrive at an absolute location.
     PixUInt extentX(const PixUInt OFFSET = 0) {       return (OFFSET + _addr.x);  };
     PixUInt extentY(const PixUInt OFFSET = 0) {       return (OFFSET + _addr.y);  };
     PixAddr extent() {  return PixAddr((_width + _addr.x), (_height + _addr.y));  };
+
+    bool includesPoint(const PixUInt x, const PixUInt y) {
+      return ((x >= _addr.x) && (x < (_addr.x + _width)) && (y >= _addr.y) && (y < (_addr.y + _height)));
+    };
 
   protected:
     Image*  _img;    // Target Image
@@ -214,12 +268,19 @@ class Image {
     inline uint32_t convertColor(uint32_t color) {    return convertColor(color, _buf_fmt);    };
 
     uint32_t getPixel(PixUInt x, PixUInt y);
+    inline uint32_t getPixel(const PixAddr ADDR) {  return getPixel(ADDR.x, ADDR.y);  };
     uint32_t getPixelAsFormat(PixUInt x, PixUInt y, ImgBufferFormat);
-    bool     setPixel(PixUInt x, PixUInt y, uint32_t color);
+    //bool     setPixel(PixUInt x, PixUInt y, uint32_t color);
     //bool     setPixel(PixUInt x, PixUInt y, uint8_t r, uint8_t g, uint8_t b);
+    bool     setPixel(PixUInt x, PixUInt y, uint32_t color, BlendMode b_mode = BlendMode::NONE);
+    inline bool setPixel(const PixAddr ADDR, uint32_t color, BlendMode b_mode = BlendMode::NONE) {
+      return setPixel(ADDR.x, ADDR.y, color, b_mode);
+    };
 
     inline PixUInt         x() {              return _x;                                     };
     inline PixUInt         y() {              return _y;                                     };
+    inline PixUInt         width() {          return _x;                                     };
+    inline PixUInt         height() {         return _y;                                     };
     inline uint8_t*        buffer() {         return _buffer;                                };
     inline ImgBufferFormat format() {         return _buf_fmt;                               };
     inline bool            allocated() {      return (nullptr != _buffer);                   };

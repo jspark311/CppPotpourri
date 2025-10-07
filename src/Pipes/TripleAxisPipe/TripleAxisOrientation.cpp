@@ -89,18 +89,16 @@ int8_t TripleAxisOrientation::pushVector(const SpatialSense s, Vector3f* data, V
 * Functions to output things to the console
 *******************************************************************************/
 
-void TripleAxisOrientation::printPipe(StringBuilder* output, uint8_t stage, uint8_t verbosity) {
-  StringBuilder indent;
-  for (uint8_t i = 0; i < stage; i++) {    indent.concat("    ");    }
-  output->concatf("%s+-< 3AxisPipe: Orientation >----------------\n", (char*) indent.string());
-  output->concatf("%s| Seq number:     %u\n", (char*) indent.string(), _update_count);
-  output->concatf("%s| Last update:    %u\n", (char*) indent.string(), _last_update);
+void TripleAxisOrientation::_print_pipe(StringBuilder* output, StringBuilder* indent, uint8_t verbosity) {
+  output->concatf("%s+-< 3AxisPipe: Orientation >----------------\n", (char*) indent->string());
+  output->concatf("%s| Seq number:     %u\n", (char*) indent->string(), _update_count);
+  output->concatf("%s| Last update:    %u\n", (char*) indent->string(), _last_update);
   if (_data_period) {
-    output->concatf("%s| Data rate:      %.2f vectors/sec\n", indent.string(), (double) (1000.0 / _data_period));
+    output->concatf("%s| Data rate:      %.2f vectors/sec\n", indent->string(), (double) (1000.0 / _data_period));
   }
-  output->concatf("%s| Up:    (%.4f, %.4f, %.4f)\n", (char*) indent.string(), (double) _up.x, (double) _up.y, (double) _up.z);
-  output->concatf("%s| Pitch: %.4f\n", (char*) indent.string(), (double) _gravity.x);
-  output->concatf("%s| Roll:  %.4f\n", (char*) indent.string(), (double) _gravity.y);
+  output->concatf("%s| Up:    (%.4f, %.4f, %.4f)\n", (char*) indent->string(), (double) _up.x, (double) _up.y, (double) _up.z);
+  output->concatf("%s| Pitch: %.4f\n", (char*) indent->string(), (double) _gravity.x);
+  output->concatf("%s| Roll:  %.4f\n", (char*) indent->string(), (double) _gravity.y);
 }
 
 

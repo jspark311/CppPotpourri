@@ -86,6 +86,10 @@ SOURCES_CPP += $(wildcard ../../src/M2MLink/*.cpp)
 SOURCES_CPP += $(wildcard ../../src/M2MLink/LinkUtils/M2MLinkRPC/*.cpp)
 SOURCES_CPP += $(wildcard ../../src/Identity/*.cpp)
 
+# TODO: These things are not yet under unit tests, but they should be once a few
+#   platform shims are added to the unit test framework.
+#SOURCES_CPP += $(wildcard ../../src/Image/ImageUtils/PerlinNoise.cpp)
+
 # TODO: These things are not yet under unit tests, but we build them anyway so
 #   we can at least get the benefit of basic compilability checking.
 # TODO: Need a bit of dep-injection before this is workable...

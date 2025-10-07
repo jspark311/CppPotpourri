@@ -28,8 +28,7 @@ limitations under the License.
 * Constructor takes a pointer to the bus we are going to be using, and the slave
 *   address of the implementing class.
 */
-I2CDevice::I2CDevice(uint8_t addr) : _dev_addr(addr) {
-};
+I2CDevice::I2CDevice(uint8_t addr, I2CAdapter* bus) : _dev_addr(addr), _bus(bus) {};
 
 
 /*

@@ -51,7 +51,19 @@ class StringBuilder;
   #define PI 3.14159265358979323846264338327950288419716939937510
 #endif
 #define COFACTOR_RADIAN_TO_DEGREE  (180.0f / PI)
+#define COFACTOR_DEGREE_TO_RADIAN  (180.0f / PI)
 #define STERADIANS_IN_A_SPHERE     (4.0f * PI)
+
+#ifndef SECONDS_PER_HOUR
+  #define SECONDS_PER_HOUR      3600
+#endif
+
+#ifndef SECONDS_PER_DAY
+  #define SECONDS_PER_DAY    (24 * SECONDS_PER_HOUR)
+#endif
+
+
+
 
 
 /*******************************************************************************

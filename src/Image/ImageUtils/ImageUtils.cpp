@@ -271,44 +271,6 @@ void UIGfxWrapper::drawHeatMap(
 
 
 /*******************************************************************************
-* 3D projected shapes
-*******************************************************************************/
-
-/*
-* Given a vector object, and parameters for the graph, draw the data to the
-*   display. The given vector must be normalized.
-*/
-void UIGfxWrapper::drawVector(
-  PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color,
-  bool draw_axes, bool draw_val, float vx, float vy, float vz
-) {
-  const int PERSPECTIVE_SCALE = 1;
-  int origin_x = x + (w >> 1);
-  int origin_y = y + (h >> 1);
-  if (draw_axes) {   // Draw the axes? The origin is in the middle of the field.
-    _img->drawFastVLine(origin_x, y, h, fg_color);
-    _img->drawFastHLine(x, origin_y, w, fg_color);
-    _img->drawLine(x, (y+h), w, y, fg_color);
-    // Only 1/8 of a cube (all vector components are positive).
-    //_img->drawFastVLine(x, y, h, fg_color);
-    //_img->drawFastHLine(x, (y+h), w, fg_color);
-    //_img->drawLine(x, (y+h), w>>1, y>>1, fg_color);
-  }
-  // Project the vector onto the x/y plane.
-  // To give a sense of depth, we use a triangle where only a line is required.
-  // We want the y-axis to be northward on the display. So we have to change the
-  //   sign of that component.
-  Vector3<int> projected(vx * (w >> 1), vy*(h >> 1) * -1, 0);   // TODO: z is unimplemented
-  int x1 = origin_x + projected.x - PERSPECTIVE_SCALE;
-  int y1 = origin_y + projected.y;
-  int x2 = origin_x + projected.x;
-  int y2 = origin_y + projected.y - PERSPECTIVE_SCALE;
-  _img->fillTriangle(origin_x, origin_y, x1, y1, x2, y2, color);
-}
-
-
-
-/*******************************************************************************
 * Functions for rendering common UI elements
 *******************************************************************************/
 

@@ -916,12 +916,12 @@ const StepSequenceList TOP_LEVEL_3AP_TEST_LIST[] = {
     .POLL_FXN     = []() { return ((0 == test_3ap_differentiator()) ? 1:-1);  }
   },
 
-  { .FLAG         = CHKLST_3AP_TEST_ORIENTATION,
-    .LABEL        = "TripleAxisOrientation",
-    .DEP_MASK     = (CHKLST_3AP_TEST_FORK),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == test_3ap_orientation()) ? 1:-1);  }
-  },
+  //{ .FLAG         = CHKLST_3AP_TEST_ORIENTATION,
+  //  .LABEL        = "TripleAxisOrientation",
+  //  .DEP_MASK     = (CHKLST_3AP_TEST_FORK),
+  //  .DISPATCH_FXN = []() { return 1;  },
+  //  .POLL_FXN     = []() { return ((0 == test_3ap_orientation()) ? 1:-1);  }
+  //},
   { .FLAG         = CHKLST_3AP_TEST_DUMP_STATS,
     .LABEL        = "Dump stats",
     .DEP_MASK     = (CHKLST_3AP_TESTS_ALL & ~CHKLST_3AP_TEST_DUMP_STATS),

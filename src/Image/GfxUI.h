@@ -279,6 +279,9 @@ class GfxUILayout {
     inline PixUInt internalHeight() {   return (_h - (_mrgn_t + _bordr_t + _mrgn_b + _bordr_b));   };
 
     /* Does the given point fall on this region? */
+    // bool includesPoint(const PixUAddr point) {
+    //   return ((point.x >= _x) && (point.x < (_x + _w)) && (point.y >= _y) && (point.y < (_y + _h)));
+    // };
     bool includesPoint(const PixUInt x, const PixUInt y) {
       return ((x >= _x) && (x < (_x + _w)) && (y >= _y) && (y < (_y + _h)));
     };

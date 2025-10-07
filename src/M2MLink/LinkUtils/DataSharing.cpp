@@ -36,8 +36,8 @@ CONF:
 */
 
 #include "../M2MLink.h"
-#include "../../SensorFilter.h"
-#include "../../Vector.h"
+#include "../../TimeSeries/SensorFilter.h"
+#include "../../Vector3.h"
 
 
 /*******************************************************************************

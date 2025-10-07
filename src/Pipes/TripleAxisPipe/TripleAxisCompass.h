@@ -46,15 +46,16 @@ enum class CompassErr : int8_t {
 * This is useful for correcting for static local magnetic fields, or generally
 *   any case that involves deforming a vector stream.
 *
-* The calibration map is interpreted as a table of scaling vectors, indexed by
-*   the theta-phi (polar-azimuthal) displacement of the original vector from the
-*   unit vector with the X-axis as the standard basis.
+* The calibration map is interpreted as a table of points that lie on a spheroidal
+*   topological surface with an average radius equal to the magnitude of
+*   _scaling_vector.
+*
+* The correction applied to afferent vectors is the normal vector of the plane defined  of the three nearest calibration
+*
 * This implies that the calibration data must have...
-*   1) 360-degree coverage in two planes.
-*   2) Spherically symmetrical sample spacing.
-*   3) A defined granularity (given in steradians), within which each sample
-*      will be considered t0 intersect the apex of the resulting spherical cap.
-*      This value is referred to as omega.
+*   1) Spherically symmetrical sample spacing.
+*   2) A defined granularity (given in steradians and referred to as "omega"), within which each sample
+*      will be considered to intersect the apex of the resulting spherical cap.
 */
 class TripleAxisDeform : public TripleAxisPipeWithEfferent {
   public:

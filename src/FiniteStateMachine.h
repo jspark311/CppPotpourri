@@ -331,6 +331,13 @@ template <class T> int8_t StateMachine<T>::fsm_console_handler(StringBuilder* te
   if (0 == args->count()) {
     printFSM(text_return);
   }
+  else if (0 == StringBuilder::strcasecmp(cmd, "map")) {
+    text_return->concat("\nStates: ");
+    StringBuilder tmp;
+    _ENUM_DEFS->exportKeys(&tmp);
+    tmp.implode(", ");
+    text_return->concatHandoff(&tmp);
+  }
   else if (0 == StringBuilder::strcasecmp(cmd, "slowdown")) {
     if (1 < args->count()) {
       _slowdown_ms = args->position_as_int(1);

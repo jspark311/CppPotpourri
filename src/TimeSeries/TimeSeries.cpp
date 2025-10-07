@@ -177,6 +177,14 @@ template <> void TimeSeries3<float>::_serialize_value(cbor::encoder* enc, uint32
 }
 template <> void TimeSeries3<float>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
 
+template <> void TimeSeries3<uint8_t>::_serialize_value(cbor::encoder* enc, uint32_t idx) {
+  enc->write_array(3);
+  enc->write_int(samples[idx].x);
+  enc->write_int(samples[idx].y);
+  enc->write_int(samples[idx].z);
+}
+template <> void TimeSeries3<uint8_t>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
+
 // template <> void TimeSeries3<double>::_serialize_value(cbor::encoder* enc, uint32_t idx) {  enc->write_double(samples[idx]);  }
 // template <> void TimeSeries3<double>::_deserialize_value(cbor::encoder* enc, uint32_t idx) {}
 #endif

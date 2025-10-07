@@ -39,11 +39,11 @@ template <> int GfxUIGraphWithCtrl<uint32_t>::_render(UIGfxWrapper* ui_gfx) {
   const float M1 = ((float) (_graph.firstIdxRendered() + _graph.trace_settings.data_len) / (float) _graph.dataset()->windowSize());
   _slider_x_axis.value(M0, M1);
 
+  //ui_gfx->img()->setTextSize(_style.text_size);
   const PixUInt TXT_PIXEL_WIDTH  = ui_gfx->img()->getFontWidth();
   //const PixUInt TXT_PIXEL_HEIGHT = ui_gfx->img()->getFontHeight();
   //const PixUInt CTRL_BOX_X = _ctrl_group.elementPosX();
   //const PixUInt CTRL_BOX_Y = _ctrl_group.elementPosY();
-  //ui_gfx->img()->setTextSize(_style.text_size);
 
   // TODO: Generallize into flow table.
   const PixUInt TXT_ROW_H   = (_ctrl_group.elementHeight() >> 1);

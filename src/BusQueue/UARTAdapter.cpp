@@ -121,7 +121,6 @@ void UARTAdapter::printDebug(StringBuilder* output) {
   }
 
   char* str_par = (char*) "<INVALID>";
-  char* str_flw = str_par;
   char* str_stp = str_par;
   switch (_opts.parity) {
     case UARTParityBit::NONE:       str_par = (char*) "NONE";     break;

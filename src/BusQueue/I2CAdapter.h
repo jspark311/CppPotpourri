@@ -168,7 +168,7 @@ class I2CAdapter;
   */
   class I2CAdapter : public BusAdapter<I2CBusOp> {
     public:
-      I2CAdapter(const I2CAdapterOptions*, const uint32_t PA_COUNT, const uint8_t MAX_Q); 
+      I2CAdapter(const I2CAdapterOptions*, const uint32_t PA_COUNT, const uint8_t MAX_Q);
       ~I2CAdapter();           // Destructor
 
       /* Overrides from the BusAdapter interface */
@@ -225,7 +225,7 @@ class I2CAdapter;
       /*
       * Constructor
       */
-      I2CDevice(uint8_t); // Takes device address.
+      I2CDevice(uint8_t adr, I2CAdapter* bus = nullptr);
       ~I2CDevice();
 
       // Callback for requested operation completion.
@@ -241,7 +241,7 @@ class I2CAdapter;
 
 
     protected:
-      I2CAdapter* _bus = nullptr;
+      I2CAdapter* _bus;
 
       // Writes <byte_count> bytes from <buf> to the sub-address <sub_addr> of i2c device <dev_addr>.
       // Returns true if the job was accepted. False on error.

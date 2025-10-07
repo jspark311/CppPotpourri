@@ -19,6 +19,7 @@ TODO: This should turn into a templated class to handle complex types that are
   reducible to buffers.
 */
 
+#if false
 
 #include "BufferShuttle.h"
 
@@ -62,3 +63,5 @@ void BufferShuttle::setSource(uint8_t* buffer, uint32_t start, uint32_t stop) {
   _stop_offset = stop;
   _current_offset = start;
 }
+
+#endif

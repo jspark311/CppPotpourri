@@ -20,6 +20,7 @@ limitations under the License.
 
 #include "TripleAxisPipe.h"
 #include "../../AbstractPlatform.h"
+#include "../../TimerTools/TimerTools.h"
 
 #define TAP_INDENT_STRING "    "
 

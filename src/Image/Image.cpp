@@ -910,10 +910,22 @@ void Image::_remap_for_orientation(PixUInt* xn, PixUInt* yn) {
 /**
 * Takes a color in 32-bit. Squeezes it into the buffer's format, discarding low bits as appropriate.
 */
-bool Image::setPixel(PixUInt x, PixUInt y, uint32_t c) {
+bool Image::setPixel(PixUInt x, PixUInt y, uint32_t c, BlendMode b_mode) {
   _remap_for_orientation(&x, &y);
   if ((x < _x) & (y < _y)) {
     const uint32_t OFFSET = _pixel_offset(x, y);
+
+    // switch (b_mode) {
+    //   case BlendMode::NONE:
+    //     break;
+    //   case BlendMode::ADD_SAT:
+    //     break;
+    //   case BlendMode::SUB_SAT:
+    //     break;
+    //   case BlendMode::SCALE:
+    //     break;
+    // }
+
     switch (_buf_fmt) {
       case ImgBufferFormat::R3_G3_B2:          // 8-bit color
       case ImgBufferFormat::GREY_8:            // 8-bit greyscale

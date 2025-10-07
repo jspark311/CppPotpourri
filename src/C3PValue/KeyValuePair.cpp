@@ -25,10 +25,10 @@ This class is a thin (TODO: keep making it thinner) adapter for C3PValue that
 #include "KeyValuePair.h"
 
 #if defined(CONFIG_C3P_IMG_SUPPORT)
-  #include <Image/Image.h>
+  #include "Image/Image.h"
 #endif   // CONFIG_C3P_IMG_SUPPORT
 
-#include <Identity/Identity.h>
+#include "Identity/Identity.h"
 
 /*******************************************************************************
 *   ___ _              ___      _ _              _      _

@@ -42,7 +42,7 @@ limitations under the License.
 #include "../../TimeSeries/TimeSeries.h"
 #include "../../TimeSeries/SensorFilter.h"
 #include "../../FlagContainer.h"
-
+#include "../../TimerTools/TimerTools.h"
 
 /*******************************************************************************
 * Types
@@ -442,7 +442,6 @@ class TripleAxisOrientation : public TripleAxisPipeWithEfferent {
     ~TripleAxisOrientation() {};
 
     int8_t pushVector(const SpatialSense s, Vector3f* data, Vector3f* error = nullptr, uint32_t seq_num = 0);
-    void   printPipe(StringBuilder*, uint8_t stage, uint8_t verbosity);
 
     // Accessors for calibrating this 3AP node.
     inline Vector3f* getUp() {         return &_up;         };
@@ -465,6 +464,8 @@ class TripleAxisOrientation : public TripleAxisPipeWithEfferent {
     Vector3f _ERR_ACC;          // Last recorded error from the IMU.
     Vector3f _ERR_MAG;          // Last recorded error from the MAG.
     Vector3f _ERR_GYRO;         // Last recorded error from the GYRO.
+
+    void   _print_pipe(StringBuilder*, StringBuilder*, uint8_t verbosity);
 
     /* Flag manipulation inlines */
 };

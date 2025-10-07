@@ -22,6 +22,7 @@ TODOING: UIGfxWrapper is somewhat vestigial. It should be subsumed (or divided)
 #include "../Identity/Identity.h"
 #include "../M2MLink/M2MLink.h"
 #include "ImageUtils/ImageGraph.h"
+#include "../Quaternion.h"
 
 
 /*******************************************************************************
@@ -101,13 +102,6 @@ class UIGfxWrapper {
     void drawVector(
       PixUInt x, PixUInt y, PixUInt w, PixUInt h, uint32_t color,
       bool draw_axes, bool draw_val, float vx, float vy, float vz
-    );
-
-    void drawSphere(
-      PixUInt x, PixUInt y, PixUInt w, PixUInt h,
-      bool opaque,
-      int meridians, int parallels,
-      float euler_about_x, float euler_about_y   // TODO: A quat would be cleaner.
     );
 
     void draw_data_view_selector(
@@ -217,10 +211,276 @@ class ImageCatcher {
 
 
 
+/*
+* This is a generating class that generates Perlin noise at a given region
+*   of the given Image.
+*/
+class ImgPerlinNoise : public PerlinNoise {
+  public:
+    /**
+     * @param target    Pointer to the target Image.
+     * @param x         X coordinate of the top-left corner of the region.
+     * @param y         Y coordinate of the top-left corner of the region.
+     * @param width     Width of the region.
+     * @param height    Height of the region.
+     * @param scale     The "zoom" of the noise (higher = more zoomed-out).
+     * @param octaves   Number of octaves to sum (controls detail).
+     * @param persistence  Amplitude falloff per octave.
+     */
+    ImgPerlinNoise(Image* target     = nullptr,
+                PixUInt x         = 0,
+                PixUInt y         = 0,
+                PixUInt width     = 0,
+                PixUInt height    = 0,
+                float scale       = 1.0f,
+                int octaves       = 1,
+                float persistence = 0.5f);
+    ~ImgPerlinNoise() {};
+
+    /**
+    * Applies Perlin noise into the target region.
+    * @return 0 on success, -1 if the target image pointer is null.
+    */
+    int8_t apply();
+    inline void blendMode(const BlendMode E) {  _blend_mode = E;  };
+
+
+  private:
+    Image*  _target;
+    PixUInt _t_x;
+    PixUInt _t_y;
+    PixUInt _t_w;
+    PixUInt _t_h;
+    BlendMode _blend_mode;
+};
+
+
+
+/*
+* This is a transform class that applies artificial NTSC distortions to
+*   an image. Ironically, this is purely for aesthetics.
+*/
+class GfxNTSCEffect {
+  public:
+    GfxNTSCEffect(Image* in, Image* out);
+    //GfxNTSCEffect(ImageSubframe in_frame, ImageSubframe out_frame);
+    ~GfxNTSCEffect() {};
+
+    int8_t setSourceFrame(const PixAddr A, const PixUInt W, const PixUInt H);
+    int8_t apply();
+
+    // As a percentage.
+    inline void noiseFactor(const float NOISE) {  _noise_level = NOISE;  };
+
+
+  private:
+    //ImageSubframe _source;
+    //ImageSubframe _target;
+    Image* _source;
+    Image* _target;
+    PixAddr _src_addr;
+    PixUInt _width;
+    PixUInt _height;
+    float   _noise_level;
+
+    uint8_t _clip_to_byte(int32_t);
+};
+
+
+/*
+ * Applies a CRT-style bloom and edge curvature effect to an image region.
+ * Bloom: a simple weighted blur according to bloom factor.
+ * Edge curvature: darkens or brightens toward edges based on curvature factor.
+ */
+class GfxCRTBloomEffect {
+ public:
+  // Constructs with source and target images
+  GfxCRTBloomEffect(Image* in, Image* out);
+  ~GfxCRTBloomEffect() {};
+
+  // Set region of operation
+  int8_t setSourceFrame(const PixAddr A, const PixUInt W, const PixUInt H);
+
+  // Apply effect; returns 0 on success, -1 on error
+  int8_t apply();
+
+  // Bloom intensity [0..1]
+  void bloomFactor(const float FACTOR) { _bloom_factor = FACTOR; }
+
+  // Edge curvature [0..1]
+  void edgeCurvature(const float CURV) { _edge_curvature = CURV; }
+
+
+ private:
+  Image*   _source;
+  Image*   _target;
+  PixAddr  _src_addr;
+  PixUInt  _width;
+  PixUInt  _height;
+  float    _bloom_factor;
+  float    _edge_curvature;
+
+  uint8_t _clip_to_byte(int32_t v);
+};
+
+
+/*******************************************************************************
+* Projection rendering of some 3-space objects.
+*******************************************************************************/
+// Work structure to hold projected point and depth.
+struct PointZ {
+  int x;
+  int y;
+  float z;
+};
+
+/*
+* Class for rendering a pretty 3-vector.
+* Render will auto-scale to the vector's size, preserving aspect ratio across axes.
+* The render should be distance shaded to make perspective clearer.
+* X-axis is left(-)/right(+).
+* Y-axis is out-of(-)/into(+) the screen.
+* Z-axis is down(-)/up(+).
+* Default colors for axes is to match blender conventions.
+* If drawValue() is enabled, the class will use the text functions in the Image class to
+*   print the value in the form "<x, y, z>" with the proper colors for each component.
+*/
+class Vector3Render {
+  public:
+    Vector3Render(Image* i);
+    ~Vector3Render() {};
+
+    // Renders the globe grid
+    void render(bool force = false);
+
+    // Set the region of the image to render into.
+    int8_t setSourceFrame(const PixAddr A, const PixUInt W, const PixUInt H);
+    int8_t setVector(float x, float y, float z);
+
+    // Style settings...
+    void setLatLonDivisions(const uint8_t LAT_DIVS, const uint8_t LON_DIVS);
+    void setColors(
+      const uint32_t COLOR_X,
+      const uint32_t COLOR_Y,
+      const uint32_t COLOR_Z,
+      const uint32_t COLOR_VECTOR,
+      const uint32_t COLOR_BG
+    );
+
+    // Setting a value of zero will disable grid marks for that axis.
+    void setgridMarks(
+      const uint8_t MARKS_X,
+      const uint8_t MARKS_Y,
+      const uint8_t MARKS_Z
+    );
+
+    // Orientation as measured as a deviation from the X-Z plane.
+    void setOrientation(const float PITCH, const float ROLL);
+    void setOrientation(const Quaternion);
+
+    inline bool needRerender() {   return _need_rerender;  };
+
+    inline bool drawAnchorLines() {      return _draw_anchor_lines;  };
+    inline void drawAnchorLines(const bool enabled) { _draw_anchor_lines = enabled; _need_rerender = true; }
+    inline bool drawValue() {      return _draw_text_value;  };
+    inline void drawValue(const bool enabled) { _draw_text_value = enabled; _need_rerender = true; }
+
+
+  protected:
+    Image*   _img;
+    PixAddr  _addr;   // The pixel in the target image that is our upper-left corner.
+    PixUInt  _width;  // The width of this frame.
+    PixUInt  _height; // The height of this frame.
+    uint32_t _vector_color;
+    uint32_t _axis_color_x;
+    uint32_t _axis_color_y;
+    uint32_t _axis_color_z;
+    uint32_t _background_color;
+    uint8_t  _x_grid_marks;  // How many value tick marks to place on each axis?
+    uint8_t  _y_grid_marks;  // How many value tick marks to place on each axis?
+    uint8_t  _z_grid_marks;  // How many value tick marks to place on each axis?
+    bool     _need_rerender;
+    bool     _draw_anchor_lines;  // Draw axis lines back to their normal planes from the vector tip to clearly indicate placement following projection?
+    bool     _draw_text_value;    // Print the value in text at the vector's tip?
+
+  private:
+    float _vec_x;
+    float _vec_y;
+    float _vec_z;
+    float _pitch;
+    float _roll;
+    float _sin_pitch;  // Cached to avoid costly re-work.
+    float _cos_pitch;  // TODO: Might rework internally as a quaterion.
+    float _sin_roll;
+    float _cos_roll;
+
+    void _draw_axes();
+    void _draw_vector();
+    void _project_point(float x0, float y0, float z0, PointZ &out);
+};
+
+
+
+/*
+* Class for rendering a shaded wire-frame globe. Provides pixel-to-LAT/LON mapping.
+*/
+class GlobeRender {
+  public:
+    GlobeRender(Image* i);
+    ~GlobeRender() {};
+
+    // Renders the globe grid
+    void render(bool force = false);
+
+    // Renders the globe grid and plots a marker at the given latitude/longitude (radians)
+    void renderWithMarker(float latitude, float longitude);
+
+    // Converts a pixel on the rendered globe back to latitude/longitude (radians)
+    // @returns true if the pixel hits the visible hemisphere, false otherwise
+    bool pixelToLatLon(const PixAddr ADDR, float &latitude, float &longitude);
+
+    // Set the region of the image to render into.
+    int8_t setSourceFrame(const PixAddr A, const PixUInt W, const PixUInt H);
+
+    // Style settings...
+    void setLatLonDivisions(const uint8_t LAT_DIVS, const uint8_t LON_DIVS);
+    void setColors(const uint32_t COLOR, const uint32_t BG_COLOR);
+    void setOrientation(const float PITCH, const float ROLL);
+    void setOrientation(const Quaternion);
+
+    inline bool needRerender() {   return _need_rerender;  };
+
+
+  protected:
+    Image*   _img;
+    PixAddr  _addr;   // The pixel in the target image that is our upper-left corner.
+    PixAddr  _center;
+    PixUInt  _width;  // The width of this frame.
+    PixUInt  _height; // The height of this frame.
+    PixUInt  _radius;
+    uint32_t _sphere_color;
+    uint32_t _background_color;
+    uint8_t  _lat_lines;
+    uint8_t  _lon_lines;
+    uint8_t  _curve_segments;  // TODO: Scale intelligently by _width/_height.
+    bool     _need_rerender;
+
+  private:
+    float _pitch;
+    float _roll;
+    float _sin_pitch;  // Cached to avoid costly re-work.
+    float _cos_pitch;  // TODO: Might rework internally as a quaterion.
+    float _sin_roll;
+    float _cos_roll;
+};
+
+
 
 /*******************************************************************************
 * TODO: Stub classes for later....
 */
+
+// Phong algorithm for cell-shading.
 
 /*
 * This is a transform class that blends two Images and writes the result into a
@@ -254,104 +514,9 @@ class ImageCrossfader {
 };
 
 
-/*
-* This is a transform class that applies artificial NTSC distortions to
-*   an image. Ironically, this is purely for aesthetics.
-*/
-class GfxNTSCEffect {
-  public:
-    GfxNTSCEffect(Image* i_s, Image* i_t);
-    ~GfxNTSCEffect() {};
-
-    int8_t apply();
-
-
-  private:
-    Image* _source;
-    Image* _target;
-};
-
-
-/*
-* This is a transform class that generates an authentication code for the source Image,
-*   and then steganographically embeds it into the Image itself, along with an
-*   optional payload. That is, it modifies the source Image. For theory and
-*   operation, see BuriedUnderTheNoiseFloor.
-*/
-class ImageSigner {
-  public:
-    ImageSigner(
-      Image* i_s, Identity* signing_ident, uint8_t* payload = nullptr, uint32_t payload_len = 0
-    );
-    ~ImageSigner() {};
-
-    int8_t sign();
-    int8_t signWithParameters();
-    bool   busy();
-
-
-  private:
-    Image*    _source;
-    Identity* _signing_ident;
-    uint8_t*  _pl;
-    uint32_t  _pl_len;
-};
-
-
-/*
-* This is a class that tries to authenticate a given Image against a given
-*   Identity, and extract any payloads that may be steganographically embedded
-*   within it. It does not modify the source Image. For theory and
-*   operation, see BuriedUnderTheNoiseFloor.
-*/
-class ImageAuthenticator {
-  public:
-    ImageAuthenticator(Image* i_s, Identity* verify_ident);
-    ~ImageAuthenticator() {};
-
-    int8_t verify();
-    int8_t verifyWithParameters();
-    bool   busy();
-    bool   authenticated();
-    bool   foundSig();
-
-    inline uint8_t* payload() {         return  _pl;        };
-    inline uint32_t payloadLength() {   return  _pl_len;    };
-
-
-  private:
-    Image*    _source;
-    Identity* _verify_ident;
-    uint8_t*  _pl;
-    uint32_t  _pl_len;
-};
-
-
-
-/*
-* This is a generating class that generates Perlin noise at a given region
-*   of the given Image.
-*/
-class PerlinNoise {
-  public:
-    PerlinNoise(Image* i_t, PixUInt x, PixUInt y, PixUInt w, PixUInt h);
-    ~PerlinNoise() {};
-
-    int8_t apply();
-
-
-  private:
-    Image*  _target;
-    PixUInt _t_x;
-    PixUInt _t_y;
-    PixUInt _t_w;
-    PixUInt _t_h;
-};
-
 
 /*
 * This is a generating class that takes an array representing a heat-map,
-* Can also be used to do a region-bounded copy from one image to another.
 */
 class ImageHeatMap {
   public:
@@ -359,7 +524,6 @@ class ImageHeatMap {
     ~ImageHeatMap() {};
 
     //int8_t apply(SensorFilter*);
-
 
   private:
     Image*  _target;

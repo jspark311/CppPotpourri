@@ -42,7 +42,7 @@ See CryptOptUnifier.h for more information.
 
 // Try to contain wrapped header concerns in here, pl0x...
 #include "CryptOptUnifier.h"
-#include <CppPotpourri.h>
+#include "CppPotpourri.h"
 
 #if defined(__HAS_CRYPT_WRAPPER)
 
