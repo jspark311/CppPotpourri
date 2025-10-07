@@ -27,15 +27,11 @@ jobs:
       run: cd extras/unit_tests; make coverage check
     - name: build-doc
       run: doxygen Doxyfile
-    - name: package-results
-      run: tar -cvzf test-cov-doc.tar.gz extras/unit_tests/build extras/doc/Doxygen
     - uses: actions/upload-artifact@v4
       with:
         name: results
-        path:  test-cov-doc.tar.gz
+        path:  extras/unit_tests/build extras/doc/doxygen
         if-no-files-found: error
         compression-level: 7
         overwrite: false
-        include-hidden-files: false
-
-
+        include-hidden-files: true
