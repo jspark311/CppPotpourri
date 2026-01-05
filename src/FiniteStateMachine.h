@@ -284,7 +284,10 @@ template <class T> int8_t StateMachine<T>::_fsm_prepend_state(T nxt) {
 * Console and debugging
 *******************************************************************************/
 
-// TODO: Is this causing string replication because it is templated? BusOp would also like to know...
+// TODO: Is this causing string replication because it is templated? BusOp would
+//   also like to know... If so, it might be better to remove it from the class,
+//   and make it a static function with friendly scope access to not pointlessly
+//   inflate the binary.
 template <class T> void StateMachine<T>::printFSM(StringBuilder* output) {
   bool keep_looping = true;
   uint32_t i = 0;

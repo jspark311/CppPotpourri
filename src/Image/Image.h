@@ -57,6 +57,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
+#include <limits.h>
 
 #include "../Meta/Rationalizer.h"
 #include "../EnumeratedTypeCodes.h"
@@ -126,10 +127,11 @@ enum class ImgOrientation : uint8_t {
 };
 
 enum class BlendMode : uint8_t {
-  NONE         = 0,  // Noise overwrites the target image.
-  ADD_SAT      = 1,  // Saturated addition.
-  SUB_SAT      = 2,  // Saturated subtracion.
-  SCALE        = 3   // Scale by noise.
+  REPLACE = 0, // Overwrites the target image.
+  OVER,        // Normal alpha blend ("source over target").
+  ADD_SAT,     // Saturated addition.
+  SUB_SAT,     // Saturated subtracion.
+  SCALE        // Scale by noise.
 };
 
 
@@ -272,10 +274,13 @@ class Image {
     uint32_t getPixelAsFormat(PixUInt x, PixUInt y, ImgBufferFormat);
     //bool     setPixel(PixUInt x, PixUInt y, uint32_t color);
     //bool     setPixel(PixUInt x, PixUInt y, uint8_t r, uint8_t g, uint8_t b);
-    bool     setPixel(PixUInt x, PixUInt y, uint32_t color, BlendMode b_mode = BlendMode::NONE);
-    inline bool setPixel(const PixAddr ADDR, uint32_t color, BlendMode b_mode = BlendMode::NONE) {
+    bool     setPixel(PixUInt x, PixUInt y, uint32_t color, BlendMode b_mode = BlendMode::REPLACE);
+    inline bool setPixel(const PixAddr ADDR, uint32_t color, BlendMode b_mode = BlendMode::REPLACE) {
       return setPixel(ADDR.x, ADDR.y, color, b_mode);
     };
+
+    int8_t blendImage(Image* src, const PixAddr TOP_LEFT, const BlendMode MODE = BlendMode::REPLACE);
+
 
     inline PixUInt         x() {              return _x;                                     };
     inline PixUInt         y() {              return _y;                                     };

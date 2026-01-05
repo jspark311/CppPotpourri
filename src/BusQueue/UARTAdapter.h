@@ -116,6 +116,8 @@ class UARTAdapter : public BufferAccepter, public C3PPollable {
     inline const uint8_t ctsPin() {   return _CTS_PIN;   };
     inline const uint8_t rtsPin() {   return _RTS_PIN;   };
 
+    int uart_console_handler(StringBuilder* text_return, StringBuilder* args);
+
 
     static const char* const flowCtrlStr(const UARTFlowControl);
 

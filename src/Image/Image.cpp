@@ -410,6 +410,179 @@ const uint8_t Image::_bits_per_pixel(const ImgBufferFormat FMT) {
 
 
 /*******************************************************************************
+* Helper functions
+* TODO: Some of this should probably be re-coded to use the ASM-optimized
+*   intrinsics provided by the compiler, if available.
+*******************************************************************************/
+static inline uint8_t _u8_sat_add(const uint8_t a, const uint8_t b) {
+  const uint16_t s = (uint16_t) a + (uint16_t) b;
+  return (uint8_t) ((s > 255) ? 255 : s);
+}
+
+static inline uint8_t _u8_sat_sub(const uint8_t a, const uint8_t b) {
+  return (uint8_t) ((a > b) ? (a - b) : 0);
+}
+
+// (a*b)/255 with rounding
+static inline uint8_t _u8_mul_255(const uint8_t a, const uint8_t b) {
+  const uint16_t p = (uint16_t) a * (uint16_t) b;
+  return (uint8_t) ((p + 127) / 255);
+}
+
+// Approx perceptual luma, normalized to 0..255 (integer)
+// (0.30, 0.59, 0.11)
+static inline uint8_t _u8_luma(const uint8_t r, const uint8_t g, const uint8_t b) {
+  const uint16_t v = (uint16_t)(r * 30) + (uint16_t)(g * 59) + (uint16_t)(b * 11);
+  return (uint8_t) (v / 100);
+}
+
+static inline void _unpack_rgba(const uint32_t c, const ImgBufferFormat fmt, uint8_t* r, uint8_t* g, uint8_t* b, uint8_t* a) {
+  uint8_t rr = 0;
+  uint8_t gg = 0;
+  uint8_t bb = 0;
+  uint8_t aa = 0xFF;
+
+  switch (fmt) {
+    case ImgBufferFormat::R8_G8_B8_ALPHA:
+      rr = (uint8_t) ((c >> 24) & 0xFF);
+      gg = (uint8_t) ((c >> 16) & 0xFF);
+      bb = (uint8_t) ((c >> 8)  & 0xFF);
+      aa = (uint8_t) (c & 0xFF);
+      break;
+
+    case ImgBufferFormat::R8_G8_B8:
+      rr = (uint8_t) ((c >> 16) & 0xFF);
+      gg = (uint8_t) ((c >> 8)  & 0xFF);
+      bb = (uint8_t) (c & 0xFF);
+      aa = 0xFF;
+      break;
+
+    case ImgBufferFormat::R5_G6_B5:
+      rr = (uint8_t) (((c >> 11) & 0x1F) << 3);
+      gg = (uint8_t) (((c >> 5)  & 0x3F) << 2);
+      bb = (uint8_t) ((c & 0x1F) << 3);
+      aa = 0xFF;
+      break;
+
+    case ImgBufferFormat::R3_G3_B2:
+      rr = (uint8_t) (((c >> 5) & 0x07) << 5);
+      gg = (uint8_t) (((c >> 2) & 0x07) << 5);
+      bb = (uint8_t) ((c & 0x03) << 6);
+      aa = 0xFF;
+      break;
+
+    case ImgBufferFormat::MONOCHROME:
+      if (0 != c) { rr = 0xFF; gg = 0xFF; bb = 0xFF; }
+      else {        rr = 0x00; gg = 0x00; bb = 0x00; }
+      aa = 0xFF;
+      break;
+
+    case ImgBufferFormat::GREY_8:
+      rr = (uint8_t) (c & 0xFF);
+      gg = rr;
+      bb = rr;
+      aa = 0xFF;
+      break;
+
+    case ImgBufferFormat::GREY_16:
+      // Keep the high byte as intensity (common convention)
+      rr = (uint8_t) ((c >> 8) & 0xFF);
+      gg = rr;
+      bb = rr;
+      aa = 0xFF;
+      break;
+
+    case ImgBufferFormat::GREY_24:
+      // Interpret as 24-bit with replicated channels if present; else average.
+      {
+        const uint8_t r0 = (uint8_t) ((c >> 16) & 0xFF);
+        const uint8_t g0 = (uint8_t) ((c >> 8)  & 0xFF);
+        const uint8_t b0 = (uint8_t) (c & 0xFF);
+        const uint8_t y0 = (uint8_t) (((uint16_t)r0 + (uint16_t)g0 + (uint16_t)b0) / 3);
+        rr = y0;
+        gg = y0;
+        bb = y0;
+        aa = 0xFF;
+      }
+      break;
+
+    default:
+      // GREY_4 and UNALLOCATED fall here (unsupported for blending as-is).
+      rr = 0;
+      gg = 0;
+      bb = 0;
+      aa = 0;
+      break;
+  }
+
+  if (r) { *r = rr; }
+  if (g) { *g = gg; }
+  if (b) { *b = bb; }
+  if (a) { *a = aa; }
+}
+
+
+static inline uint32_t _pack_from_rgba(const uint8_t r, const uint8_t g, const uint8_t b, const uint8_t a, const ImgBufferFormat fmt) {
+  uint32_t ret = 0;
+  switch (fmt) {
+    case ImgBufferFormat::R8_G8_B8_ALPHA:
+      ret |= ((uint32_t) r << 24);
+      ret |= ((uint32_t) g << 16);
+      ret |= ((uint32_t) b << 8);
+      ret |= ((uint32_t) a);
+      break;
+
+    case ImgBufferFormat::R8_G8_B8:
+      ret |= ((uint32_t) r << 16);
+      ret |= ((uint32_t) g << 8);
+      ret |= ((uint32_t) b);
+      break;
+
+    case ImgBufferFormat::R5_G6_B5:
+      ret |= ((uint32_t) (r >> 3) << 11);
+      ret |= ((uint32_t) (g >> 2) << 5);
+      ret |= ((uint32_t) (b >> 3));
+      break;
+
+    case ImgBufferFormat::R3_G3_B2:
+      ret |= ((uint32_t) (r >> 5) << 5);
+      ret |= ((uint32_t) (g >> 5) << 2);
+      ret |= ((uint32_t) (b >> 6));
+      break;
+
+    case ImgBufferFormat::GREY_8:
+      ret = (uint32_t) _u8_luma(r, g, b);
+      break;
+
+    case ImgBufferFormat::GREY_16:
+      {
+        const uint8_t y = _u8_luma(r, g, b);
+        ret = ((uint32_t) y << 8) | (uint32_t) y;
+      }
+      break;
+
+    case ImgBufferFormat::GREY_24:
+      {
+        const uint8_t y = _u8_luma(r, g, b);
+        ret = ((uint32_t) y << 16) | ((uint32_t) y << 8) | (uint32_t) y;
+      }
+      break;
+
+    case ImgBufferFormat::MONOCHROME:
+      ret = (_u8_luma(r, g, b) >= 128) ? 0xFFFFFFFF : 0;
+      break;
+
+    default:
+      ret = 0;
+      break;
+  }
+  return ret;
+}
+
+
+
+
+/*******************************************************************************
 *   ___ _              ___      _ _              _      _
 *  / __| |__ _ ______ | _ ) ___(_) |___ _ _ _ __| |__ _| |_ ___
 * | (__| / _` (_-<_-< | _ \/ _ \ | / -_) '_| '_ \ / _` |  _/ -_)
@@ -787,57 +960,20 @@ bool Image::isColor() {
 * Color to grey conversion uses 30/59/11 scalar set with results averaged together.
 */
 uint32_t Image::convertColor(uint32_t c, ImgBufferFormat src_fmt) {
-  uint32_t ret = 0;
-  uint8_t r = 0, g = 0, b = 0;
-  uint8_t bits_per_src_channel;
-  bool    src_is_color = true;
   if (src_fmt == _buf_fmt) {
     return c;
   }
-  switch (src_fmt) {
-    case ImgBufferFormat::GREY_24:           // 24-bit greyscale   TODO: Wrong. Has to be.
-      src_is_color = false;
-    case ImgBufferFormat::R8_G8_B8:          // 24-bit color
-      bits_per_src_channel = 8;
-      r = (uint8_t) (c >> 16) & 0xFF;
-      g = (uint8_t) (c >> 8) & 0xFF;
-      b = (uint8_t) (c & 0xFF);
-      break;
-    case ImgBufferFormat::GREY_16:           // 16-bit greyscale   TODO: Wrong. Has to be.
-      src_is_color = false;
-    case ImgBufferFormat::R5_G6_B5:          // 16-bit color
-      bits_per_src_channel = 6;
-      r = (uint8_t) (c >> 11) & 0x1F;
-      g = (uint8_t) (c >> 5) & 0x3F;
-      b = (uint8_t) (c & 0x1F);
-      break;
-    case ImgBufferFormat::GREY_8:            // 8-bit greyscale    TODO: Wrong. Has to be.
-      src_is_color = false;
-    case ImgBufferFormat::R3_G3_B2:          // 8-bit color
-      bits_per_src_channel = 3;
-      r = (uint8_t) (c >> 5) & 0x07;
-      g = (uint8_t) (c >> 2) & 0x07;
-      b = (uint8_t) (c & 0x03);
-      break;
-    case ImgBufferFormat::MONOCHROME:        // Monochrome
-      src_is_color = false;
-      bits_per_src_channel = 1;
-      return (0 != c) ? 0xFFFFFFFF: 0;   // Full saturation. Early return.
-    case ImgBufferFormat::UNALLOCATED:   // Buffer unallocated
-    default:
-      return ret;
+  if ((ImgBufferFormat::UNALLOCATED == src_fmt) || (ImgBufferFormat::UNALLOCATED == _buf_fmt)) {
+    return 0;
   }
+  uint8_t r = 0, g = 0, b = 0, a = 0xFF;
+  _unpack_rgba(c, src_fmt, &r, &g, &b, &a);
 
-  if (src_is_color && !isColor()) {
-    // Conversion from color to grey or monochrome.
-    uint8_t bpp = _bits_per_pixel();
-    float avg = ((r * 0.3) + (g * 0.59) + (b * 0.11)) / 3.0;
-    float lum = avg / ((1 << bits_per_src_channel) - 1);
-    ret = ((1 << bpp) - 1) * lum;
+  // If the source has no alpha channel, treat it as fully opaque.
+  if (ImgBufferFormat::R8_G8_B8_ALPHA != src_fmt) {
+    a = 0xFF;
   }
-  else {
-  }
-  return ret;
+  return _pack_from_rgba(r, g, b, a, _buf_fmt);
 }
 
 
@@ -908,53 +1044,253 @@ void Image::_remap_for_orientation(PixUInt* xn, PixUInt* yn) {
 
 
 /**
-* Takes a color in 32-bit. Squeezes it into the buffer's format, discarding low bits as appropriate.
+* Takes a color in 32-bit. Squeezes it into the buffer's format, discarding low
+*   bits as appropriate. Uses Porter-Duff alpha compositing.
 */
 bool Image::setPixel(PixUInt x, PixUInt y, uint32_t c, BlendMode b_mode) {
   _remap_for_orientation(&x, &y);
-  if ((x < _x) & (y < _y)) {
+  if ((x < _x) && (y < _y)) {
     const uint32_t OFFSET = _pixel_offset(x, y);
+    // Fast path: no blending requested and no alpha channel in destination.
+    if ((BlendMode::REPLACE == b_mode) && (ImgBufferFormat::R8_G8_B8_ALPHA != _buf_fmt)) {
+      switch (_buf_fmt) {
+        case ImgBufferFormat::R3_G3_B2:          // 8-bit color
+        case ImgBufferFormat::GREY_8:            // 8-bit greyscale
+          *(_buffer + OFFSET) = (uint8_t) c;
+          break;
+        case ImgBufferFormat::R5_G6_B5:          // 16-bit color
+        case ImgBufferFormat::GREY_16:           // 16-bit greyscale
+          *((uint16_t*) (_buffer + OFFSET)) = (uint16_t) (endianFlip() ? (endianSwap32(c) >> 16) : c);
+          break;
+        case ImgBufferFormat::R8_G8_B8:          // 24-bit color
+        case ImgBufferFormat::GREY_24:           // 24-bit greyscale
+          {
+            const uint32_t COLOR_BYTES = (endianFlip() ? (endianSwap32(c) >> 8) : c);
+            memcpy((_buffer + OFFSET), (void*) &COLOR_BYTES, 3);
+          }
+          break;
+        case ImgBufferFormat::R8_G8_B8_ALPHA:
+          *((uint32_t*) (_buffer + OFFSET)) = (endianFlip() ? endianSwap32(c) : c);
+          break;
+        case ImgBufferFormat::MONOCHROME:        // Monochrome
+          {
+            const PixUInt term0 = (_y >> 3);
+            const uint32_t offset = x * term0 + (term0 - (y >> 3) - 1);
+            const uint8_t bit_mask = 1 << (7 - (y & 0x07));
+            uint8_t byte_group = *(_buffer + offset);
+            *(_buffer + offset) = (byte_group & ~bit_mask) | ((0 == c) ? 0 : bit_mask);
+          }
+          break;
+        case ImgBufferFormat::UNALLOCATED:
+        default:
+          return false;
+      }
+      return true;
+    }
 
-    // switch (b_mode) {
-    //   case BlendMode::NONE:
-    //     break;
-    //   case BlendMode::ADD_SAT:
-    //     break;
-    //   case BlendMode::SUB_SAT:
-    //     break;
-    //   case BlendMode::SCALE:
-    //     break;
-    // }
-
+    // Otherwise: need to blend (or dst has alpha).
+    uint32_t d_raw = 0;
     switch (_buf_fmt) {
-      case ImgBufferFormat::R3_G3_B2:          // 8-bit color
-      case ImgBufferFormat::GREY_8:            // 8-bit greyscale
-        *(_buffer + OFFSET) = (uint8_t) c;
+      case ImgBufferFormat::R8_G8_B8_ALPHA:
+        if (endianFlip()) {
+          d_raw  = ((uint32_t) *(_buffer + OFFSET + 3));
+          d_raw |= ((uint32_t) *(_buffer + OFFSET + 2) << 8);
+          d_raw |= ((uint32_t) *(_buffer + OFFSET + 1) << 16);
+          d_raw |= ((uint32_t) *(_buffer + OFFSET + 0) << 24);
+        }
+        else {
+          d_raw  = ((uint32_t) *(_buffer + OFFSET + 0));
+          d_raw |= ((uint32_t) *(_buffer + OFFSET + 1) << 8);
+          d_raw |= ((uint32_t) *(_buffer + OFFSET + 2) << 16);
+          d_raw |= ((uint32_t) *(_buffer + OFFSET + 3) << 24);
+        }
         break;
-      case ImgBufferFormat::R5_G6_B5:          // 16-bit color
-      case ImgBufferFormat::GREY_16:           // 16-bit greyscale
-        *((uint16_t*) (_buffer + OFFSET)) = (uint16_t) (endianFlip() ? (endianSwap32(c) >> 16) : c);
+
+      case ImgBufferFormat::R8_G8_B8:
+      case ImgBufferFormat::GREY_24:
+        if (endianFlip()) {
+          d_raw = ((uint32_t)*(_buffer + OFFSET + 0) << 16) | ((uint32_t)*(_buffer + OFFSET + 1) << 8) | (uint32_t)*(_buffer + OFFSET + 2);
+        }
+        else {
+          d_raw = ((uint32_t)*(_buffer + OFFSET + 2) << 16) | ((uint32_t)*(_buffer + OFFSET + 1) << 8) | (uint32_t)*(_buffer + OFFSET + 0);
+        }
         break;
-      case ImgBufferFormat::R8_G8_B8_ALPHA:    // 32-bit color
-        *((uint32_t*) (_buffer + OFFSET)) = (endianFlip() ? endianSwap32(c) : c);
+
+      case ImgBufferFormat::R5_G6_B5:
+      case ImgBufferFormat::GREY_16:
+        if (endianFlip()) {
+          d_raw = ((uint32_t) *(_buffer + OFFSET + 0) << 8) | (uint32_t) *(_buffer + OFFSET + 1);
+        }
+        else {
+          d_raw = ((uint32_t) *(_buffer + OFFSET + 1) << 8) | (uint32_t) *(_buffer + OFFSET + 0);
+        }
         break;
-      case ImgBufferFormat::R8_G8_B8:          // 24-bit color
-      case ImgBufferFormat::GREY_24:           // 24-bit greyscale
+
+      case ImgBufferFormat::R3_G3_B2:
+      case ImgBufferFormat::GREY_8:
+        d_raw = (uint32_t) *(_buffer + OFFSET);
+        break;
+
+      case ImgBufferFormat::MONOCHROME:
         {
-          const uint32_t COLOR_BYTES = (endianFlip() ? (endianSwap32(c) >> 8) : c);
+          const uint32_t term0 = (_y >> 3);
+          const uint8_t bit_mask = 1 << (7 - (y & 0x07));
+          const uint32_t mo = x * term0 + (term0 - (y >> 3) - 1);
+          const uint8_t byte_group = *(_buffer + mo);
+          d_raw = (byte_group & bit_mask) ? 0xFFFFFFFF : 0;
+        }
+        break;
+
+      case ImgBufferFormat::UNALLOCATED:
+      default:
+        return false;
+    }
+
+    const bool DST_HAS_ALPHA = (ImgBufferFormat::R8_G8_B8_ALPHA == _buf_fmt);
+
+    uint8_t sr = 0, sg = 0, sb = 0, sa = 0xFF;
+    uint8_t dr = 0, dg = 0, db = 0, da = 0xFF;
+
+    _unpack_rgba(c, _buf_fmt, &sr, &sg, &sb, &sa);
+    _unpack_rgba(d_raw, _buf_fmt, &dr, &dg, &db, &da);
+
+    if (BlendMode::REPLACE == b_mode) {
+      // Unconditional clobber. If dst has alpha, preserve src alpha; else ignore it.
+      const uint8_t OA = (DST_HAS_ALPHA ? sa : 0xFF);
+      const uint32_t packed_copy = _pack_from_rgba(sr, sg, sb, OA, _buf_fmt);
+
+      // Write packed pixel in native buffer representation.
+      switch (_buf_fmt) {
+        case ImgBufferFormat::R3_G3_B2:
+        case ImgBufferFormat::GREY_8:
+          *(_buffer + OFFSET) = (uint8_t) packed_copy;
+          break;
+        case ImgBufferFormat::R5_G6_B5:
+        case ImgBufferFormat::GREY_16:
+          *((uint16_t*) (_buffer + OFFSET)) = (uint16_t) (endianFlip() ? (endianSwap32(packed_copy) >> 16) : packed_copy);
+          break;
+        case ImgBufferFormat::R8_G8_B8_ALPHA:
+          *((uint32_t*) (_buffer + OFFSET)) = (endianFlip() ? endianSwap32(packed_copy) : packed_copy);
+          break;
+        case ImgBufferFormat::R8_G8_B8:
+        case ImgBufferFormat::GREY_24:
+          {
+            const uint32_t COLOR_BYTES = (endianFlip() ? (endianSwap32(packed_copy) >> 8) : packed_copy);
+            memcpy((_buffer + OFFSET), (void*) &COLOR_BYTES, 3);
+          }
+          break;
+        case ImgBufferFormat::MONOCHROME:
+          {
+            const PixUInt term0 = (_y >> 3);
+            const uint32_t mo = x * term0 + (term0 - (y >> 3) - 1);
+            const uint8_t bit_mask = 1 << (7 - (y & 0x07));
+            uint8_t byte_group = *(_buffer + mo);
+            *(_buffer + mo) = (byte_group & ~bit_mask) | ((0 == packed_copy) ? 0 : bit_mask);
+          }
+          break;
+        case ImgBufferFormat::UNALLOCATED:
+        default:
+          return false;
+      }
+      return true;
+    }
+
+    if (!DST_HAS_ALPHA) {
+      sa = 0xFF;
+      da = 0xFF;
+    }
+
+    if (0 == sa) {
+      return true;  // Source fully transparent => no-op (non-COPY only).
+    }
+
+    // Alpha application first: src contribution attenuated by sa.
+    const uint8_t sra = _u8_mul_255(sr, sa);
+    const uint8_t sga = _u8_mul_255(sg, sa);
+    const uint8_t sba = _u8_mul_255(sb, sa);
+    const uint8_t inv = (uint8_t) (255 - sa);
+
+    uint8_t orr = dr;
+    uint8_t org = dg;
+    uint8_t orb = db;
+
+    switch (b_mode) {
+      case BlendMode::OVER:
+        // Standard "over": out = src*sa + dst*(1-sa)
+        orr = (uint8_t) ((((uint16_t) sr * (uint16_t) sa) + ((uint16_t) dr * (uint16_t) inv) + 127) / 255);
+        org = (uint8_t) ((((uint16_t) sg * (uint16_t) sa) + ((uint16_t) dg * (uint16_t) inv) + 127) / 255);
+        orb = (uint8_t) ((((uint16_t) sb * (uint16_t) sa) + ((uint16_t) db * (uint16_t) inv) + 127) / 255);
+        break;
+
+      case BlendMode::ADD_SAT:
+        orr = _u8_sat_add(dr, sra);
+        org = _u8_sat_add(dg, sga);
+        orb = _u8_sat_add(db, sba);
+        break;
+
+      case BlendMode::SUB_SAT:
+        orr = _u8_sat_sub(dr, sra);
+        org = _u8_sat_sub(dg, sga);
+        orb = _u8_sat_sub(db, sba);
+        break;
+
+      case BlendMode::SCALE:
+        {
+          // Factor = lerp(255, src, alpha) per channel: inv + src*sa/255
+          const uint8_t fr = (uint8_t) _u8_sat_add(inv, sra);
+          const uint8_t fg = (uint8_t) _u8_sat_add(inv, sga);
+          const uint8_t fb = (uint8_t) _u8_sat_add(inv, sba);
+          orr = _u8_mul_255(dr, fr);
+          org = _u8_mul_255(dg, fg);
+          orb = _u8_mul_255(db, fb);
+        }
+        break;
+
+      default:
+        // Treat unknown as NONE.
+        orr = (uint8_t) ((((uint16_t) sr * (uint16_t) sa) + ((uint16_t) dr * (uint16_t) inv) + 127) / 255);
+        org = (uint8_t) ((((uint16_t) sg * (uint16_t) sa) + ((uint16_t) dg * (uint16_t) inv) + 127) / 255);
+        orb = (uint8_t) ((((uint16_t) sb * (uint16_t) sa) + ((uint16_t) db * (uint16_t) inv) + 127) / 255);
+        break;
+    }
+
+    uint8_t oa = 0xFF;
+    if (DST_HAS_ALPHA) {
+      oa = (uint8_t) ((uint16_t) sa + (uint16_t) ((((uint16_t) da * (uint16_t) inv) + 127) / 255));
+    }
+
+    const uint32_t packed = _pack_from_rgba(orr, org, orb, oa, _buf_fmt);
+
+    // Now write packed pixel in native buffer representation.
+    switch (_buf_fmt) {
+      case ImgBufferFormat::R3_G3_B2:
+      case ImgBufferFormat::GREY_8:
+        *(_buffer + OFFSET) = (uint8_t) packed;
+        break;
+      case ImgBufferFormat::R5_G6_B5:
+      case ImgBufferFormat::GREY_16:
+        *((uint16_t*) (_buffer + OFFSET)) = (uint16_t) (endianFlip() ? (endianSwap32(packed) >> 16) : packed);
+        break;
+      case ImgBufferFormat::R8_G8_B8_ALPHA:
+        *((uint32_t*) (_buffer + OFFSET)) = (endianFlip() ? endianSwap32(packed) : packed);
+        break;
+      case ImgBufferFormat::R8_G8_B8:
+      case ImgBufferFormat::GREY_24:
+        {
+          const uint32_t COLOR_BYTES = (endianFlip() ? (endianSwap32(packed) >> 8) : packed);
           memcpy((_buffer + OFFSET), (void*) &COLOR_BYTES, 3);
         }
         break;
-      case ImgBufferFormat::MONOCHROME:        // Monochrome
+      case ImgBufferFormat::MONOCHROME:
         {
           const PixUInt term0 = (_y >> 3);
-          const uint32_t offset = x * term0 + (term0 - (y >> 3) - 1);
+          const uint32_t mo = x * term0 + (term0 - (y >> 3) - 1);
           const uint8_t bit_mask = 1 << (7 - (y & 0x07));
-          uint8_t byte_group = *(_buffer + offset);
-          *(_buffer + offset) = (byte_group & ~bit_mask) | ((0 == c) ? 0 : bit_mask);
+          uint8_t byte_group = *(_buffer + mo);
+          *(_buffer + mo) = (byte_group & ~bit_mask) | ((0 == packed) ? 0 : bit_mask);
         }
         break;
-      case ImgBufferFormat::UNALLOCATED:       // Buffer unallocated
+      case ImgBufferFormat::UNALLOCATED:
       default:
         return false;
     }
@@ -1169,6 +1505,131 @@ uint32_t Image::getPixelAsFormat(PixUInt x, PixUInt y, ImgBufferFormat target_fm
 //  return false;
 //}
 
+
+/**
+* Alpha-composite another Image over this Image at the given destination origin.
+* Source image is converted (per-pixel) into this Image's color space.
+* Operation is clipped to this Image's bounds.
+*
+* @return true if arguments were valid (even if nothing overlapped), false on error.
+*/
+int8_t Image::blendImage(Image* src, const PixAddr TOP_LEFT, const BlendMode MODE) {
+  if (!allocated()) { return -1; }
+  if ((nullptr == src) || !src->allocated()) { return -2; }
+  if (locked() || src->locked()) { return -3; }
+
+  const PixUInt dst_x0 = TOP_LEFT.x;
+  const PixUInt dst_y0 = TOP_LEFT.y;
+
+  if ((dst_x0 >= _x) || (dst_y0 >= _y)) {
+    return 0;   // Valid call, but nothing overlaps.
+  }
+
+  PixUInt copy_w = src->x();
+  PixUInt copy_h = src->y();
+
+  if ((PixUInt) (dst_x0 + copy_w) > _x) { copy_w = (PixUInt) (_x - dst_x0); }
+  if ((PixUInt) (dst_y0 + copy_h) > _y) { copy_h = (PixUInt) (_y - dst_y0); }
+
+  // If there's no overlap after clipping, we consider it a successful no-op.
+  if ((0 == copy_w) || (0 == copy_h)) {
+    return 0;
+  }
+
+  const ImgBufferFormat SRC_FMT = src->format();
+  const ImgBufferFormat DST_FMT = _buf_fmt;
+  const bool DST_HAS_ALPHA = (DST_FMT == ImgBufferFormat::R8_G8_B8_ALPHA);
+
+  for (PixUInt sy = 0; sy < copy_h; sy++) {
+    for (PixUInt sx = 0; sx < copy_w; sx++) {
+      const PixUInt dx = (PixUInt) (dst_x0 + sx);
+      const PixUInt dy = (PixUInt) (dst_y0 + sy);
+
+      const uint32_t s_raw = src->getPixel(sx, sy);
+
+
+      // Convert source pixel into destination format (color-space conversion lives in convertColor()).
+      const uint32_t s_conv = convertColor(s_raw, SRC_FMT);
+
+      uint8_t sr = 0, sg = 0, sb = 0, sa = 0xFF;
+      _unpack_rgba(s_conv, DST_FMT, &sr, &sg, &sb, nullptr);
+
+      // Source alpha comes from the *source* pixel encoding, not from the converted pixel.
+      if (SRC_FMT == ImgBufferFormat::R8_G8_B8_ALPHA) {
+        uint8_t tmp = 0;
+        _unpack_rgba(s_raw, SRC_FMT, &tmp, &tmp, &tmp, &sa);
+      }
+      else {
+        sa = 0xFF;
+      }
+
+      if (0 == sa) {
+        continue;
+      }
+
+      const uint32_t d_raw = getPixel(dx, dy);
+      uint8_t dr = 0, dg = 0, db = 0, da = 0xFF;
+      _unpack_rgba(d_raw, DST_FMT, &dr, &dg, &db, &da);
+      if (!DST_HAS_ALPHA) { da = 0xFF; }
+
+      // Alpha application first: src contribution attenuated by sa.
+      const uint8_t sra = _u8_mul_255(sr, sa);
+      const uint8_t sga = _u8_mul_255(sg, sa);
+      const uint8_t sba = _u8_mul_255(sb, sa);
+      const uint8_t inv = (uint8_t) (255 - sa);
+
+      uint8_t orr = dr;
+      uint8_t org = dg;
+      uint8_t orb = db;
+
+      switch (MODE) {
+        case BlendMode::REPLACE:
+          orr = (uint8_t) ((((uint16_t) sr * (uint16_t) sa) + ((uint16_t) dr * (uint16_t) inv) + 127) / 255);
+          org = (uint8_t) ((((uint16_t) sg * (uint16_t) sa) + ((uint16_t) dg * (uint16_t) inv) + 127) / 255);
+          orb = (uint8_t) ((((uint16_t) sb * (uint16_t) sa) + ((uint16_t) db * (uint16_t) inv) + 127) / 255);
+          break;
+
+        case BlendMode::ADD_SAT:
+          orr = _u8_sat_add(dr, sra);
+          org = _u8_sat_add(dg, sga);
+          orb = _u8_sat_add(db, sba);
+          break;
+
+        case BlendMode::SUB_SAT:
+          orr = _u8_sat_sub(dr, sra);
+          org = _u8_sat_sub(dg, sga);
+          orb = _u8_sat_sub(db, sba);
+          break;
+
+        case BlendMode::SCALE:
+          {
+            const uint8_t fr = (uint8_t) _u8_sat_add(inv, sra);
+            const uint8_t fg = (uint8_t) _u8_sat_add(inv, sga);
+            const uint8_t fb = (uint8_t) _u8_sat_add(inv, sba);
+            orr = _u8_mul_255(dr, fr);
+            org = _u8_mul_255(dg, fg);
+            orb = _u8_mul_255(db, fb);
+          }
+          break;
+
+        default:
+          orr = (uint8_t) ((((uint16_t) sr * (uint16_t) sa) + ((uint16_t) dr * (uint16_t) inv) + 127) / 255);
+          org = (uint8_t) ((((uint16_t) sg * (uint16_t) sa) + ((uint16_t) dg * (uint16_t) inv) + 127) / 255);
+          orb = (uint8_t) ((((uint16_t) sb * (uint16_t) sa) + ((uint16_t) db * (uint16_t) inv) + 127) / 255);
+          break;
+      }
+
+      uint8_t oa = 0xFF;
+      if (DST_HAS_ALPHA) {
+        oa = (uint8_t) ((uint16_t) sa + (uint16_t) ((((uint16_t) da * (uint16_t) inv) + 127) / 255));
+      }
+
+      const uint32_t packed = _pack_from_rgba(orr, org, orb, oa, DST_FMT);
+      setPixel(dx, dy, packed, BlendMode::REPLACE);
+    }
+  }
+  return 0;
+}
 
 
 /*******************************************************************************

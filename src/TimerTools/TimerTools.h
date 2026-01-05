@@ -24,6 +24,7 @@ limitations under the License.
 #include <inttypes.h>
 #include <stdint.h>
 #include "../AbstractPlatform.h"
+#include "../C3PValue/C3PType.h"
 class StringBuilder;
 
 

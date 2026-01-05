@@ -67,7 +67,7 @@ int8_t ImgPerlinNoise::apply() {
       for (PixUInt j = 0; j < _t_h; ++j) {
         for (PixUInt i = 0; i < _t_w; ++i) {
           const float NORMALIZED = valueAtPoint(i, j);
-          const uint32_t ORIG_COLOR = (BlendMode::NONE == _blend_mode) ? 0 : _target->getPixel(_t_x + i, _t_y + j);
+          const uint32_t ORIG_COLOR = (BlendMode::REPLACE == _blend_mode) ? 0 : _target->getPixel(_t_x + i, _t_y + j);
           uint32_t grey  = static_cast<uint32_t>(std::round(NORMALIZED * MAXCHANNEL));
           uint32_t color = 0;
 
@@ -82,7 +82,7 @@ int8_t ImgPerlinNoise::apply() {
                 case BlendMode::ADD_SAT:  color = strict_range_bind((float) (ORIG_COLOR + color), 0.0f, MAXCHANNEL);  break;
                 case BlendMode::SUB_SAT:  color = strict_range_bind((float) (ORIG_COLOR - color), 0.0f, MAXCHANNEL);  break;
                 case BlendMode::SCALE:    color = strict_range_bind((float) (NORMALIZED * color), 0.0f, MAXCHANNEL);  break;
-                case BlendMode::NONE:
+                case BlendMode::REPLACE:
                 default:  break;
               }
               break;
@@ -93,7 +93,7 @@ int8_t ImgPerlinNoise::apply() {
                 case BlendMode::ADD_SAT:  color = strict_range_bind((float) (ORIG_COLOR + color), 0.0f, MAXCHANNEL);  break;
                 case BlendMode::SUB_SAT:  color = strict_range_bind((float) (ORIG_COLOR - color), 0.0f, MAXCHANNEL);  break;
                 case BlendMode::SCALE:    color = strict_range_bind((float) (NORMALIZED * color), 0.0f, MAXCHANNEL);  break;
-                case BlendMode::NONE:
+                case BlendMode::REPLACE:
                 default:  break;
               }
               break;

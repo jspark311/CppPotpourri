@@ -335,3 +335,74 @@ int UARTAdapter::_handle_rx_push() {
   }
   return ret;
 }
+
+
+
+/**
+* @page console-handlers
+* @section uart-tools UART tools
+*
+* This is the console handler for debugging the operation of the UART hardware.
+*
+* @subsection cmd-actions Actions
+* Action    | Description | Additional arguments
+* --------- | ----------- | --------------------
+* `init`    | Enable the UART, claim the pins, initialize associated memory, and begin operation. | None
+* `reset`   | Reset the UART hardware and call init. | None
+* `deinit`  | Disable the UART, release the pins, and wipe associated memory. | None
+* `irq`     | Manually invoke the UART driver's IRQ handler function. | None
+* `bitrate` | Sets or prints the real bitrate of the UART. | [bitrate]
+* `poll`    | Manually invoke the UART driver's `poll()` function. | None
+* `read`    | Reads all available data from the UART and renders it to the console. | None
+* `write`   | Write the given string to the UART. Will be suffixed by a new line character. | <String to send>
+*/
+int UARTAdapter::uart_console_handler(StringBuilder* text_return, StringBuilder* args) {
+  int8_t ret = 0;
+  char* cmd = args->position_trimmed(0);
+  UARTOpts* opts = uartOpts();
+  if (0 == StringBuilder::strcasecmp(cmd, "init")) {
+    text_return->concatf("UART%u.init() returns %d.\n", ADAPTER_NUM, init(opts));
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "deinit")) {
+    text_return->concatf("UART%u.deinit() returns %d.\n", ADAPTER_NUM, deinit());
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "reset")) {
+    text_return->concatf("UART%u.reset() returns %d.\n", ADAPTER_NUM, reset());
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "irq")) {
+    irq_handler();
+    text_return->concatf("UART%u.irq_handler() called.\n", ADAPTER_NUM);
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "bitrate")) {
+    if (1 < args->count()) {
+      uint32_t arg0 = args->position_as_int(1);
+      opts->bitrate = arg0;
+      text_return->concatf("UART%u.init() returns %d following reconfigure.\n", ADAPTER_NUM, init(opts));
+    }
+    text_return->concatf("UART%u real bitrate: %u\n", ADAPTER_NUM, _bitrate_real);
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "poll")) {
+    text_return->concatf("UART%u.poll() returns %d.\n", ADAPTER_NUM, (int8_t) poll());
+  }
+  else if (0 == StringBuilder::strcasecmp(cmd, "read")) {
+    StringBuilder rx;
+    read(&rx);
+    text_return->concatf("UART%u.read() returns %u bytes:\n", ADAPTER_NUM, rx.length());
+    rx.printDebug(text_return);
+  }
+
+  else if (0 == StringBuilder::strcasecmp(cmd, "write")) {
+    StringBuilder tx;
+    args->drop_position(0);
+    args->implode(" ");
+    tx.concatHandoff(args);
+    text_return->concatf("UART%u.write() took %u bytes.\n", ADAPTER_NUM, write(&tx));
+  }
+  //else if (0 == StringBuilder::strcasecmp(cmd, "flush")) {
+  //  text_return->concatf("UART%u.flush() returns %d\n", ADAPTER_NUM, flush());
+  //}
+  else {
+    printDebug(text_return);
+  }
+  return ret;
+}

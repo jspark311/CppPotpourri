@@ -46,10 +46,6 @@ A class to contain a mess of bitwise flags.
 
 A class for implementing a stop watch from the platform's notion of microseconds.
 
-#### [WakeLock](extras/doc/WakeLock.md)
-
-A class for tracking power demands on hardware. Based roughly on [android.os.PowerManager.WakeLock](https://developer.android.com/reference/kotlin/android/os/PowerManager.WakeLock).
-
 #### [Quaternion](extras/doc/Quaternion.md)
 
 A class for encapsulating quaternions. Not as nice as Vector3 yet.
