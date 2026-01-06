@@ -8,7 +8,7 @@ An image transform that attempts to mimic the appearance of a CRT.
 
 #include "../ImageUtils.h"
 
-
+#if defined(CONFIG_C3P_IMG_SUPPORT)
 /*******************************************************************************
 * GfxCRTBloomEffect
 *******************************************************************************/
@@ -106,3 +106,6 @@ uint8_t GfxCRTBloomEffect::_clip_to_byte(int32_t v) {
   else {               result = (uint8_t)v;  }
   return result;
 }
+
+
+#endif

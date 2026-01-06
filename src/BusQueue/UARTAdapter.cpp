@@ -2,6 +2,9 @@
 File:   UARTAdapter.cpp
 Author: J. Ian Lindsay
 Date:   2020.06.10
+
+There are the platform-agnostic pieces of an MCU comms driver. Actual usage of
+  this class will require a few functions to be provided by Platform.
 */
 
 #include "../AbstractPlatform.h"

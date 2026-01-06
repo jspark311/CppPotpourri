@@ -10,7 +10,7 @@ A small render class for vectors.
 #include <math.h>
 #include <algorithm>
 
-
+#if defined(CONFIG_C3P_IMG_SUPPORT)
 
 Vector3Render::Vector3Render(Image* i)
   : _img(i),
@@ -230,3 +230,6 @@ void Vector3Render::_project_point(float x0,
   out.x = _addr.x + (int)roundf(X2 * (_width < _height ? _width : _height) * 0.5f);
   out.y = _addr.y + (int)roundf((_height * 0.5f) - Y1 * (_width < _height ? _width : _height) * 0.5f);
 }
+
+
+#endif // CONFIG_C3P_IMG_SUPPORT)

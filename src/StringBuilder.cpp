@@ -435,6 +435,43 @@ char* StringBuilder::position(int pos) {
 
 
 /**
+* Convenience fxn for accessing a token as a bool.
+*
+* Accepts (0/1), (n/y), (f/t). Case-insensitive.
+*
+* @param pos is the index of the desired token.
+* @return Parsed boolean value, or false on failure.
+*/
+bool StringBuilder::position_as_bool(int pos) {
+  const char* temp = (const char*) position(pos);
+  if (nullptr != temp) {
+    // We only accept single-character tokens.
+    if (1 == strlen(temp)) {
+      switch (*temp) {
+        case '1':
+        case 'y':
+        case 'Y':
+        case 't':
+        case 'T':
+          return true;
+
+        case '0':
+        case 'n':
+        case 'N':
+        case 'f':
+        case 'F':
+          return false;
+
+        default:
+          break;
+      }
+    }
+  }
+  return false;
+}
+
+
+/**
 * Convenience fxn for accessing a token as an int.
 *
 * @param pos is the index of the desired token.

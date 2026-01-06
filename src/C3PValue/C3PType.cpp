@@ -28,6 +28,7 @@ This file contains the implementation of type constraints for our wrapped types.
 #include "KeyValuePair.h"
 #include "../StringBuilder.h"
 #include "../TimerTools/TimerTools.h"
+#include "../TimeSeries/TimeSeries.h"
 
 /* CBOR support should probably be required to parse/pack. */
 #if defined(__BUILD_HAS_CBOR)

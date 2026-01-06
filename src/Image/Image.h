@@ -57,7 +57,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
-#include <limits.h>
+#include <limits>
 
 #include "../Meta/Rationalizer.h"
 #include "../EnumeratedTypeCodes.h"
@@ -189,7 +189,7 @@ class PixAddr {
     float distanceTo(const PixAddr& other) const {
       const float dx = (float)x - (float)other.x;
       const float dy = (float)y - (float)other.y;
-      return std::sqrt(dx*dx + dy*dy);
+      return sqrt(dx*dx + dy*dy);
     };
 };
 

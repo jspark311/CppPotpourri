@@ -22,8 +22,8 @@ PerlinNoise::PerlinNoise(uint32_t width,
   _seed(0),
   _offset_x(), _offset_y(0),
   _scale(scale), _octaves(octaves),
-  _persistence(persistence),
   _octave_freq(2.0f),
+  _persistence(persistence),
   _field(nullptr) {}
 
 

@@ -44,14 +44,14 @@ class C3PBitfield {
     bool bitValue(const uint32_t BIT_IDX) {
       if (allocated()) {
         const uint8_t MASK = (1 << (BIT_IDX & 7));
-        return (0 < *(_mem + _byte_idx(BIT_IDX)) & MASK);
+        return (0 < (*(_mem + _byte_idx(BIT_IDX)) & MASK));
       }
       return false;
     };
 
     void bitValue(const uint32_t BIT_IDX, const bool VAL) {
       if (allocated()) {
-        const uint32_t BYTE_IDX = _byte_idx(BIT_IDX)
+        const uint32_t BYTE_IDX = _byte_idx(BIT_IDX);
         const uint8_t  MASK     = (1 << (BIT_IDX & 7));
         const uint8_t  OLD_VAL  = *(_mem + BYTE_IDX);
         *(_mem + BYTE_IDX) = (OLD_VAL & ~MASK) | (VAL ? MASK : 0);
@@ -71,10 +71,11 @@ class C3PBitfield {
     uint8_t* _mem;
 
     inline const uint32_t _byte_idx(const uint32_t BIT_IDX) {
-      return ((BIT_IDX >> 3) + ((BIT_IDX 7)? 1:0));
+      return ((BIT_IDX >> 3) + ((BIT_IDX & 7)? 1:0));
     };
 
 
+    // Lazy allocator. Inits all bits to zero.
     bool allocated() {
       if ((nullptr == _mem) && (BITS > 0)) {
         if (nullptr == _mem) {

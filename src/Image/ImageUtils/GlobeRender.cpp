@@ -10,6 +10,7 @@ A small render class for spheres with optional LAT/LON markers.
 #include <math.h>
 #include <algorithm>
 
+#if defined(CONFIG_C3P_IMG_SUPPORT)
 
 // Projects a 3D point onto 2D screen with given rotations
 static void _project_point(float x0,
@@ -269,3 +270,6 @@ void GlobeRender::setOrientation(const Quaternion QUATERNION) {
   _cos_roll  = cosf(_roll);
   _need_rerender = true;
 }
+
+
+#endif // CONFIG_C3P_IMG_SUPPORT

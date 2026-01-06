@@ -248,43 +248,6 @@ C3P wants the following capabilities, which will probably implicate this file.
 
 
 
-/*
-* The presence of certain drivers sets preprocessor flags.
-* TODO: This should all be excised, and moved to ManuvrDrivers. Such type
-*   inclusion is no longer a concern in C3P.
-*/
-#if false
-// The presence of a PMIC implies we have a battery.
-#if defined(CONFIG_C3P_BQ24155) || \
-    defined(CONFIG_C3P_LTC294X)
-  #define __HAS_BATTERY
-#endif
-
-// Drivers that pull in GPIO message codes.
-#if defined(CONFIG_C3P_SX8634) || \
-    defined(CONFIG_C3P_GPIO_ER)
-  #ifndef __HAS_GPIO_MESSAGES
-    #define __HAS_GPIO_MESSAGES
-  #endif    // __HAS_GPIO_MESSAGES
-#endif
-
-// Drivers that pull in button message codes...
-#if defined(CONFIG_C3P_SX8634)
-  #ifndef __HAS_USER_INPUT_MESSAGES
-    #define __HAS_USER_INPUT_MESSAGES
-  #endif    // __HAS_USER_INPUT_MESSAGES
-#endif
-
-// Framebuffer and display driver support...
-#if defined(CONFIG_C3P_SSD1331)
-  #ifndef CONFIG_C3P_IMG_SUPPORT
-    #define CONFIG_C3P_IMG_SUPPORT  // Framebuffers need this class.
-  #endif    // CONFIG_C3P_IMG_SUPPORT
-#endif   // CONFIG_C3P_SSD1331
-#endif   // false
-
-
-
 /*******************************************************************************
 * Type support for C3PValue.
 * These options govern which high-level types can be handled by C3P's

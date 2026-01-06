@@ -8,6 +8,7 @@ An image transform that applies synthetic NTSC distortions.
 
 #include "../ImageUtils.h"
 
+#if defined(CONFIG_C3P_IMG_SUPPORT)
 
 /*******************************************************************************
 * GfxNTSCEffect
@@ -93,3 +94,5 @@ int8_t GfxNTSCEffect::apply() {
   }
   return ret;
 }
+
+#endif

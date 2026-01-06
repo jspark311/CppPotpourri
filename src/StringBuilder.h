@@ -197,6 +197,7 @@ class StringBuilder {
     uint16_t count();                   // Count the tokens.
     char*    position(int);             // If the string has been split, get tokens with this.
     char*    position_trimmed(int);     // Same as position(int), but trims whitespace from the return.
+    bool     position_as_bool(int);     // Same as position(int), handles (0/1), (n/y), (f/t). Case insensitive.
     int      position_as_int(int);      // Same as position(int), but uses atoi() to return an integer.
     uint64_t position_as_uint64(int);   // Same as position(int), but uses atoi() to return an integer.
     double   position_as_double(int);   // Same as position(int), but uses atof() to return a double.

@@ -21,12 +21,15 @@ limitations under the License.
 This is a special-purpose text-handling class. It accepts log and renders it
   into a string suitable for being fed to a serial port, socket, file, etc.
   Using it is completely optional, and is only useful for sophisticated output
-  of logs under conditions that don't automatically provide for it (such as
-  stdio, or a serial port).
+  of logs under conditions that don't automatically provide for it. This is the
+  case for virtualy all bare-metal embedded programs.
+Espressif and Linux environments typically have better options for this, but it
+  could still be used in those contexts to isolate C3P logs into a specific UART
+  or filestream.
 
-Platforms that have built-in faculties for logging should not use this class,
-  but instead implement the c3p_log() functions in such a way as to wrap their
-  existing APIs. See associated notes in AbstractPlatform.h.
+Platforms that have built-in faculties for logging should probably just
+  implement the c3p_log() functions in such a way as to wrap their existing
+  APIs. See associated notes in AbstractPlatform.h.
 */
 
 #include "Meta/Rationalizer.h"
@@ -38,15 +41,20 @@ Platforms that have built-in faculties for logging should not use this class,
 
 // This is the maximum length of a log tag. Tags
 //   exceeding this length will be truncated.
-#define LOG_TAG_MAX_LEN             24
+#ifndef LOG_TAG_MAX_LEN
+  #define LOG_TAG_MAX_LEN             24
+#endif
 
 // These flags only apply to the optional C3PLogger class.
 #define LOGGER_FLAG_PRINT_LEVEL   0x01  // Should output include the severity?
 #define LOGGER_FLAG_PRINT_TIME    0x02  // Should output include the timestamp?
 #define LOGGER_FLAG_PRINT_TAG     0x04  // Should output include the tag?
 
+// Forward declaration of string conversion fxn.
+const char* c3p_log_severity_string(const uint8_t severity);
+
 /*
-* Class for emulating a logging faculty on platforms that
+* Optional class for emulating a logging faculty on platforms that
 *   don't otherwise support it.
 */
 class C3PLogger {

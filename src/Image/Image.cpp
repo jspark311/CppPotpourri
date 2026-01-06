@@ -43,6 +43,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <math.h>
 #include "Image.h"
 
+#if defined(CONFIG_C3P_IMG_SUPPORT)
+
 /* If character support is enabled, we'll import fonts. */
 #include "Fonts/FreeMono12pt7b.h"
 #include "Fonts/FreeMono18pt7b.h"
@@ -2507,3 +2509,5 @@ void Image::drawLine(PixUInt x0, PixUInt y0, PixUInt x1, PixUInt y1, uint32_t co
     x0++;
   }
 }
+
+#endif // CONFIG_C3P_IMG_SUPPORT
