@@ -272,15 +272,12 @@ class Image {
     uint32_t getPixel(PixUInt x, PixUInt y);
     inline uint32_t getPixel(const PixAddr ADDR) {  return getPixel(ADDR.x, ADDR.y);  };
     uint32_t getPixelAsFormat(PixUInt x, PixUInt y, ImgBufferFormat);
-    //bool     setPixel(PixUInt x, PixUInt y, uint32_t color);
-    //bool     setPixel(PixUInt x, PixUInt y, uint8_t r, uint8_t g, uint8_t b);
     bool     setPixel(PixUInt x, PixUInt y, uint32_t color, BlendMode b_mode = BlendMode::REPLACE);
     inline bool setPixel(const PixAddr ADDR, uint32_t color, BlendMode b_mode = BlendMode::REPLACE) {
       return setPixel(ADDR.x, ADDR.y, color, b_mode);
     };
 
     int8_t blendImage(Image* src, const PixAddr TOP_LEFT, const BlendMode MODE = BlendMode::REPLACE);
-
 
     inline PixUInt         x() {              return _x;                                     };
     inline PixUInt         y() {              return _y;                                     };
@@ -400,6 +397,7 @@ class Image {
     };
 
     static const uint8_t _bits_per_pixel(const ImgBufferFormat);
+    static const unsigned char _default_font[];
 };
 
 #endif   // __C3P_TYPE_IMG_H
