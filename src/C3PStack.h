@@ -70,19 +70,17 @@ class C3PStack {
     uint8_t*           _pool;     // raw byte storage
 };
 
-// Destructor
 
-template <class T>
-C3PStack<T>::~C3PStack() {
+// Destructor
+template <class T> C3PStack<T>::~C3PStack() {
     _count = 0;
     if (nullptr != _pool) free(_pool);
     _pool = nullptr;
 }
 
-// Allocate and zero memory
 
-template <class T>
-bool C3PStack<T>::allocated() {
+// Allocate and zero memory
+template <class T> bool C3PStack<T>::allocated() {
     if (nullptr == _pool) {
         const unsigned int s = _CAPAC * _E_SIZE;
         _pool = (uint8_t*)malloc(s);
@@ -93,9 +91,7 @@ bool C3PStack<T>::allocated() {
 }
 
 // Linear search for a value
-
-template <class T>
-bool C3PStack<T>::contains(T d) {
+template <class T> bool C3PStack<T>::contains(T d) {
     bool found = false;
     if (allocated() && (_count > 0)) {
         uint8_t* compare = (uint8_t*)&d;
@@ -111,20 +107,18 @@ bool C3PStack<T>::contains(T d) {
     return found;
 }
 
-// Reset stack and zero memory
 
-template <class T>
-void C3PStack<T>::clear() {
+// Reset stack and zero memory
+template <class T> void C3PStack<T>::clear() {
     _count = 0;
     if (allocated()) {
         memset(_pool, 0, _CAPAC * _E_SIZE);
     }
 }
 
-// Push one element
 
-template <class T>
-int C3PStack<T>::push(T d) {
+// Push one element
+template <class T> int C3PStack<T>::push(T d) {
     if (!allocated() || (_count >= _CAPAC)) return -1;
     uint8_t* dest = _pool + (_count * _E_SIZE);
     memcpy(dest, &d, _E_SIZE);
@@ -132,10 +126,9 @@ int C3PStack<T>::push(T d) {
     return 0;
 }
 
-// Push multiple elements from array
 
-template <class T>
-int C3PStack<T>::push(T* d_ptr, unsigned int len) {
+// Push multiple elements from array
+template <class T> int C3PStack<T>::push(T* d_ptr, unsigned int len) {
     if ((nullptr == d_ptr) || (0 == len)) return -1;
     if (!allocated() || (_count >= _CAPAC)) return -1;
     uint32_t to_take = strict_min((uint32_t)len, (uint32_t)vacancy());
@@ -147,10 +140,9 @@ int C3PStack<T>::push(T* d_ptr, unsigned int len) {
     return taken;
 }
 
-// Pop top element
 
-template <class T>
-T C3PStack<T>::pop() {
+// Pop top element
+template <class T> T C3PStack<T>::pop() {
     if (!allocated() || (_count == 0)) return (T)0;
     uint8_t* src = _pool + ((_count - 1) * _E_SIZE);
     T val;
@@ -159,10 +151,9 @@ T C3PStack<T>::pop() {
     return val;
 }
 
-// Pop multiple into buffer
 
-template <class T>
-int C3PStack<T>::pop(T* buf, unsigned int len) {
+// Pop multiple into buffer
+template <class T> int C3PStack<T>::pop(T* buf, unsigned int len) {
     if (!allocated() || (0 == len) || (nullptr == buf)) return -1;
     uint32_t to_take = strict_min((uint32_t)_count, (uint32_t)len);
     for (uint32_t i = 0; i < to_take; i++) {
@@ -171,10 +162,10 @@ int C3PStack<T>::pop(T* buf, unsigned int len) {
     return to_take;
 }
 
+
 // Peek at an element idx from top (0 = top)
 
-template <class T>
-T C3PStack<T>::peek(unsigned int idx) {
+template <class T> T C3PStack<T>::peek(unsigned int idx) {
     if (!allocated() || (_count == 0) || (idx >= _count)) return (T)0;
     uint8_t* src = _pool + ((_count - 1 - idx) * _E_SIZE);
     T val;
@@ -182,10 +173,9 @@ T C3PStack<T>::peek(unsigned int idx) {
     return val;
 }
 
-// Peek multiple into buffer
 
-template <class T>
-int C3PStack<T>::peek(T* buf, unsigned int len) {
+// Peek multiple into buffer
+template <class T> int C3PStack<T>::peek(T* buf, unsigned int len) {
     if (!allocated() || (0 == len) || (nullptr == buf)) return -1;
     uint32_t to_take = strict_min((uint32_t)_count, (uint32_t)len);
     for (uint32_t i = 0; i < to_take; i++) {

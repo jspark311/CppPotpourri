@@ -11,6 +11,7 @@ These classes are built on top of the GfxUI classes, and implement various
 #include "../../C3PValue/C3PValue.h"
 #include "../../AbstractPlatform.h"   // Needed for logging.
 
+#if defined(CONFIG_C3P_IMG_SUPPORT)
 
 /*******************************************************************************
 * BlobStylerEntropyMap
@@ -460,3 +461,6 @@ int8_t BlobPlotterLinear::_curve_render(const uint8_t* PTR, const uint32_t OFFSE
   }
   return ret;
 }
+
+
+#endif  // CONFIG_C3P_IMG_SUPPORT

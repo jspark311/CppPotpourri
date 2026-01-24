@@ -527,8 +527,7 @@ class ImageHeatMap {
 
   private:
     Image*  _target;
-    PixUInt _t_x;
-    PixUInt _t_y;
+    PixAddr _t_addr;
     PixUInt _t_w;
     PixUInt _t_h;
 };

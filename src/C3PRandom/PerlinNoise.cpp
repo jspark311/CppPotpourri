@@ -132,10 +132,10 @@ int8_t PerlinNoise::apply() {
         for (int o = 0; o < _octaves; ++o) {   // Sum multiple octaves
           const float xi = x * frequency;
           const float yi = y * frequency;
-          const int X = static_cast<int>(std::floor(xi)) & 255;
-          const int Y = static_cast<int>(std::floor(yi)) & 255;
-          const float xf = xi - std::floor(xi);
-          const float yf = yi - std::floor(yi);
+          const int X = static_cast<int>(floor(xi)) & 255;
+          const int Y = static_cast<int>(floor(yi)) & 255;
+          const float xf = xi - floor(xi);
+          const float yf = yi - floor(yi);
           const float u = _fade(xf);
           const float v = _fade(yf);
           const int aa = _perm[X + _perm[Y]];
@@ -155,7 +155,7 @@ int8_t PerlinNoise::apply() {
         // TODO? Then scale to bounds.
         const float NORMALIZED = (noiseSum / maxAmp + 1.0f) * 0.5f;
         *(_field + ((j * _t_w) + i)) = NORMALIZED;
-        //*(_field + ((j * _t_w) + i)) = (float) std::round(NORMALIZED * MAXCHANNEL);
+        //*(_field + ((j * _t_w) + i)) = (float) round(NORMALIZED * MAXCHANNEL);
       }
     }
     ret = 0;

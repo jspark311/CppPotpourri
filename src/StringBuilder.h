@@ -175,6 +175,9 @@ class StringBuilder {
        of responsibility for managing it. */
     void concatHandoff(uint8_t* buf, int len);
 
+    int cloneClobber(StringBuilder* src_obj);   // Makes a copy of the argument object.
+    //int cloneAppend(StringBuilder* src_obj);   // Makes a copy of the argument object.
+
     /* Writes the len_limit number of bytes to the indicated pointer, starting
        from the optionally-defined offset. */
     int  copyToBuffer(uint8_t* buf, const uint32_t LIMIT_LEN, const uint32_t START_OFFSET = 0);
@@ -201,6 +204,7 @@ class StringBuilder {
     int      position_as_int(int);      // Same as position(int), but uses atoi() to return an integer.
     uint64_t position_as_uint64(int);   // Same as position(int), but uses atoi() to return an integer.
     double   position_as_double(int);   // Same as position(int), but uses atof() to return a double.
+    int      hex_to_bin(int);           // Convert one or more tokens into bytes from hex codes statrting with pos.
     uint8_t* position(int, int*);       // ...or this, if you need the length and a binary string.
     int      maximumFragmentLength();
     bool     drop_position(unsigned int pos);   // And use this to reap the tokens that you've used.
@@ -223,6 +227,7 @@ class StringBuilder {
     // Wrapper for high-level string functions that we may or may not have.
     static char* strcasestr(const char* haystack, const char* needle);
     static int   strcasecmp(const char*, const char*);
+    static int8_t hex_char_to_nybble(const char C);
     static char* trim(char*);
     static char* deep_copy(const char* src, const unsigned int MAX_COPY_LEN = 0);
 
@@ -248,6 +253,7 @@ class StringBuilder {
     StrLL* _get_ll_containing_offset(StrLL*, int* offset);
     int    _deepcopy_ll_bytes(StrLL* src, StrLL* dest, int length, int initial_ll_offset = 0);
     //int    _move_ll_bytes(StrLL* src, StrLL* dest, int length);
+    StrLL* _position(int);
     StrLL* _stack_str_onto_list(StrLL* current, StrLL* nu);
     StrLL* _stack_str_onto_list(StrLL*);
     StrLL* _create_str_ll(int, uint8_t* buf = nullptr, StrLL* nxt_ll = nullptr);

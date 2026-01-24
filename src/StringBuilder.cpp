@@ -127,6 +127,27 @@ char* StringBuilder::deep_copy(const char* src, const unsigned int MAX_COPY_LEN)
 }
 
 
+int8_t StringBuilder::hex_char_to_nybble(const char C) {
+  int8_t ret = -1;
+  switch (C) {
+    case '0':  case '1':  case '2':  case '3':  case '4':
+    case '5':  case '6':  case '7':  case '8':  case '9':
+      ret = (C - 0x30);
+      break;
+    case 'a':  case 'b':  case 'c':  case 'd':
+    case 'e':  case 'f':
+      ret = (10 + (C - 0x61));
+      break;
+    case 'A':  case 'B':  case 'C':  case 'D':
+    case 'E':  case 'F':
+      ret = (10 + (C - 0x41));
+      break;
+    default:
+      break;  // Any other character
+  }
+  return ret;
+}
+
 /**
 * Static utility function for dumping buffers for humans to read.
 *
@@ -472,6 +493,67 @@ bool StringBuilder::position_as_bool(int pos) {
 
 
 /**
+* Consume one or more tokens on the presumption that they are hex
+*   representations of bytes. Parsing will continue until it fails, and the
+*   number of bytes returned.
+* NOTE: This function might mutate the value of count().
+*
+* @param pos is the index of the desired token.
+* @return The number of positions consumed to produce this one.
+*/
+int StringBuilder::hex_to_bin(int pos) {
+  int result = 0;
+  StrLL* current = _position(pos);
+  if (current != nullptr) {
+  //while (current != nullptr) {
+    const uint8_t* temp = current->str;
+    const int LEN = current->len;
+
+    if (0 < LEN) {
+      uint8_t tmp_bytes[(LEN >> 1) + (LEN & 1)] = {0};
+      int byte_idx = 0;
+      uint8_t tmp_byte = 0;
+      int8_t tmp_nib  = 0;
+      bool high_nib = true;
+
+      for (int i = 0; i < LEN; i++) {
+        tmp_nib = hex_char_to_nybble((const char)*(temp + i));
+        if (0 <= tmp_nib) {
+          tmp_byte = (tmp_byte << 4);
+          tmp_byte |= tmp_nib;
+          if (!high_nib) {
+            // If this was the last of a byte boundary, store the byte.
+            tmp_bytes[byte_idx++] = tmp_byte;
+            tmp_byte = 0;
+          }
+          high_nib = !high_nib;
+        }
+        else {
+          switch (*(temp + i)) {
+            case ' ':   // Most whitespace is ignored, but resets bit counter.
+            case '\t':
+            case '\r':
+              high_nib = true;
+              break;
+            default:
+              return result;  // Any other character aborts the parse.
+          }
+        }
+      }
+      // Execution arriving here implies the entire token was composed of characters
+      //   in the hex alphabet. So we can now re-write the token's content and length
+      //   to reflect so.
+      result++;
+      memcpy(current->str, tmp_bytes, byte_idx);
+      current->len = byte_idx;
+    }
+    //current = current->next;
+  }
+  return result;
+}
+
+
+/**
 * Convenience fxn for accessing a token as an int.
 *
 * @param pos is the index of the desired token.
@@ -575,17 +657,25 @@ double StringBuilder::position_as_double(int pos) {
 }
 
 
+
+StrLL* StringBuilder::_position(const int POS) {
+  StrLL* current = _root;
+  int i = 0;
+  while ((i != POS) && (nullptr != current)){
+    current = current->next;
+    i++;
+  }
+  return current;
+}
+
+
+
 /**
 * Return a castable pointer for the string at position <pos>.
 * Null on failure.
 */
 uint8_t* StringBuilder::position(int pos, int *pos_len) {
-  StrLL* current = _root;
-  int i = 0;
-  while ((i != pos) && (nullptr != current)){
-    current = current->next;
-    i++;
-  }
+  StrLL* current = _position(pos);
   *pos_len = (nullptr != current) ? current->len : 0;
   return ((nullptr != current) ? current->str : (uint8_t*)"");
 }
@@ -877,6 +967,31 @@ void StringBuilder::concatHandoff(uint8_t* buf, int len) {
     #elif defined(__BUILD_HAS_FREERTOS)
     #endif
   }
+}
+
+
+/*
+*/
+int StringBuilder::cloneClobber(StringBuilder* src_obj) {
+  int ret = -1;
+  if (nullptr != src_obj) {
+    const int LL_COUNT = src_obj->count();
+    ret = 0;
+    clear();  // Clobber means we wipe our own contents.
+    StrLL* current = src_obj->_root;
+    while ((ret < LL_COUNT) & (nullptr != current)){
+      StrLL* tmp = _create_str_ll(current->len, current);
+      if (nullptr != tmp) {
+        _stack_str_onto_list(tmp);
+      }
+      else {
+        return -2;  // Failed to allocate during cloning.
+      }
+      current = current->next;
+      ret++;
+    }
+  }
+  return ret;
 }
 
 

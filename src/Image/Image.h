@@ -5,11 +5,6 @@ Date:   2019.06.02
 
 A color-aware two-dimentional array, with support functions.
 
-TODO: Default X/Y range to uint16 instead of uint32.
-  As neat and tidy as it would be to support giga-pixel x/y coordinates, it
-  is definitely surplus to requirements. Ease the storage burden by converting
-  all the coordinates into a settable integer type. Big project...
-
 Certain drawing features of this class were lifted from Adafruit's GFX library.
   Rather than call out which specific functions, or isolate translation units
   for legal reasons, this class simply inherrits their license and attribution

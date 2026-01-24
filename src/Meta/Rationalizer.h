@@ -44,8 +44,8 @@ C3P wants the following capabilities, which will probably implicate this file.
 /*******************************************************************************
 * Build-time cross-checking.
 *******************************************************************************/
-// Get our ALU-width, as far as the compiler is concerned.
 #include <limits.h>
+// Get our ALU-width, as far as the compiler is concerned.
 #if (INTPTR_MAX == INT64_MAX)
   #define __BUILD_ALU_WIDTH   64
 #elif (INTPTR_MAX == INT32_MAX)
@@ -116,6 +116,10 @@ C3P wants the following capabilities, which will probably implicate this file.
   //#pragma message "Building with pthread support."
   #define __BUILD_HAS_THREADS
   #define __BUILD_HAS_PTHREADS
+  // 10ms period is light-weight and meshes nicely with the classic
+  //   kernel timer of 100Hz.
+  #define CONFIG_C3P_IDLE_PERIOD_MS  20
+  #define CONFIG_C3P_TIMER_PERIOD_MS 10
 #elif defined(MANUVR_PF_FREERTOS) || defined(__MANUVR_ESP32)
   //#pragma message "Building with freeRTOS support."
   #define __BUILD_HAS_THREADS
@@ -142,7 +146,7 @@ C3P wants the following capabilities, which will probably implicate this file.
 #if defined(__BUILD_HAS_THREADS)
   // If we have threads, set the latency of the idle state. This is a choice
   //   between power usage and event response latency. Any program built on
-  //   a threading model needs to define this, or the default value of 10ms
+  //   a threading model needs to define this, or the default value of 20ms
   //   will be used.
   // Local modules are free to NOT use this value for any threads they create,
   //   but modules that specify thread idle thresholds too-tightly will drain
@@ -181,7 +185,8 @@ C3P wants the following capabilities, which will probably implicate this file.
 * Feature map
 *******************************************************************************/
 /*
-* Any log less important than this will be dropped from the build.
+* If the translation unit observes this define, any log less important than this
+*   value will be dropped from the build.
 */
 #ifndef CONFIG_LOG_LEV_MAX_COMPILED
   #define CONFIG_LOG_LEV_MAX_COMPILED  7
@@ -258,8 +263,12 @@ C3P wants the following capabilities, which will probably implicate this file.
 *   Because their call-chains are often opaque to the linker, we allow them to
 *   be disabled this way, following the enablement of their respective types.
 *******************************************************************************/
-// TODO: Image
-// TODO: EnumWrapper
+// Image support is expensive, and C3P isn't well adapted to it, given its
+//   intended target platforms. Larger platforms, or platforms with
+//   sophisticated graphics concerns (or no graphics at all) will probably
+//   want this disabled.
+#if defined(CONFIG_C3P_IMG_SUPPORT)
+#endif
 
 // If we want exportable trace, we need to support some data types for
 //   cross-system interchange.
@@ -267,6 +276,7 @@ C3P wants the following capabilities, which will probably implicate this file.
     !defined(CONFIG_C3P_TIL_STOPWATCH)
   #define CONFIG_C3P_TIL_STOPWATCH
 #endif
+
 
 
 /*******************************************************************************
@@ -278,13 +288,16 @@ C3P wants the following capabilities, which will probably implicate this file.
 *   fail the build if this header has not been pulled in to the compile.
 *******************************************************************************/
 
-// Do some pre-processor work to not waste memory on storing pixel addresses.
-// Some programs only need 8x8 pixel images, and some are desktop applications.
-// In any case, if the build options don't specify, we'll have 16-bit pixel
-//   addresses. No one has a gigapixel monitor, and the Image class isn't being
-//   used to stitch many images together.
-#if !defined(CONFIG_C3P_IMG_COORD_BITS)
-  #define CONFIG_C3P_IMG_COORD_BITS  16
+#if defined(CONFIG_C3P_IMG_SUPPORT)
+  // Do some pre-processor work to not waste memory on storing pixel addresses.
+  // Some programs only need 8x8 pixel images, and some are desktop applications.
+  // In any case, if the build options don't specify, we'll have 16-bit pixel
+  //   addresses. No one has a gigapixel monitor, and the Image class isn't being
+  //   used to stitch many images together.
+  #if !defined(CONFIG_C3P_IMG_COORD_BITS)
+    #define CONFIG_C3P_IMG_COORD_BITS  16
+  #endif
 #endif
+
 
 #endif  // BUILD_RATIONALIZER_META_HEADER

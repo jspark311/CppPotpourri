@@ -27,10 +27,8 @@ TODO: About that... This program is presumably being run under linux, and so we
 
 #include "Console/C3PConsole.h"
 #include "ElementPool.h"
-#include "RingBuffer.h"
-#include "PriorityQueue.h"
+#include "C3PNumericPlane.h"
 #include "C3PValue/KeyValuePair.h"
-#include "LightLinkedList.h"
 #include "TimeSeries/TimeSeries.h"
 #include "TimeSeries/SensorFilter.h"
 #include "Vector3.h"
@@ -238,11 +236,10 @@ void dump_image(Image* a) {
 #include "TestModules/StringBuilderTest.cpp"
 #include "TestModules/Vector3Tests.cpp"
 #include "TestModules/UUIDTests.cpp"
-#include "TestModules/RingBufferTests.cpp"
+#include "TestModules/SmallDataStructureTests.cpp"
 #include "TestModules/C3PTypeTests.cpp"
 #include "TestModules/C3PValueTests.cpp"
 #include "TestModules/KVPTests.cpp"
-#include "TestModules/LinkedListTests.cpp"
 #include "TestModules/EnumWrapperTests.cpp"
 #include "TestModules/FSMTests.cpp"
 #include "TestModules/TimeSeriesTests.cpp"
@@ -281,9 +278,8 @@ void printTypeSizes() {
   print_types_uuid();
   print_types_timer_utils();
   print_types_async_sequencer();
-  print_types_ringbuffer();
+  print_types_small_ds();
   printf("\tElementPool<void*>       %u\t%u\n", sizeof(ElementPool<void*>),   alignof(ElementPool<void*>));
-  print_types_linked_lists();
   print_types_image();
   print_types_enum_wrapper();
   print_types_scheduler();
@@ -317,32 +313,27 @@ void printTypeSizes() {
 #define CHKLST_IDENTITY_TESTS         0x00000020  //
 #define CHKLST_M2MLINK_TESTS          0x00000040  //
 #define CHKLST_PARSINGCONSOLE_TESTS   0x00000080  // ParsingConsole
-#define CHKLST_RINGBUFFER_TESTS       0x00000100  // RingBuffer
+#define CHKLST_C3PDS_TESTS            0x00000100  // Our templated data structures.
 #define CHKLST_BUFFER_ACCEPTER_TESTS  0x00000200  // BufferAccepter contract and test harness.
-#define CHKLST_LINKED_LIST_TESTS      0x00000400  // LinkedList
-#define CHKLST_KEY_VALUE_PAIR_TESTS   0x00000800  // KeyValuePair
-#define CHKLST_PRIORITY_QUEUE_TESTS   0x00001000  // PriorityQueue
-#define CHKLST_VECTOR3_TESTS          0x00002000  // Vector3
-#define CHKLST_CODEC_C3PPIPE_TESTS    0x00004000  // C3PValuePipe
-#define CHKLST_CODEC_LINE_TERM_TESTS  0x00008000  // LineEndingCoDec
-#define CHKLST_IMAGE_TESTS            0x00010000  // Image
-#define CHKLST_C3P_HEADER_TESTS       0x00020000  // CppPotpourri.h
-#define CHKLST_MULT_STR_SEARCH_TESTS  0x00040000  // MultiStringSearch
-#define CHKLST_CI_PLATFORM_TESTS      0x00080000  // Platform assurances for this test program.
-#define CHKLST_UUID_TESTS             0x00100000  // UUID
-#define CHKLST_ASYNC_SEQUENCER_TESTS  0x00200000  // AsyncSequencer
-#define CHKLST_ENUM_WRAPPER_TESTS     0x00400000  // EnumWrapper
-#define CHKLST_CONF_RECORD            0x00800000  // ConfRecord
-#define CHKLST_TYPE_CONTAINER_TESTS   0x01000000  // C3PType. C3PValue
-#define CHKLST_TIMESERIES_TESTS       0x02000000  // TimeSeries
-#define CHKLST_3_AXIS_PIPE_TESTS      0x40000000  // TripleAxisPipe
+#define CHKLST_KEY_VALUE_PAIR_TESTS   0x00000400  // KeyValuePair
+#define CHKLST_VECTOR3_TESTS          0x00000800  // Vector3
+#define CHKLST_CODEC_C3PPIPE_TESTS    0x00001000  // C3PValuePipe
+#define CHKLST_CODEC_LINE_TERM_TESTS  0x00002000  // LineEndingCoDec
+#define CHKLST_IMAGE_TESTS            0x00004000  // Image
+#define CHKLST_C3P_HEADER_TESTS       0x00008000  // CppPotpourri.h
+#define CHKLST_MULT_STR_SEARCH_TESTS  0x00010000  // MultiStringSearch
+#define CHKLST_CI_PLATFORM_TESTS      0x00020000  // Platform assurances for this test program.
+#define CHKLST_UUID_TESTS             0x00040000  // UUID
+#define CHKLST_ASYNC_SEQUENCER_TESTS  0x00080000  // AsyncSequencer
+#define CHKLST_ENUM_WRAPPER_TESTS     0x00100000  // EnumWrapper
+#define CHKLST_CONF_RECORD            0x00200000  // ConfRecord
+#define CHKLST_TYPE_CONTAINER_TESTS   0x00400000  // C3PType. C3PValue
+#define CHKLST_TIMESERIES_TESTS       0x00800000  // TimeSeries
 
-#define CHKLST_ELEMENT_POOL_TESTS     0x04000000  // TODO: ElementPool<T>
 #define CHKLST_BUS_QUEUE_TESTS        0x08000000  // TODO:
 #define CHKLST_UNIT_HANDLING_TESTS    0x10000000  // TODO:
-#define CHKLST_GPS_PARSING_TESTS      0x20000000  // TODO:
+#define CHKLST_3_AXIS_PIPE_TESTS      0x40000000  // TripleAxisPipe
 #define CHKLST_LOGGER_TESTS           0x80000000  // TODO: The logging abstraction.
-
 
 
 /*
@@ -366,9 +357,9 @@ void printTypeSizes() {
   CHKLST_CI_PLATFORM_TESTS | CHKLST_C3P_HEADER_TESTS)
 
 #define CHKLST_ALL_TIER_1_TESTS ( \
-  CHKLST_STRINGBUILDER_TESTS | CHKLST_TIMER_UTILS_TESTS | CHKLST_RINGBUFFER_TESTS | \
-  CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_PRIORITY_QUEUE_TESTS | CHKLST_VECTOR3_TESTS | \
-  CHKLST_LINKED_LIST_TESTS | CHKLST_UUID_TESTS | CHKLST_ENUM_WRAPPER_TESTS | \
+  CHKLST_STRINGBUILDER_TESTS | CHKLST_TIMER_UTILS_TESTS | CHKLST_C3PDS_TESTS | \
+  CHKLST_ASYNC_SEQUENCER_TESTS | CHKLST_VECTOR3_TESTS | \
+  CHKLST_C3PDS_TESTS | CHKLST_UUID_TESTS | CHKLST_ENUM_WRAPPER_TESTS | \
   CHKLST_IMAGE_TESTS)
 
 #define CHKLST_ALL_TIER_2_TESTS ( \
@@ -481,35 +472,19 @@ const StepSequenceList TOP_LEVEL_TEST_LIST[] = {
   // RingBuffer is our template for a heap-resident, fixed length FIFO.
   // It forms the underpinning of the FiniteStateMachine template, as well as
   //   many termini of BufferAccepter chains.
-  { .FLAG         = CHKLST_RINGBUFFER_TESTS,
-    .LABEL        = "RingBuffer<T>",
+  { .FLAG         = CHKLST_C3PDS_TESTS,
+    .LABEL        = "Small Datastructs",
     .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == ringbuffer_main()) ? 1:-1);  }
+    .POLL_FXN     = []() { return ((0 == c3p_small_ds_test_main()) ? 1:-1);  }
   },
 
-  // LinkedList and Priority queue are sister templates with _almost_ matching
-  //   APIs and implementations. Both are heap-resident.
-  // One or the other of these classes is the library's go-to for orderd lists
-  //   of things.
-  { .FLAG         = CHKLST_LINKED_LIST_TESTS,
-    .LABEL        = "LinkedList<T>",
-    .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == test_LinkedList()) ? 1:-1);  }
-  },
-  { .FLAG         = CHKLST_PRIORITY_QUEUE_TESTS,
-    .LABEL        = "PriorityQueue<T>",
-    .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS),
-    .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == test_PriorityQueue()) ? 1:-1);  }
-  },
 
   // Image is a high-complexity API that is used as the basis for frame-buffer
   //   APIs, and wrapping specific image libraries.
   { .FLAG         = CHKLST_IMAGE_TESTS,
     .LABEL        = "Image",
-    .DEP_MASK     = (CHKLST_ALL_TIER_0_TESTS | CHKLST_STRINGBUILDER_TESTS),
+    .DEP_MASK     = (CHKLST_C3PDS_TESTS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == c3p_image_test_main()) ? 1:-1);  }
   },

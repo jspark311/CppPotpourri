@@ -1364,6 +1364,45 @@ int test_stringbuilder_position() {
 }
 
 
+/*
+* hex_to_bin(int)
+*/
+int test_StringBuilder_hex_to_bin() {
+  int ret = -1;
+  const uint32_t TEST_STR_LEN = (96 + (randomUInt32() % 31));
+  printf("Testing hex_to_bin(int)...\n");
+  uint8_t buf[TEST_STR_LEN];
+  random_fill(buf, TEST_STR_LEN);
+
+  StringBuilder src_binary(buf, TEST_STR_LEN);
+  StringBuilder src_hex;
+  src_binary.printDebug(&src_hex);
+  const int SPLIT_COUNT = src_hex.split(" ");
+  src_hex.string();
+  printf("\tsplit() returns a value equal to TEST_STR_LEN (%d)... ", TEST_STR_LEN);
+  if (SPLIT_COUNT == TEST_STR_LEN) {
+    printf("Pass.\n\thex_to_bin(0) returns 1... ");
+    const int PARSE_COUNT = src_hex.hex_to_bin(0);
+    if (PARSE_COUNT == 1) {
+      printf("Pass.\n\tSource and result strings are the same size... ");
+      if (src_binary.length() == src_hex.length()) {
+        ret = 0;
+      }
+    }
+  }
+
+  printf((0 != ret) ? "Fail.\n" : "Pass.\n");
+  if (0 != ret) {
+    StringBuilder sb_0;
+    src_binary.printDebug(&sb_0);
+    sb_0.concat("\n");
+    src_hex.printDebug(&sb_0);
+    printf("%s\n", (char*) sb_0.string());
+  }
+  return ret;
+}
+
+
 
 /*
 * StringBuilder is a big API. It's easy to make mistakes or under-estimate
@@ -1505,6 +1544,7 @@ int test_StringBuilder_trim() {
 #define CHKLST_SB_TEST_MISCELLANEOUS  0x08000000  // Scattered small tests.
 #define CHKLST_SB_TEST_TRIM           0x10000000  // Whitespace trim fxns.
 #define CHKLST_SB_TEST_COUNT          0x20000000  // count()
+#define CHKLST_SB_TEST_HEX_TO_BIN     0x40000000  // hex_to_bin(int pos)
 //#define CHKLST_SB_TEST_NUMERIC_PARSE  0x40000000  //
 //#define CHKLST_SB_TEST_MEM_SEMANTICS  0x80000000  // Deep-copy versus transfer.
 
@@ -1519,7 +1559,8 @@ int test_StringBuilder_trim() {
   CHKLST_SB_TEST_COUNT | CHKLST_SB_TEST_POSITION | CHKLST_SB_TEST_CONCATF | \
   CHKLST_SB_TEST_PRINTDEBUG | CHKLST_SB_TEST_PRINTBUFFER | \
   CHKLST_SB_TEST_MEM_MUTATION | CHKLST_SB_TEST_VIVISECTION | \
-  CHKLST_SB_TEST_MISUSE | CHKLST_SB_TEST_MISCELLANEOUS | CHKLST_SB_TEST_TRIM)
+  CHKLST_SB_TEST_MISUSE | CHKLST_SB_TEST_MISCELLANEOUS | CHKLST_SB_TEST_TRIM | \
+  CHKLST_SB_TEST_HEX_TO_BIN)
 
 
 
@@ -1705,6 +1746,12 @@ const StepSequenceList TOP_LEVEL_SB_TEST_LIST[] = {
     .DEP_MASK     = (CHKLST_SB_TEST_BASICS),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_StringBuilder()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_SB_TEST_HEX_TO_BIN,
+    .LABEL        = "hex_to_bin(int position)",
+    .DEP_MASK     = (CHKLST_SB_TEST_BASICS),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_StringBuilder_hex_to_bin()) ? 1:-1);  }
   },
 
 };

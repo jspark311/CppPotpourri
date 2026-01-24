@@ -221,6 +221,8 @@ class GfxUIStyle {
 *   functions in this class for features like view flows.
 * Creating one of these objects is sufficient to place and size any on-screen
 *   element.
+* TODO: Drawing with this API will become safer and more efficient by converting
+*   (PixUInt x, PixUInt y) into (PixAddr loc)
 */
 class GfxUILayout {
   public:
