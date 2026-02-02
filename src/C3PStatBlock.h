@@ -15,6 +15,9 @@ This class was intended to be extended by a class that held arbitrarilly-sized
 #ifndef __C3P_STATBLOCK_H__
 #define __C3P_STATBLOCK_H__
 
+#include "CppPotpourri.h"
+#include "StringBuilder.h"
+
 #define STATBLOCK_FLAG_VALID_SNR      0x04  // Statistical measurement is valid.
 #define STATBLOCK_FLAG_VALID_MINMAX   0x08  // Statistical measurement is valid.
 #define STATBLOCK_FLAG_VALID_MEAN     0x10  // Statistical measurement is valid.
@@ -90,10 +93,10 @@ template <class T> class C3PStatBlock {
 
 
 template <class T> void C3PStatBlock<T>::_print_stats(StringBuilder* output) {
-  C3PType* t_helper = getTypeHelper(T(0));
+  C3PType* t_helper = getTypeHelper(tcodeForType(T(0)));
   StringBuilder tmp_sb;
 
-  tmp_sb.concatf("\tN      = "%u\n, _n);
+  tmp_sb.concatf("\tN      = %u\n", _n);
   if (t_helper) {
     T max_val = maxValue();
     T min_val = minValue();

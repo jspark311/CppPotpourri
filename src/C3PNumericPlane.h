@@ -34,7 +34,7 @@ Our wrapper class for numeric plane data.
 #define C3P_PLANE_FLAG_IS_DIRTY         0x4000  // The data is dirty.
 
 
-template <typename T> class C3PNumericPlane : public C3PStatBlock<T>{
+template <typename T> class C3PNumericPlane : public C3PStatBlock<T> {
   public:
     /* Constructors do nothing but init values. */
     C3PNumericPlane(uint16_t x, uint16_t y, uint8_t* buf) : C3PStatBlock<T>((T*) buf, (x*y)), _x(x), _y(y), _planeflags(0), _buffer(buf) {};
@@ -329,7 +329,7 @@ template <typename T> void C3PNumericPlane<T>::printDebug(StringBuilder* out) {
       tmp.concat("\n");
     }
     tmp.concatf("] (%d bytes)\n", bytesUsed());
-    _print_stats(&tmp);
+    this->_print_stats(&tmp);
   }
   else {
     tmp.concat("(unallocated)\n");

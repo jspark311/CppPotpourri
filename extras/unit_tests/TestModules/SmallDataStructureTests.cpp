@@ -13,19 +13,21 @@ File:   C3PNumericPlaneTests.cpp
 Date:   2026.01.10
 
 
-This program tests several basic data structures in the library that are widely
-  relied upon.
+This program tests several basic data structure templates in the library
+  that are widely relied upon.
 
 RingBuffer<T>
 LinkedList<T>
+ElementPool<T>
 PriorityQueue<T>
 C3PStack<T>
-C3PNumericPlane<T>
 C3PStatBlock<T>
-ElementPool<T>
+C3PNumericPlane<T>
+C3PNumericVolume<T>
 */
 
 #include "C3PNumericPlane.h"
+#include "C3PNumericVolume.h"
 #include "C3PStack.h"
 #include "C3PStatBlock.h"
 #include "RingBuffer.h"
@@ -38,7 +40,6 @@ ElementPool<T>
 *******************************************************************************/
 
 static inline float _rand_f32_range(float LO, float HI) {
-  /* randomUInt32() is assumed to be provided by CppPotpourri runtime. */
   const uint32_t R = randomUInt32();
   const double   U = ((double) (R & 0xFFFFFF)) / (double) 0x1000000;  // [0,1)
   return (float) (LO + (float) (U * (double) (HI - LO)));
@@ -51,6 +52,32 @@ static inline uint16_t _rand_u16_range(uint16_t LO, uint16_t HI) {
 }
 
 
+// static void fill_sombreroid_potential(C3PNumericVolume<float>* vol) {
+//   if (!vol) return;
+//   const uint16_t NX = vol->width();
+//   const uint16_t NY = vol->height();
+//   const uint16_t NZ = vol->depth();
+//   if ((NX == 0) || (NY == 0) || (NZ == 0)) return;
+
+//   const float a = 0.55f;
+//   const float b = 1.25f;
+
+//   for (uint16_t z = 0; z < NZ; z++) {
+//     float wz = ((float)z / (float)(NZ - 1)) * 2.0f - 1.0f;
+//     for (uint16_t y = 0; y < NY; y++) {
+//       float wy = ((float)y / (float)(NY - 1)) * 2.0f - 1.0f;
+//       for (uint16_t x = 0; x < NX; x++) {
+//         float wx = ((float)x / (float)(NX - 1)) * 2.0f - 1.0f;
+//         float r2 = wx*wx + wy*wy;
+//         float a2 = a*a;
+//         float V = (r2 - a2);
+//         V = (V*V) + (b * wz*wz);
+//         V += 0.05f * (wx*wx + wy*wy + wz*wz);
+//         vol->setValue(x, y, z, V);
+//       }
+//     }
+//   }
+// }
 
 /*******************************************************************************
 * PriorityQueue test routines
@@ -765,13 +792,478 @@ int test_plane_buffer_by_copy() {
 
 
 
-int test_plane_parse_pack() {
-  int ret = -1;
+int test_plane_value_access() {
+  int ret = 0;
+  const uint16_t TEST_WIDTH  = _rand_u16_range(7, 11);
+  const uint16_t TEST_HEIGHT = _rand_u16_range(7, 11);
+  const uint32_t COUNT = ((uint32_t) TEST_WIDTH * (uint32_t) TEST_HEIGHT);
+  const uint32_t BYTES = (uint32_t) (COUNT * (uint32_t) sizeof(float));
+
+  float src[COUNT];
+  C3PNumericPlane<float> p(TEST_WIDTH, TEST_HEIGHT);
+  StringBuilder txt_ret;
+
+  printf("Testing C3PNumericPlane<float> Value access API...\n\t\tGenerating test data (%d values)... ", COUNT);
+  for (uint32_t i = 0; i < COUNT; i++) {
+    const float RANDOM_FLOAT = _rand_f32_range(-1.0f, 1.0f);
+    src[i] = RANDOM_FLOAT;
+  }
+
+
+  printf("Done.\n\t\tUsing setValue() to assign test data in row-major form... ");
+  for (uint32_t x = 0; x < p.width(); x++) {
+    for (uint32_t y = 0; y < p.height(); y++) {
+      const float RANDOM_FLOAT = src[x + (p.width()*y)];
+      if (!p.setValue(x, y, RANDOM_FLOAT)) {
+        ret = -1;
+      }
+    }
+  }
+
+  if (0 == ret) {
+    printf("Pass.\n\t\tComparing test data against return values from getValue()... ");
+    uint16_t i = 0;
+    for (uint32_t y = 0; y < p.height(); y++) {
+      for (uint32_t x = 0; x < p.width(); x++) {
+        const float A = p.getValue(x, y);
+        if (!nearly_equal(A, src[i], 0.001f)) {
+          ret = -1;
+        }
+        i++;
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("FAIL.\n");
+    p.printDebug(&txt_ret);
+    printf("%s\n", txt_ret.string());
+  }
+  else {
+    printf("PASS.\n");
+  }
   return ret;
 }
 
-int test_plane_value_access() {
+
+
+int test_plane_parse_pack() {
+  int ret = 0;
+  const uint16_t TEST_WIDTH  = _rand_u16_range(9, 16);
+  const uint16_t TEST_HEIGHT = _rand_u16_range(9, 16);
+  const uint32_t COUNT = ((uint32_t) TEST_WIDTH * (uint32_t) TEST_HEIGHT);
+  const uint32_t BYTES = (uint32_t) (COUNT * (uint32_t) sizeof(float));
+  printf("Testing C3PNumericPlane<float> Parsing and packing...\n");
+
+  C3PNumericPlane<float> p(TEST_WIDTH, TEST_HEIGHT);
+  C3PNumericPlane<float> q(TEST_WIDTH, TEST_HEIGHT);
+  StringBuilder packed_data;
+  StringBuilder txt_ret;
+
+  for (uint32_t x = 0; x < p.width(); x++) {
+    for (uint32_t y = 0; y < p.height(); y++) {
+      const float RANDOM_FLOAT = _rand_f32_range(-1.0f, 1.0f);
+      if (!p.setValue(x, y, RANDOM_FLOAT)) {
+        ret = -1;
+      }
+    }
+  }
+
+  p.printDebug(&txt_ret);
+  printf("%s\n", txt_ret.string());
+  txt_ret.clear();
+
+  if (0 == ret) {
+    ret = -1;
+    printf("\t\tSerializing the plane succeeds... ");
+    if (0 == p.serialize(&packed_data, TCode::CBOR)) {
+      printf("Pass. Size of packed plane is %d bytes.\n\t\tDeserializing that data also succeeds... ", packed_data.length());
+      txt_ret.concat("\n\t");
+      StringBuilder::printBuffer(&txt_ret, (uint8_t*) packed_data.string(), packed_data.length(), "\t");
+      if (0 == q.deserialize(&packed_data, TCode::CBOR)) {
+        printf("Pass.\n\t\tPlanes p and q have matching sizes... ");
+        if ((p.width() == q.width()) && (p.height() == q.height())) {
+          printf("Pass.\n\t\tPlanes p and q have matching content... ");
+          ret = 0;
+          for (uint32_t x = 0; x < p.width(); x++) {
+            for (uint32_t y = 0; y < p.height(); y++) {
+              if (!nearly_equal(p.getValue(x, y), q.getValue(x, y), 0.001f)) {
+                ret = -1;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("FAIL.\n");
+    q.printDebug(&txt_ret);
+    printf("%s\n", txt_ret.string());
+  }
+  else {
+    printf("PASS.\n");
+  }
+  return ret;
+}
+
+
+
+/*******************************************************************************
+* C3PNumericVolume Test routines
+*******************************************************************************/
+
+/*
+* Construction can be done with or without an existing memory range.
+* Dimensions must be non-zero.
+*
+* Covers:
+*  - ctors
+*  - width/height/depth/valueCount/buffer/allocated/bytesUsed
+*  - lazy allocation on READ (getValue)
+*  - setBuffer()
+*  - destructor behavior with external buffer (no double-free: best-effort)
+*/
+int test_numvol_construction() {
   int ret = -1;
+  printf("Testing C3PNumericVolume construction...\n");
+
+  const uint16_t TEST_X_sz = (uint16_t) (5 + (randomUInt32() % 17));
+  const uint16_t TEST_Y_sz = (uint16_t) (5 + (randomUInt32() % 17));
+  const uint16_t TEST_Z_sz = (uint16_t) (5 + (randomUInt32() % 17));
+  const uint32_t TEST_VALUE_COUNT = ((uint32_t) TEST_X_sz * (uint32_t) TEST_Y_sz * (uint32_t) TEST_Z_sz);
+  const uint32_t TEST_BYTES = (uint32_t) (TEST_VALUE_COUNT * (uint32_t) sizeof(float));
+
+  /* Default ctor */
+  {
+    printf("\tNo argument constructor produces an uninteresting object... \n");
+    C3PNumericVolume<float> v0;
+    printf("\t\twidth(), height(), and depth() all return zero... ");
+    if ((v0.width() == 0) && (v0.height() == 0) && (v0.depth() == 0)) {
+      printf("Pass.\n\t\tvalueCount() returns zero... ");
+      if (v0.valueCount() == 0) {
+        printf("Pass.\n\t\tbytesUsed() returns zero... ");
+        if (v0.bytesUsed() == 0) {
+          printf("Pass.\n\t\tallocated() should refuse to allocate without geometry... ");
+          if (!v0.allocated()) {
+            printf("PASS.\n");
+            ret = 0;
+          }
+        }
+      }
+    }
+  }
+
+  /* Size ctor (lazy) */
+  if (0 == ret) {
+    ret = -1;
+    printf("\tCreating a test volume of float with size (%u x %u x %u)...\n", TEST_X_sz, TEST_Y_sz, TEST_Z_sz);
+    C3PNumericVolume<float> v0(TEST_X_sz, TEST_Y_sz, TEST_Z_sz);
+    printf("\t\twidth(), height(), and depth() return (%u x %u x %u)... ", TEST_X_sz, TEST_Y_sz, TEST_Z_sz);
+    if ((v0.width() == TEST_X_sz) && (v0.height() == TEST_Y_sz) && (v0.depth() == TEST_Z_sz)) {
+      printf("Pass.\n\t\tvalueCount() returns %u... ", TEST_VALUE_COUNT);
+      if (v0.valueCount() == TEST_VALUE_COUNT) {
+        printf("Pass.\n\t\tbytesUsed() returns 0 (having NOT previously allocated)... ");
+        if (v0.bytesUsed() == 0) {
+          printf("Pass.\n\t\tallocated() should return true... ");
+          if (v0.allocated()) {
+            printf("Pass.\n\t\tbytesUsed() returns %u (having allocated lazily)... ", TEST_BYTES);
+            if (v0.bytesUsed() == TEST_BYTES) {
+              printf("Pass.\n\t\tgetValue() returns 0.0f... ");
+              if (0.0f == v0.getValue(0, 0, 0)) {
+                printf("PASS.\n");
+                ret = 0;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* External-buffer ctor (non-owning) */
+  if (0 == ret) {
+    ret = -1;
+    printf("\tCreating a test volume of float with size (%u x %u x %u) and an externally-managed buffer... ", TEST_X_sz, TEST_Y_sz, TEST_Z_sz);
+    uint8_t* ext = (uint8_t*) malloc((size_t) TEST_BYTES);
+    if (nullptr != ext) {
+      memset(ext, 0, (size_t) TEST_BYTES);
+      C3PNumericVolume<float> v0(TEST_X_sz, TEST_Y_sz, TEST_Z_sz, ext);
+      printf("Pass.\n\t\twidth(), height(), and depth() return (%u x %u x %u)... ", TEST_X_sz, TEST_Y_sz, TEST_Z_sz);
+      if ((v0.width() == TEST_X_sz) && (v0.height() == TEST_Y_sz) && (v0.depth() == TEST_Z_sz)) {
+        printf("Pass.\n\t\tvalueCount() returns %u... ", TEST_VALUE_COUNT);
+        if (v0.valueCount() == TEST_VALUE_COUNT) {
+          printf("Pass.\n\t\tbytesUsed() returns %u (having NOT allocated)... ", TEST_BYTES);
+          if ((v0.allocated()) && (v0.bytesUsed() == TEST_BYTES) && (v0.buffer() == ext)) {
+            printf("PASS.\n");
+            ret = 0;
+          }
+        }
+      }
+    }
+    /* If destructor incorrectly freed ext, this free() would likely crash. */
+    free(ext);
+  }
+
+
+  /* setBuffer() on size-ctor volume (should attach and clear dirty) */
+  if (0 == ret) {
+    ret = -1;
+    printf("\tCreating a test volume of float with size (%u x %u x %u) and an externally-managed buffer by explicit post-constructor assignment... ", TEST_X_sz, TEST_Y_sz, TEST_Z_sz);
+    uint8_t* ext = (uint8_t*) malloc((size_t) TEST_BYTES);
+    if (nullptr != ext) {
+      C3PNumericVolume<float> v0(TEST_X_sz, TEST_Y_sz, TEST_Z_sz);
+      memset(ext, 0, (size_t) TEST_BYTES);
+      printf("Pass.\t\twidth(), height(), and depth() return (%u x %u x %u)... ", TEST_X_sz, TEST_Y_sz, TEST_Z_sz);
+      if ((v0.width() == TEST_X_sz) && (v0.height() == TEST_Y_sz) && (v0.depth() == TEST_Z_sz)) {
+        printf("Pass.\n\t\tvalueCount() returns %u... ", TEST_VALUE_COUNT);
+        if (v0.valueCount() == TEST_VALUE_COUNT) {
+          printf("Pass.\n\t\tsetBuffer() returns true... ");
+          if (v0.setBuffer(ext)) {
+            printf("Pass.\n\t\tbytesUsed() returns %u (having NOT allocated)... ", TEST_BYTES);
+            if ((v0.bytesUsed() == TEST_BYTES) && (v0.allocated()) && (v0.buffer() == ext)) {
+              printf("Pass.\n\t\tdirty() returns false... ");
+              if (!v0.dirty()) {
+                printf("PASS.\n");
+                ret = 0;
+              }
+            }
+          }
+        }
+      }
+    }
+    /* Again: if v0 freed ext in dtor, this free would crash. */
+    free(ext);
+  }
+
+  if (0 != ret) { printf("FAIL.\n"); }
+  return ret;
+}
+
+
+/*
+* Covers:
+*  - setBufferByCopy()
+*  - verifies copied content independence from source memory
+*  - dirty set on copy
+*  - stats invalidation smoke test (mean changes after mutation) [optional as in plane]
+*/
+int test_numvol_buffer_by_copy() {
+  int ret = -1;
+  const uint16_t X = _rand_u16_range(3, 8);
+  const uint16_t Y = _rand_u16_range(3, 8);
+  const uint16_t Z = _rand_u16_range(3, 8);
+  const uint32_t COUNT = ((uint32_t) X * (uint32_t) Y * (uint32_t) Z);
+  const uint32_t BYTES = (uint32_t) (COUNT * (uint32_t) sizeof(float));
+
+  float src[COUNT];
+  printf("Testing C3PNumericVolume<float> setBufferByCopy()...\n");
+
+  /* Fuzz fill source with floats. */
+  float* src_f = (float*) src;
+  for (uint32_t i = 0; i < COUNT; i++) {
+    src_f[i] = _rand_f32_range(-10.0f, 10.0f);
+  }
+
+  C3PNumericVolume<float> v(X, Y, Z);
+  if (v.setBufferByCopy((uint8_t*) src)) {
+    if (v.allocated()) {
+      if (v.dirty()) {
+        if (BYTES == v.bytesUsed()) {
+          // Optional stat invalidation smoke test can go here, mirroring plane.
+          ret = 0;
+        }
+        else printf("\t bytesUsed() is not the expected value. (%u != %u).\n", BYTES, v.bytesUsed());
+      }
+      else printf("\t Fresh allocation should be dirty.\n");
+    }
+    else printf("\t setBufferByCopy(src) ought to allocate in a fresh object. But allocated() returned false.\n");
+  }
+  else printf("\t setBufferByCopy(src) returned false.\n");
+
+  if (0 == ret) {
+    /* Confirm content equality immediately after copy. */
+    printf("\t\tContent in buffers should match... ");
+    for (uint16_t z = 0; z < Z; z++) {
+      for (uint16_t y = 0; y < Y; y++) {
+        for (uint16_t x = 0; x < X; x++) {
+          const uint32_t IDX = ((uint32_t) z * ((uint32_t) Y * (uint32_t) X)) + ((uint32_t) y * (uint32_t) X) + (uint32_t) x;
+          const float A = v.getValue(x, y, z);
+          const float B = src_f[IDX];
+          if (!nearly_equal(A, B, 0.001)) {
+            printf("\t getValue(%u, %u, %u) doesn't match the source buffer, and it should.\n", x, y, z);
+            printf("%.6f, %.6f", A, B);
+            ret--;
+          }
+        }
+      }
+    }
+    if (0 == ret) {
+      printf("PASS.\n");
+    }
+  }
+
+  if (0 == ret) {
+    printf("\t\tContent should differ following source mutation... ");
+    for (uint32_t i = 0; i < COUNT; i++) {
+      src_f[i] = _rand_f32_range(-128.0f, 127.0f);
+    }
+    for (uint16_t z = 0; z < Z; z++) {
+      for (uint16_t y = 0; y < Y; y++) {
+        for (uint16_t x = 0; x < X; x++) {
+          const uint32_t IDX = ((uint32_t) z * ((uint32_t) Y * (uint32_t) X)) + ((uint32_t) y * (uint32_t) X) + (uint32_t) x;
+          const float A = v.getValue(x, y, z);
+          const float B = src_f[IDX];
+          if (nearly_equal(A, B, 0.001)) {  // high probability; fuzz should make collisions rare
+            ret--;
+          }
+        }
+      }
+    }
+    if (0 == ret) {
+      printf("PASS.\n");
+    }
+  }
+
+  if (0 != ret) {
+    printf("FAIL (%d).\n", ret);
+    StringBuilder txt_ret;
+    v.printDebug(&txt_ret);
+    printf("%s\n", txt_ret.string());
+  }
+  return ret;
+}
+
+
+
+int test_numvol_value_access() {
+  int ret = 0;
+  const uint16_t TEST_WIDTH  = _rand_u16_range(4, 7);
+  const uint16_t TEST_HEIGHT = _rand_u16_range(4, 7);
+  const uint16_t TEST_DEPTH  = _rand_u16_range(4, 7);
+  const uint32_t COUNT = ((uint32_t) TEST_WIDTH * (uint32_t) TEST_HEIGHT * (uint32_t) TEST_DEPTH);
+  const uint32_t BYTES = (uint32_t) (COUNT * (uint32_t) sizeof(float));
+
+  (void) BYTES;  // Maintained symmetry with plane test. Keep for debugging.
+  float src[COUNT];
+  C3PNumericVolume<float> v(TEST_WIDTH, TEST_HEIGHT, TEST_DEPTH);
+  StringBuilder txt_ret;
+
+  printf("Testing C3PNumericVolume<float> Value access API...\n\t\tGenerating test data (%d values)... ", COUNT);
+  for (uint32_t i = 0; i < COUNT; i++) {
+    const float RANDOM_FLOAT = _rand_f32_range(-1.0f, 1.0f);
+    src[i] = RANDOM_FLOAT;
+  }
+
+  printf("Done.\n\t\tUsing setValue() to assign test data in row-major (x-fastest) form... ");
+  for (uint32_t x = 0; x < v.width(); x++) {
+    for (uint32_t y = 0; y < v.height(); y++) {
+      for (uint32_t z = 0; z < v.depth(); z++) {
+        const uint32_t IDX = (uint32_t) x + ((uint32_t) v.width() * (uint32_t) y) + ((uint32_t) v.width() * (uint32_t) v.height() * (uint32_t) z);
+        const float RANDOM_FLOAT = src[IDX];
+        if (!v.setValue(x, y, z, RANDOM_FLOAT)) {
+          ret = -1;
+        }
+      }
+    }
+  }
+
+  if (0 == ret) {
+    printf("Pass.\n\t\tComparing test data against return values from getValue()... ");
+    for (uint32_t z = 0; z < v.depth(); z++) {
+      for (uint32_t y = 0; y < v.height(); y++) {
+        for (uint32_t x = 0; x < v.width(); x++) {
+          const uint32_t IDX = (uint32_t) x + ((uint32_t) v.width() * (uint32_t) y) + ((uint32_t) v.width() * (uint32_t) v.height() * (uint32_t) z);
+          const float A = v.getValue(x, y, z);
+          if (!nearly_equal(A, src[IDX], 0.001f)) {
+            ret = -1;
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("FAIL (%d).\n", ret);
+    v.printDebug(&txt_ret);
+    printf("%s\n", txt_ret.string());
+  }
+  else {
+    printf("PASS.\n");
+  }
+  return ret;
+}
+
+
+
+int test_numvol_parse_pack() {
+  int ret = 0;
+  const uint16_t TEST_WIDTH  = _rand_u16_range(5, 9);
+  const uint16_t TEST_HEIGHT = _rand_u16_range(5, 9);
+  const uint16_t TEST_DEPTH  = _rand_u16_range(5, 9);
+  const uint32_t COUNT = ((uint32_t) TEST_WIDTH * (uint32_t) TEST_HEIGHT * (uint32_t) TEST_DEPTH);
+  const uint32_t BYTES = (uint32_t) (COUNT * (uint32_t) sizeof(float));
+  (void) BYTES;
+
+  printf("Testing C3PNumericVolume<float> Parsing and packing...\n");
+
+  C3PNumericVolume<float> v(TEST_WIDTH, TEST_HEIGHT, TEST_DEPTH);
+  C3PNumericVolume<float> q(TEST_WIDTH, TEST_HEIGHT, TEST_DEPTH);
+  StringBuilder packed_data;
+  StringBuilder txt_ret;
+
+  for (uint32_t x = 0; x < v.width(); x++) {
+    for (uint32_t y = 0; y < v.height(); y++) {
+      for (uint32_t z = 0; z < v.depth(); z++) {
+        const float RANDOM_FLOAT = _rand_f32_range(-1.0f, 1.0f);
+        if (!v.setValue(x, y, z, RANDOM_FLOAT)) {
+          ret = -1;
+        }
+      }
+    }
+  }
+
+  v.printDebug(&txt_ret);
+  printf("%s\n", txt_ret.string());
+  txt_ret.clear();
+
+  if (0 == ret) {
+    ret = -1;
+    printf("\t\tSerializing the volume succeeds... ");
+    if (0 == v.serialize(&packed_data, TCode::CBOR)) {
+      printf("Pass. Size of packed volume is %d bytes.\n\t\t", packed_data.length());
+      txt_ret.concat("\n\t");
+      StringBuilder::printBuffer(&txt_ret, (uint8_t*) packed_data.string(), packed_data.length(), "\t");
+      printf("Deserializing that data also succeeds... ");
+      if (0 == q.deserialize(&packed_data, TCode::CBOR)) {
+        printf("Pass.\n\t\tVolumes v and q have matching sizes... ");
+        if ((v.width() == q.width()) && (v.height() == q.height()) && (v.depth() == q.depth())) {
+          printf("Pass.\n\t\tVolumes v and q have matching content... ");
+          ret = 0;
+          for (uint32_t x = 0; x < v.width(); x++) {
+            for (uint32_t y = 0; y < v.height(); y++) {
+              for (uint32_t z = 0; z < v.depth(); z++) {
+                if (!nearly_equal(v.getValue(x, y, z), q.getValue(x, y, z), 0.001f)) {
+                  ret = -1;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (0 != ret) {
+    printf("FAIL (%d).\n", ret);
+    txt_ret.concat("\n");
+    q.printDebug(&txt_ret);
+    printf("%s\n", txt_ret.string());
+  }
+  else {
+    printf("PASS.\n");
+  }
   return ret;
 }
 
@@ -930,6 +1422,11 @@ int test_c3pstatblock() {
 #define CHKLST_C3PDS_TEST_PLANE_VALUE_API        0x00000400  // Can values be read and written?
 #define CHKLST_C3PDS_TEST_PLANE_PARSE_PACK       0x00000800  // Parsing and packing.
 
+#define CHKLST_C3PDS_TEST_NUMVOL_ALLOCATION      0x00001000  // Tests the constructors and allocation semantics.
+#define CHKLST_C3PDS_TEST_NUMVOL_SET_BUF_BY_COPY 0x00002000  // setBufferByCopy()
+#define CHKLST_C3PDS_TEST_NUMVOL_VALUE_API       0x00004000  // Can values be read and written?
+#define CHKLST_C3PDS_TEST_NUMVOL_PARSE_PACK      0x00008000  // Parsing and packing.
+
 // Many classes in C3P hold aggregates of numbers from which we often want to
 //   collect statistical measurements.
 #define CHKLST_C3PDS_TEST_STAT_CONTAINER         0x00001000  //
@@ -945,10 +1442,11 @@ int test_c3pstatblock() {
   CHKLST_C3PDS_TEST_RINGBUFFER_GENERAL | CHKLST_C3PDS_TEST_RINGBUFFER_CONTAINS | \
   CHKLST_C3PDS_TEST_RINGBUFFER_API_GENERAL | CHKLST_C3PDS_TEST_LINKED_LIST_API_0 | \
   CHKLST_C3PDS_TEST_PRI_QUEUE_API_0 | CHKLST_C3PDS_TEST_PRI_QUEUE_API_1 | \
+  CHKLST_C3PDS_TEST_STAT_CONTAINER | \
   CHKLST_C3PDS_TEST_PLANE_ALLOCATION | CHKLST_C3PDS_TEST_PLANE_SET_BUF_BY_COPY | \
-  CHKLST_C3PDS_TEST_STAT_CONTAINER)
-
-  //CHKLST_C3PDS_TEST_PLANE_VALUE_API | CHKLST_C3PDS_TEST_PLANE_PARSE_PACK | \
+  CHKLST_C3PDS_TEST_PLANE_PARSE_PACK | \
+  CHKLST_C3PDS_TEST_NUMVOL_ALLOCATION | CHKLST_C3PDS_TEST_NUMVOL_SET_BUF_BY_COPY | \
+  CHKLST_C3PDS_TEST_NUMVOL_PARSE_PACK)
 
 
 const StepSequenceList TOP_LEVEL_C3PDS_TEST_LIST[] = {
@@ -998,9 +1496,16 @@ const StepSequenceList TOP_LEVEL_C3PDS_TEST_LIST[] = {
     .POLL_FXN     = []() { return ((0 == test_c3pstack()) ? 1:-1);  }
   },
 
+  { .FLAG         = CHKLST_C3PDS_TEST_STAT_CONTAINER,
+    .LABEL        = "C3PStatBlock<T>: General API",
+    .DEP_MASK     = (0),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_c3pstatblock()) ? 1:-1);  }
+  },
+
   { .FLAG         = CHKLST_C3PDS_TEST_PLANE_ALLOCATION,
     .LABEL        = "C3PNumericPlane<T>: Construction and allocation",
-    .DEP_MASK     = (0),
+    .DEP_MASK     = (CHKLST_C3PDS_TEST_STAT_CONTAINER),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_plane_construction()) ? 1:-1);  }
   },
@@ -1011,23 +1516,41 @@ const StepSequenceList TOP_LEVEL_C3PDS_TEST_LIST[] = {
     .POLL_FXN     = []() { return ((0 == test_plane_buffer_by_copy()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_C3PDS_TEST_PLANE_VALUE_API,
-    .LABEL        = "Value manipulation",
+    .LABEL        = "C3PNumericPlane<T>: Value manipulation API",
     .DEP_MASK     = (CHKLST_C3PDS_TEST_PLANE_ALLOCATION),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_plane_value_access()) ? 1:-1);  }
   },
   { .FLAG         = CHKLST_C3PDS_TEST_PLANE_PARSE_PACK,
-    .LABEL        = "Value manipulation",
+    .LABEL        = "C3PNumericPlane<T>: Parsing and packing",
     .DEP_MASK     = (CHKLST_C3PDS_TEST_PLANE_VALUE_API),
     .DISPATCH_FXN = []() { return 1;  },
     .POLL_FXN     = []() { return ((0 == test_plane_parse_pack()) ? 1:-1);  }
   },
 
-  { .FLAG         = CHKLST_C3PDS_TEST_STAT_CONTAINER,
-    .LABEL        = "C3PStatBlock<T>: General API",
-    .DEP_MASK     = (0),
+  { .FLAG         = CHKLST_C3PDS_TEST_NUMVOL_ALLOCATION,
+    .LABEL        = "C3PNumericVolume<T>: Construction and allocation",
+    .DEP_MASK     = (CHKLST_C3PDS_TEST_STAT_CONTAINER),
     .DISPATCH_FXN = []() { return 1;  },
-    .POLL_FXN     = []() { return ((0 == test_c3pstatblock()) ? 1:-1);  }
+    .POLL_FXN     = []() { return ((0 == test_numvol_construction()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_C3PDS_TEST_NUMVOL_SET_BUF_BY_COPY,
+    .LABEL        = "C3PNumericVolume<T>: setBufferByCopy()",
+    .DEP_MASK     = (CHKLST_C3PDS_TEST_NUMVOL_ALLOCATION),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_numvol_buffer_by_copy()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_C3PDS_TEST_NUMVOL_VALUE_API,
+    .LABEL        = "C3PNumericVolume<T>: Value manipulation API",
+    .DEP_MASK     = (CHKLST_C3PDS_TEST_NUMVOL_ALLOCATION),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_numvol_value_access()) ? 1:-1);  }
+  },
+  { .FLAG         = CHKLST_C3PDS_TEST_NUMVOL_PARSE_PACK,
+    .LABEL        = "C3PNumericVolume<T>: Parsing and packing",
+    .DEP_MASK     = (CHKLST_C3PDS_TEST_NUMVOL_VALUE_API),
+    .DISPATCH_FXN = []() { return 1;  },
+    .POLL_FXN     = []() { return ((0 == test_numvol_parse_pack()) ? 1:-1);  }
   },
 };
 
@@ -1048,6 +1571,7 @@ void print_types_small_ds() {
   printf("\tPriorityQueue<void*>     %u\t%u\n", sizeof(PriorityQueue<void*>),    alignof(PriorityQueue<void*>));
   printf("\tC3PStack<float>          %u\t%u\n", sizeof(C3PStack<float>),         alignof(C3PStack<float>));
   printf("\tC3PNumericPlane<float>   %u\t%u\n", sizeof(C3PNumericPlane<float>),  alignof(C3PNumericPlane<float>));
+  printf("\tC3PNumericVolume<float>  %u\t%u\n", sizeof(C3PNumericPlane<float>),  alignof(C3PNumericPlane<float>));
 }
 
 

@@ -219,6 +219,7 @@ class StringBuilder {
     // int cmpCaseless(const char* unknown);
 
     void printDebug(StringBuilder*);
+    //bool isPrintable();   // Returns true if the content is entirely low-ASCII.
 
     int memoryCost(bool deep = false);   // Get the memory use for this string.
 
